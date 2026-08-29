@@ -1,0 +1,44 @@
+name: Work Order
+description: Create a repository-governed implementation Work Order.
+title: "WORK-___ — "
+labels: [work-order]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Work Orders are authoritative planning artifacts under `spec/work-orders/`. Do not use an issue as a substitute for the Work Order file.
+  - type: input
+    id: work-id
+    attributes:
+      label: Work Item ID
+      placeholder: WORK-001
+    validations:
+      required: true
+  - type: input
+    id: architecture
+    attributes:
+      label: Governing architecture version
+      placeholder: v1.0
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: List exact Work Order IDs and explain any exceptional dependency.
+    validations:
+      required: true
+  - type: textarea
+    id: surfaces
+    attributes:
+      label: Change surfaces
+      description: Name modules, schema, public contracts, external side effects and authority/security impacts.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Acceptance and proof contract
+      description: State behavioral, structural, discrimination, concurrency and quality-attribute evidence required.
+    validations:
+      required: true

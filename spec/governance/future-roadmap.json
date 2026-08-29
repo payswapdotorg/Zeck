@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "status": "proposed",
+  "sequence": ["WORK-017","WORK-018","WORK-019","WORK-020"],
+  "parallelWaves": [
+    {"wave":1,"items":["WORK-017","WORK-018"]},
+    {"wave":2,"items":["WORK-019"]},
+    {"wave":3,"items":["WORK-020"]}
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "items": {},
+  "checkpointKinds": ["readiness","work_order","pr_conformance","verification_entry"],
+  "note": "Per-Work-Order checkpoint outcomes are recorded only after an implementation exists. No checkpoint substitutes for architect merge completion."
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "contracts": [
+    {"id":"AUTH-PRESERVATION","area":"authority preservation","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"DEPENDENCY-DIRECTION","area":"dependency direction","severity":"blocking","proofClasses":["static","discrimination"]},
+    {"id":"TENANT-ISOLATION","area":"tenant isolation","severity":"blocking","proofClasses":["static","dynamic"]},
+    {"id":"IDENTITY-IDEMPOTENCY","area":"identity and idempotency","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"CONCURRENCY-CRASH-SAFETY","area":"concurrency and crash safety","severity":"blocking","proofClasses":["dynamic"]},
+    {"id":"EXTERNAL-SIDE-EFFECTS","area":"external side effects","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"POLICY-BEFORE-DISPATCH","area":"policy admission","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"BUDGET-INTEGRITY","area":"budget reservation and ledger integrity","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"EXECUTION-PROVENANCE","area":"execution provenance","severity":"blocking","proofClasses":["static","dynamic"]},
+    {"id":"VERIFICATION-SEPARATION","area":"verification distinct from provider success","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"SANDBOX-BOUNDARY","area":"compute isolation","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"LEARNING-NONAUTHORITY","area":"learning cannot weaken authority","severity":"blocking","proofClasses":["static","dynamic"]},
+    {"id":"IMPLEMENTATION-COMPLETENESS","area":"work-order completeness","severity":"blocking","proofClasses":["static","dynamic"]},
+    {"id":"SELF-HOSTING-BOUNDARY","area":"repository development governance","severity":"blocking","proofClasses":["static","dynamic","discrimination"]}
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "artifact": "ai-execution-os-development-state/governance-model",
+  "authority": {
+    "owner": "architect (changes only through an approved Work Order/Architecture Change Request and PR review)",
+    "architecture": "spec/architecture.md",
+    "lock": "spec/architecture-lock.md"
+  },
+  "engineeringControlLoop": {
+    "stages": [
+      {"name":"sense","authority":"runtime observability + audit","mechanism":"execution events, provider health, budget/usage signals"},
+      {"name":"understand","authority":"capabilities + context","mechanism":"task profile, application context, artifacts"},
+      {"name":"plan","authority":"planning","mechanism":"architect-approved Work Orders for software changes; execution planning for runtime tasks"},
+      {"name":"check","authority":"architecture checkpoints","mechanism":"revision-bound governance assertions"},
+      {"name":"execute","authority":"executions + policy","mechanism":"model/tool/agent/sandbox execution"},
+      {"name":"verify","authority":"verification","mechanism":"task-specific evidence and quality gates"},
+      {"name":"review","authority":"architect for repository changes; customer domain for runtime business decisions","mechanism":"semantic review"},
+      {"name":"release","authority":"architect + repository governance for this project","mechanism":"merge gating and post-merge finalization"},
+      {"name":"observe","authority":"audit + learning","mechanism":"execution telemetry and operational evidence"},
+      {"name":"learn","authority":"learning + durable decisions","mechanism":"outcome feedback feeding future plans without weakening authority"}
+    ]
+  },
+  "assuranceProfiles":"spec/governance/assurance-profiles.json",
+  "checkpointContracts":"spec/governance/checkpoint-contract.json",
+  "workerProtocol":"spec/governance/worker-protocol.json",
+  "architectAuthority":"spec/governance/architect.json",
+  "selfHostingBoundary": {
+    "may":["plan implementation Work Orders","execute Work Orders","run verification","record evidence","open PRs","maintain development state"],
+    "mayNot":["silently rewrite frozen architecture","weaken governance invariants","merge own PR","bypass required checkpoints","invent duplicate authorities"]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "authority": "architecture-governance",
+  "principal": "@pectoraux",
+  "decisionRights": [
+    "approve-architecture-freeze",
+    "approve-architecture-change",
+    "approve-work-order",
+    "approve-checkpoint-verdict",
+    "approve-merge",
+    "reject-implementation",
+    "authorize-remediation"
+  ],
+  "nonDelegable": [
+    "change-governing-architecture",
+    "weaken-frozen-invariant",
+    "bypass-verification",
+    "bypass-required-review",
+    "bypass-merge-gate"
+  ],
+  "implementationAgents": [
+    "z-ai",
+    "provider-neutral-execution-workers"
+  ],
+  "rule": "Implementation workers may inspect, implement, test, document and open/update their own PRs but cannot exercise architecture or merge authority."
+}

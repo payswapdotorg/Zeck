@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "selection": {
+    "rule": "first-match over declared change-surface flags; unknown surfaces fail closed to HIGH_ASSURANCE",
+    "profiles": [
+      {"profile":"CRITICAL","whenAny":["authorityBoundary","securityTenant","schema"]},
+      {"profile":"HIGH_ASSURANCE","whenAny":["publicContracts","concurrency","externalSideEffects"]},
+      {"profile":"STANDARD","whenAny":["moduleInternals","multiModule"]},
+      {"profile":"LIGHT","whenAny":["documentation","localBehavior"]}
+    ],
+    "unclassifiedDefault":"HIGH_ASSURANCE"
+  },
+  "requirements": {
+    "LIGHT":{"checkpointKinds":["pr_conformance"],"proofClasses":["static"],"evidence":["static-suite-green"]},
+    "STANDARD":{"checkpointKinds":["work_order","pr_conformance"],"proofClasses":["static","dynamic"],"evidence":["static-suite-green","integration-green"]},
+    "HIGH_ASSURANCE":{"checkpointKinds":["readiness","work_order","pr_conformance","verification_entry"],"proofClasses":["static","dynamic","discrimination"],"evidence":["static-suite-green","integration-green","real-postgresql-green"]},
+    "CRITICAL":{"checkpointKinds":["readiness","work_order","pr_conformance","verification_entry"],"proofClasses":["static","dynamic","discrimination"],"evidence":["static-suite-green","integration-green","real-postgresql-green","architect-review-record"]}
+  },
+  "dominanceRule":"Assurance only adds required proof depth; it never subtracts authority protections."
+}

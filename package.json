@@ -1,0 +1,16 @@
+{
+  "name": "@pectoraux/ai-execution-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI Execution OS \u2014 governed, provider-independent AI execution infrastructure",
+  "packageManager": "bun@1.3.4",
+  "scripts": {
+    "governance:check": "python3 scripts/governance-check.py",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:architecture": "vitest run tests/architecture tests/discrimination",
+    "test": "vitest run"
+  }
+}
