@@ -1,4 +1,4 @@
-name: Architecture Governance
+name: Repository Governance
 
 on:
   pull_request:
@@ -10,12 +10,39 @@ permissions:
   pull-requests: read
 
 jobs:
-  governance-artifacts:
+  governance:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout full repository history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Validate governance artifacts
-        run: python scripts/governance-check.py
+      - name: Validate repository governance
+        run: python3 scripts/governance-check.py
+
+  implementation:
+    # WORK-001 establishes the Bun/TypeScript toolchain. Until that happens the repository
+    # is intentionally specification/governance-only, so the governance job is the gate.
+    if: ${{ hashFiles('tsconfig.json', 'bun.lock') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.4'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Lint
+        run: bun run lint
+      - name: Architecture tests
+        run: bun run test:architecture
+      - name: Unit tests
+        run: bun run test:unit
+      - name: Integration tests
+        run: bun run test:integration
