@@ -2,11 +2,11 @@
 
 AI Execution OS is provider-independent infrastructure for executing AI work as governed, policy-constrained, evidence-producing executions.
 
-It is designed to make AI integration as simple for developers as payments integration: the application declares an outcome and constraints; the platform determines the execution plan across models, tools, algorithms, agents, context strategies, sandboxes, verification and human escalation.
+It is designed to make AI integration as simple for developers as payments integration: an application declares an outcome and constraints; the platform determines the execution plan across models, tools, algorithms, agents, context strategies, sandboxes, verification and human escalation.
 
 ## Repository governance
 
-This repository uses the same repository-resident implementation governance pattern proven in WorkflowOS:
+This repository uses the repository-resident implementation governance pattern proven in WorkflowOS:
 
 - frozen ArchitectureVersion + architecture lock
 - architect-issued Work Orders under `spec/work-orders/`
@@ -24,21 +24,13 @@ The governing development state lives under `spec/development-state/`; chat and 
 
 ## Start here as an implementation agent
 
-Read `IMPLEMENTATION.md`, then `spec/worker-runbook.md`, then the governing architecture/lock and the development-state JSON files. Run `python3 scripts/governance-check.py`. Only implement a Work Order listed in `spec/development-state/frontier-state.json`.
+Read `AGENTS.md`, then `IMPLEMENTATION.md`, then `spec/worker-runbook.md`. Read the governing architecture/lock and the development-state JSON files. Run `python3 scripts/governance-check.py`. Only implement a Work Order listed in `spec/development-state/frontier-state.json`.
 
 Every requirement is traced to an owning Work Order in `spec/requirement-traceability.md`; every Work Order contains concrete acceptance criteria, declared surfaces and evidence requirements.
 
-## Start here as an implementation agent
+## Start here as an architect
 
-Read `IMPLEMENTATION.md`, then `spec/worker-runbook.md`, then the governing architecture/lock and the development-state JSON files. Run `python3 scripts/governance-check.py`. Only implement a Work Order listed in `spec/development-state/frontier-state.json`.
-
-Every requirement is traced to an owning Work Order in `spec/requirement-traceability.md`; every Work Order contains concrete acceptance criteria, declared surfaces and evidence requirements.
-
-## Start here as an implementation agent
-
-Read `IMPLEMENTATION.md`, then `spec/worker-runbook.md`, then the governing architecture/lock and the development-state JSON files. Run `python3 scripts/governance-check.py`. Only implement a Work Order listed in `spec/development-state/frontier-state.json`.
-
-Every requirement is traced to an owning Work Order in `spec/requirement-traceability.md`; every Work Order contains concrete acceptance criteria, declared surfaces and evidence requirements.
+Read `AGENTS.md`, then `docs/ARCHITECT-RUNBOOK.md`. The architect is the semantic and merge authority for the implementation program. Work Orders, ADRs, checkpoint verdicts and post-merge finalization are repository-resident authority artifacts.
 
 ## Initial implementation target
 
