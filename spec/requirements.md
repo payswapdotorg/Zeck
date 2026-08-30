@@ -73,7 +73,7 @@
 
 - WOS-001: WorkflowOS can submit implementation/review work to AI Execution OS through one provider-independent execution contract.
 - WOS-002: WorkflowOS remains authoritative for its own workflow state transitions.
-- WOS-003: AI Execution OS returns evidence and artifacts; it does not directly transition WorkflowOS workflow state.
+- WOS-003: AI Execution OS returns execution results, artifacts and evidence; it does not directly transition WorkflowOS workflow state.
 - WOS-004: Existing WorkflowOS execution/session/workspace concepts can map to the platform execution substrate without creating duplicate authorities.
 
 ## Deterministicization and evaluation
@@ -98,3 +98,21 @@
 - ACP-004: Policy can require human approval before designated high-risk agent actions.
 - ACP-005: External/BYOA agent frameworks can be registered and governed through provider-neutral adapters without creating duplicate execution or policy authorities.
 - ACP-006: Agent session actions are recorded as execution evidence with sufficient provenance to reconstruct who/what/when/why.
+
+## Multimodal deployment
+
+- MOD-001: Agents can be deployed through a provider-neutral versioned DeploymentProfile and DeploymentPlan without changing the Execution abstraction.
+- MOD-002: Deployment identity is bound to application/environment/agent version and can be referenced by executions.
+- MOD-003: Deployment lifecycle changes are idempotent, auditable, concurrency-safe where mutable, and preserve execution provenance.
+- MOD-004: Channel/modality adapters cannot create duplicate policy, capability, budget, execution, verification or tenant authorities.
+- MOD-005: The platform can deploy realtime voice agents through provider-neutral web/telephony/realtime adapters.
+- MOD-006: Realtime sessions preserve tenant/deployment/execution identity, interruption/turn provenance and governed escalation.
+- MOD-007: Voice/realtime deployment can use deterministic and hybrid subtasks rather than forcing every turn through generative inference.
+- MOD-008: The platform can deploy conversational agents to messaging channels through provider-neutral adapters with idempotent event handling.
+- MOD-009: Messaging deployments preserve conversation/message provenance, tenant isolation and policy-before-send ordering.
+- MOD-010: Deployment profiles support external/BYOA agents and replaceable upstream channel/infrastructure rails without vendor lock-in.
+- MOD-011: The platform can deploy video/image/audio generation workloads through provider-neutral media capabilities and asynchronous execution.
+- MOD-012: Generated media and derived variants preserve artifact lineage, execution provenance and deployment version.
+- MOD-013: Media-generation jobs enforce budget-before-paid-dispatch, idempotent submission, retry/cancel semantics and verification-before-completion.
+
+Total requirements: **72**.
