@@ -77,6 +77,16 @@ Forbidden:
 - `CONCURRENCY-CRASH-SAFETY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+- readiness: dependency and declared-surface verification before implementation
+- concurrency: lease ownership and concurrent resume arbitration proven
+- recovery: crash/resume behavior proven without duplicate authoritative side effects
+
+# Evidence Contract
+
+Evidence must identify the exact implementation and final branch heads, map LNG requirements to tests, and include real concurrency/crash results. Any external side-effect behavior must have provenance and a clear authoritative owner.
+
 # Required Verification
 
 - governance checker
