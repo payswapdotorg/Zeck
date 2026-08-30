@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "items": {
     "WORK-001": {
-      "asOf": "2026-08-29T23:26:14Z",
+      "asOf": "2026-08-30T03:56:00Z",
       "branch": "work/WORK-001-foundation",
       "baseRevision": "463e6a677630cdc3cae5914abc01aafdd154c795",
       "assuranceProfile": "CRITICAL",
       "outcomes": {
         "IMPLEMENTATION-COMPLETENESS": {
           "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
+          "verdict": "passed",
           "evidence": [
             "docs/work-items/WORK-001.md",
             "tests/integration/toolchain-contract.test.ts",
@@ -18,7 +18,7 @@
         },
         "IDENTITY-IDEMPOTENCY": {
           "status": "scope-note",
-          "verdict": "pending-architect-review",
+          "verdict": "passed",
           "evidence": [
             "docs/work-items/WORK-001.md#checkpoint-evidence"
           ],
@@ -26,7 +26,7 @@
         },
         "CONCURRENCY-CRASH-SAFETY": {
           "status": "scope-note",
-          "verdict": "pending-architect-review",
+          "verdict": "passed",
           "evidence": [
             "docs/work-items/WORK-001.md#checkpoint-evidence"
           ],
@@ -34,7 +34,7 @@
         },
         "SELF-HOSTING-BOUNDARY": {
           "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
+          "verdict": "passed",
           "evidence": [
             "tests/discrimination/governance-gate.discrimination.test.ts",
             "tests/integration/fresh-clone-governance.test.ts"
@@ -42,7 +42,7 @@
         },
         "DEPENDENCY-DIRECTION": {
           "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
+          "verdict": "passed",
           "evidence": [
             "tests/architecture/dependency-direction.test.ts",
             "tests/architecture/provider-sdk-boundaries.test.ts",
@@ -54,5 +54,5 @@
     }
   },
   "checkpointKinds": ["readiness", "work_order", "pr_conformance", "verification_entry"],
-  "note": "Per-Work-Order checkpoint outcomes are recorded only after an implementation exists. No checkpoint substitutes for architect merge completion. Outcomes are worker-recorded evidence; verdicts are architect authority."
+  "note": "WORK-001 checkpoints were accepted by the architect after PR #3 evidence and CI review. No checkpoint substitutes for merge completion."
 }
