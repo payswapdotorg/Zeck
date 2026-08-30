@@ -37,6 +37,12 @@ Secondary implementations must not create a second authority for a requirement.
 | TOL-004 | WORK-018 | future tool synthesis under same execution abstraction | synthesis contract test |
 | AGT-001 | WORK-011 | agents distinct from models | agent/model boundary test |
 | AGT-002 | WORK-011 | session/workspace bound to execution | tenant/session integration test |
+| AGT-003 | WORK-011 | governed agent identity and inventory/catalog | agent inventory integration test |
+| AGT-004 | WORK-011 | immutable versioned agent artifacts with validation/rollback metadata | agent version lifecycle test |
+| AGT-005 | WORK-011 | mediated scoped credentials with no long-lived raw secrets in agent runtime | credential mediation/security discrimination test |
+| AGT-006 | WORK-011 | policy-designated risky agent actions require explicit human approval | approval-gate discrimination test |
+| AGT-007 | WORK-016 | external/BYOA agents governed through provider-neutral adapters | BYOA adapter boundary test |
+| AGT-008 | WORK-011 | agent session action provenance is durable execution evidence | session audit/provenance integration test |
 | ENV-001 | WORK-012 | provider-independent ComputeEnvironment | environment contract tests |
 | ENV-002 | WORK-012 | isolated containers | sandbox integration/discrimination test |
 | ENV-003 | WORK-019 | microVM/VM evolution path | fleet adapter contract test |
@@ -58,5 +64,11 @@ Secondary implementations must not create a second authority for a requirement.
 | HUM-001 | WORK-022 | selective human rating when automated uncertainty is material | rating-trigger discrimination test |
 | HUM-002 | WORK-022 | human ratings are immutable candidate-linked evidence | rating persistence/provenance test |
 | HUM-003 | WORK-022 | low-confidence ratings cannot auto-promote production behavior | promotion-gate discrimination test |
+| ACP-001 | WORK-011 | stable governed agent identity and inventory/catalog | agent inventory integration test |
+| ACP-002 | WORK-011 | versioned immutable agent artifacts with validation/rollback metadata | agent lifecycle/rollback integration test |
+| ACP-003 | WORK-011 | scoped revocable mediated credentials and no long-lived raw secrets in agent code | credential mediation + secret exposure discrimination test |
+| ACP-004 | WORK-011 | human approval required for policy-designated risky agent actions | approval-gate integration/discrimination test |
+| ACP-005 | WORK-016 | external/BYOA agent frameworks can be registered and governed without duplicate authorities | BYOA interoperability + authority-boundary test |
+| ACP-006 | WORK-011 | session actions are execution evidence with who/what/when/why provenance | agent session audit integration test |
 
-Total requirements: **53**.
+Total requirements: **59**.
