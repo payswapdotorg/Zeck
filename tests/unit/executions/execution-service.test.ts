@@ -501,7 +501,10 @@ describe("unit: transitions (criterion 2 — single write path over the table)",
 });
 
 describe("unit: authority seams (policy precedes dispatch; budget consulted not bypassed)", () => {
-  test("authorize consults the REQUIRED authorization port; denial is AUTHORIZATION_DENIED with zero writes", async () => {
+  // WORK-007 adaptation: the authorize seam is now wired to the policy
+  // engine contract — a policy denial is typed `POLICY_DENIED` and is
+  // DURABLE (one `execution.policy-denied` envelope, row stays CREATED).
+  test("authorize consults the REQUIRED authorization port; denial is POLICY_DENIED, blocked at CREATED, durably journaled", async () => {
     const world = createInMemoryExecutions({ authorization: denyAllAuthorization("task-quota") });
     world.store.seedApplication(APP_ID, ACTOR.tenantId);
     const { executionId } = await world.service.createExecution(
@@ -515,9 +518,134 @@ describe("unit: authority seams (policy precedes dispatch; budget consulted not 
         "a1",
       ),
     );
-    expect(error).toBe("AUTHORIZATION_DENIED");
-    expect(world.store.events).toHaveLength(1);
+    expect(error).toBe("POLICY_DENIED");
+    // Durable denial evidence: exactly one policy-denied envelope appended;
+    // the execution CANNOT pass CREATED (no dispatch is possible).
+    expect(world.store.events).toHaveLength(2);
+    const denial = world.store.events[1];
+    expect(denial?.type).toBe("execution.policy-denied");
+    expect(denial?.command).toBe("authorize");
+    expect(denial?.reference).toMatchObject({ denied: true, reason: "task-quota" });
+    expect(denial?.payload).toMatchObject({ from: "CREATED", to: "CREATED", denied: true });
     expect((await world.service.getExecution(APP_ID, executionId))?.status).toBe("CREATED");
+    // Same-key retry replays the SAME durable denial (no second envelope).
+    const replayError = await errorCode(
+      world.service.transition(
+        { ...transitionScope(APP_ID, executionId), command: "authorize" },
+        "a1",
+      ),
+    );
+    expect(replayError).toBe("POLICY_DENIED");
+    expect(world.store.events).toHaveLength(2);
+    expect((await world.service.getExecution(APP_ID, executionId))?.status).toBe("CREATED");
+  });
+
+  test("a denial reason from the authority is surfaced in the typed error details", async () => {
+    const world = createInMemoryExecutions({
+      authorization: denyAllAuthorization("cost ceiling exceeded"),
+    });
+    world.store.seedApplication(APP_ID, ACTOR.tenantId);
+    const { executionId } = await world.service.createExecution(
+      baseCreateInput(APP_ID),
+      "c1",
+      ACTOR,
+    );
+    const attempt = world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "authorize" },
+      "a1",
+    );
+    await expect(attempt).rejects.toMatchObject({
+      code: "POLICY_DENIED",
+      details: { reason: "cost ceiling exceeded" },
+    });
+  });
+
+  test("an allow with evidence records the effective-policy provenance on the authorize envelope", async () => {
+    const evidence = {
+      policySetId: "default",
+      policySetVersion: 3,
+      policyContentHash: "a".repeat(64),
+      restrictionSetDigest: "b".repeat(64),
+    };
+    const world = createInMemoryExecutions({
+      authorization: { evaluate: async () => ({ allowed: true, evidence }) },
+    });
+    world.store.seedApplication(APP_ID, ACTOR.tenantId);
+    const { executionId } = await world.service.createExecution(
+      baseCreateInput(APP_ID),
+      "c1",
+      ACTOR,
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "authorize" },
+      "a1",
+    );
+    const authorizeEvent = world.store.events.find((event) => event.type === "execution.authorize");
+    expect(authorizeEvent?.reference).toMatchObject({ policy: evidence });
+    expect((await world.service.getExecution(APP_ID, executionId))?.status).toBe("AUTHORIZED");
+  });
+
+  test("admission is consulted BEFORE any write of the authorize transition (ordering probe)", async () => {
+    let eventsAtConsult: number | undefined;
+    const world = createInMemoryExecutions({
+      authorization: {
+        evaluate: async () => {
+          eventsAtConsult = world.store.events.length;
+          return { allowed: true };
+        },
+      },
+    });
+    world.store.seedApplication(APP_ID, ACTOR.tenantId);
+    const { executionId } = await world.service.createExecution(
+      baseCreateInput(APP_ID),
+      "c1",
+      ACTOR,
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "authorize" },
+      "a1",
+    );
+    expect(eventsAtConsult).toBe(1); // only the creation envelope existed at decision time
+  });
+
+  test("the authorize seam is consulted ONLY on authorize (other commands never consult policy)", async () => {
+    let consultations = 0;
+    const world = createInMemoryExecutions({
+      authorization: {
+        evaluate: async () => {
+          consultations += 1;
+          return { allowed: true };
+        },
+      },
+    });
+    world.store.seedApplication(APP_ID, ACTOR.tenantId);
+    const { executionId } = await world.service.createExecution(
+      baseCreateInput(APP_ID),
+      "c1",
+      ACTOR,
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "authorize" },
+      "a",
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "plan" },
+      "p",
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "queue" },
+      "q",
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "start" },
+      "s",
+    );
+    await world.service.transition(
+      { ...transitionScope(APP_ID, executionId), command: "fail", reason: "done" },
+      "f",
+    );
+    expect(consultations).toBe(1);
+    expect((await world.service.getExecution(APP_ID, executionId))?.status).toBe("FAILED");
   });
 
   test("authorize seam sees the execution + actor (admission facts)", async () => {

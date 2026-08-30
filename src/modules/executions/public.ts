@@ -32,7 +32,7 @@ import type {
 } from "./application/execution-service";
 import { createExecutionService } from "./application/execution-service";
 import type { AppendEventInput, EventEnvelope } from "./domain/event";
-import { eventTypeFor } from "./domain/event";
+import { eventTypeFor, POLICY_DENIED_EVENT_TYPE } from "./domain/event";
 import type {
   ExecutionActor,
   ExecutionConstraints,
@@ -59,7 +59,7 @@ import type {
   VerificationResultRecord,
   VerificationResultStatus,
 } from "./domain/verification";
-import type { ExecutionAuthorizationPort } from "./ports/authorization";
+import type { AdmissionEvidence, ExecutionAuthorizationPort } from "./ports/authorization";
 import type { ExecutionsIdempotencyPort } from "./ports/execution-idempotency";
 import type { ExecutionStore } from "./ports/execution-store";
 
@@ -71,6 +71,7 @@ export const moduleDescriptor: ModuleDescriptor = { id: "executions" };
 // Domain: EventEnvelope ledger + durable verification results.
 // Module ports (provider-neutral; implemented by adapters).
 export type {
+  AdmissionEvidence,
   AppendEventInput,
   AppliedTransition,
   EventEnvelope,
@@ -105,6 +106,7 @@ export {
   isTerminal,
   NON_TERMINAL_STATUSES,
   nextState,
+  POLICY_DENIED_EVENT_TYPE,
   TERMINAL_STATUSES,
   TRANSITION_TABLE,
 };
