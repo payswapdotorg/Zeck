@@ -22,3 +22,5 @@
 | WORK-018 | Tool synthesis and validated ephemeral programs | 010,012,014,017 | CRITICAL | no |
 | WORK-019 | MicroVM/VM execution fleet and customer runners | 012,016,018 | CRITICAL | no |
 | WORK-020 | Learned execution planning and automatic policy optimization | 014,017,018,019 | CRITICAL | no |
+| WORK-021 | Deterministicization discovery and progressive AI-call elimination | 013,014,017,018 | CRITICAL | no |
+| WORK-022 | Codebase AI opportunity analysis and selective human evaluation | 014,016,018 | HIGH_ASSURANCE | no |
