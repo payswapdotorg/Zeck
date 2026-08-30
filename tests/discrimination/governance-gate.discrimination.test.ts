@@ -66,7 +66,11 @@ test("a hand-edited frontier (not derived) is rejected", () => {
   const copy = freshCopy("frontier");
   const frontierPath = join(copy, "spec/development-state/frontier-state.json");
   const frontier = JSON.parse(readFileSync(frontierPath, "utf8")) as { eligible: string[] };
-  frontier.eligible = ["WORK-002"];
+  // WORK-002 repair: the mutation must be state-INDEPENDENT (the original
+  // hardcoded ["WORK-002"] stopped discriminating once WORK-001 completed
+  // and the derived frontier genuinely became ["WORK-002"]). An id unknown
+  // to program state can never be derived, so this discriminates forever.
+  frontier.eligible = ["WORK-999"];
   writeFileSync(frontierPath, `${JSON.stringify(frontier, null, 2)}\n`);
   const result = runGovernanceCheck(copy);
   expect(result.code).not.toBe(0);
@@ -101,11 +105,15 @@ test("merge evidence on an incomplete Work Order is rejected", () => {
   const program = JSON.parse(readFileSync(programPath, "utf8")) as {
     workOrders: Array<{ id: string; status: string; mergedAs?: unknown }>;
   };
-  const work001 = program.workOrders.find((order) => order.id === "WORK-001");
-  if (work001 === undefined) {
-    throw new Error("fixture error: WORK-001 missing from program state");
+  // WORK-002 repair: the original hardcoded WORK-001, which stopped
+  // discriminating once WORK-001 legitimately completed WITH merge
+  // evidence. Mutate the first INCOMPLETE Work Order instead — merge
+  // evidence there can never be legal, whatever the program state.
+  const incomplete = program.workOrders.find((order) => order.status !== "complete");
+  if (incomplete === undefined) {
+    throw new Error("fixture error: no incomplete Work Order exists to mutate");
   }
-  work001.mergedAs = { pr: 999, commit: "0".repeat(40) };
+  incomplete.mergedAs = { pr: 999, commit: "0".repeat(40) };
   writeFileSync(programPath, `${JSON.stringify(program, null, 2)}\n`);
   const result = runGovernanceCheck(copy);
   expect(result.code).not.toBe(0);
