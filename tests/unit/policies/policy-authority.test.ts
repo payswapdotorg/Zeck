@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import {
   canonicalPolicyJson,
+  createDispatchAdmission,
   createPolicyAuthority,
   InMemoryPolicyStore,
   nodePolicyHasher,
@@ -310,6 +311,73 @@ describe("policy authority: dispatch admission (provider/tool/agent/sandbox/secr
       facts: { host: "api.example" },
     });
     expect(otherTask.allowed).toBe(true);
+  });
+});
+
+describe("policy authority: models dispatch seam adapter (the REAL wiring)", () => {
+  // The `createDispatchAdmission` adapter is the production composition of
+  // WORK-003's REQUIRED `DispatchAdmission` port (no default-allow exists in
+  // the models module): it plugs THIS authority into the model gateway's
+  // admission consult. These tests exercise the adapter itself — the exact
+  // object a composition root injects — so the rail/provider + model facts
+  // it forwards and the decision shape it returns are proven at runtime
+  // (the discrimination suite proves statically that it delegates).
+  const dispatchInput = (rail: string, model: string) => ({
+    tenantId: TENANT,
+    applicationId: APP,
+    connectionId: "conn-1",
+    rail,
+    request: { model, messages: [{ role: "user" as const, content: "hi" }] },
+  });
+
+  test("an allowed rail + permitted model dispatches; the decision carries no denial", async () => {
+    const { authority } = await world(baseSet);
+    const seam = createDispatchAdmission(authority);
+    await expect(seam.admit(dispatchInput("rail-a", "model-x"))).resolves.toEqual({
+      allowed: true,
+    });
+  });
+
+  test("a rail off the provider allowlist is denied with the policy reason", async () => {
+    const { authority } = await world(baseSet);
+    const seam = createDispatchAdmission(authority);
+    const decision = await seam.admit(dispatchInput("rail-c", "model-x"));
+    expect(decision).toEqual({
+      allowed: false,
+      reason: expect.stringContaining("not on the effective provider allowlist"),
+    });
+  });
+
+  test("a denied model on an allowed rail is denied with the policy reason", async () => {
+    const set: PolicySet = {
+      ...baseSet,
+      documents: [
+        {
+          ...firstDoc(baseSet),
+          restrictions: {
+            ...firstDoc(baseSet).restrictions,
+            providerModel: { allowedProviders: ["rail-a"], deniedModels: ["model-x"] },
+          },
+        },
+      ],
+    };
+    const { authority } = await world(set);
+    const seam = createDispatchAdmission(authority);
+    const decision = await seam.admit(dispatchInput("rail-a", "model-x"));
+    expect(decision).toEqual({
+      allowed: false,
+      reason: expect.stringContaining("prohibited by the effective policy"),
+    });
+  });
+
+  test("deny-by-default flows through the seam: no configured set admits nothing", async () => {
+    const { authority } = await world(); // nothing published
+    const seam = createDispatchAdmission(authority);
+    const decision = await seam.admit(dispatchInput("rail-a", "model-x"));
+    expect(decision.allowed).toBe(false);
+    if (!decision.allowed) {
+      expect(decision.reason).toContain("deny-by-default");
+    }
   });
 });
 
