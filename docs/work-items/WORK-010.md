@@ -2,21 +2,50 @@
 
 Work Order: `spec/work-orders/WORK-010.md`
 Assurance: `CRITICAL` · Architecture: `v1.0` (frozen)
-Branch: `work/WORK-010-governed-tool-runtime` · Base: `74e65db1ec43becae9e8b5f6fcd81bb72b5b4a61` (current main frontier; preceded on-branch by the disclosed main-defect repair `215260e`)
-Implementation revision (this file binds): `43f58adc9e6b98738fa4954e9f17c1c9af79bd7b`
+Branch: `work/WORK-010-governed-tool-runtime` · Base: `3f7513a83e89ab572decb415aa7fb71922163943` (current main; rebased 2026-08-30 — see the rebase record below; preceded on-branch by the disclosed main-defect repair, post-rebase `37a0d5d`)
+Implementation revision (this file binds): `113db877754aedbcdbc1cabef27faee40b9d4221` (post-rebase identity; pre-rebase `43f58ad` superseded — see the rebase record)
+
+## Rebase record (2026-08-30 resume) — superseded identities
+
+PR #19 was originally opened from base `74e65db` (then-main). Main subsequently advanced to `3f7513a` (multimodal wave `WORK-023–026`, requirements catalog 53→78, and the architect's governance-checker repair `a524582`). The branch was rebased onto `3f7513a` with **zero semantic conflicts**: the only shared-file interaction was the pre-declared union merge of `program-state.json` (main's `WORK-023–026` + decisions + `asOf` preserved; only this Work Order's own status entry modified). `WORK-009` remains `pending`/eligible exactly as current main records it; frontier after the union: `eligible=['WORK-009']`, `inFlight=['WORK-010']`. No implementation redesign occurred — every `src/`, `tests/`, `migrations/` file is byte-identical to the reviewed implementation (only commit SHAs changed by the rebase).
+
+| Identity | Pre-rebase (superseded, historical) | Post-rebase (current) |
+|---|---|---|
+| Base revision | `74e65db1ec43becae9e8b5f6fcd81bb72b5b4a61` | `3f7513a83e89ab572decb415aa7fb71922163943` |
+| Implementation head | `43f58adc9e6b98738fa4954e9f17c1c9af79bd7b` | `113db877754aedbcdbc1cabef27faee40b9d4221` |
+| Final branch head | `8988b3d7528170c80a76803fbafa7a232f3db540` | bound in the PR #19 body (this evidence commit cannot contain its own SHA — two-part protocol) |
+| WORK-021/022 sections repair commit | `215260e` | `37a0d5d` (content identical) |
+| In-flight transition commit | `cc33d59` | `f8bdbba` (content + updated `baseRevision`) |
+
+**Status of the architect's governance-checker repair (`a524582`, on current main).** The repair changed the frozen-requirements constant 53→72 and, in the same edit, truncated `scripts/governance-check.py` from 139 to 22 lines: the file now begins mid-loop (line 1 is an indented `assert` referencing loop variables defined in the removed header), so `python3 scripts/governance-check.py` exits 1 with `IndentationError: unexpected indent` on **every** tree, including pristine `origin/main@3f7513a` (verified: fresh checkout, exit 1, identical traceback). The removed lines include the imports, the required-artifact checks, the frozen-authority assertions, the dependency-closure/acyclicity checks, the work-order protocol section checks, the frontier-derivation check, the merge-evidence-legality check and the success print (`Governance OK`). Independently of the syntax defect, the new constant does not match the catalog it governs: `spec/requirements.md` on main contains **78** frozen requirements (53 base + ACP×6 + AGT×6 + MOD×13), not 72 — 72 = 53+ACP+MOD, i.e. the six `AGT-003..008` additions are not counted. Consequences, all proven on pristine main: the CI `governance` job is red on main itself, and the two inherited governance suites fail (`tests/discrimination/governance-gate.discrimination.test.ts` negative control; `tests/integration/fresh-clone-governance.test.ts`) — pristine main scores **636/638**. Repairing any of this requires editing `scripts/governance-check.py` (or trimming the architect's own catalog), which is architect authority under the worker protocol (stop-and-document; `workerMayNot: change-governing-architecture-without-acr`). This branch does **not** modify `governance-check.py`: the rebased tree carries main's version byte-identical, and this branch's checker result is exactly main's own (exit 1, `IndentationError`) — zero additional checker impact from WORK-010.
 
 > Repair-first disclosure (pre-existing main defect, the WORK-002/007
-> precedent): `governance-check.py` failed on main (exit 1) because
+> precedent — **historical, pre-rebase context; see the rebase record for
+> the current main state**): `governance-check.py` failed on the ORIGINAL
+> base `74e65db` (exit 1) because
 > `spec/work-orders/WORK-021.md` and `WORK-022.md` shipped without the
 > `# Checkpoints` and `# Evidence Contract` sections required of every Work
 > Order artifact — the two governance suites
 > (`tests/discrimination/governance-gate.discrimination.test.ts`,
 > `tests/integration/fresh-clone-governance.test.ts`) were RED on main.
-> Repair commit `215260e` restores exactly the canonical sections (same
-> wording as every other Work Order; assurance profiles as declared in each
-> file's header). No governance semantics, dependencies, requirements,
-> surfaces or scopes changed. Evidence: governance-check green on the
-> repair; both suites green in every subsequent full run.
+> Repair commit `215260e` (post-rebase `37a0d5d`) restores exactly the
+> canonical sections (same wording as every other Work Order; assurance
+> profiles as declared in each file's header). No governance semantics,
+> dependencies, requirements, surfaces or scopes changed. Evidence at the
+> time: governance-check green on the repair; both suites green in every
+> subsequent full run.
+>
+> **Retention decision after the rebase.** The architect's checker repair
+> `a524582` removed the per-work-order section enforcement entirely (the
+> truncated checker no longer validates work-order structure), and the new
+> `WORK-023–026` work orders ship as single-heading stubs. The sections
+> repair is therefore no longer load-bearing for the checker, but it is
+> RETAINED: it is additive and conflict-free, `spec/work-orders/TEMPLATE.md`
+> and the entire pre-multimodal corpus (`WORK-001..022`) still define the
+> canonical 13-heading structure, and the repair remains necessary the
+> moment the checker's section validation is restored. It is not a
+> duplicate of any main-side repair (main never added these sections). The
+> architect may drop it at review without affecting any other file.
 
 ## Requirement mapping
 
@@ -48,7 +77,25 @@ Surfaces (directly required, disclosed): `src/platform/db/migrations/0005_tools.
 9. **Deterministic tools are first-class (ADR-0007).** The shipped built-ins (`calculator` — bigint arithmetic; `schema-validator` — the domain's pure field-schema check) declare `deterministic: true`, `sideEffect: none`, zero network/secrets/cost and execute through the identical admission chain with NO model anywhere; the tools module imports neither models nor agents (scanner-enforced). Side-effecting tool CLASSES (filesystem/terminal/HTTP/browser/…) arrive with their owning adapters in later Work Orders; their ADMISSION semantics (side-effect class, network/secret declarations, policy gates, §14 ordering) are fully specified and enforced here — test adapters with `write-external` classes prove the ordering and budget discipline.
 10. **Concurrent duplicates may re-dispatch only contract-idempotent tools.** Two same-key callers can both execute an idempotent tool's adapter (safe by contract); both converge on ONE durable row/outcome (guarded finalization) and ONE ledger pair (idempotent append keys). A non-idempotent concurrent duplicate fails closed on the loser (`NON_CONVERGENT_EXTERNAL_EFFECT`). Strictly-once adapter execution would require holding a transaction across the external call — rejected (the §14 journal discipline deliberately avoids that).
 
-## Verification (at implementation head `43f58adc9e6b98738fa4954e9f17c1c9af79bd7b`; re-run identically green at the final head — table below)
+## Rebase verification (current heads: implementation `113db877754aedbcdbc1cabef27faee40b9d4221`, base `3f7513a83e89ab572decb415aa7fb71922163943`)
+
+Full gate re-run on the rebased tree against the same real PostgreSQL 17.11 server. Every WORK-010-owned surface is green; the only failures anywhere in the tree are the two inherited governance suites that fail **identically on pristine `origin/main@3f7513a`** (proven: pristine main full suite 636/638, the same two tests) because of the architect's `governance-check.py` state (rebase record above). The rebased tree carries main's checker byte-identical (`git diff origin/main HEAD -- scripts/governance-check.py` is empty).
+
+| Command | Result |
+|---|---|
+| `bun install --frozen-lockfile` | clean, no changes (runtime deps `[]`; no packages added) |
+| `bun run typecheck` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings (344 files) |
+| `python3 scripts/governance-check.py` | exit 1 `IndentationError: unexpected indent` — **byte-identical to pristine main@3f7513a** (same file, same traceback); pre-existing architect-authority defect, stop-and-document |
+| `bun run test:unit` | **429/429** (36 files; incl. +69 WORK-010 tools/step-events tests) |
+| `bun run test:architecture` (architecture + discrimination) | **198/199** — the single failure is `governance-gate.discrimination.test.ts` negative control (runs the broken main checker on a pristine copy; identical on pristine main). WORK-010's own suites: `tool-runtime-boundary` 4/4 + `tool-runtime.discrimination` 26/26 ✅ |
+| `bun run test:integration` | **131/132** — the single failure is `fresh-clone-governance.test.ts` (runs the broken main checker; identical on pristine main) |
+| `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | **126/126 passed (20 files)** — fully green, incl. the 23 WORK-010 tools PG tests (schema constraints 8, runtime 15) |
+| `ZECK_PG_TEST_URL=… bun run test` (full suite, **twice consecutively**) | **758/760 both runs, identical failure sets** (the two pre-existing main-governance tests; zero WORK-010 failures; 88 files). Pristine-main baseline 636/638 with the same two failures — WORK-010 adds 122 tests, all green |
+
+Real-PostgreSQL proofs re-verified on the rebased tree (the Work Order's Required Verification): tool schema constraints (CHECK-bound vocabularies, terminal immutability, no deletes, composite tenant FKs, unique request key), authorization/admission ordering (real WORK-007 policy authority denials before any dispatch, adapter counters at 0), idempotent replay (same key + fingerprint → same durable outcome; different fingerprint → `IDEMPOTENCY_KEY_REUSED`), concurrent same-key convergence (N=4 → one row/outcome/ledger pair), crash/retry semantics (committed-`dispatching` convergence for contract-idempotent tools; fail-closed `NON_CONVERGENT_EXTERNAL_EFFECT` otherwise), provenance persistence (row + envelopes + result identity fields), budget reconciliation (reserve→settle/release exactly-once per operation; replay re-reconciles), no unauthorized execution (every denial class proven with zero adapter calls).
+
+## Verification — pre-rebase record (implementation head `43f58adc9e6b98738fa4954e9f17c1c9af79bd7b`, base `74e65db` + repair `215260e`; SUPERSEDED by the rebase verification above — retained as historical fact)
 
 Toolchain: Bun 1.3.14 locally (CI pins 1.3.4 — same lockfile, frozen install clean), real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`, a disposable local server; CI has no PostgreSQL service — the standing WORK-002 governance flag, PG suites skip there with an explicit reason).
 
@@ -108,10 +155,14 @@ Test census (delta vs 638 baseline, at the implementation head `43f58ad`; +122 n
 
 ## PR / merge
 
-- PR: **#19** (`https://github.com/pectoraux/Zeck/pull/19`, opened by the worker; completion report and CI proof posted there); the architect is the merge authority (workers cannot merge their own PRs).
-- **Two-part binding**: this evidence file binds the implementation head `43f58adc9e6b98738fa4954e9f17c1c9af79bd7b` (verified against `git rev-parse HEAD`, 40-hex exact). The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + completion comment, per the WORK-001→008 protocol.
+- PR: **#19** (`https://github.com/pectoraux/Zeck/pull/19`, opened by the worker; completion report, CI proof and the 2026-08-30 rebase/resume report posted there); the architect is the merge authority (workers cannot merge their own PRs).
+- **Two-part binding (post-rebase)**: this evidence file binds the implementation head `113db877754aedbcdbc1cabef27faee40b9d4221` (verified against `git rev-parse`, 40-hex exact). The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + resume report comment, per the WORK-001→008 protocol. Pre-rebase bindings (`43f58ad` implementation head, `8988b3d` final head, base `74e65db`) are superseded — see the rebase record; they remain the historical identities of the original PR presentation.
 - `program-state.json` becomes `complete` only at post-merge finalization with the actual PR number + merge commit.
 
-## CI evidence (final head `f644f47`)
+## CI evidence — post-rebase (current head; proof posted on PR #19)
 
-CI run 33323202915 on the PR-merge tree: toolchain-detection ✅; implementation job — Install ✅, **Typecheck ✅**, **Lint ✅**, Architecture tests — the new `tool-runtime-boundary` gate 4/4 ✅ and every other architecture/discrimination suite green except ONE test; Unit/Integration skipped after it. The `governance` job and that single test (`governance-gate.discrimination.test.ts` negative control) fail with `program-state and dependency-state have different Work Order identities` — a **pre-existing main defect proven reproducible on pristine `origin/main@1399c9a`** (exit 1 before any of this PR's changes): the architect's multimodal wave `0dcf37e..1399c9a` added WORK-023–026 to program-state without (1) dependency-state entries, (2) updating the checker's frozen-requirements constant (53 vs main's 78 — traceability covers all 78, so the program is coherent and the constant is stale), and (3) the 13 required protocol sections in WORK-023–026 (8 missing each — substantive architect content). None of these are worker-repairable without changing shared governance semantics or authoring other Work Orders' governance sections (stop-and-document per protocol; the identical CI failure hits the parallel PR #18). This branch's own full gate is green at both heads (verification table above). Once main's three governing artifacts are repaired by the architect, this PR's merge CI passes with no change on this branch. Full detail: CI-proof comment on PR #19.
+The current-head CI run and its inspection are recorded in the resume-report / CI-proof comments on PR #19 (a commit cannot contain the run that verifies it). Expected and verified outcome shape: the `implementation` job (frozen install, typecheck, lint, architecture, unit, integration) is green for every WORK-010-owned surface — CI has no PostgreSQL service (the standing WORK-002 flag), so the 23 real-PG tools tests skip there with an explicit reason and the local real-PG runs above are the recorded proof; the `governance` job and the two inherited governance suites fail with the checker's `IndentationError` — **byte-identically on pristine `origin/main@3f7513a`**, i.e. main's own CI state, not a WORK-010 regression (objective evidence in the rebase record; the identical failure hits any PR based on current main, including the parallel PR #18).
+
+## CI evidence (pre-rebase, final head `f644f47`; SUPERSEDED — retained as historical fact)
+
+CI run 33323202915 on the PR-merge tree (PRE-REBASE presentation; superseded — see the post-rebase CI section): toolchain-detection ✅; implementation job — Install ✅, **Typecheck ✅**, **Lint ✅**, Architecture tests — the new `tool-runtime-boundary` gate 4/4 ✅ and every other architecture/discrimination suite green except ONE test; Unit/Integration skipped after it. The `governance` job and that single test (`governance-gate.discrimination.test.ts` negative control) fail with `program-state and dependency-state have different Work Order identities` — a **pre-existing main defect proven reproducible on pristine `origin/main@1399c9a`** (exit 1 before any of this PR's changes): the architect's multimodal wave `0dcf37e..1399c9a` added WORK-023–026 to program-state without (1) dependency-state entries, (2) updating the checker's frozen-requirements constant (53 vs main's 78 — traceability covers all 78, so the program is coherent and the constant is stale), and (3) the 13 required protocol sections in WORK-023–026 (8 missing each — substantive architect content). None of these were worker-repairable without changing shared governance semantics or authoring other Work Orders' governance sections (stop-and-document per protocol; the identical CI failure hits the parallel PR #18). This branch's own full gate was green at both pre-rebase heads. NOTE (post-rebase): main's later checker repair `a524582` addressed item (2) incorrectly (72 vs 78) while truncating the checker — the current failure mode is the rebase record's `IndentationError`, still pre-existing on pristine main. Full detail: CI-proof comment on PR #19.
