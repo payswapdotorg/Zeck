@@ -1,15 +1,24 @@
 /**
- * Artifact application service (artifacts module; WORK-008 / CTX-002).
+ * Artifact application service (artifacts module; WORK-008 / CTX-002,
+ * lineage-identity remediation per issue #13).
  *
  * Owns the write discipline on top of the content-addressed store:
  *  1. validate canonical content + shape (deterministic normalization);
- *  2. re-derive the digest from the CONTENT, never trust a caller-supplied
- *     digest (digest = identity is server-derived, like tenant scope);
+ *  2. re-derive the digest from the canonical IDENTITY FORM — never trust a
+ *     caller-supplied digest (digest = identity is server-derived, like
+ *     tenant scope). The digest-covered form is
+ *     `{kind, payload, parents, sourceRefs}` with the lineage fields in
+ *     their deterministic NORMALIZED stored shape: provenance is
+ *     IDENTITY-BEARING, so two records with identical kind/payload but
+ *     different lineage are DISTINCT artifacts and can never converge
+ *     (the silent-lineage-loss defect is unrepresentable);
  *  3. validate every parent reference against the CALLER's tenant namespace:
  *     present-and-owned -> lineage edge; owned by another tenant ->
  *     canonical `TENANT_SCOPE_VIOLATION` (adoption boundary); absent
  *     everywhere -> `POLICY_DENIED` dangling reference (zero writes);
- *  4. put-if-absent (the only mutation the substrate can perform).
+ *  4. put-if-absent (the only mutation the substrate can perform) — identical
+ *     FULL inputs (kind+payload+parents+sourceRefs) still converge
+ *     idempotently: true idempotency.
  *
  * Reads are tenant-scoped; a digest that exists only under another tenant
  * raises `TENANT_SCOPE_VIOLATION` rather than an ambiguous miss.
@@ -45,8 +54,10 @@ export interface ArtifactServiceDeps {
   readonly digest: DigestPort;
   /**
    * Discrimination hook (WORK-005 precedent): serialization is injectable so
-   * the reproducibility mutation record can prove digest stability lives in
-   * CANONICAL serialization. Production default: `canonicalJson`.
+   * the reproducibility and lineage-identity mutation records can prove the
+   * digest discipline lives in CANONICAL serialization of the FULL identity
+   * form `{kind, payload, parents, sourceRefs}`. Production default:
+   * `canonicalJson`.
    */
   readonly serialize?: (value: unknown) => string;
 }
@@ -68,10 +79,19 @@ export function createArtifactService(deps: ArtifactServiceDeps): ArtifactServic
           details: { kind: input.kind },
         });
       }
-      const canonicalContent = serialize({ kind: input.kind, payload: input.payload });
-      const digest = deps.digest.sha256Hex(canonicalContent);
       const parents = normalizeParents(input.parents ?? []);
       const sourceRefs = normalizeSourceRefs(input.sourceRefs);
+      // Canonical identity form (issue #13 remediation): the digest covers
+      // kind + payload + the NORMALIZED lineage (parents, sourceRefs) —
+      // exactly the stored shape, so the digest is stable under input
+      // order/duplication and DIVERGES under any lineage change.
+      const canonicalContent = serialize({
+        kind: input.kind,
+        payload: input.payload,
+        parents,
+        sourceRefs,
+      });
+      const digest = deps.digest.sha256Hex(canonicalContent);
 
       // Parent validation — the cross-tenant adoption boundary (CTX-002/004).
       for (const parent of parents) {

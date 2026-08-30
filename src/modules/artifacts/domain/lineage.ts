@@ -1,11 +1,14 @@
 /**
- * Lineage graph assembly (artifacts module domain; WORK-008 / CTX-002).
+ * Lineage graph assembly (artifacts module domain; WORK-008 / CTX-002;
+ * identity model corrected by the issue #13 lineage-identity remediation).
  *
  * Lineage edges are parent -> child digests carried ON the child artifact
- * record. The graph is a DAG by construction: a child's digest covers its
- * (sorted) parent digests, so a cycle would require a SHA-256 collision.
- * Assembly here validates parent existence/ownership and produces
- * deterministic (digest-sorted) descriptions.
+ * record. The graph is a DAG by construction — and ENFORCED by identity:
+ * a child's digest covers its (sorted, normalized) parent digests as
+ * identity-bearing fields (issue #13 remediation), so a cycle would
+ * require a SHA-256 collision. Assembly here validates parent
+ * existence/ownership and produces deterministic (digest-sorted)
+ * descriptions.
  */
 
 import type { ArtifactDigest, ArtifactRecord, LineageEdge } from "./artifact";

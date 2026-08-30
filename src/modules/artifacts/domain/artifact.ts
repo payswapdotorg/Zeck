@@ -1,14 +1,19 @@
 /**
  * Artifact domain: content-addressed artifacts and their lineage
- * (artifacts module domain; WORK-008 / CTX-002).
+ * (artifacts module domain; WORK-008 / CTX-002; identity model corrected
+ * by the issue #13 lineage-identity remediation).
  *
  * Identity model: an artifact's identifier IS the SHA-256 digest of its
- * canonical content (`digest = identity`). Artifacts are immutable BY
+ * canonical IDENTITY FORM — `{kind, payload, parents, sourceRefs}` with the
+ * lineage fields in their deterministic normalized stored shape
+ * (`digest = identity`). Lineage is IDENTITY-BEARING: identical payloads
+ * with different provenance are DISTINCT artifacts, so convergence can
+ * never silently lose parents or sourceRefs. Artifacts are immutable BY
  * CONSTRUCTION — the store surface offers put-if-absent only; there is no
  * update or delete path anywhere in the module (statically gated).
  *
  * Namespacing: content addressing is scoped per tenant — the store key is
- * `(tenantId, digest)`. Two tenants compiling byte-identical content each
+ * `(tenantId, digest)`. Two tenants putting identical full inputs each
  * own their record; referencing a digest that exists only in ANOTHER
  * tenant's namespace is adoption and is rejected with the canonical
  * `TENANT_SCOPE_VIOLATION` (never silently copied, never silently 404).
@@ -39,11 +44,20 @@ export interface SourceReference {
   readonly locator: string;
 }
 
-/** The canonical, digest-stable form stored for every artifact. */
+/**
+ * The canonical, digest-stable IDENTITY FORM of a stored artifact: the
+ * digest is sha256 over the canonical serialization of exactly these
+ * fields (lineage in its normalized stored shape — issue #13 remediation:
+ * provenance is identity-bearing).
+ */
 export interface ArtifactContent {
   readonly kind: ArtifactKind;
   /** Canonical JSON value; MUST serialize byte-identically via `canonicalJson`. */
   readonly payload: Readonly<JsonCanonicalValue>;
+  /** Normalized (sorted, deduped) parent digests — identity-bearing lineage. */
+  readonly parents: readonly ArtifactDigest[];
+  /** Normalized (sorted by canonical key, deduped) sources — identity-bearing provenance. */
+  readonly sourceRefs: readonly SourceReference[];
 }
 
 /** The artifact record as persisted (store metadata aside, content is immutable). */
@@ -51,7 +65,10 @@ export interface ArtifactRecord {
   readonly tenantId: string;
   readonly digest: ArtifactDigest;
   readonly kind: ArtifactKind;
-  /** Canonical serialized payload (exact bytes the digest covers). */
+  /**
+   * Canonical serialization of the IDENTITY FORM
+   * `{kind, payload, parents, sourceRefs}` (exact bytes the digest covers).
+   */
   readonly canonicalContent: string;
   readonly sourceRefs: readonly SourceReference[];
   /** Parent digests (lineage edges parent -> child). Sorted, unique, tenant-owned. */
