@@ -39,7 +39,20 @@
         "CONCURRENCY-CRASH-SAFETY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/connections-persistence.test.ts","tests/integration/postgres/dispatch-journal.test.ts","tests/integration/postgres/transport-failure-durability.test.ts"]},
         "SELF-HOSTING-BOUNDARY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/architecture/provider-neutrality.test.ts","tests/discrimination/provider-isolation.discrimination.test.ts","docs/work-items/WORK-003.md"]}
       }
+    },
+    "WORK-004": {
+      "asOf": "2026-08-30T08:35:00Z",
+      "branch": "work/WORK-004-budgets-ledger",
+      "baseRevision": "82afe972f1a5774a099fbac3114a15efb3f3dafa",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["docs/work-items/WORK-004.md","tests/integration/postgres/budgets-schema.test.ts","tests/integration/postgres/budgets-reservations.test.ts","tests/unit/budgets/budget-service.test.ts"]},
+        "IDENTITY-IDEMPOTENCY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/integration/postgres/budgets-reservations.test.ts","tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts"]},
+        "CONCURRENCY-CRASH-SAFETY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-overspend.discrimination.test.ts","tests/integration/postgres/budgets-reservations.test.ts"]},
+        "SELF-HOSTING-BOUNDARY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts","docs/work-items/WORK-004.md"]}
+      }
     }
+
   },
   "checkpointKinds": ["readiness","work_order","pr_conformance","verification_entry"],
   "note": "WORK-001 checkpoints accepted after PR #3 review. WORK-002 checkpoints accepted after PR #4 merge and concurrency remediation. WORK-003 checkpoints accepted after PR #6 round-2 transport-failure remediation and merge."
