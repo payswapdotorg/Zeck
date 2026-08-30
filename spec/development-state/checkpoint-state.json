@@ -1,6 +1,58 @@
 {
   "schemaVersion": 1,
-  "items": {},
-  "checkpointKinds": ["readiness","work_order","pr_conformance","verification_entry"],
-  "note": "Per-Work-Order checkpoint outcomes are recorded only after an implementation exists. No checkpoint substitutes for architect merge completion."
+  "items": {
+    "WORK-001": {
+      "asOf": "2026-08-29T23:26:14Z",
+      "branch": "work/WORK-001-foundation",
+      "baseRevision": "463e6a677630cdc3cae5914abc01aafdd154c795",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "docs/work-items/WORK-001.md",
+            "tests/integration/toolchain-contract.test.ts",
+            "tests/architecture/module-skeleton.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "scope-note",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "docs/work-items/WORK-001.md#checkpoint-evidence"
+          ],
+          "note": "No durable authority boundary was introduced by WORK-001; the idempotency contracts remain frozen in spec/contracts.md and src/shared/errors.ts carries IDEMPOTENCY_KEY_REUSED. Identity primitives (UUIDv7) are proven by tests/unit/ids.test.ts."
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "scope-note",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "docs/work-items/WORK-001.md#checkpoint-evidence"
+          ],
+          "note": "No concurrent durable state exists yet; the first durable-authority Work Order (WORK-002+) owns real-PostgreSQL concurrency/crash proof. The UUIDv7 generator's monotonic/clock-regression safety is proven by tests/unit/ids.test.ts."
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "tests/discrimination/governance-gate.discrimination.test.ts",
+            "tests/integration/fresh-clone-governance.test.ts"
+          ]
+        },
+        "DEPENDENCY-DIRECTION": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "tests/architecture/dependency-direction.test.ts",
+            "tests/architecture/provider-sdk-boundaries.test.ts",
+            "tests/architecture/module-skeleton.test.ts",
+            "tests/discrimination/dependency-rules.discrimination.test.ts"
+          ]
+        }
+      }
+    }
+  },
+  "checkpointKinds": ["readiness", "work_order", "pr_conformance", "verification_entry"],
+  "note": "Per-Work-Order checkpoint outcomes are recorded only after an implementation exists. No checkpoint substitutes for architect merge completion. Outcomes are worker-recorded evidence; verdicts are architect authority."
 }

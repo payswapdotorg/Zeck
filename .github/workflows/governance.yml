@@ -20,10 +20,33 @@ jobs:
       - name: Validate repository governance
         run: python3 scripts/governance-check.py
 
+  toolchain-detection:
+    # The WORK-001 toolchain gate. `hashFiles` is not a valid job-level `if`
+    # function (job conditions are evaluated by the Actions service, which has
+    # no workspace), so detection runs as its own job and the implementation
+    # job consumes its output through `needs`.
+    runs-on: ubuntu-latest
+    outputs:
+      present: ${{ steps.detect.outputs.present }}
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect WORK-001 toolchain files
+        id: detect
+        run: |
+          if [ -f tsconfig.json ] && [ -f bun.lock ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
   implementation:
     # WORK-001 establishes the Bun/TypeScript toolchain. Until that happens the repository
     # is intentionally specification/governance-only, so the governance job is the gate.
-    if: ${{ hashFiles('tsconfig.json', 'bun.lock') != '' }}
+    needs: toolchain-detection
+    if: needs.toolchain-detection.outputs.present == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout full repository history

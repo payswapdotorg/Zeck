@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "status": "bootstrap",
   "governingArchitectureVersion": "v1.0",
-  "eligible": ["WORK-001"],
-  "inFlight": [],
+  "eligible": [],
+  "inFlight": ["WORK-001"],
   "blocked": [],
   "rule": "eligible means every dependency is complete, the item is not in flight elsewhere, declared surfaces do not conflict with another in-flight item, and the base revision matches the governance expectation"
 }
