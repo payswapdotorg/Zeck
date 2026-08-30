@@ -55,10 +55,10 @@ Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TE
 | `bun run typecheck` | 0 errors |
 | `bun run lint` | 0 errors, 0 warnings (436 files) |
 | `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-012']` (WORK-013 in-flight, WORK-012 preserved eligible; checker byte-identical to main) |
-| `bun run test:unit` | 590/590 (47 files; incl. 82 WORK-013 tests across 4 suites + the updated step-events vocabulary test) |
-| `bun run test:architecture` (architecture + discrimination) | 244/244 (37 files; incl. `verification-boundary` 3/3, `verification-authority.discrimination` 29/29, `governance-gate` negative control green) |
-| `bun run test:integration` | 142/142 (24 files; incl. `fresh-clone-governance` green) |
-| `bun run test:pg` (real PostgreSQL) | 159/159 (24 files; incl. verification-schema 11, verification-runtime 9, verification-evidence 4 = 24 WORK-013 PG tests) |
+| `bun run test:unit` | 636/636 (50 files; incl. 82 WORK-013 tests across 4 unit suites + the updated step-events vocabulary test) |
+| `bun run test:architecture` (architecture + discrimination; no PG env) | 276 passed + 1 skipped (277 tests; 35 files passed + 1 skipped = 36; incl. `verification-boundary` 3/3, `verification-authority.discrimination` 29/29, `governance-gate` negative control green; the 1 skip = the standing no-PG-in-CI `budgets-overspend` flag) |
+| `bun run test:integration` (no PG env) | 7 passed + 27 skipped (34 tests; 29 files; incl. `fresh-clone-governance` green; the 27 skips = the real-PG suites' env gate) |
+| `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 175/175 (27 files; incl. verification-schema 11, verification-runtime 9, verification-evidence 4 = 24 WORK-013 PG tests) |
 | `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively + one more**) | **1095/1095 (115 files), all three runs, identical pass sets**; run 1 additionally reported 3 unhandled `57P01` teardown-race errors — zero failing tests, the intermittent infrastructural-transient class reproduced on pristine main's own baseline and documented as such by WORK-010's evidence; runs 2–3 fully clean (exit 0) |
 
 Baseline comparison: pristine main at pickup measured **957/957 (106 files)** — fully green. Delta: **+138 tests / +9 files, all passing, zero regressions**.
