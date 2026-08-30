@@ -1,0 +1,570 @@
+/**
+ * Execution service (executions module application; WORK-006, API-003).
+ *
+ * THE single write path of the execution state machine
+ * (`IMPLEMENTATION.md` §5: "/executions alone owns the execution state
+ * machine. No other module may write execution status directly."):
+ *
+ *   - `createExecution` is the only birth path: it validates the
+ *     provider-selection-free input, asserts application/environment tenant
+ *     scope, and commits the CREATED row + the sequence-1 creation envelope
+ *     in ONE transaction with the idempotency record;
+ *   - `transition` is the only status mutation: legality is re-derived from
+ *     the row locked FOR UPDATE (never from a pre-lock read — the WORK-002
+ *     discipline), authority seams are consulted BEFORE any write (policy
+ *     admission on `authorize` via the required `ExecutionAuthorizationPort`
+ *     seam — the engine is WORK-007; budget reservation on `start` via the
+ *     optional `BudgetAuthority` seam exported by WORK-004 — accounting is
+ *     never reimplemented here), and the envelope + row update commit
+ *     atomically with the idempotency record (crash-atomicity).
+ *
+ * Idempotency (API-003): every mutating request carries a caller key;
+ * arbitration mirrors the auth/applications/connections/budgets ledgers —
+ * same (applicationId, operationName, idempotencyKey, requestFingerprint)
+ * replays the SAME durable outcome; same key + different fingerprint fails
+ * `IDEMPOTENCY_KEY_REUSED`; concurrent identical requests converge on one
+ * durable identity via PostgreSQL uniqueness/transactional arbitration.
+ * Replays re-read the CURRENT row, so a retry at any non-terminal state
+ * returns the current durable outcome — never a second execution, never a
+ * duplicated event, never an illegal rewind. Terminal states are final:
+ * no command is legal from them (and migration 0004 makes the rows
+ * physically immutable).
+ *
+ * Completion binding: `pass` requires at least one PASS verification
+ * result, inserts the durable verification rows, and binds their ids on
+ * the COMPLETED row — physically CHECK/trigger-enforced on top of this
+ * service guard (no provider-success or planner-success shortcut).
+ */
+
+import { PlatformError } from "../../../shared/errors";
+import { isUuid } from "../../../shared/ids";
+import type { BudgetAuthority } from "../../budgets/public";
+import type { EventEnvelope } from "../domain/event";
+import { eventTypeFor } from "../domain/event";
+import type {
+  ExecutionActor,
+  ExecutionCreateInput,
+  ExecutionReceipt,
+  ExecutionRecord,
+} from "../domain/execution";
+import { CREATE_INPUT_KEYS, FORBIDDEN_INPUT_KEYS } from "../domain/execution";
+import type { ExecutionCommand } from "../domain/state-machine";
+import { EXECUTION_COMMANDS, isExecutionCommand, nextState } from "../domain/state-machine";
+import type { VerificationResultInput, VerificationResultRecord } from "../domain/verification";
+import type { ExecutionAuthorizationPort } from "../ports/authorization";
+import {
+  canonicalFingerprint,
+  type ExecutionsIdempotencyPort,
+  type ExecutionsTx,
+} from "../ports/execution-idempotency";
+import type { ExecutionStore } from "../ports/execution-store";
+
+// ---------------------------------------------------------------------------
+// Commands and outcomes
+// ---------------------------------------------------------------------------
+
+export interface ExecutionCommandScope {
+  readonly actorId: string;
+  readonly applicationId: string;
+  readonly tenantId: string;
+}
+
+interface TransitionCommon extends ExecutionCommandScope {
+  readonly executionId: string;
+  /** Why the transition is happening (provenance cause). */
+  readonly reason?: string;
+}
+
+export type ExecutionTransitionCommand = TransitionCommon &
+  (
+    | { readonly command: "authorize" }
+    | { readonly command: "plan" | "queue" | "verify" | "replan" | "resume" }
+    | {
+        readonly command: "wait-tool" | "wait-user" | "wait-human";
+      }
+    | {
+        readonly command: "start";
+        /**
+         * Dispatch boundary facts: when a billable estimate is present and a
+         * budget authority is wired, the reservation happens BEFORE the
+         * transition commits (admission precedes dispatch).
+         */
+        readonly dispatch?: {
+          readonly operationId: string;
+          readonly amountMicroUsd: string;
+          readonly userId?: string;
+        };
+      }
+    | {
+        readonly command: "pass";
+        /** At least one PASS result is required to complete. */
+        readonly verificationResults: readonly VerificationResultInput[];
+      }
+    | {
+        readonly command: "fail" | "cancel" | "expire";
+        /** Optional verification observations recorded with the failure. */
+        readonly verificationResults?: readonly VerificationResultInput[];
+      }
+  );
+
+export interface AppliedTransition {
+  readonly from: string;
+  readonly to: string;
+  readonly sequence: number;
+}
+
+export interface TransitionOutcome {
+  readonly execution: ExecutionRecord;
+  readonly applied: AppliedTransition;
+  readonly replayed: boolean;
+}
+
+export interface ExecutionService {
+  createExecution(
+    input: ExecutionCreateInput,
+    idempotencyKey: string,
+    actor: ExecutionActor,
+  ): Promise<ExecutionReceipt>;
+  transition(
+    command: ExecutionTransitionCommand,
+    idempotencyKey: string,
+  ): Promise<TransitionOutcome>;
+
+  getExecution(applicationId: string, executionId: string): Promise<ExecutionRecord | null>;
+  listEvents(applicationId: string, executionId: string): Promise<readonly EventEnvelope[]>;
+  listVerificationResults(
+    applicationId: string,
+    executionId: string,
+  ): Promise<readonly VerificationResultRecord[]>;
+}
+
+export interface ExecutionServiceDeps {
+  /** Root store for queries; mutations receive the transaction-bound store. */
+  readonly store: ExecutionStore;
+  readonly idempotency: ExecutionsIdempotencyPort;
+  /** REQUIRED policy-admission seam (no default-allow exists; WORK-007 implements). */
+  readonly authorization: ExecutionAuthorizationPort;
+  /** OPTIONAL budget seam (WORK-004 `BudgetAuthority`): consulted at dispatch. */
+  readonly budgetAuthority?: BudgetAuthority;
+  readonly generateId: () => string;
+  readonly now: () => Date;
+}
+
+const CREATE_OPERATION = "executions.create";
+const TRANSITION_OPERATION = "executions.transition";
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+export function createExecutionService(deps: ExecutionServiceDeps): ExecutionService {
+  const { store, idempotency, authorization, budgetAuthority, generateId, now } = deps;
+
+  const iso = () => now().toISOString();
+
+  const receiptOf = (row: ExecutionRecord, replayed: boolean): ExecutionReceipt => ({
+    executionId: row.id,
+    applicationId: row.applicationId,
+    tenantId: row.tenantId,
+    environmentId: row.environmentId,
+    status: row.status,
+    lastEventSequence: row.lastEventSequence,
+    verificationRefs: row.verificationRefs,
+    createdAt: row.createdAt,
+    terminalAt: row.terminalAt,
+    replayed,
+  });
+
+  // ----- create -----------------------------------------------------------
+
+  const validateCreateInput = (input: ExecutionCreateInput): void => {
+    if (!isUuid(input.applicationId)) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "create input requires a valid applicationId",
+      });
+    }
+    if (input.environmentId !== undefined && !isUuid(input.environmentId)) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "environmentId must be a valid uuid when present",
+      });
+    }
+    const task = input.task;
+    if (
+      task === null ||
+      typeof task !== "object" ||
+      Array.isArray(task) ||
+      Object.keys(task).length === 0
+    ) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "create input requires a non-empty task object",
+      });
+    }
+    if (
+      input.inputArtifactRefs !== undefined &&
+      (!Array.isArray(input.inputArtifactRefs) ||
+        input.inputArtifactRefs.some((ref) => typeof ref !== "string"))
+    ) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "inputArtifactRefs must be an array of artifact reference strings",
+      });
+    }
+    const constraints = input.constraints;
+    if (constraints !== undefined) {
+      if (constraints === null || typeof constraints !== "object" || Array.isArray(constraints)) {
+        throw new PlatformError({
+          code: "POLICY_DENIED",
+          message: "constraints must be an object when present",
+        });
+      }
+      const cost = constraints.maxCostMicroUsd;
+      if (cost !== undefined && !/^\d{1,19}$/.test(cost)) {
+        throw new PlatformError({
+          code: "POLICY_DENIED",
+          message: "maxCostMicroUsd must be an integer micro-USD string (no floats)",
+        });
+      }
+      const latency = constraints.maxLatencyMs;
+      if (latency !== undefined && (!Number.isInteger(latency) || latency < 0)) {
+        throw new PlatformError({
+          code: "POLICY_DENIED",
+          message: "maxLatencyMs must be a non-negative integer",
+        });
+      }
+    }
+    if (
+      input.metadata !== undefined &&
+      (input.metadata === null ||
+        typeof input.metadata !== "object" ||
+        Array.isArray(input.metadata))
+    ) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "metadata must be an object when present",
+      });
+    }
+    const inputKeys = Object.keys(input as unknown as Record<string, unknown>);
+    for (const key of inputKeys) {
+      if (!CREATE_INPUT_KEYS.includes(key)) {
+        throw new PlatformError({
+          code: "POLICY_DENIED",
+          message: FORBIDDEN_INPUT_KEYS.includes(key)
+            ? `provider selection is forbidden in the public create contract (rejected field: ${key})`
+            : `unknown create input field: ${key}`,
+          details: { field: key },
+        });
+      }
+    }
+  };
+
+  const createExecution = async (
+    input: ExecutionCreateInput,
+    idempotencyKey: string,
+    actor: ExecutionActor,
+  ): Promise<ExecutionReceipt> => {
+    validateCreateInput(input);
+
+    const fingerprint = canonicalFingerprint([
+      CREATE_OPERATION,
+      input.applicationId,
+      input.environmentId ?? null,
+      input.task,
+      input.inputArtifactRefs ?? [],
+      input.constraints ?? null,
+      input.metadata ?? null,
+      input.userId ?? "",
+    ]);
+
+    const work = async (tx: ExecutionsTx): Promise<{ executionId: string }> => {
+      // Scope assertion BEFORE any durable write.
+      const application = await tx.store.findApplication(input.applicationId);
+      if (application === null) {
+        throw new PlatformError({
+          code: "AUTHORIZATION_DENIED",
+          message: "unknown application: executions may only be created for existing applications",
+          details: { applicationId: input.applicationId },
+        });
+      }
+      if (application.tenantId !== actor.tenantId) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message: "application belongs to a different tenant",
+          details: { applicationId: input.applicationId },
+        });
+      }
+      if (input.environmentId !== undefined) {
+        const environment = await tx.store.findEnvironment(input.environmentId);
+        if (environment === null || environment.applicationId !== input.applicationId) {
+          throw new PlatformError({
+            code: "TENANT_SCOPE_VIOLATION",
+            message: "environment does not belong to the target application",
+            details: { environmentId: input.environmentId },
+          });
+        }
+      }
+
+      // ExecutionId: UUIDv7 created exactly once for the accepted logical
+      // execution — arbitration guarantees exactly one first writer.
+      const executionId = generateId();
+      const createdAt = iso();
+      await tx.store.insertExecution({
+        id: executionId,
+        applicationId: input.applicationId,
+        tenantId: actor.tenantId,
+        environmentId: input.environmentId ?? null,
+        userId: input.userId ?? "",
+        task: { ...input.task },
+        inputArtifactRefs: [...(input.inputArtifactRefs ?? [])],
+        constraints: input.constraints === undefined ? null : { ...input.constraints },
+        metadata: input.metadata === undefined ? {} : { ...input.metadata },
+        requestFingerprint: fingerprint,
+        now: createdAt,
+      });
+      await tx.store.appendEvent({
+        eventId: generateId(),
+        executionId,
+        applicationId: input.applicationId,
+        tenantId: actor.tenantId,
+        sequence: 1,
+        type: eventTypeFor("create"),
+        command: "create",
+        actor,
+        cause: undefined,
+        reference: {
+          inputArtifactRefs: [...(input.inputArtifactRefs ?? [])],
+          environmentId: input.environmentId ?? null,
+          userId: input.userId ?? "",
+        },
+        payload: { status: "CREATED", task: input.task },
+        occurredAt: createdAt,
+      });
+      return { executionId };
+    };
+
+    const { outcome, replayed } = await idempotency.arbitrate(
+      { actorId: actor.actorId, applicationId: input.applicationId },
+      CREATE_OPERATION,
+      idempotencyKey,
+      fingerprint,
+      work,
+    );
+
+    // Replay re-reads the CURRENT durable row: a retried create at any
+    // (non-)terminal state returns the same identity + current status —
+    // never a second execution, never a rewind.
+    const row = await store.getExecution(input.applicationId, outcome.executionId);
+    if (row === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: "created execution row disappeared (rows are never deleted)",
+      });
+    }
+    return receiptOf(row, replayed);
+  };
+
+  // ----- transition -------------------------------------------------------
+
+  const commandSpecificFingerprintParts = (
+    command: ExecutionTransitionCommand,
+  ): readonly unknown[] => {
+    const extras: Record<string, unknown> = {};
+    if ("dispatch" in command && command.dispatch !== undefined) {
+      extras.dispatch = command.dispatch;
+    }
+    if ("verificationResults" in command && command.verificationResults !== undefined) {
+      extras.verificationResults = command.verificationResults;
+    }
+    if (command.reason !== undefined) {
+      extras.reason = command.reason;
+    }
+    return ["executions.transition", command.executionId, command.command, extras];
+  };
+
+  const transition = async (
+    commandInput: ExecutionTransitionCommand,
+    idempotencyKey: string,
+  ): Promise<TransitionOutcome> => {
+    const command = commandInput;
+    if (!isExecutionCommand(command.command)) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `unknown transition command ${String(command.command)}`,
+        details: { command: command.command },
+      });
+    }
+    const fingerprint = canonicalFingerprint(commandSpecificFingerprintParts(command));
+
+    const work = async (
+      tx: ExecutionsTx,
+    ): Promise<{ executionId: string; from: string; to: string; sequence: number }> => {
+      // 1. Lock and re-derive: legality ALWAYS comes from the locked row.
+      const locked = await tx.store.lockExecution(command.applicationId, command.executionId);
+      if (locked === null) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message:
+            "execution not found in this application (missing or owned by another application)",
+          details: { executionId: command.executionId },
+        });
+      }
+      if (locked.tenantId !== command.tenantId) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message: "execution belongs to a different tenant",
+          details: { executionId: command.executionId },
+        });
+      }
+
+      const from = locked.status;
+      const to = nextState(from, command.command); // throws INVALID_STATE_TRANSITION
+
+      // 2. Authority seams — consulted BEFORE any state write.
+      if (command.command === "authorize") {
+        const decision = await authorization.evaluate({
+          execution: locked,
+          actorId: command.actorId,
+        });
+        if (!decision.allowed) {
+          throw new PlatformError({
+            code: "AUTHORIZATION_DENIED",
+            message: "policy admission denied the authorize transition",
+            details: { reason: decision.reason },
+          });
+        }
+      }
+      let reservationId: string | null = null;
+      if (command.command === "start" && command.dispatch !== undefined) {
+        const dispatch = command.dispatch;
+        if (dispatch.operationId === "" || !/^\d{1,19}$/.test(dispatch.amountMicroUsd)) {
+          throw new PlatformError({
+            code: "POLICY_DENIED",
+            message: "dispatch requires a non-empty operationId and an integer micro-USD amount",
+          });
+        }
+        if (budgetAuthority !== undefined) {
+          // Admission precedes dispatch: the reservation is placed BEFORE the
+          // transition commits. The budgets module owns arbitration/idempotency
+          // of the reservation itself (same key retried => same reservation).
+          const reserved = await budgetAuthority.reserve(
+            {
+              actorId: command.actorId,
+              applicationId: command.applicationId,
+              tenantId: locked.tenantId,
+              executionId: command.executionId,
+              operationId: dispatch.operationId,
+              userId: dispatch.userId ?? locked.userId ?? "",
+              amountMicroUsd: dispatch.amountMicroUsd,
+            },
+            idempotencyKey,
+          );
+          reservationId = reserved.reservation.id;
+        }
+      }
+
+      // 3. Verification binding for the completion edge (+ optional records
+      //    on fail). A pass without at least one PASS result never writes.
+      const verificationRefs: string[] = [];
+      if ("verificationResults" in command && command.verificationResults !== undefined) {
+        const results = command.verificationResults;
+        if (command.command === "pass" && !results.some((r) => r.status === "PASS")) {
+          throw new PlatformError({
+            code: "VERIFICATION_FAILED",
+            message:
+              "completion requires at least one PASS verification result (no provider-success or planner-success shortcut)",
+            details: { results: results.length },
+          });
+        }
+        for (const result of results) {
+          const id = generateId();
+          await tx.store.insertVerificationResult({
+            id,
+            executionId: command.executionId,
+            applicationId: command.applicationId,
+            tenantId: locked.tenantId,
+            criterionId: result.criterionId,
+            strategy: result.strategy,
+            status: result.status,
+            evidence: [...(result.evidence ?? [])],
+            recordedBy: result.recordedBy,
+          });
+          verificationRefs.push(id);
+        }
+      }
+      if (command.command === "pass" && verificationRefs.length === 0) {
+        throw new PlatformError({
+          code: "VERIFICATION_FAILED",
+          message: "the pass command requires verificationResults",
+        });
+      }
+
+      // 4. Append the envelope, then apply the row transition — one
+      //    transaction, exactly one event, sequence = last + 1 (gapless).
+      const sequence = locked.lastEventSequence + 1;
+      const occurredAt = iso();
+      await tx.store.appendEvent({
+        eventId: generateId(),
+        executionId: command.executionId,
+        applicationId: command.applicationId,
+        tenantId: locked.tenantId,
+        sequence,
+        type: eventTypeFor(command.command),
+        command: command.command,
+        actor: { actorId: command.actorId, tenantId: command.tenantId },
+        cause: command.reason ?? undefined,
+        reference: {
+          ...(reservationId === null ? {} : { reservationId }),
+          ...(verificationRefs.length === 0 ? {} : { verificationResultIds: verificationRefs }),
+        },
+        payload: { from, to },
+        occurredAt,
+      });
+      const updated = await tx.store.updateExecutionForTransition({
+        executionId: command.executionId,
+        applicationId: command.applicationId,
+        nextStatus: to,
+        nextSequence: sequence,
+        verificationRefs,
+        now: occurredAt,
+      });
+      return { executionId: updated.id, from, to, sequence };
+    };
+
+    const { outcome, replayed } = await idempotency.arbitrate(
+      { actorId: command.actorId, applicationId: command.applicationId },
+      TRANSITION_OPERATION,
+      idempotencyKey,
+      fingerprint,
+      work,
+    );
+
+    const row = await store.getExecution(command.applicationId, outcome.executionId);
+    if (row === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: "transitioned execution row disappeared (rows are never deleted)",
+      });
+    }
+    return { execution: row, applied: outcome, replayed };
+  };
+
+  return {
+    createExecution,
+    transition,
+    async getExecution(applicationId, executionId) {
+      return store.getExecution(applicationId, executionId);
+    },
+    async listEvents(applicationId, executionId) {
+      return store.listEvents(applicationId, executionId);
+    },
+    async listVerificationResults(applicationId, executionId) {
+      return store.listVerificationResults(applicationId, executionId);
+    },
+  };
+}
+
+export type { ExecutionCommand };
+/** Re-exported for consumers constructing command validation locally. */
+export { EXECUTION_COMMANDS as EXECUTION_TRANSITION_COMMANDS };
