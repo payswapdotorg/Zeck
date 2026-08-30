@@ -120,3 +120,88 @@ Test census (delta vs the 479 baseline): unit 243→302 (+59: canonical 9, artif
 - PR: opened by the worker (completion report posted there); the architect is the merge authority. The worker does NOT merge/approve.
 - **Two-part binding**: this evidence file binds the implementation head `c78e1e73fe0eec9e13f55ab635f9697534c65c24` (verified against `git rev-parse HEAD`, 40-hex exact, character-by-character). The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + completion comment, per the WORK-001→007 protocol.
 - `program-state.json` becomes `complete` only at post-merge finalization with the actual PR number + merge commit.
+
+---
+
+# REMEDIATION ROUND — Artifact lineage identity (issue #13)
+
+**Everything above this divider is the historical round-1 record (merged as PR #11, merge `08caf5a2860b80d89184f09fe9cad1db509ac16c`; implementation head `c78e1e73fe0eec9e13f55ab635f9697534c65c24`, final branch head `b95860e30fde20a626e205dff3021f477f5cafd0`) and is preserved unchanged.** The round-1 bindings remain the historical record.
+
+## The finding (GitHub issue #13)
+
+Governance finding, blocking, discovered by architect finalization review after the WORK-008 merge: artifact identity hashed only `{kind, payload}` while `parents` / `sourceRefs` stayed OUTSIDE the digest-covered identity. Because the store converges on `(tenantId, digest)` with put-if-absent as the only mutation, a second put in the same tenant with identical kind/payload but DIFFERENT lineage converged to the first stored record and SILENTLY LOST the requested lineage (both the requested parents and the requested sourceRefs). The architect's one-line correction: "Artifact identity must not allow two semantically different lineage records to converge while silently losing parents / sourceRefs." A related incoherence: `domain/lineage.ts` claimed "a child's digest covers its (sorted) parent digests, so a cycle would require a SHA-256 collision" — which was FALSE under the round-1 digest (parents were not digest-covered).
+
+## Chosen identity model — EXPLICIT DECISION (remediation requirement 1)
+
+**Option (a) chosen: the canonical digest-covered identity form is extended to include the NORMALIZED lineage.** The artifact digest is now `sha256Hex(canonicalJson({ kind, payload, parents, sourceRefs }))` with `parents` / `sourceRefs` in their deterministic normalized stored shape (sorted, de-duplicated — exactly what the record persists). `ArtifactRecord.canonicalContent` remains the EXACT bytes the digest covers (the field's documented meaning is preserved by extending what it serializes, not by redefining it): it is now the canonical serialization of the full identity form.
+
+**Justification.** This is the minimal-risk correction that keeps every existing invariant intact: `digest = identity` (server-derived, caller never supplies it), immutability by construction (put-if-absent stays the ENTIRE mutation surface; the store adapters are byte-unchanged), tenant-namespaced `(tenantId, digest)` keys, cross-tenant rejection-before-write, and true idempotency (identical FULL inputs — kind+payload+parents+sourceRefs — still converge). It makes lineage loss IMPOSSIBLE BY CONSTRUCTION: two records with identical kind/payload but different lineage compute different digests and therefore can never converge. It also makes the round-1 docstring claim literally true: a child's digest now covers its sorted parent digests, so a lineage cycle requires a SHA-256 collision (the DAG-by-construction claim is now enforced by identity, not asserted by prose).
+
+**Tradeoffs (documented honestly).**
+- *Provenance becomes identity-bearing*: identical payloads with different provenance are now DISTINCT artifacts. This is exactly the semantics issue #13 requires — it is the point, not a cost — but it means content-level deduplication across provenance variants is deliberately NOT performed by this substrate (a payload stored twice with different parents is two records). Callers wanting dedup must put identical full inputs.
+- *Digest values change vs the round-1 model* (the covered bytes grew). There is no persisted data to migrate: the filesystem adapter's digest-named files are content-addressed by the digest that produced them, and no production data exists yet (WORK-009/010 are still blocked behind this remediation); the no-migration decision (round-1 design decision 1, the `ArtifactStore` port as the SQL seam) is unchanged and no migration surface was touched.
+- *Option (b) rejected*: a separate immutable lineage/edge object with independently addressed identity would require a new port + store methods + a second durable surface — a larger change than the defect warrants, and it would split artifact identity across two objects (weaker invariant: the record and its edge-set could disagree). Option (a) keeps ONE identity covering the WHOLE semantic record.
+- *Redundancy note*: for `compiled-context` artifacts the manifest payload already carries `parents` (round-1 design), so parents now participate in the digest twice (once inside the payload, once as an identity field). This is harmless (no instability — both are deterministic) and keeps the artifact service generic (lineage is covered for ALL kinds, not just manifests whose payload happens to include it).
+
+## Requirement → evidence map (the 5 remediation requirements of issue #13)
+
+| # | Requirement | Evidence |
+|---|---|---|
+| 1 | Canonical artifact identity so lineage/provenance semantics cannot be silently lost — explicit choice + tradeoffs | Option (a) above (this section); implementation `src/modules/artifacts/application/artifact-service.ts` (`putArtifact`: normalize → serialize full identity form → digest); domain docs made coherent: `domain/artifact.ts` (identity model header, `ArtifactContent` = identity form, `ArtifactRecord.canonicalContent` doc), `domain/lineage.ts` (DAG-by-construction now enforced by identity), `context/domain/manifest.ts` (manifest = digest-covered payload; identity additionally covers normalized lineage). Pinned by `tests/unit/artifacts/lineage-identity.test.ts` ("the digest is exactly sha256 over the canonical identity form") |
+| 2 | Regression test: same tenant + same kind/payload + different parents/sourceRefs must NOT silently converge while losing lineage | `tests/unit/artifacts/lineage-identity.test.ts` — 10 tests: different parents → 2 records each keeping its own parents with `describeLineage` reflecting each (both directions); different sourceRefs → 2 records each keeping its own sourceRefs; parents AND sourceRefs each independently diverge the digest; identical FULL inputs converge idempotently; normalization (order/duplicates) keeps digests stable; exact identity-form digest; concurrent divergent-lineage puts store ALL records (3-way `Promise.all`); ×8 concurrent identical full inputs converge to exactly one record; cross-tenant same-full-input → same digest, one record per namespace; adoption rejection-before-write preserved |
+| 3 | Discrimination/mutation evidence with an honest RED record | `tests/discrimination/artifact-lineage-identity.discrimination.test.ts` — L1 green protection; **L2/L3 RED RECORDS**: the content-only identity mutant (lineage fields removed from the digest-covered canonical form — exactly the round-1 model, applied via the documented `serialize` discrimination hook) makes divergent-parent puts CONVERGE with the second record keeping the FIRST's parents (requested lineage silently lost) and likewise for sourceRefs; L4 mutant honesty (mutant digest ≡ sha256 over canonical `{kind, payload}` only; production digest covers the full form); L5 adapter-independence (filesystem). PLUS the commit-time honest RED: the new suites were run UNCHANGED against the pre-remediation code BEFORE the fix (below) |
+| 4 | Preserve cross-tenant rejection-before-write and immutable put-if-absent | Zero store/port/adapter code changed (adapters byte-identical; `ArtifactStore` surface still put/get/list/ownerOf only; `STORE_HAS_NO_MUTATION_METHODS` untouched). Green: `tests/unit/artifacts/lineage-identity.test.ts` (adoption rejected `TENANT_SCOPE_VIOLATION`, zero writes), `tests/unit/artifacts/artifact-service.test.ts` (adoption/read/dangling rejections unchanged), `tests/discrimination/artifacts-tenant-adoption.discrimination.test.ts` A1–A5 (incl. the A3 red record), `tests/architecture/artifact-store-surface.test.ts` (zero mutation sites, `wx`-only writes, surface gate) — all green at the remediation head |
+| 5 | Rebind evidence and CI to the remediation head before re-review | This addendum binds the implementation head `06372aeb97279e20c3840f7713d7467cc0d73d0e` (verified char-by-char against `git rev-parse HEAD`); the final branch head (the evidence commit) is bound in the PR body + completion comments per the two-phase protocol; CI run for the final head cited in the CI-proof comment |
+
+## Honest RED record (tests written first, run against the defect)
+
+The two new suites were written BEFORE the fix and run unchanged against the pre-remediation code (base `5938013`, the round-1 merged model):
+
+- `tests/unit/artifacts/lineage-identity.test.ts`: **5 failed / 5 passed** — failing exactly as the finding describes: `same kind/payload + DIFFERENT parents` → `AssertionError: expected 'converged' to be 'stored'`; `same kind/payload + DIFFERENT sourceRefs` → `expected 'converged' to be 'stored'`; `parents AND sourceRefs each independently change identity` → identical digests (`expected 'fb7b1d98…' not to be 'fb7b1d98…'`); `digest is exactly sha256 over the canonical identity form` → `canonicalContent` lacked the lineage fields (`expected '{"kind":"task-output","parents":[…],"payload":…,"sourceRefs":[…]}' to be '{"kind":"task-output","payload":…}'`); `concurrent divergent-lineage puts` → `['stored','converged','converged']` instead of three `stored`. The 5 passing were the invariants that already held (identical-full-input convergence, normalization stability, ×8 concurrency, cross-tenant isolation, adoption rejection).
+- `tests/discrimination/artifact-lineage-identity.discrimination.test.ts`: **3 failed / 2 passed** — L1/L4/L5 failed (the production service exhibited the defect: divergent parents converged; production digest equalled the content-only digest), while L2/L3 passed because the mutant is byte-identical in behavior to the defective base (violation observed).
+
+**Restoration**: the implementation commit `06372ae` applies Option (a) (normalize lineage → serialize the full identity form → digest) and adjusts the two pre-existing assertions that encoded the old model (disclosed below); both suites then pass in full (10/10 and 5/5) and the complete regression is green (verification table).
+
+## Verification (remediation round)
+
+Toolchain: Bun 1.3.14 locally (CI pins 1.3.4 — same lockfile, frozen install clean); real PostgreSQL 16.4 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`).
+
+Baseline (at base `5938013`, before any change): governance OK `frontier=[]`, typecheck 0, lint clean (314 files), full suite **623/623 (77 files)** TWICE consecutively — matching the orchestrator-verified record.
+
+| Command | At implementation head `06372ae` (×2 consecutive full-suite runs) | At final head (evidence commit; ×2 consecutive full-suite runs) |
+|---|---|---|
+| `bun install --frozen-lockfile` | clean, no changes (runtime deps `[]`) | clean, no changes |
+| `python3 scripts/governance-check.py` | `Governance OK: 20 Work Orders, 45 requirements, frontier=[]` | identical |
+| `bun run typecheck` | 0 errors | identical |
+| `bun run lint` | 0 errors, 0 warnings (316 files) | identical |
+| `ZECK_PG_TEST_URL=… bun run test` | **638/638 passed, 79 files — identical both runs, zero flakes** (22.00s / 21.50s, clean post-commit worktree at the head) | **638/638 passed, 79 files — identical both runs, zero flakes** (21.77s / 22.63s; every recorded full run of this round was 20–23s, zero flakes) |
+
+Test census (delta vs the 623 baseline): **623 → 638 (+15)** — unit 350→360 (+10: `lineage-identity.test.ts`), discrimination 117→122 (+5: `artifact-lineage-identity.discrimination.test.ts`), architecture 47 unchanged, real-PG 103 unchanged (no new durable PG state — the no-migration decision stands), integration (non-PG) 6 unchanged.
+
+## Checkpoint evidence (remediation round, all five contracts re-recorded)
+
+`spec/development-state/checkpoint-state.json` WORK-008 item updated to this round (asOf `2026-08-30T14:34:47Z`, branch `work/WORK-008-artifact-lineage-remediation`, baseRevision `5938013cfe90591b2fa1cd23fec4c1ebbf187dbb`; every other entry byte-exact): all five outcome evidence arrays now include the new regression suite and/or the new discrimination suite, with verdicts pending architect re-review.
+
+## Known limitations (remediation round)
+
+1. **Content-level dedup across provenance variants is deliberately not performed** (the explicit tradeoff of Option (a)): identical payloads with different lineage are distinct artifacts and distinct stored records.
+2. **Digest values differ from the round-1 model** for the same logical inputs (the covered bytes grew by the normalized lineage). No persisted artifact data exists to reconcile (WORK-009/010 blocked behind this remediation; the filesystem store is content-addressed by construction), but any consumer that hard-coded round-1 digest VALUES would observe the change — none exists in-repo (the only two VALUE-encoding assertions are the adjusted ones disclosed below).
+3. **`ownerOf` filesystem scan remains O(tenants)** (round-1 limitation 1, unchanged).
+4. **CI still has no PostgreSQL service** (standing flag since WORK-002): the 103 real-PG tests skip in CI; the local runs above are the recorded proof (standing precedent).
+
+## Disclosures (remediation round)
+
+- **Pre-existing test adjustments (exactly two, both encoding the round-1 content-only convergence semantics — each adjusted in the implementation commit and re-pinned to the remediated model):**
+  1. `tests/unit/artifacts/artifact-service.test.ts` — "digest = identity" test's exact-sha256 expectation extended from `canonicalJson({kind, payload})` to the full identity form `canonicalJson({kind, payload, parents, sourceRefs})` (the helper's full input is pinned: `parents: []`, `sourceRefs: [{kind:"request",id:"req-1",locator:"test"}]`). The test's INTENT (server-derived digest = identity over canonical bytes) is unchanged.
+  2. `tests/unit/context/context-compiler.test.ts` — "artifact content is the canonical serialization…" test's `canonicalContent` expectation extended to include the normalized `parents: []` + the compiler's three-item `sourceRefs` list (the digest = `sha256Hex(canonicalContent)` half of the assertion was already model-independent and is untouched). The test's INTENT (canonicalContent is exactly the digest-covered bytes) is unchanged.
+  No other pre-existing test required adjustment: all other convergence assertions in the suite consume identical FULL inputs, which converge under both models.
+- **Doc-only coherence edits** in `src/modules/context/domain/manifest.ts` (header: manifest = digest-covered payload; identity additionally covers normalized lineage) — within the declared `src/modules/context/` surface; no context BEHAVIOR changed (the compiler already passed normalized parents/sourceRefs to `putArtifact`).
+- **Development state**: `program-state.json` WORK-008 `blocked` → `in-flight` (branch + baseRevision added; `historicalMerge` preserved EXACTLY; `remediation` object reflects in-flight with issue 13 + reason intact); `frontier-state.json` moves WORK-008 `blocked` → `inFlight` (WORK-009/010 stay blocked, `eligible` stays `[]`; the file's no-trailing-newline shape preserved); `checkpoint-state.json` WORK-008 item rebound to this round in THIS evidence commit (established split). Governance checker green (`frontier=[]`) at every recorded point.
+- **No migration, no new packages, no store/port/adapter changes**: `package.json`/`bun.lock` untouched (runtime deps `[]`); the `ArtifactStore` port, both adapters, and `STORE_HAS_NO_MUTATION_METHODS` are byte-identical to round 1 — the identity fix lives entirely in the application service's digest computation.
+- **The discrimination hook** (`ArtifactServiceDeps.serialize`) semantics extended in documentation only: it serializes the FULL identity form; the round-1 P2 reproducibility mutant (insertion-order `JSON.stringify`) remains meaningful and green (verified at the remediation head).
+
+## PR / merge (remediation round)
+
+- PR: opened by the worker against `main`; completion reports posted on the PR and on issue #13. The architect is the merge authority; the worker does NOT merge/approve.
+- **Two-part binding**: this evidence file binds the implementation head `06372aeb97279e20c3840f7713d7467cc0d73d0e` (verified against `git rev-parse HEAD`, 40-hex exact, character-by-character). The final branch head (this evidence commit) is bound in the PR body + completion comment, per the WORK-001→008 protocol.
+- `program-state.json` becomes `complete` only at post-merge finalization with the actual remediation PR number + merge commit (WORK-009/010 then unblock per the dependency graph).

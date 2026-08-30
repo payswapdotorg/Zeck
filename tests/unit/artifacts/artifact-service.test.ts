@@ -63,9 +63,16 @@ describe("artifact service: content addressing + immutability", () => {
     expect(a.digest).toBe(b.digest);
     expect(b.record.canonicalContent).toBe(a.record.canonicalContent);
     expect(store.totalRecords).toBe(1);
-    // The digest is exactly sha256 over the canonical {kind, payload} bytes.
+    // The digest is exactly sha256 over the canonical identity form
+    // {kind, payload, parents, sourceRefs} (issue #13 remediation:
+    // lineage is digest-covered; the put helper's full input is pinned).
     const expected = createNodeDigestPort().sha256Hex(
-      canonicalJson({ kind: "task-output", payload: { n: 1, note: "hello" } }),
+      canonicalJson({
+        kind: "task-output",
+        payload: { n: 1, note: "hello" },
+        parents: [],
+        sourceRefs: [{ kind: "request", id: "req-1", locator: "test" }],
+      }),
     );
     expect(a.digest).toBe(expected);
   });

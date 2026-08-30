@@ -229,11 +229,22 @@ describe("context compiler", () => {
     ]);
   });
 
-  test("artifact content is the canonical serialization of the manifest (digest = identity)", async () => {
+  test("artifact content is the canonical serialization of the identity form (digest = identity)", async () => {
     const { compiler } = fixture();
     const result = await compiler.compile({ ...REQUEST });
+    // issue #13 remediation: the digest-covered identity form additionally
+    // carries the NORMALIZED lineage (parents + sourceRefs).
     expect(result.artifact.canonicalContent).toBe(
-      canonicalJson({ kind: "compiled-context", payload: result.manifest }),
+      canonicalJson({
+        kind: "compiled-context",
+        payload: result.manifest,
+        parents: [],
+        sourceRefs: [
+          { kind: "request", id: EXECUTION_ID, locator: "app-1" },
+          { kind: "source", id: "docs", locator: "a.md" },
+          { kind: "source", id: "kb", locator: "c.md" },
+        ],
+      }),
     );
     expect(createNodeDigestPort().sha256Hex(result.artifact.canonicalContent)).toBe(result.digest);
   });

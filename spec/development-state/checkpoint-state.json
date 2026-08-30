@@ -319,9 +319,9 @@
       }
     },
     "WORK-008": {
-      "asOf": "2026-08-30T12:05:00Z",
-      "branch": "work/WORK-008-context-lineage",
-      "baseRevision": "8245191224de62f3f5a7a363761b45ae8c615e27",
+      "asOf": "2026-08-30T14:34:47Z",
+      "branch": "work/WORK-008-artifact-lineage-remediation",
+      "baseRevision": "5938013cfe90591b2fa1cd23fec4c1ebbf187dbb",
       "assuranceProfile": "HIGH_ASSURANCE",
       "outcomes": {
         "IMPLEMENTATION-COMPLETENESS": {
@@ -332,7 +332,8 @@
             "tests/unit/context/stages.test.ts",
             "tests/unit/context/context-compiler.test.ts",
             "tests/unit/artifacts/artifact-service.test.ts",
-            "tests/unit/artifacts/filesystem-store.test.ts"
+            "tests/unit/artifacts/filesystem-store.test.ts",
+            "tests/unit/artifacts/lineage-identity.test.ts"
           ]
         },
         "IDENTITY-IDEMPOTENCY": {
@@ -341,7 +342,9 @@
           "evidence": [
             "tests/unit/artifacts/artifact-service.test.ts",
             "tests/unit/context/reproducibility.test.ts",
-            "tests/discrimination/context-reproducibility.discrimination.test.ts"
+            "tests/discrimination/context-reproducibility.discrimination.test.ts",
+            "tests/unit/artifacts/lineage-identity.test.ts",
+            "tests/discrimination/artifact-lineage-identity.discrimination.test.ts"
           ]
         },
         "CONCURRENCY-CRASH-SAFETY": {
@@ -350,7 +353,8 @@
           "evidence": [
             "tests/unit/artifacts/artifact-service.test.ts",
             "tests/unit/artifacts/filesystem-store.test.ts",
-            "docs/work-items/WORK-008.md"
+            "docs/work-items/WORK-008.md",
+            "tests/unit/artifacts/lineage-identity.test.ts"
           ]
         },
         "SELF-HOSTING-BOUNDARY": {
@@ -358,7 +362,8 @@
           "verdict": "passed",
           "evidence": [
             "tests/architecture/artifact-store-surface.test.ts",
-            "docs/work-items/WORK-008.md"
+            "docs/work-items/WORK-008.md",
+            "tests/discrimination/artifact-lineage-identity.discrimination.test.ts"
           ]
         },
         "EXECUTION-PROVENANCE": {
@@ -367,7 +372,8 @@
           "evidence": [
             "tests/unit/context/context-compiler.test.ts",
             "tests/unit/context/reproducibility.test.ts",
-            "docs/work-items/WORK-008.md"
+            "docs/work-items/WORK-008.md",
+            "tests/unit/artifacts/lineage-identity.test.ts"
           ]
         }
       }

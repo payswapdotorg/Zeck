@@ -1,11 +1,15 @@
 /**
  * Compiled-context manifest (context module domain; WORK-008 / CTX-001/002).
  *
- * The manifest is the DIGEST-COVERED, byte-stable identity of a compiled
- * context: identical inputs + compiler version -> byte-identical canonical
- * manifest -> identical artifact digest. It deliberately contains NO
- * timestamps, NO random identifiers and NO floating point — the artifact
- * store's `createdAt` metadata lives OUTSIDE the digest-covered content.
+ * The manifest is the digest-covered, byte-stable PAYLOAD of the compiled
+ * context artifact: identical inputs + compiler version -> byte-identical
+ * canonical manifest. It deliberately contains NO timestamps, NO random
+ * identifiers and NO floating point — the artifact store's `createdAt`
+ * metadata lives OUTSIDE the digest-covered content. The artifact's full
+ * identity additionally covers the NORMALIZED parents and sourceRefs
+ * (issue #13 lineage-identity remediation: provenance is identity-bearing),
+ * both of which are deterministic functions of this manifest for
+ * compiled-context artifacts.
  *
  * Execution provenance (EXECUTION-PROVENANCE compatible): the manifest
  * records the executionId and plan-revision reference that CONSUMED the
