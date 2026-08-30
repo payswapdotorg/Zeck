@@ -51,8 +51,59 @@
           ]
         }
       }
+    },
+    "WORK-002": {
+      "asOf": "2026-08-30T04:32:33Z",
+      "branch": "work/WORK-002-identity-tenants",
+      "baseRevision": "f5b7d6cd59af1c9d31b82ccc3de36f02b5f5b749",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "docs/work-items/WORK-002.md",
+            "tests/integration/postgres/ownership.test.ts",
+            "tests/integration/postgres/tenant-isolation.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "tests/integration/postgres/idempotency.test.ts",
+            "tests/integration/postgres/schema-constraints.test.ts",
+            "tests/discrimination/tenant-isolation.discrimination.test.ts"
+          ],
+          "note": "Real-PostgreSQL proofs: same (scope, operation, key, fingerprint) replays the same durable outcome; same key + different fingerprint fails IDEMPOTENCY_KEY_REUSED; concurrent identical requests converge to one durable identity via partial unique indexes and transactional arbitration."
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "tests/integration/postgres/idempotency.test.ts",
+            "tests/integration/postgres/migration-runner.test.ts"
+          ],
+          "note": "Crash-safety proven on real PostgreSQL: a failed mutation rolls back ledger row + guarded writes atomically; retry with the same key succeeds clean. Migration runner is exactly-once under an advisory lock; modified/reordered applied migrations fail closed."
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "pending-architect-review",
+          "evidence": [
+            "tests/architecture/dependency-direction.test.ts",
+            "tests/discrimination/governance-gate.discrimination.test.ts",
+            "docs/work-items/WORK-002.md"
+          ],
+          "note": "No second authority introduced: roles/permissions are a fixed vocabulary, tenant scope is derived only by the auth resolver from durable rows, and the worker did not merge its own PR."
+        }
+      }
     }
   },
-  "checkpointKinds": ["readiness", "work_order", "pr_conformance", "verification_entry"],
+  "checkpointKinds": [
+    "readiness",
+    "work_order",
+    "pr_conformance",
+    "verification_entry"
+  ],
   "note": "WORK-001 checkpoints were accepted by the architect after PR #3 evidence and CI review. No checkpoint substitutes for merge completion."
 }

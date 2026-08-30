@@ -24,7 +24,11 @@ describe("deterministic toolchain contract", () => {
       scripts: Record<string, string>;
       packageManager: string;
     };
-    expect(manifest.scripts).toEqual({
+    // WORK-002: the canonical commands must all be present and exact. The
+    // manifest is a SUPERSET check by design — Work Orders add directly-
+    // required commands (e.g. WORK-002's `test:pg` for its mandated real-
+    // PostgreSQL verification) without weakening this contract.
+    const canonicalCommands: Record<string, string> = {
       "governance:check": "python3 scripts/governance-check.py",
       typecheck: "tsc --noEmit",
       lint: "biome check .",
@@ -32,7 +36,10 @@ describe("deterministic toolchain contract", () => {
       "test:integration": "vitest run tests/integration",
       "test:architecture": "vitest run tests/architecture tests/discrimination",
       test: "vitest run",
-    });
+    };
+    for (const [name, command] of Object.entries(canonicalCommands)) {
+      expect(manifest.scripts[name], `script ${name}`).toBe(command);
+    }
     expect(manifest.packageManager).toBe("bun@1.3.4");
   });
 
