@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T03:56:00Z",
+  "asOf": "2026-08-30T06:24:12Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
@@ -26,48 +26,33 @@
       },
       "dependencies": [],
       "surfaces": {
-        "modules": [
-          "platform",
-          "governance"
-        ],
-        "spec": [
-          "spec/architecture.md",
-          "spec/development-state/"
-        ]
+        "modules": ["platform", "governance"],
+        "spec": ["spec/architecture.md", "spec/development-state/"]
       }
     },
     {
       "id": "WORK-002",
       "title": "Identity, applications and tenant isolation",
-      "status": "in-flight",
-      "inFlight": {
-        "branch": "work/WORK-002-identity-tenants",
-        "baseRevision": "f5b7d6cd59af1c9d31b82ccc3de36f02b5f5b749"
+      "status": "complete",
+      "mergedAs": {
+        "pr": 4,
+        "mergeCommit": "7b9cf363ff089da6b106ac35879263a6ace7e36e",
+        "implementationHead": "a0a17bfc89192e3e6b06b1c25e9452787f5d29df",
+        "finalBranchHead": "c79e86a097e58ce21a3234105e9d1b85e4154f75"
       },
-      "dependencies": [
-        "WORK-001"
-      ],
+      "dependencies": ["WORK-001"],
       "surfaces": {
-        "modules": [
-          "auth",
-          "applications"
-        ],
+        "modules": ["auth", "applications"],
         "schema": true
       }
     },
     {
       "id": "WORK-003",
       "title": "Connections, BYOK and provider federation",
-      "status": "pending",
-      "dependencies": [
-        "WORK-001",
-        "WORK-002"
-      ],
+      "status": "eligible",
+      "dependencies": ["WORK-001", "WORK-002"],
       "surfaces": {
-        "modules": [
-          "connections",
-          "models"
-        ],
+        "modules": ["connections", "models"],
         "publicContracts": true
       }
     },
@@ -75,15 +60,9 @@
       "id": "WORK-004",
       "title": "Budgets, wallets, reservations and ledger",
       "status": "pending",
-      "dependencies": [
-        "WORK-001",
-        "WORK-002",
-        "WORK-003"
-      ],
+      "dependencies": ["WORK-001", "WORK-002", "WORK-003"],
       "surfaces": {
-        "modules": [
-          "budgets"
-        ],
+        "modules": ["budgets"],
         "schema": true,
         "concurrency": true
       }
@@ -92,13 +71,9 @@
       "id": "WORK-005",
       "title": "Capability registry and capability evidence",
       "status": "pending",
-      "dependencies": [
-        "WORK-003"
-      ],
+      "dependencies": ["WORK-003"],
       "surfaces": {
-        "modules": [
-          "capabilities"
-        ],
+        "modules": ["capabilities"],
         "publicContracts": true
       }
     },
@@ -106,15 +81,9 @@
       "id": "WORK-006",
       "title": "Execution identity, lifecycle and event core",
       "status": "pending",
-      "dependencies": [
-        "WORK-002",
-        "WORK-004",
-        "WORK-005"
-      ],
+      "dependencies": ["WORK-002", "WORK-004", "WORK-005"],
       "surfaces": {
-        "modules": [
-          "executions"
-        ],
+        "modules": ["executions"],
         "schema": true,
         "concurrency": true
       }
@@ -123,16 +92,9 @@
       "id": "WORK-007",
       "title": "Policy engine and admission boundary",
       "status": "pending",
-      "dependencies": [
-        "WORK-003",
-        "WORK-004",
-        "WORK-005",
-        "WORK-006"
-      ],
+      "dependencies": ["WORK-003", "WORK-004", "WORK-005", "WORK-006"],
       "surfaces": {
-        "modules": [
-          "policies"
-        ],
+        "modules": ["policies"],
         "authorityBoundary": true,
         "securityTenant": true,
         "publicContracts": true
@@ -142,15 +104,9 @@
       "id": "WORK-008",
       "title": "Context compiler and artifact lineage",
       "status": "pending",
-      "dependencies": [
-        "WORK-005",
-        "WORK-006"
-      ],
+      "dependencies": ["WORK-005", "WORK-006"],
       "surfaces": {
-        "modules": [
-          "context",
-          "artifacts"
-        ],
+        "modules": ["context", "artifacts"],
         "publicContracts": true
       }
     },
@@ -158,16 +114,9 @@
       "id": "WORK-009",
       "title": "Model routing and adaptive execution planner",
       "status": "pending",
-      "dependencies": [
-        "WORK-005",
-        "WORK-006",
-        "WORK-007",
-        "WORK-008"
-      ],
+      "dependencies": ["WORK-005", "WORK-006", "WORK-007", "WORK-008"],
       "surfaces": {
-        "modules": [
-          "planning"
-        ],
+        "modules": ["planning"],
         "externalSideEffects": true,
         "publicContracts": true
       }
@@ -176,15 +125,9 @@
       "id": "WORK-010",
       "title": "Governed tool runtime",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-007",
-        "WORK-008"
-      ],
+      "dependencies": ["WORK-006", "WORK-007", "WORK-008"],
       "surfaces": {
-        "modules": [
-          "tools"
-        ],
+        "modules": ["tools"],
         "externalSideEffects": true,
         "securityTenant": true
       }
@@ -193,15 +136,9 @@
       "id": "WORK-011",
       "title": "Agent fabric, sessions and workspaces",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-007",
-        "WORK-010"
-      ],
+      "dependencies": ["WORK-006", "WORK-007", "WORK-010"],
       "surfaces": {
-        "modules": [
-          "agents"
-        ],
+        "modules": ["agents"],
         "externalSideEffects": true,
         "publicContracts": true
       }
@@ -210,16 +147,9 @@
       "id": "WORK-012",
       "title": "Compute environments and sandbox manager",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-007",
-        "WORK-010",
-        "WORK-011"
-      ],
+      "dependencies": ["WORK-006", "WORK-007", "WORK-010", "WORK-011"],
       "surfaces": {
-        "modules": [
-          "sandbox"
-        ],
+        "modules": ["sandbox"],
         "securityTenant": true,
         "externalSideEffects": true
       }
@@ -228,16 +158,9 @@
       "id": "WORK-013",
       "title": "Verification, evaluators and quality gates",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-009",
-        "WORK-010",
-        "WORK-011"
-      ],
+      "dependencies": ["WORK-006", "WORK-009", "WORK-010", "WORK-011"],
       "surfaces": {
-        "modules": [
-          "verification"
-        ],
+        "modules": ["verification"],
         "publicContracts": true,
         "authorityBoundary": true
       }
@@ -246,16 +169,9 @@
       "id": "WORK-014",
       "title": "Learning telemetry, scorecards and shadow evaluation",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-009",
-        "WORK-010",
-        "WORK-013"
-      ],
+      "dependencies": ["WORK-006", "WORK-009", "WORK-010", "WORK-013"],
       "surfaces": {
-        "modules": [
-          "learning"
-        ],
+        "modules": ["learning"],
         "multiModule": true
       }
     },
@@ -263,19 +179,9 @@
       "id": "WORK-015",
       "title": "Public API, SDKs, CLI and developer dashboard",
       "status": "pending",
-      "dependencies": [
-        "WORK-002",
-        "WORK-003",
-        "WORK-004",
-        "WORK-006",
-        "WORK-009",
-        "WORK-013"
-      ],
+      "dependencies": ["WORK-002", "WORK-003", "WORK-004", "WORK-006", "WORK-009", "WORK-013"],
       "surfaces": {
-        "modules": [
-          "api",
-          "experience"
-        ],
+        "modules": ["api", "experience"],
         "publicContracts": true
       }
     },
@@ -283,19 +189,9 @@
       "id": "WORK-016",
       "title": "WorkflowOS integration adapter and benchmark harness",
       "status": "pending",
-      "dependencies": [
-        "WORK-006",
-        "WORK-007",
-        "WORK-009",
-        "WORK-010",
-        "WORK-011",
-        "WORK-013",
-        "WORK-015"
-      ],
+      "dependencies": ["WORK-006", "WORK-007", "WORK-009", "WORK-010", "WORK-011", "WORK-013", "WORK-015"],
       "surfaces": {
-        "modules": [
-          "integrations"
-        ],
+        "modules": ["integrations"],
         "externalSideEffects": true,
         "publicContracts": true
       }
@@ -304,15 +200,9 @@
       "id": "WORK-017",
       "title": "Advanced tool learning and tool-composition intelligence",
       "status": "pending",
-      "dependencies": [
-        "WORK-014",
-        "WORK-016"
-      ],
+      "dependencies": ["WORK-014", "WORK-016"],
       "surfaces": {
-        "modules": [
-          "learning",
-          "planning"
-        ],
+        "modules": ["learning", "planning"],
         "multiModule": true
       }
     },
@@ -320,18 +210,9 @@
       "id": "WORK-018",
       "title": "Tool synthesis and validated ephemeral programs",
       "status": "pending",
-      "dependencies": [
-        "WORK-010",
-        "WORK-012",
-        "WORK-014",
-        "WORK-017"
-      ],
+      "dependencies": ["WORK-010", "WORK-012", "WORK-014", "WORK-017"],
       "surfaces": {
-        "modules": [
-          "tools",
-          "sandbox",
-          "learning"
-        ],
+        "modules": ["tools", "sandbox", "learning"],
         "securityTenant": true,
         "externalSideEffects": true
       }
@@ -340,15 +221,9 @@
       "id": "WORK-019",
       "title": "MicroVM/VM execution fleet and customer runners",
       "status": "pending",
-      "dependencies": [
-        "WORK-012",
-        "WORK-016",
-        "WORK-018"
-      ],
+      "dependencies": ["WORK-012", "WORK-016", "WORK-018"],
       "surfaces": {
-        "modules": [
-          "sandbox"
-        ],
+        "modules": ["sandbox"],
         "securityTenant": true,
         "externalSideEffects": true,
         "concurrency": true
@@ -358,18 +233,9 @@
       "id": "WORK-020",
       "title": "Learned execution planning and automatic policy optimization",
       "status": "pending",
-      "dependencies": [
-        "WORK-014",
-        "WORK-017",
-        "WORK-018",
-        "WORK-019"
-      ],
+      "dependencies": ["WORK-014", "WORK-017", "WORK-018", "WORK-019"],
       "surfaces": {
-        "modules": [
-          "learning",
-          "planning",
-          "policies"
-        ],
+        "modules": ["learning", "planning", "policies"],
         "authorityBoundary": true,
         "publicContracts": true
       }
