@@ -28,5 +28,10 @@
 | WORK-024 | Voice and realtime agent deployment | 023 | HIGH_ASSURANCE | no |
 | WORK-025 | Messaging agent deployment | 023 | HIGH_ASSURANCE | no |
 | WORK-026 | Media generation agent deployment | 009,010,013,023 | HIGH_ASSURANCE | no |
+| WORK-027 | Computer-use and GUI execution | 010,012,013,031 | CRITICAL | no |
+| WORK-028 | Long-running and resumable execution | 006,007,010,011,012,031 | CRITICAL | no |
+| WORK-029 | Edge, real-time and embodied execution integration | 012,016,019,031 | CRITICAL | no |
+| WORK-030 | Training, batch GPU and specialized accelerator workloads | 012,013,016,019,031 | HIGH_ASSURANCE | no |
+| WORK-031 | Computational substrate federation and workload classes | 006,007,008,010,011,012,013,014,016 | HIGH_ASSURANCE | no |
 
 Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.
