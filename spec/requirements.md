@@ -50,6 +50,12 @@
 
 - AGT-001: Agents are distinct from LLM/model providers.
 - AGT-002: Agent sessions and workspaces are bound to execution identity.
+- AGT-003: Every governed agent has a stable identity, ownership metadata and a discoverable inventory/catalog record.
+- AGT-004: Agent definitions and runtime configurations are immutable versioned artifacts with validation and rollback metadata.
+- AGT-005: Agent model/tool/endpoint access uses scoped, revocable, policy-mediated credentials and never requires long-lived raw secrets in agent code.
+- AGT-006: Policy-designated risky agent actions can require explicit human approval before execution.
+- AGT-007: Agents built with external frameworks or runtimes can be registered and governed through provider-neutral adapters without changing the Execution abstraction.
+- AGT-008: Governed agent sessions record significant inputs, actions, tool calls, outputs and authorization context as execution evidence.
 - ENV-001: Execution environments are selected through a provider-independent abstraction.
 - ENV-002: Untrusted/general-purpose code can run in isolated containers in v1.0.
 - ENV-003: The architecture has an explicit evolution path for microVM/VM execution.
@@ -83,3 +89,12 @@
 - HUM-001: The planner can request selective human ratings when automated evaluation leaves material decision uncertainty and the expected information value justifies user effort.
 - HUM-002: Human ratings are immutable evidence tied to the execution, candidates and evaluation question.
 - HUM-003: Low-confidence human-rated findings cannot be promoted automatically as authoritative production behavior without satisfying the normal validation/promotion gate.
+
+## Agent control plane
+
+- ACP-001: Zeck maintains a stable governed identity and inventory/catalog record for every registered agent.
+- ACP-002: Agent definitions/runtime configurations are versioned immutable artifacts with validation and rollback metadata.
+- ACP-003: Agent access to models, tools, endpoints and secrets is mediated by scoped, revocable credentials and policy; long-lived raw secrets are not embedded in agent code.
+- ACP-004: Policy can require human approval before designated high-risk agent actions.
+- ACP-005: External/BYOA agent frameworks can be registered and governed through provider-neutral adapters without creating duplicate execution or policy authorities.
+- ACP-006: Agent session actions are recorded as execution evidence with sufficient provenance to reconstruct who/what/when/why.
