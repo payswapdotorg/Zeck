@@ -18,6 +18,8 @@ This Work Order is executable only when all dependencies are complete. The worke
 
 The approved ACR-001 / ADR-0007 deterministic-first contract is normative for this Work Order: the planner MUST determine whether AI is required before selecting a model/provider/agent and MUST prefer an admissible deterministic capability when it can satisfy the task requirements and effective policy constraints.
 
+ACR-002 extends this contract: the planner must emit structured evidence useful for later deterministicization discovery, and when automated comparison is materially uncertain it may request a bounded evaluation path rather than blindly escalating to generative inference.
+
 # Dependencies
 
 Requires: WORK-005, WORK-006, WORK-007, WORK-008
@@ -33,6 +35,7 @@ Related requirements that this implementation must satisfy at the planning bound
 - `INT-002` — capability requirements precede provider/model selection
 - `DTR-001` — deterministicizable recurring subgraphs are representable as planning candidates
 - `DTR-004` — plan decisions expose evidence/confidence/rationale sufficient for later deterministicization learning
+- `HUM-001` — where planning uncertainty is material, the planner can route into bounded human/evaluation mechanisms exposed by the verification boundary without bypassing policy
 
 # Declared Change Surfaces
 
@@ -46,7 +49,7 @@ Any file or surface outside these declarations requires a Work Order amendment b
 Allowed:
 - files under the declared surfaces and their directly-required tests
 - implementation evidence in `docs/work-items/WORK-009.md`
-- narrowly scoped planning-contract test fixtures required to prove the frozen planner boundary
+- narrowly scoped planning-contract test fixtures required to prove the planner boundary
 
 Forbidden:
 - rewriting frozen architecture/lock semantics
@@ -87,7 +90,9 @@ Forbidden:
 9. Prove a forbidden provider is never selected even when it appears cheapest/highest scoring.
 10. Prove an always-generative planner mutant is rejected when a sufficient deterministic capability exists and no material verified advantage justifies AI.
 11. Prove a no-model execution is a valid successful plan and does not fabricate a model/provider route.
-12. Expose enough structured planning evidence for future learning/deterministicization systems to identify which plan subgraphs were expensive, repeated and potentially replaceable.
+12. Emit structured subgraph-level evidence identifying computation type, expected cost, expected quality, verification strategy, repeated-use opportunity and deterministicization potential for later learning.
+13. When deterministic sufficiency is uncertain, support a bounded compare/evaluation strategy rather than unconditional generative escalation, subject to policy and budget.
+14. Preserve enough plan evidence to support later codebase opportunity analysis and deterministicization promotion decisions without making those later subsystems authoritative at runtime.
 
 # Implementation Requirements
 
@@ -99,6 +104,7 @@ Forbidden:
 6. Treat deterministic candidates as first-class plan candidates with explicit capability identity, estimated cost, expected quality and verification strategy.
 7. Do not encode “use a model” as a fallback that is silently taken when the deterministic capability registry is sufficient.
 8. Where deterministic sufficiency is uncertain, allow a bounded evaluation/compare path rather than defaulting blindly to generative inference.
+9. Preserve candidate-level and subgraph-level evidence sufficient for later DTR-001/DTR-004 analysis.
 
 # Required Checkpoint Contracts
 
@@ -113,7 +119,7 @@ Required assurance profile: **HIGH_ASSURANCE**.
 
 The applicable blocking contracts are enumerated in `spec/governance/checkpoint-contract.json`. Checkpoint results are evidence, not completion authority.
 
-In addition to the generic HIGH_ASSURANCE checkpoints, this Work Order requires an explicit deterministic-first discrimination proof covering the ACR-001 / ADR-0007 contract.
+In addition to the generic HIGH_ASSURANCE checkpoints, this Work Order requires explicit deterministic-first discrimination proofs covering ACR-001 / ADR-0007 and the expanded ACR-002 planning evidence contract.
 
 # Evidence Contract
 
@@ -130,6 +136,8 @@ The worker must update `docs/work-items/WORK-NNN.md` with exact revision, change
 - a planner discrimination test that fails an implementation which always selects generative inference when a sufficient deterministic capability is available
 - a planner test proving that a valid execution may contain zero model calls
 - a planner test proving provider selection is downstream of capability/deterministic sufficiency decisions
+- a planner evidence test proving deterministicization-relevant subgraph observations are emitted without granting learning authority
+- an uncertainty-path test proving the planner can request bounded evaluation rather than blindly escalating
 
 # Completion
 
