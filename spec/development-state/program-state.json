@@ -10,7 +10,7 @@
   },
   "requirementCatalog": {
     "version": 3,
-    "count": 86,
+    "count": 94,
     "source": "spec/requirements.md"
   },
   "workOrders": [
