@@ -22,7 +22,6 @@ Requires: WORK-011, WORK-012, WORK-015, WORK-016
 
 # Requirement IDs
 
-Primary requirements owned by this Work Order:
 - `MOD-001`
 - `MOD-002`
 - `MOD-003`
@@ -82,6 +81,16 @@ Forbidden:
 - `IMPLEMENTATION-COMPLETENESS`
 - `EXECUTION-PROVENANCE`
 - `SELF-HOSTING-BOUNDARY`
+
+# Checkpoints
+
+- readiness: dependencies and declared surfaces verified before implementation
+- lifecycle: idempotent/concurrent promotion, rollback and suspension semantics proven
+- authority: modality adapters remain non-authoritative and governed by existing controls
+
+# Evidence Contract
+
+Evidence must identify exact implementation/final revisions, map each MOD-001..004/010 requirement to code and tests, and prove deployment identity, lifecycle safety, provider neutrality, tenant isolation and authority preservation.
 
 # Required Verification
 
