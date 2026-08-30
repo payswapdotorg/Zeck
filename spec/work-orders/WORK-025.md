@@ -22,7 +22,6 @@ Requires: WORK-023
 
 # Requirement IDs
 
-Primary requirements owned by this Work Order:
 - `MOD-008`
 - `MOD-009`
 
@@ -82,6 +81,16 @@ Forbidden:
 - `EXECUTION-PROVENANCE`
 - `CONCURRENCY-CRASH-SAFETY`
 - `SELF-HOSTING-BOUNDARY`
+
+# Checkpoints
+
+- readiness: messaging dependencies and declared surfaces verified before implementation
+- delivery-safety: policy-before-send, idempotency and provenance proven
+- recovery: duplicate, retry and ordering behavior proven under channel constraints
+
+# Evidence Contract
+
+Evidence must identify exact implementation/final revisions, map MOD-008/009 to code/tests, and provide provider-neutrality, tenant isolation, idempotent inbound handling, outbound admission ordering and provenance evidence.
 
 # Required Verification
 
