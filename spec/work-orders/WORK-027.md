@@ -77,6 +77,16 @@ Forbidden:
 - `SELF-HOSTING-BOUNDARY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+- readiness: Work Order dependencies and declared surfaces verified before implementation
+- security: isolation, credential mediation and side-effect ordering proven
+- implementation-completeness: required contracts, tests and evidence present before PR
+
+# Evidence Contract
+
+Evidence must identify the exact implementation and final branch heads, map every CUI requirement to code and tests, and include security/discrimination and side-effect ordering proofs. Workers must not claim CI, execution or external-system results that were not actually observed.
+
 # Required Verification
 
 - governance checker
