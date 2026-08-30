@@ -377,6 +377,55 @@
           ]
         }
       }
+    },
+    "WORK-009": {
+      "asOf": "2026-08-30T19:30:00Z",
+      "branch": "work/WORK-009-deterministic-first-planner",
+      "baseRevision": "15ea1961406686fa2770212dc322645f52082ca6",
+      "assuranceProfile": "HIGH_ASSURANCE",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-009.md",
+            "tests/unit/planning/task-profile.test.ts",
+            "tests/unit/planning/execution-plan.test.ts",
+            "tests/unit/planning/sufficiency.test.ts",
+            "tests/unit/planning/strategy-selection.test.ts",
+            "tests/unit/planning/planner-service.test.ts",
+            "tests/unit/planning/subgraph-evidence.test.ts",
+            "tests/integration/postgres/planning-decisions.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/planning/planner-service.test.ts",
+            "tests/unit/executions/planning-record.test.ts",
+            "tests/integration/postgres/planning-decisions.test.ts",
+            "docs/work-items/WORK-009.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/planning-decisions.test.ts",
+            "docs/work-items/WORK-009.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/planner-surface.test.ts",
+            "tests/discrimination/planner-deterministic-first.discrimination.test.ts",
+            "docs/work-items/WORK-009.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

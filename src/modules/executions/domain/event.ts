@@ -74,3 +74,16 @@ export function eventTypeFor(command: ExecutionCommand | "create"): string {
  * append-only like every envelope.
  */
 export const POLICY_DENIED_EVENT_TYPE = "execution.policy-denied";
+
+/**
+ * Event type of the DURABLE planning decision record (WORK-009): the
+ * deterministic-first planner's decision (selected plan, candidate
+ * strategies, route rationale, deterministic-sufficiency decision, policy
+ * inputs, subgraph evidence) is appended by `recordPlanningDecision` while
+ * the execution is in a planning phase (PLANNING/REPLANNING) — the same
+ * single write path, the same gapless sequencing, the same idempotency
+ * arbitration. The status write is the identity-preserving sequence
+ * advance (the policy-denied precedent). The planning module owns decision
+ * semantics; this ledger owns durability.
+ */
+export const PLANNING_DECISION_EVENT_TYPE = "planning.decision-recorded";
