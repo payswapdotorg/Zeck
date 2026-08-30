@@ -2,11 +2,16 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T16:16:00Z",
+  "asOf": "2026-08-30T18:02:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
     "governingDocuments": ["spec/architecture.md", "spec/architecture-lock.md", "spec/requirements.md", "spec/work-items.md", "spec/dependency-graph.md"]
+  },
+  "requirementCatalog": {
+    "version": 2,
+    "count": 86,
+    "source": "spec/requirements.md"
   },
   "workOrders": [
     {"id":"WORK-001","title":"Repository, modular-monolith and governance foundation","status":"complete","mergedAs":{"pr":3,"mergeCommit":"c81bed4bfae95832735b09d38b9f31640a1e7ff4","implementationHead":"681543109a2a8dadf1a518c9e1f5bc193b3c5b1c"},"dependencies":[],"surfaces":{"modules":["platform","governance"],"spec":["spec/architecture.md","spec/development-state/"]}},
@@ -34,8 +39,13 @@
     {"id":"WORK-023","title":"Multimodal agent deployment fabric","status":"pending","dependencies":["WORK-011","WORK-012","WORK-015","WORK-016"],"surfaces":{"modules":["deployments"],"publicContracts":true}},
     {"id":"WORK-024","title":"Voice and realtime agent deployment","status":"pending","dependencies":["WORK-023"],"surfaces":{"modules":["deployments","agents"],"externalSideEffects":true,"publicContracts":true}},
     {"id":"WORK-025","title":"Messaging agent deployment","status":"pending","dependencies":["WORK-023"],"surfaces":{"modules":["deployments","agents"],"externalSideEffects":true,"publicContracts":true}},
-    {"id":"WORK-026","title":"Media generation agent deployment","status":"pending","dependencies":["WORK-009","WORK-010","WORK-013","WORK-023"],"surfaces":{"modules":["deployments","models","artifacts"],"externalSideEffects":true,"publicContracts":true}}
+    {"id":"WORK-026","title":"Media generation agent deployment","status":"pending","dependencies":["WORK-009","WORK-010","WORK-013","WORK-023"],"surfaces":{"modules":["deployments","models","artifacts"],"externalSideEffects":true,"publicContracts":true}},
+    {"id":"WORK-027","title":"Computer-use and GUI execution","status":"pending","dependencies":["WORK-010","WORK-012","WORK-013","WORK-031"],"surfaces":{"modules":["tools","sandbox","deployments"],"securityTenant":true,"externalSideEffects":true}},
+    {"id":"WORK-028","title":"Long-running and resumable execution","status":"pending","dependencies":["WORK-006","WORK-007","WORK-010","WORK-011","WORK-012","WORK-031"],"surfaces":{"modules":["executions","agents","sandbox"],"concurrency":true}},
+    {"id":"WORK-029","title":"Edge, real-time and embodied execution integration","status":"pending","dependencies":["WORK-012","WORK-016","WORK-019","WORK-031"],"surfaces":{"modules":["sandbox","integrations","deployments"],"securityTenant":true,"externalSideEffects":true}},
+    {"id":"WORK-030","title":"Training, batch GPU and specialized accelerator workloads","status":"pending","dependencies":["WORK-012","WORK-013","WORK-016","WORK-019","WORK-031"],"surfaces":{"modules":["sandbox","integrations","deployments"],"externalSideEffects":true}},
+    {"id":"WORK-031","title":"Computational substrate federation and workload classes","status":"pending","dependencies":["WORK-006","WORK-007","WORK-008","WORK-010","WORK-011","WORK-012","WORK-013","WORK-014","WORK-016"],"surfaces":{"modules":["capabilities","executions","planning","integrations"],"publicContracts":true}}
   ],
-  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md","docs/adr/ADR-0014-multimodal-agent-deployment.md","docs/adr/ADR-0015-multimodal-deployment-product-surface.md"],
+  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md","docs/adr/ADR-0014-multimodal-agent-deployment.md","docs/adr/ADR-0015-multimodal-deployment-product-surface.md","docs/adr/ADR-0016-computational-substrate-extensibility.md"],
   "postMergeFinalization":{"required":true,"completionRule":"merge evidence must match actual PR number and merge commit before program-state status can become complete"}
 }
