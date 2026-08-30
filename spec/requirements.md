@@ -68,4 +68,18 @@
 - WOS-001: WorkflowOS can submit implementation/review work to AI Execution OS through one provider-independent execution contract.
 - WOS-002: WorkflowOS remains authoritative for its own workflow state transitions.
 - WOS-003: AI Execution OS returns evidence and artifacts; it does not directly transition WorkflowOS workflow state.
-- WOS-004: Existing WorkflowOS execution/session/workspace/tool concepts can map to the platform execution substrate without creating duplicate authorities.
+- WOS-004: Existing WorkflowOS execution/session/workspace concepts can map to the platform execution substrate without creating duplicate authorities.
+
+## Deterministicization and evaluation
+
+- DTR-001: The system can identify recurring AI execution subgraphs that are candidates for deterministic replacement.
+- DTR-002: Deterministicization candidates can be validated through replay, differential evaluation and property/metamorphic testing before promotion.
+- DTR-003: Deterministic replacements can be progressively shadowed/canary-tested and rolled back without changing execution identity.
+- DTR-004: The system records evidence, confidence and rationale for deterministicization decisions.
+- DTR-005: Developers can submit selected codebase functions, traces or execution subgraphs for advisory analysis of AI/deterministic/hybrid opportunities.
+
+## Human evaluation
+
+- HUM-001: The planner can request selective human ratings when automated evaluation leaves material decision uncertainty and the expected information value justifies user effort.
+- HUM-002: Human ratings are immutable evidence tied to the execution, candidates and evaluation question.
+- HUM-003: Low-confidence human-rated findings cannot be promoted automatically as authoritative production behavior without satisfying the normal validation/promotion gate.
