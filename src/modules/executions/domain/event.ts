@@ -64,3 +64,13 @@ export function eventTypeFor(command: ExecutionCommand | "create"): string {
   }
   return `execution.${command}`;
 }
+
+/**
+ * Event type of the DURABLE policy-admission denial record (WORK-007): a
+ * denied `authorize` transition journals its denial evidence on this ledger
+ * (journal-then-fail, the WORK-003 dispatch-journal precedent) WITHOUT
+ * leaving CREATED — the row's status write is the identity-preserving
+ * sequence advance through the same single write path. Denial evidence is
+ * append-only like every envelope.
+ */
+export const POLICY_DENIED_EVENT_TYPE = "execution.policy-denied";

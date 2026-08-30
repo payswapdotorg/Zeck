@@ -13,7 +13,10 @@
  *     the row locked FOR UPDATE (never from a pre-lock read — the WORK-002
  *     discipline), authority seams are consulted BEFORE any write (policy
  *     admission on `authorize` via the required `ExecutionAuthorizationPort`
- *     seam — the engine is WORK-007; budget reservation on `start` via the
+ *     seam — implemented by the WORK-007 policy engine, which produces the
+ *     durable admission evidence recorded on the authorize envelope and,
+ *     on denial, the `execution.policy-denied` ledger record + typed
+ *     `POLICY_DENIED`; budget reservation on `start` via the
  *     optional `BudgetAuthority` seam exported by WORK-004 — accounting is
  *     never reimplemented here), and the envelope + row update commit
  *     atomically with the idempotency record (crash-atomicity).
@@ -40,7 +43,7 @@ import { PlatformError } from "../../../shared/errors";
 import { isUuid } from "../../../shared/ids";
 import type { BudgetAuthority } from "../../budgets/public";
 import type { EventEnvelope } from "../domain/event";
-import { eventTypeFor } from "../domain/event";
+import { eventTypeFor, POLICY_DENIED_EVENT_TYPE } from "../domain/event";
 import type {
   ExecutionActor,
   ExecutionCreateInput,
@@ -51,7 +54,7 @@ import { CREATE_INPUT_KEYS, FORBIDDEN_INPUT_KEYS } from "../domain/execution";
 import type { ExecutionCommand } from "../domain/state-machine";
 import { EXECUTION_COMMANDS, isExecutionCommand, nextState } from "../domain/state-machine";
 import type { VerificationResultInput, VerificationResultRecord } from "../domain/verification";
-import type { ExecutionAuthorizationPort } from "../ports/authorization";
+import type { AdmissionEvidence, ExecutionAuthorizationPort } from "../ports/authorization";
 import {
   canonicalFingerprint,
   type ExecutionsIdempotencyPort,
@@ -399,7 +402,13 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
 
     const work = async (
       tx: ExecutionsTx,
-    ): Promise<{ executionId: string; from: string; to: string; sequence: number }> => {
+    ): Promise<{
+      executionId: string;
+      from: string;
+      to: string;
+      sequence: number;
+      denied?: { readonly reason: string };
+    }> => {
       // 1. Lock and re-derive: legality ALWAYS comes from the locked row.
       const locked = await tx.store.lockExecution(command.applicationId, command.executionId);
       if (locked === null) {
@@ -422,18 +431,61 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
       const to = nextState(from, command.command); // throws INVALID_STATE_TRANSITION
 
       // 2. Authority seams — consulted BEFORE any state write.
+      let admissionEvidence: AdmissionEvidence | undefined;
       if (command.command === "authorize") {
         const decision = await authorization.evaluate({
           execution: locked,
           actorId: command.actorId,
         });
         if (!decision.allowed) {
-          throw new PlatformError({
-            code: "AUTHORIZATION_DENIED",
-            message: "policy admission denied the authorize transition",
-            details: { reason: decision.reason },
+          // POLICY admission denial (WORK-007): the execution cannot pass
+          // CREATED, and the denial is DURABLE — journal-then-fail (the
+          // WORK-003 dispatch-journal precedent): append the
+          // `execution.policy-denied` envelope carrying the denial reason +
+          // effective-policy evidence, advance the ledger sequence through
+          // the SAME single write path (status write is the identity-
+          // preserving CREATED→CREATED sequence advance), then fail with
+          // typed `POLICY_DENIED` AFTER the record commits. The idempotency
+          // record stores the denial outcome, so a same-key retry replays
+          // the same typed denial without a second envelope.
+          const denialSequence = locked.lastEventSequence + 1;
+          const deniedAt = iso();
+          const denialReason = decision.reason ?? "policy admission denied the transition";
+          await tx.store.appendEvent({
+            eventId: generateId(),
+            executionId: command.executionId,
+            applicationId: command.applicationId,
+            tenantId: locked.tenantId,
+            sequence: denialSequence,
+            type: POLICY_DENIED_EVENT_TYPE,
+            command: "authorize",
+            actor: { actorId: command.actorId, tenantId: command.tenantId },
+            cause: "policy-denied",
+            reference: {
+              denied: true,
+              reason: denialReason,
+              ...(decision.evidence === undefined ? {} : { policy: decision.evidence }),
+            },
+            payload: { from, to: from, denied: true, reason: denialReason },
+            occurredAt: deniedAt,
           });
+          await tx.store.updateExecutionForTransition({
+            executionId: command.executionId,
+            applicationId: command.applicationId,
+            nextStatus: from, // stays CREATED — dispatch remains impossible
+            nextSequence: denialSequence,
+            verificationRefs: [],
+            now: deniedAt,
+          });
+          return {
+            executionId: command.executionId,
+            from,
+            to: from,
+            sequence: denialSequence,
+            denied: { reason: denialReason },
+          };
         }
+        admissionEvidence = decision.evidence;
       }
       let reservationId: string | null = null;
       if (command.command === "start" && command.dispatch !== undefined) {
@@ -515,6 +567,7 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
         actor: { actorId: command.actorId, tenantId: command.tenantId },
         cause: command.reason ?? undefined,
         reference: {
+          ...(admissionEvidence === undefined ? {} : { policy: admissionEvidence }),
           ...(reservationId === null ? {} : { reservationId }),
           ...(verificationRefs.length === 0 ? {} : { verificationResultIds: verificationRefs }),
         },
@@ -539,6 +592,21 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
       fingerprint,
       work,
     );
+
+    // A durably-recorded policy denial surfaces as the typed canonical
+    // error AFTER its ledger record committed (journal-then-fail).
+    if (outcome.denied !== undefined) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message:
+          "policy admission denied the authorize transition (durable denial evidence recorded)",
+        details: {
+          reason: outcome.denied.reason,
+          executionId: outcome.executionId,
+          sequence: outcome.sequence,
+        },
+      });
+    }
 
     const row = await store.getExecution(command.applicationId, outcome.executionId);
     if (row === null) {
