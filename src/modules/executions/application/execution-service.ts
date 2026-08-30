@@ -42,9 +42,10 @@
 import { PlatformError } from "../../../shared/errors";
 import { isUuid } from "../../../shared/ids";
 import type { BudgetAuthority } from "../../budgets/public";
-import type { EventEnvelope } from "../domain/event";
+import type { EventEnvelope, StepEventCommand } from "../domain/event";
 import {
   eventTypeFor,
+  isStepEventCommand,
   PLANNING_DECISION_EVENT_TYPE,
   POLICY_DENIED_EVENT_TYPE,
 } from "../domain/event";
@@ -56,7 +57,12 @@ import type {
 } from "../domain/execution";
 import { CREATE_INPUT_KEYS, FORBIDDEN_INPUT_KEYS } from "../domain/execution";
 import type { ExecutionCommand } from "../domain/state-machine";
-import { EXECUTION_COMMANDS, isExecutionCommand, nextState } from "../domain/state-machine";
+import {
+  EXECUTION_COMMANDS,
+  isExecutionCommand,
+  isTerminal,
+  nextState,
+} from "../domain/state-machine";
 import type { VerificationResultInput, VerificationResultRecord } from "../domain/verification";
 import type { AdmissionEvidence, ExecutionAuthorizationPort } from "../ports/authorization";
 import {
@@ -149,12 +155,44 @@ export interface ExecutionService {
     idempotencyKey: string,
   ): Promise<PlanningDecisionRecordOutcome>;
 
+  /**
+   * Record ONE non-transition step event on the execution ledger (WORK-010):
+   * appends the envelope through the SAME single write path and advances the
+   * ledger sequence via the identity-preserving row write (status is
+   * unchanged). Available on non-terminal executions only; request-idempotent
+   * by (actor, application, operation, idempotency key).
+   */
+  recordStepEvent(input: RecordStepEventInput, idempotencyKey: string): Promise<StepEventOutcome>;
+
   getExecution(applicationId: string, executionId: string): Promise<ExecutionRecord | null>;
   listEvents(applicationId: string, executionId: string): Promise<readonly EventEnvelope[]>;
   listVerificationResults(
     applicationId: string,
     executionId: string,
   ): Promise<readonly VerificationResultRecord[]>;
+}
+
+/** One governed sub-execution observation (e.g. a tool invocation boundary). */
+export interface RecordStepEventInput {
+  readonly executionId: string;
+  readonly applicationId: string;
+  readonly actor: ExecutionActor;
+  /** The step-event command (vocabulary owned by the executions domain). */
+  readonly command: StepEventCommand;
+  /** Why the event is recorded (provenance cause class). */
+  readonly cause?: string;
+  /** Durable facts the event is bound to (invocation id, digests, refs…). */
+  readonly reference?: Readonly<Record<string, unknown>>;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
+export interface StepEventOutcome {
+  readonly executionId: string;
+  readonly sequence: number;
+  readonly type: string;
+  readonly command: StepEventCommand;
+  readonly status: string;
+  readonly replayed: boolean;
 }
 
 export interface ExecutionServiceDeps {
@@ -172,6 +210,7 @@ export interface ExecutionServiceDeps {
 const CREATE_OPERATION = "executions.create";
 const TRANSITION_OPERATION = "executions.transition";
 const PLANNING_DECISION_OPERATION = "executions.record-planning-decision";
+const STEP_EVENT_OPERATION = "executions.record-step-event";
 
 /**
  * Input of `recordPlanningDecision` (WORK-009): the ledger's STRUCTURAL
@@ -832,10 +871,140 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
     return { ...outcome, replayed };
   };
 
+  // ----- step events (WORK-010) --------------------------------------------
+
+  /**
+   * Record one NON-TRANSITION step event on the execution ledger.
+   *
+   * The governed sub-execution runtimes (tools now, agents later) report
+   * their observation boundaries through this seam so their evidence lands
+   * on the SAME append-only, gapless, provenance-bound ledger the lifecycle
+   * itself uses — there is no second event path. The write is the
+   * identity-preserving sequence advance of the policy-denied precedent:
+   * appendEvent + updateExecutionForTransition in ONE arbitrated
+   * transaction, status strictly unchanged (the state machine cannot be
+   * moved by a step event — a terminal execution accepts none).
+   */
+  const recordStepEvent = async (
+    input: RecordStepEventInput,
+    idempotencyKey: string,
+  ): Promise<StepEventOutcome> => {
+    if (!isStepEventCommand(input.command)) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `unknown step-event command ${String(input.command)}`,
+        details: { command: input.command },
+      });
+    }
+    if (!isUuid(input.executionId)) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: "step event requires a valid executionId",
+      });
+    }
+    if (
+      input.payload === null ||
+      typeof input.payload !== "object" ||
+      Array.isArray(input.payload)
+    ) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: "step event payload must be an object",
+      });
+    }
+    const fingerprint = canonicalFingerprint([
+      STEP_EVENT_OPERATION,
+      input.executionId,
+      input.command,
+      input.cause ?? null,
+      input.reference ?? null,
+      input.payload,
+    ]);
+
+    const work = async (
+      tx: ExecutionsTx,
+    ): Promise<{
+      executionId: string;
+      sequence: number;
+      type: string;
+      command: StepEventCommand;
+      status: string;
+    }> => {
+      // Legality ALWAYS from the locked row (single write path discipline).
+      const locked = await tx.store.lockExecution(input.applicationId, input.executionId);
+      if (locked === null) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message:
+            "execution not found in this application (missing or owned by another application)",
+          details: { executionId: input.executionId },
+        });
+      }
+      if (locked.tenantId !== input.actor.tenantId) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message: "execution belongs to a different tenant",
+          details: { executionId: input.executionId },
+        });
+      }
+      if (isTerminal(locked.status)) {
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message: `execution is terminal in ${locked.status}; the ledger accepts no further step events`,
+          details: { executionId: input.executionId, status: locked.status },
+        });
+      }
+
+      const sequence = locked.lastEventSequence + 1;
+      const occurredAt = iso();
+      const type = eventTypeFor(input.command);
+      await tx.store.appendEvent({
+        eventId: generateId(),
+        executionId: input.executionId,
+        applicationId: input.applicationId,
+        tenantId: locked.tenantId,
+        sequence,
+        type,
+        command: input.command,
+        actor: { actorId: input.actor.actorId, tenantId: input.actor.tenantId },
+        cause: input.cause ?? undefined,
+        reference: input.reference ?? {},
+        payload: input.payload,
+        occurredAt,
+      });
+      // Identity-preserving row write: status stays EXACTLY what it was.
+      await tx.store.updateExecutionForTransition({
+        executionId: input.executionId,
+        applicationId: input.applicationId,
+        nextStatus: locked.status,
+        nextSequence: sequence,
+        verificationRefs: [],
+        now: occurredAt,
+      });
+      return {
+        executionId: input.executionId,
+        sequence,
+        type,
+        command: input.command,
+        status: locked.status,
+      };
+    };
+
+    const { outcome, replayed } = await idempotency.arbitrate(
+      { actorId: input.actor.actorId, applicationId: input.applicationId },
+      STEP_EVENT_OPERATION,
+      idempotencyKey,
+      fingerprint,
+      work,
+    );
+    return { ...outcome, replayed };
+  };
+
   return {
     createExecution,
     transition,
     recordPlanningDecision,
+    recordStepEvent,
     async getExecution(applicationId, executionId) {
       return store.getExecution(applicationId, executionId);
     },
