@@ -7,103 +7,27 @@
       "baseRevision": "463e6a677630cdc3cae5914abc01aafdd154c795",
       "assuranceProfile": "CRITICAL",
       "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {
-          "status": "evidence-recorded",
-          "verdict": "passed",
-          "evidence": [
-            "docs/work-items/WORK-001.md",
-            "tests/integration/toolchain-contract.test.ts",
-            "tests/architecture/module-skeleton.test.ts"
-          ]
-        },
-        "IDENTITY-IDEMPOTENCY": {
-          "status": "scope-note",
-          "verdict": "passed",
-          "evidence": [
-            "docs/work-items/WORK-001.md#checkpoint-evidence"
-          ],
-          "note": "No durable authority boundary was introduced by WORK-001; the idempotency contracts remain frozen in spec/contracts.md and src/shared/errors.ts carries IDEMPOTENCY_KEY_REUSED. Identity primitives (UUIDv7) are proven by tests/unit/ids.test.ts."
-        },
-        "CONCURRENCY-CRASH-SAFETY": {
-          "status": "scope-note",
-          "verdict": "passed",
-          "evidence": [
-            "docs/work-items/WORK-001.md#checkpoint-evidence"
-          ],
-          "note": "No concurrent durable state exists yet; the first durable-authority Work Order (WORK-002+) owns real-PostgreSQL concurrency/crash proof. The UUIDv7 generator's monotonic/clock-regression safety is proven by tests/unit/ids.test.ts."
-        },
-        "SELF-HOSTING-BOUNDARY": {
-          "status": "evidence-recorded",
-          "verdict": "passed",
-          "evidence": [
-            "tests/discrimination/governance-gate.discrimination.test.ts",
-            "tests/integration/fresh-clone-governance.test.ts"
-          ]
-        },
-        "DEPENDENCY-DIRECTION": {
-          "status": "evidence-recorded",
-          "verdict": "passed",
-          "evidence": [
-            "tests/architecture/dependency-direction.test.ts",
-            "tests/architecture/provider-sdk-boundaries.test.ts",
-            "tests/architecture/module-skeleton.test.ts",
-            "tests/discrimination/dependency-rules.discrimination.test.ts"
-          ]
-        }
+        "IMPLEMENTATION-COMPLETENESS": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md","tests/integration/toolchain-contract.test.ts","tests/architecture/module-skeleton.test.ts"]},
+        "IDENTITY-IDEMPOTENCY": {"status": "scope-note", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md#checkpoint-evidence"], "note": "No durable authority boundary was introduced by WORK-001; the idempotency contracts remain frozen in spec/contracts.md and src/shared/errors.ts carries IDEMPOTENCY_KEY_REUSED. Identity primitives (UUIDv7) are proven by tests/unit/ids.test.ts."},
+        "CONCURRENCY-CRASH-SAFETY": {"status": "scope-note", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md#checkpoint-evidence"], "note": "No concurrent durable state exists yet; the first durable-authority Work Order (WORK-002+) owns real-PostgreSQL concurrency/crash proof. The UUIDv7 generator's monotonic/clock-regression safety is proven by tests/unit/ids.test.ts."},
+        "SELF-HOSTING-BOUNDARY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/discrimination/governance-gate.discrimination.test.ts","tests/integration/fresh-clone-governance.test.ts"]},
+        "DEPENDENCY-DIRECTION": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/architecture/provider-sdk-boundaries.test.ts","tests/architecture/module-skeleton.test.ts","tests/discrimination/dependency-rules.discrimination.test.ts"]}
       }
     },
     "WORK-002": {
-      "asOf": "2026-08-30T04:32:33Z",
+      "asOf": "2026-08-30T06:24:12Z",
       "branch": "work/WORK-002-identity-tenants",
       "baseRevision": "f5b7d6cd59af1c9d31b82ccc3de36f02b5f5b749",
       "assuranceProfile": "CRITICAL",
+      "mergedAs": {"pr": 4, "mergeCommit": "7b9cf363ff089da6b106ac35879263a6ace7e36e", "implementationHead": "a0a17bfc89192e3e6b06b1c25e9452787f5d29df", "finalBranchHead": "c79e86a097e58ce21a3234105e9d1b85e4154f75"},
       "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {
-          "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
-          "evidence": [
-            "docs/work-items/WORK-002.md",
-            "tests/integration/postgres/ownership.test.ts",
-            "tests/integration/postgres/tenant-isolation.test.ts"
-          ]
-        },
-        "IDENTITY-IDEMPOTENCY": {
-          "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
-          "evidence": [
-            "tests/integration/postgres/idempotency.test.ts",
-            "tests/integration/postgres/schema-constraints.test.ts",
-            "tests/discrimination/tenant-isolation.discrimination.test.ts"
-          ],
-          "note": "Real-PostgreSQL proofs: same (scope, operation, key, fingerprint) replays the same durable outcome; same key + different fingerprint fails IDEMPOTENCY_KEY_REUSED; concurrent identical requests converge to one durable identity via partial unique indexes and transactional arbitration."
-        },
-        "CONCURRENCY-CRASH-SAFETY": {
-          "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
-          "evidence": [
-            "tests/integration/postgres/idempotency.test.ts",
-            "tests/integration/postgres/migration-runner.test.ts"
-          ],
-          "note": "Crash-safety proven on real PostgreSQL: a failed mutation rolls back ledger row + guarded writes atomically; retry with the same key succeeds clean. Migration runner is exactly-once under an advisory lock; modified/reordered applied migrations fail closed."
-        },
-        "SELF-HOSTING-BOUNDARY": {
-          "status": "evidence-recorded",
-          "verdict": "pending-architect-review",
-          "evidence": [
-            "tests/architecture/dependency-direction.test.ts",
-            "tests/discrimination/governance-gate.discrimination.test.ts",
-            "docs/work-items/WORK-002.md"
-          ],
-          "note": "No second authority introduced: roles/permissions are a fixed vocabulary, tenant scope is derived only by the auth resolver from durable rows, and the worker did not merge its own PR."
-        }
+        "IMPLEMENTATION-COMPLETENESS": {"status": "accepted", "verdict": "passed", "evidence": ["docs/work-items/WORK-002.md","tests/integration/postgres/ownership.test.ts","tests/integration/postgres/tenant-isolation.test.ts"]},
+        "IDENTITY-IDEMPOTENCY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/schema-constraints.test.ts","tests/discrimination/tenant-isolation.discrimination.test.ts"]},
+        "CONCURRENCY-CRASH-SAFETY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/migration-runner.test.ts","tests/integration/postgres/owner-retention-concurrency.test.ts"]},
+        "SELF-HOSTING-BOUNDARY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/discrimination/governance-gate.discrimination.test.ts","docs/work-items/WORK-002.md"]}
       }
     }
   },
-  "checkpointKinds": [
-    "readiness",
-    "work_order",
-    "pr_conformance",
-    "verification_entry"
-  ],
-  "note": "WORK-001 checkpoints were accepted by the architect after PR #3 evidence and CI review. No checkpoint substitutes for merge completion."
+  "checkpointKinds": ["readiness","work_order","pr_conformance","verification_entry"],
+  "note": "WORK-001 checkpoints were accepted by the architect after PR #3 evidence and CI review. WORK-002 checkpoints were accepted after PR #4 merge and round-2 remediation review; merge completion is recorded in program-state.json."
 }
