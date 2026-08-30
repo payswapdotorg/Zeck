@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T18:02:00Z",
+  "asOf": "2026-08-30T18:12:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
     "governingDocuments": ["spec/architecture.md", "spec/architecture-lock.md", "spec/requirements.md", "spec/work-items.md", "spec/dependency-graph.md"]
   },
   "requirementCatalog": {
-    "version": 2,
+    "version": 3,
     "count": 86,
     "source": "spec/requirements.md"
   },
