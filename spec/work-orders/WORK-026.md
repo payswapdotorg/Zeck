@@ -22,7 +22,6 @@ Requires: WORK-009, WORK-010, WORK-013, WORK-023
 
 # Requirement IDs
 
-Primary requirements owned by this Work Order:
 - `MOD-011`
 - `MOD-012`
 - `MOD-013`
@@ -83,6 +82,16 @@ Forbidden:
 - `EXECUTION-PROVENANCE`
 - `CONCURRENCY-CRASH-SAFETY`
 - `SELF-HOSTING-BOUNDARY`
+
+# Checkpoints
+
+- readiness: media dependencies and declared surfaces verified before implementation
+- paid-execution-safety: capability/policy/budget admission and duplicate-job protection proven
+- media-provenance: async lifecycle, artifact lineage and verification boundary proven
+
+# Evidence Contract
+
+Evidence must identify exact implementation/final revisions, map MOD-011..013 to code/tests, and prove provider neutrality, budget-before-paid-dispatch, idempotent async lifecycle, artifact lineage, tenant isolation and verification-before-completion.
 
 # Required Verification
 
