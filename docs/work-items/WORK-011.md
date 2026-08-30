@@ -137,6 +137,10 @@ Additional blocking boundaries from the Work Order's Checkpoints section: agent 
 5. **The approval `expiresAt`** is caller-supplied at request time and evaluated at dispatch; no background sweeper marks expired approvals terminal (dispatch-time evaluation is authoritative; the row stays `approved` with a past expiry — `approvalAuthorizesDispatch` rejects it, as proven).
 6. **Budget consultation at session dispatch** is not wired: agent sessions are not directly costed (costed work happens at the tool/model seams, which consult the budget authority). Should the architect want a session-level reservation, the `AgentAdmission` decision shape extends additively.
 
-## PR binding
+## PR binding (CURRENT)
 
-PR: opened from `work/WORK-011-agent-fabric` against main — the PR body binds the exact base/implementation/final SHAs per the two-part convention (this file binds the implementation revision; the PR body binds the final branch head). NOT merged — the architect is the sole merge authority; `program-state.json` keeps WORK-011 `in-flight` until post-merge finalization.
+PR **#21** (https://github.com/pectoraux/Zeck/pull/21), opened from `work/WORK-011-agent-fabric` against main. The PR body binds the exact base (`4621622…`), implementation head (`7320e89…`), evidence head (`8b67c96…`) and final branch head SHAs per the two-part convention (this file binds the implementation revision; the PR body binds the final branch head).
+
+**CI on the evidence head `8b67c96`** (pull_request run `33336876335`, "Repository Governance" workflow): `toolchain-detection` **success**, `governance` **success**, `implementation` **success** — all three check-runs green (verified via the GitHub API at the exact head SHA). The final PR-binding commit below advances the final head; its CI record is bound in the PR body/comment after the run completes.
+
+NOT merged — the architect is the sole merge authority; `program-state.json` keeps WORK-011 `in-flight` until post-merge finalization.
