@@ -1,8 +1,12 @@
 /**
- * `agents` domain layer — entities, invariants and value objects of this module.
-
-Domain code may import this module's own layers, `src/shared/**` and other
-modules' `public.ts` — never `src/platform/**`, adapters, provider SDKs or
-HTTP libraries (`IMPLEMENTATION.md` §3).
+ * Agents module domain barrel (WORK-011). Re-exports the domain
+ * vocabulary so the application/adapters layers and the public contract
+ * import from one place.
  */
-export {};
+export * from "./agent";
+export * from "./agent-version";
+export * from "./approval";
+export * from "./credential";
+export * from "./permissions";
+export * from "./session";
+export * from "./workspace";

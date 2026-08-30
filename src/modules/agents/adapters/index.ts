@@ -1,7 +1,7 @@
 /**
- * `agents` adapters layer — infrastructure and provider implementations for this module.
-
-The only module layer allowed to import `src/platform/**` and provider SDKs
-within the owning-adapter rules (`IMPLEMENTATION.md` §1, §3).
+ * Agents module adapters barrel (WORK-011).
  */
-export {};
+export * from "./execution-ledger";
+export * from "./in-memory-agent-store";
+export * from "./policy-agent-admission";
+export * from "./sql-agent-store";

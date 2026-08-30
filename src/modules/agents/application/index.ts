@@ -1,7 +1,5 @@
 /**
- * `agents` application layer — use cases and orchestration local to this module.
-
-Application code reaches outward only through this module's ports; it never
-imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
+ * Agents module application barrel (WORK-011).
  */
-export {};
+export * from "./agent-registry";
+export * from "./session-service";

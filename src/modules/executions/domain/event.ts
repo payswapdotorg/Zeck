@@ -75,7 +75,21 @@ export interface AppendEventInput {
  * tools runtime is the first producer, agents (WORK-011) extend it through
  * the same `recordStepEvent` seam.
  */
-export const STEP_EVENT_COMMANDS = ["tool-requested", "tool-result", "tool-denied"] as const;
+export const STEP_EVENT_COMMANDS = [
+  "tool-requested",
+  "tool-result",
+  "tool-denied",
+  // WORK-011 (agents) — agent session evidence commands. Additive
+  // vocabulary extension: agent session start (inputs + authorization
+  // context), significant agent actions, and session completion
+  // (outputs) ride the SAME ledger through the SAME recordStepEvent
+  // seam; the agents module produces these events but owns none of the
+  // vocabulary (this module remains the single event-vocabulary
+  // authority).
+  "agent-session-started",
+  "agent-action-recorded",
+  "agent-session-completed",
+] as const;
 export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
 
 /** Every command that may produce a ledger envelope (transition + step). */

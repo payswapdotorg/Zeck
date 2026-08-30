@@ -35,8 +35,19 @@ async function runningExecution(world: ReturnType<typeof createInMemoryExecution
 
 describe("execution step events", () => {
   test("step-event vocabulary is owned by the executions domain", () => {
-    expect(STEP_EVENT_COMMANDS).toEqual(["tool-requested", "tool-result", "tool-denied"]);
+    // WORK-011 extended the vocabulary additively with the agent session
+    // evidence commands (agents produce them through the same
+    // recordStepEvent seam; executions remains the sole vocabulary owner).
+    expect(STEP_EVENT_COMMANDS).toEqual([
+      "tool-requested",
+      "tool-result",
+      "tool-denied",
+      "agent-session-started",
+      "agent-action-recorded",
+      "agent-session-completed",
+    ]);
     expect(isStepEventCommand("tool-requested")).toBe(true);
+    expect(isStepEventCommand("agent-session-started")).toBe(true);
     expect(isStepEventCommand("authorize")).toBe(false);
     expect(isStepEventCommand("tool-bogus")).toBe(false);
   });

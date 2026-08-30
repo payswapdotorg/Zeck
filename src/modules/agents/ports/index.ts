@@ -1,7 +1,7 @@
 /**
- * `agents` ports layer — outbound/inbound interfaces owned by this module.
-
-Ports are provider-neutral: no infrastructure clients, no provider SDKs.
-Adapters (in `adapters/`) implement them (`IMPLEMENTATION.md` §2–§3).
+ * Agents module ports barrel (WORK-011).
  */
-export {};
+export * from "./agent-admission";
+export * from "./agent-execution-ledger";
+export * from "./agent-provider";
+export * from "./agent-store";
