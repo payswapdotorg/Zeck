@@ -30,14 +30,23 @@ import type {
   ExecutionTransitionCommand,
   PlanningDecisionRecordOutcome,
   RecordPlanningDecisionInput,
+  RecordStepEventInput,
+  StepEventOutcome,
   TransitionOutcome,
 } from "./application/execution-service";
 import { createExecutionService } from "./application/execution-service";
-import type { AppendEventInput, EventEnvelope } from "./domain/event";
+import type {
+  AppendEventInput,
+  EventCommand,
+  EventEnvelope,
+  StepEventCommand,
+} from "./domain/event";
 import {
   eventTypeFor,
+  isStepEventCommand,
   PLANNING_DECISION_EVENT_TYPE,
   POLICY_DENIED_EVENT_TYPE,
+  STEP_EVENT_COMMANDS,
 } from "./domain/event";
 import type {
   ExecutionActor,
@@ -80,6 +89,7 @@ export type {
   AdmissionEvidence,
   AppendEventInput,
   AppliedTransition,
+  EventCommand,
   EventEnvelope,
   ExecutionActor,
   ExecutionAuthorizationPort,
@@ -95,6 +105,9 @@ export type {
   ExecutionTransitionCommand,
   PlanningDecisionRecordOutcome,
   RecordPlanningDecisionInput,
+  RecordStepEventInput,
+  StepEventCommand,
+  StepEventOutcome,
   TransitionEdge,
   TransitionOutcome,
   VerificationResultInput,
@@ -111,11 +124,13 @@ export {
   FORBIDDEN_INPUT_KEYS,
   isExecutionCommand,
   isExecutionStatus,
+  isStepEventCommand,
   isTerminal,
   NON_TERMINAL_STATUSES,
   nextState,
   PLANNING_DECISION_EVENT_TYPE,
   POLICY_DENIED_EVENT_TYPE,
+  STEP_EVENT_COMMANDS,
   TERMINAL_STATUSES,
   TRANSITION_TABLE,
 };

@@ -1,7 +1,14 @@
 /**
  * `tools` application layer — use cases and orchestration local to this module.
-
-Application code reaches outward only through this module's ports; it never
-imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
+ *
+ * Application code reaches outward only through this module's ports; it never
+ * imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
  */
-export {};
+
+export { createToolRegistry } from "./tool-registry";
+export {
+  createToolRuntime,
+  type ToolRuntime,
+  type ToolRuntimeDeps,
+  toolRequestFingerprint,
+} from "./tool-runtime";

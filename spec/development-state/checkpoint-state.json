@@ -426,6 +426,55 @@
           ]
         }
       }
+    },
+    "WORK-010": {
+      "asOf": "2026-08-30T20:08:00Z",
+      "branch": "work/WORK-010-governed-tool-runtime",
+      "baseRevision": "31206d3f03d5f5810e38e3f8f3863b3e6f8e3f04",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-010.md",
+            "tests/unit/tools/tool-contract.test.ts",
+            "tests/unit/tools/tool-registry.test.ts",
+            "tests/unit/tools/tool-runtime.test.ts",
+            "tests/integration/postgres/tools-runtime.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/tools/tool-runtime.test.ts",
+            "tests/integration/postgres/tools-runtime.test.ts",
+            "tests/integration/postgres/tools-schema.test.ts",
+            "tests/discrimination/tool-runtime.discrimination.test.ts",
+            "docs/work-items/WORK-010.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/tools-runtime.test.ts",
+            "tests/integration/postgres/tools-schema.test.ts",
+            "tests/unit/tools/tool-runtime.test.ts",
+            "docs/work-items/WORK-010.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/tool-runtime-boundary.test.ts",
+            "tests/discrimination/tool-runtime.discrimination.test.ts",
+            "docs/work-items/WORK-010.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

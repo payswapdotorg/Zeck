@@ -19,6 +19,17 @@
  * history — every sequence number denotes exactly one committed envelope,
  * so consumers never have to distinguish a missing event from an
  * in-flight one, and physical triggers can reject gaps outright.
+ *
+ * WORK-010 extends the event vocabulary with STEP EVENTS — non-transition
+ * envelopes that record governed sub-execution observations (tool
+ * invocations) on the SAME single ledger, through the SAME single write
+ * path, WITHOUT touching execution status: a step event appends its
+ * envelope and advances `last_event_sequence` via the identity-preserving
+ * row write (the policy-denied precedent — status stays exactly what it
+ * was; only the sequence advances). Step events are append-only evidence
+ * bound to the parent execution; they are NOT lifecycle transitions and
+ * can never move the state machine (a terminal execution accepts none —
+ * physical terminal immutability of the row makes that unrepresentable).
  */
 
 import type { ExecutionActor } from "./execution";
@@ -49,7 +60,7 @@ export interface AppendEventInput {
   readonly tenantId: string;
   readonly sequence: number;
   readonly type: string;
-  readonly command: ExecutionCommand | "create";
+  readonly command: EventCommand;
   readonly actor: ExecutionActor;
   readonly cause?: string;
   readonly reference?: Readonly<Record<string, unknown>>;
@@ -57,8 +68,25 @@ export interface AppendEventInput {
   readonly occurredAt: string;
 }
 
+/**
+ * Step-event commands (WORK-010): non-transition observation commands whose
+ * envelopes the ledger records for governed sub-execution activity. The
+ * vocabulary is OWNED HERE (executions owns the event vocabulary); the
+ * tools runtime is the first producer, agents (WORK-011) extend it through
+ * the same `recordStepEvent` seam.
+ */
+export const STEP_EVENT_COMMANDS = ["tool-requested", "tool-result", "tool-denied"] as const;
+export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
+
+/** Every command that may produce a ledger envelope (transition + step). */
+export type EventCommand = ExecutionCommand | "create" | StepEventCommand;
+
+export function isStepEventCommand(value: string): value is StepEventCommand {
+  return (STEP_EVENT_COMMANDS as readonly string[]).includes(value);
+}
+
 /** Event type vocabulary (creation + one type per transition command). */
-export function eventTypeFor(command: ExecutionCommand | "create"): string {
+export function eventTypeFor(command: EventCommand): string {
   if (command === "create") {
     return "execution.created";
   }
