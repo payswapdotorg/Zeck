@@ -329,4 +329,135 @@ definePgSuite("end-to-end model dispatch on both rails (real PostgreSQL)", (ctx:
       "https://gw.customer.example/openai/chat/completions",
     );
   });
+
+  test("a network transport rejection becomes a durable provider-failed row (never stuck dispatching)", async () => {
+    const world = await seedDispatchWorld(ctx.port, true);
+    world.transport.send = async (): Promise<HttpResponse> => {
+      throw new Error("connect ECONNREFUSED 1.2.3.4:443");
+    };
+    const { connection } = await world.connections.registerConnection(
+      {
+        principal: PRINCIPAL(world.ownerId),
+        applicationId: world.applicationId,
+        rail: "openrouter",
+        label: "e2e-transport-failure",
+        registerCredential: { material: "sk-or-v1-transport" },
+      },
+      "e2e-tf",
+    );
+
+    const result = await world.gateway.complete(
+      PRINCIPAL(world.ownerId),
+      world.applicationId,
+      connection.id,
+      REQUEST,
+    );
+    // The known transport failure RESOLVED as a normalized provider outcome.
+    expect(result.outcome.kind).toBe("provider-failure");
+    if (result.outcome.kind !== "provider-failure") return;
+    expect(result.outcome.failure.category).toBe("network");
+    expect(result.outcome.failure.retryable).toBe(true);
+    expect(result.outcome.failure.rail).toBe("openrouter");
+
+    // And the REAL journal durably recorded it — provider axis, resolved,
+    // never left at `dispatching`.
+    const row = await ctx.port.execute<{
+      status: string;
+      resolved_at: string | null;
+      outcome: unknown;
+    }>({
+      sql: "SELECT status, resolved_at, outcome FROM models.dispatch_attempts WHERE id = $1",
+      parameters: [result.attemptId],
+    });
+    expect(row.rows[0]?.status).toBe("provider-failed");
+    expect(row.rows[0]?.resolved_at).not.toBeNull();
+    const outcome = row.rows[0]?.outcome as Record<string, unknown>;
+    expect(outcome.outcomeClass).toBe("provider-failure");
+    expect(outcome.category).toBe("network");
+    // The durable evidence carries no credential material.
+    expect(JSON.stringify(outcome)).not.toContain("sk-or-v1-transport");
+  });
+
+  test("a timeout transport rejection records the timeout category durably (direct rail)", async () => {
+    const world = await seedDispatchWorld(ctx.port, true);
+    const cause = new Error("the operation was aborted due to timeout");
+    cause.name = "TimeoutError";
+    world.transport.send = async (): Promise<HttpResponse> => {
+      throw cause;
+    };
+    const { connection } = await world.connections.registerConnection(
+      {
+        principal: PRINCIPAL(world.ownerId),
+        applicationId: world.applicationId,
+        rail: "anthropic",
+        label: "e2e-timeout",
+        registerCredential: { material: "sk-ant-timeout" },
+      },
+      "e2e-to",
+    );
+
+    const result = await world.gateway.complete(
+      PRINCIPAL(world.ownerId),
+      world.applicationId,
+      connection.id,
+      { ...REQUEST, model: "claude-3-5-sonnet" },
+    );
+    expect(result.outcome.kind).toBe("provider-failure");
+    if (result.outcome.kind !== "provider-failure") return;
+    expect(result.outcome.failure.category).toBe("timeout");
+    expect(result.outcome.failure.rail).toBe("anthropic");
+
+    const row = await ctx.port.execute<{ status: string; outcome: unknown }>({
+      sql: "SELECT status, outcome FROM models.dispatch_attempts WHERE id = $1",
+      parameters: [result.attemptId],
+    });
+    expect(row.rows[0]?.status).toBe("provider-failed");
+    const outcome = row.rows[0]?.outcome as Record<string, unknown>;
+    expect(outcome.outcomeClass).toBe("provider-failure");
+    expect(outcome.category).toBe("timeout");
+  });
+
+  test("a streaming transport rejection terminates with stream-error and journals provider-failed", async () => {
+    const world = await seedDispatchWorld(ctx.port, true);
+    world.transport.send = async (): Promise<HttpResponse> => {
+      throw new Error("connect ECONNREFUSED 1.2.3.4:443");
+    };
+    const { connection } = await world.connections.registerConnection(
+      {
+        principal: PRINCIPAL(world.ownerId),
+        applicationId: world.applicationId,
+        rail: "openrouter",
+        label: "e2e-stream-transport-failure",
+        registerCredential: { material: "sk-or-v1-stream-tf" },
+      },
+      "e2e-stf",
+    );
+
+    const { attemptId, events } = await world.gateway.stream(
+      PRINCIPAL(world.ownerId),
+      world.applicationId,
+      connection.id,
+      REQUEST,
+    );
+    const collected: string[] = [];
+    for await (const event of events) {
+      collected.push(event.type);
+    }
+    // The consumer observed a TERMINAL NORMALIZED EVENT — no escape.
+    expect(collected).toEqual(["stream-error"]);
+
+    const row = await ctx.port.execute<{
+      status: string;
+      resolved_at: string | null;
+      outcome: unknown;
+    }>({
+      sql: "SELECT status, resolved_at, outcome FROM models.dispatch_attempts WHERE id = $1",
+      parameters: [attemptId],
+    });
+    expect(row.rows[0]?.status).toBe("provider-failed");
+    expect(row.rows[0]?.resolved_at).not.toBeNull();
+    const outcome = row.rows[0]?.outcome as Record<string, unknown>;
+    expect(outcome.outcomeClass).toBe("provider-failure");
+    expect(outcome.category).toBe("network");
+  });
 });

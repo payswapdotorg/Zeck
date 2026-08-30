@@ -219,3 +219,128 @@ describe("anthropic adapter — streaming normalization", () => {
     expect(events[0].failure.retryable).toBe(true);
   });
 });
+
+describe("anthropic adapter — transport-failure normalization (architect remediation)", () => {
+  class RejectingTransport implements HttpTransport {
+    constructor(private readonly rejection: Error) {}
+    async send(): Promise<HttpResponse> {
+      throw this.rejection;
+    }
+  }
+
+  function timeoutRejection(): Error {
+    const error = new Error("the operation was aborted due to timeout");
+    error.name = "TimeoutError";
+    return error;
+  }
+
+  const NETWORK_REJECTION = new Error("getaddrinfo ENOTFOUND api.anthropic.com");
+
+  test("one-shot: a network send rejection returns a provider-failure outcome (never a throw)", async () => {
+    const adapter = createAnthropicAdapter({
+      transport: new RejectingTransport(NETWORK_REJECTION),
+    });
+    const outcome = await adapter.complete(
+      { model: "claude-3-5-sonnet", messages: [{ role: "user", content: "u" }] },
+      CONTEXT,
+    );
+    expect(outcome).toEqual({
+      kind: "provider-failure",
+      failure: expect.objectContaining({
+        category: "network",
+        retryable: true,
+        rail: "anthropic",
+        httpStatus: null,
+      }),
+    });
+  });
+
+  test("one-shot: a timeout rejection normalizes to the timeout category", async () => {
+    const adapter = createAnthropicAdapter({
+      transport: new RejectingTransport(timeoutRejection()),
+    });
+    const outcome = await adapter.complete(
+      { model: "claude-3-5-sonnet", messages: [{ role: "user", content: "u" }] },
+      CONTEXT,
+    );
+    expect(outcome.kind).toBe("provider-failure");
+    if (outcome.kind !== "provider-failure") return;
+    expect(outcome.failure.category).toBe("timeout");
+    expect(outcome.failure.retryable).toBe(true);
+    expect(outcome.failure.rail).toBe("anthropic");
+  });
+
+  test("one-shot: a mid-body network failure also returns a provider-failure outcome", async () => {
+    const transport = {
+      async send(): Promise<HttpResponse> {
+        return {
+          status: 200,
+          headers: { "content-type": "application/json" },
+          body: (async function* () {
+            yield new TextEncoder().encode('{"content":');
+            throw new Error("read ECONNRESET");
+          })(),
+        };
+      },
+    };
+    const adapter = createAnthropicAdapter({ transport });
+    const outcome = await adapter.complete(
+      { model: "m", messages: [{ role: "user", content: "u" }] },
+      CONTEXT,
+    );
+    expect(outcome.kind).toBe("provider-failure");
+    if (outcome.kind !== "provider-failure") return;
+    expect(outcome.failure.category).toBe("network");
+    expect(outcome.failure.rail).toBe("anthropic");
+  });
+
+  test("streaming: a handshake rejection becomes a terminal stream-error (no escape)", async () => {
+    const adapter = createAnthropicAdapter({
+      transport: new RejectingTransport(NETWORK_REJECTION),
+    });
+    const events = [];
+    for await (const event of adapter.stream(
+      { model: "m", messages: [{ role: "user", content: "u" }] },
+      CONTEXT,
+    )) {
+      events.push(event);
+    }
+    expect(events).toHaveLength(1);
+    expect(events[0]?.type).toBe("stream-error");
+    if (events[0]?.type !== "stream-error") return;
+    expect(events[0].failure.category).toBe("network");
+    expect(events[0].failure.retryable).toBe(true);
+    expect(events[0].failure.rail).toBe("anthropic");
+  });
+
+  test("streaming: a mid-body rejection after deltas becomes a terminal stream-error", async () => {
+    const transport = {
+      async send(): Promise<HttpResponse> {
+        return {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+          body: (async function* () {
+            yield new TextEncoder().encode(
+              'event: content_block_delta\ndata: {"delta":{"type":"text_delta","text":"par"}}\n\n',
+            );
+            throw new Error("read ECONNRESET mid-stream");
+          })(),
+        };
+      },
+    };
+    const adapter = createAnthropicAdapter({ transport });
+    const events = [];
+    for await (const event of adapter.stream(
+      { model: "m", messages: [{ role: "user", content: "u" }] },
+      CONTEXT,
+    )) {
+      events.push(event);
+    }
+    expect(events.map((event) => event.type)).toEqual(["text-delta", "stream-error"]);
+    const terminal = events[1];
+    if (terminal?.type !== "stream-error") throw new Error("expected terminal stream-error");
+    expect(terminal.failure.category).toBe("network");
+    expect(terminal.failure.rail).toBe("anthropic");
+    // The stream TERMINATED (iteration completed) — the rejection did not escape.
+  });
+});

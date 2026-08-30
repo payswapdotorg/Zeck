@@ -15,7 +15,9 @@ import type { MembershipRecord } from "../../../src/modules/auth/domain/scope";
 import type { IdentityStore } from "../../../src/modules/auth/public";
 import { createModelGateway } from "../../../src/modules/models/application/model-gateway";
 import type { ModelCallOutcome } from "../../../src/modules/models/domain/outcome";
+import type { ProviderFailure } from "../../../src/modules/models/domain/provider-failure";
 import type { ModelRequest } from "../../../src/modules/models/domain/request";
+import { EMPTY_USAGE } from "../../../src/modules/models/domain/response";
 import type {
   AdmissionDecision,
   AdmissionInput,
@@ -397,5 +399,200 @@ describe("model gateway — frozen dispatch sequence", () => {
       "materialize:vault-1",
       "outcome:attempt-stream:succeeded",
     ]);
+  });
+});
+
+describe("model gateway — known transport failures are durable provider outcomes (architect remediation)", () => {
+  const TRANSPORT_FAILURE: ProviderFailure = {
+    category: "network",
+    retryable: true,
+    rail: "openrouter",
+    providerCode: "Error",
+    providerMessage: "connect ECONNREFUSED",
+    httpStatus: null,
+    durationMs: null,
+  };
+
+  function gatewayWith(
+    provider: ModelProvider,
+    journal: DispatchJournal & { outcomes: Array<{ attemptId: string; status: string }> },
+  ) {
+    return createModelGateway({
+      resolver: createScopeResolver(new FakeIdentity()),
+      catalog: {
+        async getConnectionForDispatch(_s, id) {
+          return FACTS[id] as never;
+        },
+      },
+      credentials: {
+        async materialize(ref: string) {
+          return { reference: ref, plaintext: `plain-${ref}` };
+        },
+      },
+      admission: {
+        async admit() {
+          return { allowed: true };
+        },
+      },
+      rails: { rails: [provider.rail], providerFor: () => provider },
+      journal,
+      generateId: () => "attempt-t",
+      hashRequest: () => "hash",
+    });
+  }
+
+  function recordingJournal(): DispatchJournal & {
+    outcomes: Array<{ attemptId: string; status: string }>;
+  } {
+    return {
+      outcomes: [],
+      async recordIntent() {},
+      async recordOutcome(attemptId, status) {
+        this.outcomes.push({ attemptId, status });
+      },
+      async recordDenial() {},
+      async findAttempt() {
+        return null;
+      },
+    };
+  }
+
+  test("one-shot: an adapter-normalized provider-failure outcome is journaled provider-failed", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        return { kind: "provider-failure", failure: TRANSPORT_FAILURE };
+      },
+      async *stream() {
+        yield { type: "stream-error", failure: TRANSPORT_FAILURE };
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const result = await gateway.complete(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST);
+    // The call RESOLVES — a known provider failure is an outcome, not an escape.
+    expect(result.outcome.kind).toBe("provider-failure");
+    if (result.outcome.kind !== "provider-failure") return;
+    expect(result.outcome.failure.category).toBe("network");
+    // Durable: recorded on the PROVIDER axis, attempt not left dispatching.
+    expect(journal.outcomes).toEqual([{ attemptId: "attempt-t", status: "provider-failed" }]);
+  });
+
+  test("one-shot: a contract-violating adapter that THROWS the failure still gets it journaled + canonical error", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        throw TRANSPORT_FAILURE;
+      },
+      async *stream() {
+        yield { type: "stream-done", stopReason: "stop", usage: EMPTY_USAGE };
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const error = await gateway.complete(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    // The canonical PROVIDER_ERROR surfaces (never a verification/quality code).
+    expect(error).toBeInstanceOf(PlatformError);
+    expect((error as PlatformError).code).toBe("PROVIDER_ERROR");
+    // And the known failure was durably recorded FIRST — not left dispatching.
+    expect(journal.outcomes).toEqual([{ attemptId: "attempt-t", status: "provider-failed" }]);
+  });
+
+  test("one-shot: an UNKNOWN crash rethrows and leaves the attempt dispatching (honest unknown)", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        throw new Error("adapter bug");
+      },
+      async *stream() {
+        yield { type: "stream-done", stopReason: "stop", usage: EMPTY_USAGE };
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const error = await gateway.complete(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect((error as Error).message).toBe("adapter bug");
+    // No outcome recorded — the journal honestly keeps the attempt dispatching.
+    expect(journal.outcomes).toEqual([]);
+  });
+
+  test("streaming: an adapter-normalized stream-error terminal journals provider-failed", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        return { kind: "provider-failure", failure: TRANSPORT_FAILURE };
+      },
+      async *stream() {
+        yield { type: "text-delta", text: "partial" };
+        yield { type: "stream-error", failure: TRANSPORT_FAILURE };
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const { events } = await gateway.stream(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST);
+    const collected: string[] = [];
+    for await (const event of events) {
+      collected.push(event.type);
+    }
+    expect(collected).toEqual(["text-delta", "stream-error"]);
+    expect(journal.outcomes).toEqual([{ attemptId: "attempt-t", status: "provider-failed" }]);
+  });
+
+  test("streaming: a contract-violating adapter whose failure ESCAPES gets a normalized terminal + durable record", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        return { kind: "provider-failure", failure: TRANSPORT_FAILURE };
+      },
+      async *stream() {
+        yield { type: "text-delta", text: "partial" };
+        throw TRANSPORT_FAILURE;
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const { events } = await gateway.stream(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST);
+    const collected: string[] = [];
+    for await (const event of events) {
+      collected.push(event.type);
+    }
+    // The consumer observes a TERMINAL NORMALIZED EVENT, not a rejection.
+    expect(collected).toEqual(["text-delta", "stream-error"]);
+    // And the attempt is durably provider-failed — not left dispatching.
+    expect(journal.outcomes).toEqual([{ attemptId: "attempt-t", status: "provider-failed" }]);
+  });
+
+  test("streaming: an UNKNOWN crash rejection escapes and leaves the attempt dispatching", async () => {
+    const journal = recordingJournal();
+    const provider: ModelProvider = {
+      rail: "openrouter",
+      async complete() {
+        return { kind: "provider-failure", failure: TRANSPORT_FAILURE };
+      },
+      async *stream() {
+        yield { type: "text-delta", text: "partial" };
+        throw new Error("adapter bug mid-stream");
+      },
+    };
+    const gateway = gatewayWith(provider, journal);
+    const { events } = await gateway.stream(PRINCIPAL, APP, OPENROUTER_CONNECTION, REQUEST);
+    const error = await (async () => {
+      try {
+        for await (const _ of events) {
+          // drain
+        }
+        return null;
+      } catch (e) {
+        return e;
+      }
+    })();
+    expect((error as Error).message).toBe("adapter bug mid-stream");
+    expect(journal.outcomes).toEqual([]);
   });
 });

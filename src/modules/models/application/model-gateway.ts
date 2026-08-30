@@ -37,6 +37,7 @@ import type {
   CredentialMaterializer,
 } from "../../connections/public";
 import type { DispatchStatus, ModelCallOutcome } from "../domain/outcome";
+import { isProviderFailure, toPlatformProviderError } from "../domain/provider-failure";
 import type { ModelRequest } from "../domain/request";
 import type { StreamEvent } from "../domain/stream";
 import type { DispatchAdmission } from "../ports/dispatch-admission";
@@ -174,7 +175,27 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
       };
 
       // 7. Adapter call, 8. observation persisted.
-      const outcome = await provider.complete(request, context);
+      //
+      // KNOWN provider failures (including any transport failure the shared
+      // adapter boundary normalized) arrive as `provider-failure` OUTCOMES and
+      // are journaled below. Defense-in-depth: an adapter that violates the
+      // port contract and THROWS a normalized `ProviderFailure` still gets it
+      // durably recorded (never left silently at `dispatching`) before the
+      // canonical `PROVIDER_ERROR` surfaces. UNKNOWN crashes rethrow — the
+      // attempt honestly remains `dispatching` (unknown external outcome).
+      let outcome: ModelCallOutcome;
+      try {
+        outcome = await provider.complete(request, context);
+      } catch (error) {
+        if (!isProviderFailure(error)) {
+          throw error;
+        }
+        await deps.journal.recordOutcome(intent.id, "provider-failed", {
+          kind: "provider-failure",
+          failure: error,
+        });
+        throw toPlatformProviderError(error);
+      }
       await deps.journal.recordOutcome(intent.id, outcomeStatusOf(outcome), outcome);
       return { attemptId: intent.id, outcome };
     },
@@ -264,6 +285,18 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
             }
             yield event;
           }
+        } catch (error) {
+          // Defense-in-depth mirroring the one-shot path: a contract-violating
+          // adapter whose transport failure escapes as a THROWN normalized
+          // `ProviderFailure` still terminates the stream with the normalized
+          // event and a durable provider-axis outcome. Unknown rejections
+          // propagate — the attempt honestly remains `dispatching`.
+          if (!isProviderFailure(error)) {
+            throw error;
+          }
+          lastOutcome = { kind: "provider-failure", failure: error };
+          yield { type: "stream-error", failure: error };
+          return;
         } finally {
           // Terminal event observed (or consumer abandoned a completed
           // stream): the aggregated provider-axis outcome is durable. An

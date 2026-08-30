@@ -10,6 +10,7 @@ export type { DispatchStatus, ModelCallOutcome, ProviderAxisOutcomeClass } from 
 export { DISPATCH_STATUSES, PROVIDER_AXIS_OUTCOME_CLASSES } from "./outcome";
 export type { ProviderErrorCategory, ProviderFailure } from "./provider-failure";
 export {
+  isProviderFailure,
   isRetryableCategory,
   PROVIDER_ERROR_CATEGORIES,
   toPlatformProviderError,

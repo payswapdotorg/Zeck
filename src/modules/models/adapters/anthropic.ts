@@ -19,7 +19,11 @@
 
 import type { ModelCallOutcome } from "../domain/outcome";
 import type { ProviderErrorCategory, ProviderFailure } from "../domain/provider-failure";
-import { isRetryableCategory, sanitizeProviderMessage } from "../domain/provider-failure";
+import {
+  isProviderFailure,
+  isRetryableCategory,
+  sanitizeProviderMessage,
+} from "../domain/provider-failure";
 import type { ModelRequest, StopReason } from "../domain/request";
 import type {
   ModelResponse,
@@ -30,7 +34,7 @@ import type { StreamEvent } from "../domain/stream";
 import type { HttpTransport } from "../ports/http-transport";
 import { collectBodyText } from "../ports/http-transport";
 import type { ModelProvider, ProviderDispatchContext } from "../ports/model-provider";
-import { errorBodyOf, postJson } from "./http";
+import { errorBodyOf, guardedBody, postJson, sendForStream } from "./http";
 import { parseSseStream } from "./sse";
 
 export const ANTHROPIC_DEFAULT_ENDPOINT = "https://api.anthropic.com/v1";
@@ -238,13 +242,19 @@ export function createAnthropicAdapter(options: AnthropicAdapterOptions): ModelP
         return { kind: "provider-failure", failure: missingCredentialFailure(rail) };
       }
       const startedAt = Date.now();
-      const exchange = await postJson(options.transport, {
+      // Shared adapter boundary: a send/timeout/mid-body failure returns as a
+      // normalized rail-stamped failure — it never escapes as an exception.
+      const sent = await postJson(options.transport, rail, {
         method: "POST",
         url: urlOf(context),
         headers: headersOf(credential),
         bodyJson: wireRequest(request, false),
         timeoutMs: context.timeoutMs,
       });
+      if (!sent.ok) {
+        return { kind: "provider-failure", failure: sent.failure };
+      }
+      const exchange = sent.exchange;
       const durationMs = Date.now() - startedAt;
 
       if (exchange.status < 200 || exchange.status >= 300) {
@@ -299,15 +309,23 @@ export function createAnthropicAdapter(options: AnthropicAdapterOptions): ModelP
         return;
       }
       const startedAt = Date.now();
-      const response = await options.transport.send({
+      const url = urlOf(context);
+      // Shared adapter boundary: a handshake rejection normalizes into a
+      // terminal stream-error — it never escapes the generator.
+      const sent = await sendForStream(options.transport, rail, {
         method: "POST",
-        url: urlOf(context),
+        url,
         headers: { ...headersOf(credential), accept: "text/event-stream" },
         bodyJson: wireRequest(request, true),
         timeoutMs: context.timeoutMs,
       });
+      if (!sent.ok) {
+        yield { type: "stream-error", failure: sent.failure };
+        return;
+      }
+      const response = sent.response;
       if (response.status < 200 || response.status >= 300) {
-        const text = await collectBodyText(response.body);
+        const text = await collectBodyText(guardedBody(rail, url, response.body));
         let json: unknown = null;
         try {
           json = JSON.parse(text) as unknown;
@@ -336,60 +354,73 @@ export function createAnthropicAdapter(options: AnthropicAdapterOptions): ModelP
         totalTokens: inputTokens + outputTokens,
         costUsd: null,
       });
-      for await (const event of parseSseStream(response.body)) {
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(event.data) as unknown;
-        } catch {
-          continue;
+      try {
+        for await (const event of parseSseStream(guardedBody(rail, url, response.body))) {
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(event.data) as unknown;
+          } catch {
+            continue;
+          }
+          const body = errorBodyOf(parsed) as
+            | (Record<string, unknown> & AnthropicMessageBody)
+            | null;
+          if (body === null) {
+            continue;
+          }
+          const type = typeof body.type === "string" ? body.type : event.event;
+          if (type === "content_block_delta") {
+            const delta =
+              body.delta !== null && typeof body.delta === "object"
+                ? (body.delta as Record<string, unknown>)
+                : undefined;
+            if (typeof delta?.text === "string" && delta.text.length > 0) {
+              yield { type: "text-delta", text: delta.text };
+            }
+            if (typeof delta?.partial_json === "string" && delta.partial_json.length > 0) {
+              yield { type: "structured-delta", jsonFragment: delta.partial_json };
+            }
+          } else if (type === "message_start") {
+            const message =
+              body.message !== null && typeof body.message === "object"
+                ? (body.message as Record<string, unknown> & { usage?: AnthropicUsage })
+                : undefined;
+            if (message?.usage !== undefined) {
+              inputTokens = message.usage.input_tokens ?? 0;
+              usage = recomputeUsage();
+            }
+          } else if (type === "message_delta") {
+            const delta =
+              body.delta !== null && typeof body.delta === "object"
+                ? (body.delta as Record<string, unknown>)
+                : undefined;
+            if (typeof delta?.stop_reason === "string") {
+              stopReason = stopReasonOf(delta.stop_reason);
+            }
+            if (body.usage !== undefined) {
+              outputTokens = body.usage.output_tokens ?? outputTokens;
+              usage = recomputeUsage();
+            }
+          } else if (type === "error") {
+            yield {
+              type: "stream-error",
+              failure: toFailure(rail, 200, parsed, Date.now() - startedAt),
+            };
+            return;
+          }
         }
-        const body = errorBodyOf(parsed) as (Record<string, unknown> & AnthropicMessageBody) | null;
-        if (body === null) {
-          continue;
+        yield { type: "usage", usage };
+        yield { type: "stream-done", stopReason, usage };
+      } catch (error) {
+        // A typed (rail-stamped) transport failure mid-stream becomes a
+        // terminal stream-error; unknown rejections propagate unchanged —
+        // honest unknown outcomes stay with the gateway's crash rule.
+        if (!isProviderFailure(error)) {
+          throw error;
         }
-        const type = typeof body.type === "string" ? body.type : event.event;
-        if (type === "content_block_delta") {
-          const delta =
-            body.delta !== null && typeof body.delta === "object"
-              ? (body.delta as Record<string, unknown>)
-              : undefined;
-          if (typeof delta?.text === "string" && delta.text.length > 0) {
-            yield { type: "text-delta", text: delta.text };
-          }
-          if (typeof delta?.partial_json === "string" && delta.partial_json.length > 0) {
-            yield { type: "structured-delta", jsonFragment: delta.partial_json };
-          }
-        } else if (type === "message_start") {
-          const message =
-            body.message !== null && typeof body.message === "object"
-              ? (body.message as Record<string, unknown> & { usage?: AnthropicUsage })
-              : undefined;
-          if (message?.usage !== undefined) {
-            inputTokens = message.usage.input_tokens ?? 0;
-            usage = recomputeUsage();
-          }
-        } else if (type === "message_delta") {
-          const delta =
-            body.delta !== null && typeof body.delta === "object"
-              ? (body.delta as Record<string, unknown>)
-              : undefined;
-          if (typeof delta?.stop_reason === "string") {
-            stopReason = stopReasonOf(delta.stop_reason);
-          }
-          if (body.usage !== undefined) {
-            outputTokens = body.usage.output_tokens ?? outputTokens;
-            usage = recomputeUsage();
-          }
-        } else if (type === "error") {
-          yield {
-            type: "stream-error",
-            failure: toFailure(rail, 200, parsed, Date.now() - startedAt),
-          };
-          return;
-        }
+        yield { type: "stream-error", failure: error };
+        return;
       }
-      yield { type: "usage", usage };
-      yield { type: "stream-done", stopReason, usage };
     },
   };
 }
