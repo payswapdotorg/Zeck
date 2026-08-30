@@ -8,42 +8,97 @@ Architecture Version: v1.0
 
 Assurance Profile: HIGH_ASSURANCE
 
-## Objective
+# Objective
 
-Make video, image, audio and related media-generation agents easy to deploy as governed Zeck Executions.
+Make video, image, audio and related media-generation agents easy to deploy as governed Zeck Executions with provider-neutral capabilities, asynchronous lifecycle and strong artifact provenance.
 
-## Dependencies
+# Context
 
-Requires: WORK-023, WORK-009, WORK-010, WORK-013
+This Work Order specializes WORK-023 for media generation. Model/provider selection remains downstream of capability and policy authority; asynchronous generation is represented by Execution and generated media by the canonical artifact lineage system.
 
-## Requirement IDs
+# Dependencies
 
-- MOD-011
-- MOD-012
-- MOD-013
+Requires: WORK-009, WORK-010, WORK-013, WORK-023
 
-## Declared Change Surfaces
+# Requirement IDs
+
+Primary requirements owned by this Work Order:
+- `MOD-011`
+- `MOD-012`
+- `MOD-013`
+
+# Declared Change Surfaces
 
 - `src/modules/deployments/`
 - `src/modules/models/` (directly-required media capability seams only)
 - `src/modules/artifacts/` (directly-required media artifact seams only)
 
-## Acceptance Criteria
+# Scope Boundaries
 
-1. Define provider-neutral media-generation capability contracts covering video, image, audio and multimodal generation workloads.
-2. Integrate at least one external media-generation rail through a provider adapter; provider/model choice remains downstream of capability and policy admission.
-3. Support asynchronous jobs, polling/callback completion, cancellation and retry semantics through the Execution lifecycle.
-4. Persist generated media as lineage-preserving artifacts; derived variants remain provenance-linked to source artifacts and deployment version.
-5. Support deterministic preprocessing/postprocessing and verification around model generation, including validation that can reject bad outputs before completion.
-6. Enforce budget/resource policy and idempotent job submission so retries cannot create uncontrolled duplicate paid jobs.
+Allowed:
+- provider-neutral media-generation capability contracts
+- asynchronous job submission/status/cancellation/retry orchestration
+- adapter integration for at least one upstream media rail
+- generated-media artifact references and lineage
+- deterministic preprocessing/postprocessing and verification hooks
+
+Forbidden:
+- provider-specific types in public contracts
+- provider selection before capability/policy admission
+- bypassing budget authority before paid dispatch
+- duplicate media/execution state machines
+- unverified output being marked complete when the Work Order requires rejection
+- direct raw media mutation outside the canonical artifact authority
+- merging the worker's own PR
+
+# Architecture Invariants
+
+- Media generation is an Execution, not a separate job abstraction with independent authority.
+- Generated outputs are artifacts with execution/deployment lineage.
+- Paid dispatch occurs only after budget/resource admission.
+- Retries and callbacks are idempotent and cannot silently create uncontrolled paid duplicates.
+- Verification remains separate from provider success and controls completion where required.
+
+# Acceptance Criteria
+
+1. Define provider-neutral media-generation capability contracts covering video, image, audio and related multimodal generation.
+2. Integrate at least one external media rail while keeping provider/model selection downstream of capability and policy admission.
+3. Support asynchronous submission, polling/callback completion, cancellation and retry semantics through the existing Execution lifecycle.
+4. Persist generated media as lineage-preserving artifacts; derived variants remain linked to source artifacts and deployment version.
+5. Support deterministic preprocessing/postprocessing and verification that can reject an invalid output before completion.
+6. Enforce budget/resource policy before paid dispatch and make repeated job submission idempotent.
 7. Support deployment versioning, rollback and provider substitution without changing the core Execution abstraction.
 
-## Required Evidence
+# Implementation Requirements
 
+- Normalize provider-specific job states into a closed provider-neutral lifecycle.
+- Correlate provider callbacks/polls to the originating Execution and deployment identity.
+- Preserve tenant isolation for inputs, generated outputs, callbacks and artifact adoption.
+- Treat provider success as an observation; completion requires the existing verification contract when configured.
+- Use artifact references for large media rather than embedding payloads in EventEnvelope rows.
+
+# Required Checkpoint Contracts
+
+- `IMPLEMENTATION-COMPLETENESS`
+- `EXECUTION-PROVENANCE`
+- `CONCURRENCY-CRASH-SAFETY`
+- `SELF-HOSTING-BOUNDARY`
+
+# Required Verification
+
+- governance checker
+- typecheck
+- lint
+- media capability contract tests
+- provider-neutral adapter tests
 - capability-before-provider discrimination
-- provider-neutral media adapter tests
 - duplicate submission/idempotency tests
 - async completion/retry/crash tests
-- artifact lineage and tenant isolation proof
-- budget-before-paid-dispatch proof
-- verification-before-completion proof
+- artifact lineage and tenant isolation tests
+- budget-before-paid-dispatch discrimination
+- verification-before-completion tests
+- rollback/provider-substitution tests
+
+# Completion
+
+Worker opens a PR but does not merge. Completion requires architect acceptance and post-merge finalization.
