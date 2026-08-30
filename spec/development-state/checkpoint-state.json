@@ -428,9 +428,9 @@
       }
     },
     "WORK-010": {
-      "asOf": "2026-08-30T19:10:00Z",
+      "asOf": "2026-08-30T20:08:00Z",
       "branch": "work/WORK-010-governed-tool-runtime",
-      "baseRevision": "15ea1961406686fa2770212dc322645f52082ca6",
+      "baseRevision": "31206d3f03d5f5810e38e3f8f3863b3e6f8e3f04",
       "assuranceProfile": "CRITICAL",
       "outcomes": {
         "IMPLEMENTATION-COMPLETENESS": {
