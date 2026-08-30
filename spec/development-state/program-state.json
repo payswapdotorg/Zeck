@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T11:22:00Z",
+  "asOf": "2026-08-30T13:55:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
-    "governingDocuments": ["spec/architecture.md","spec/architecture-lock.md","spec/requirements.md","spec/work-items.md","spec/dependency-graph.md"]
+    "governingDocuments": ["spec/architecture.md", "spec/architecture-lock.md", "spec/requirements.md", "spec/work-items.md", "spec/dependency-graph.md"]
   },
   "workOrders": [
     {"id":"WORK-001","title":"Repository, modular-monolith and governance foundation","status":"complete","mergedAs":{"pr":3,"mergeCommit":"c81bed4bfae95832735b09d38b9f31640a1e7ff4","implementationHead":"681543109a2a8dadf1a518c9e1f5bc193b3c5b1c"},"dependencies":[],"surfaces":{"modules":["platform","governance"],"spec":["spec/architecture.md","spec/development-state/"]}},
@@ -15,8 +15,8 @@
     {"id":"WORK-004","title":"Budgets, wallets, reservations and ledger","status":"complete","mergedAs":{"pr":7,"mergeCommit":"cf1d8dd5f60a75687e9c028cea36101a7655c5bb","implementationHead":"5b1ce97be55f64e0c906ea745324896eb0e7322e","finalBranchHead":"b865e7179f045e69d29c6368ce65d8c7ce4f7607"},"dependencies":["WORK-001","WORK-002","WORK-003"],"surfaces":{"modules":["budgets"],"schema":true,"concurrency":true}},
     {"id":"WORK-005","title":"Capability registry and capability evidence","status":"complete","mergedAs":{"pr":8,"mergeCommit":"d9159a0ac9b3c8cd7be60e1594fb661d5356501f","implementationHead":"20953d43596df0aa7acd203a7085d6b6237a613c","finalBranchHead":"1ac768d6fa9aff0addb08386b4e7bac8b46ea418"},"dependencies":["WORK-003"],"surfaces":{"modules":["capabilities"],"publicContracts":true}},
     {"id":"WORK-006","title":"Execution identity, lifecycle and event core","status":"complete","mergedAs":{"pr":10,"mergeCommit":"593ecc2151b7eee584b930f3166e53bc77484749","implementationHead":"8f0e106f6c485fe7b6e6dd703b363c9e6993b117","finalBranchHead":"f11f76210fc41c2f5852cc5bd460f6a79d37b703"},"dependencies":["WORK-002","WORK-004","WORK-005"],"surfaces":{"modules":["executions"],"schema":true,"concurrency":true}},
-    {"id":"WORK-007","title":"Policy engine and admission boundary","status":"pending","dependencies":["WORK-003","WORK-004","WORK-005","WORK-006"],"surfaces":{"modules":["policies"],"authorityBoundary":true,"securityTenant":true,"publicContracts":true}},
-    {"id":"WORK-008","title":"Context compiler and artifact lineage","status":"in-flight","branch":"work/WORK-008-context-lineage","baseRevision":"8245191224de62f3f5a7a363761b45ae8c615e27","dependencies":["WORK-005","WORK-006"],"surfaces":{"modules":["context","artifacts"],"publicContracts":true}},
+    {"id":"WORK-007","title":"Policy engine and admission boundary","status":"complete","mergedAs":{"pr":12,"mergeCommit":"f60abe33904dc866419db1e875aea731124c361d","implementationHead":"2bea31fa677f504daf47dfc020a9a0d695801c6c","finalBranchHead":"18b16786a1035c13b1f6abdba7d0694ad2206401"},"dependencies":["WORK-003","WORK-004","WORK-005","WORK-006"],"surfaces":{"modules":["policies"],"authorityBoundary":true,"securityTenant":true,"publicContracts":true}},
+    {"id":"WORK-008","title":"Context compiler and artifact lineage","status":"blocked","historicalMerge":{"pr":11,"mergeCommit":"08caf5a2860b80d89184f09fe9cad1db509ac16c","implementationHead":"c78e1e73f0000000000000000000000000000000","finalBranchHead":"b95860e30fde20a626e205dff3021f477f5cafd0"},"remediation":{"issue":13,"status":"required","reason":"Artifact identity excludes lineage-bearing parents/sourceRefs from the digest while storage converges on tenantId+digest, allowing same-tenant identical payloads with different lineage to silently converge and lose provenance."},"dependencies":["WORK-005","WORK-006"],"surfaces":{"modules":["context","artifacts"],"publicContracts":true}},
     {"id":"WORK-009","title":"Model routing and adaptive execution planner","status":"pending","dependencies":["WORK-005","WORK-006","WORK-007","WORK-008"],"surfaces":{"modules":["planning"],"externalSideEffects":true,"publicContracts":true}},
     {"id":"WORK-010","title":"Governed tool runtime","status":"pending","dependencies":["WORK-006","WORK-007","WORK-008"],"surfaces":{"modules":["tools"],"externalSideEffects":true,"securityTenant":true}},
     {"id":"WORK-011","title":"Agent fabric, sessions and workspaces","status":"pending","dependencies":["WORK-006","WORK-007","WORK-010"],"surfaces":{"modules":["agents"],"externalSideEffects":true,"publicContracts":true}},
