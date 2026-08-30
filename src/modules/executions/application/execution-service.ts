@@ -43,7 +43,11 @@ import { PlatformError } from "../../../shared/errors";
 import { isUuid } from "../../../shared/ids";
 import type { BudgetAuthority } from "../../budgets/public";
 import type { EventEnvelope } from "../domain/event";
-import { eventTypeFor, POLICY_DENIED_EVENT_TYPE } from "../domain/event";
+import {
+  eventTypeFor,
+  PLANNING_DECISION_EVENT_TYPE,
+  POLICY_DENIED_EVENT_TYPE,
+} from "../domain/event";
 import type {
   ExecutionActor,
   ExecutionCreateInput,
@@ -132,6 +136,18 @@ export interface ExecutionService {
     command: ExecutionTransitionCommand,
     idempotencyKey: string,
   ): Promise<TransitionOutcome>;
+  /**
+   * DURABLY record a planning decision (WORK-009): the planner's full
+   * decision is appended as a `planning.decision-recorded` envelope while
+   * the execution is in a planning phase (PLANNING/REPLANNING) — the same
+   * single write path (append + identity-preserving sequence advance in
+   * ONE transaction with the idempotency record). The planning module
+   * owns decision semantics; this ledger owns durability.
+   */
+  recordPlanningDecision(
+    input: RecordPlanningDecisionInput,
+    idempotencyKey: string,
+  ): Promise<PlanningDecisionRecordOutcome>;
 
   getExecution(applicationId: string, executionId: string): Promise<ExecutionRecord | null>;
   listEvents(applicationId: string, executionId: string): Promise<readonly EventEnvelope[]>;
@@ -155,6 +171,39 @@ export interface ExecutionServiceDeps {
 
 const CREATE_OPERATION = "executions.create";
 const TRANSITION_OPERATION = "executions.transition";
+const PLANNING_DECISION_OPERATION = "executions.record-planning-decision";
+
+/**
+ * Input of `recordPlanningDecision` (WORK-009): the ledger's STRUCTURAL
+ * guard — the planning module owns the rich typed validation of the
+ * decision payload itself (`validatePlanningDecision` in planning) and
+ * hands over the validated record; this module validates the envelope
+ * essentials (identity, plan binding, state, tenant scope) exactly like
+ * it validates the create input shape.
+ */
+export interface RecordPlanningDecisionInput {
+  readonly applicationId: string;
+  readonly executionId: string;
+  readonly tenantId: string;
+  readonly actorId: string;
+  /** The planning decision's own durable identity (planning-derived). */
+  readonly decisionId: string;
+  /** The selected plan's content-addressed identity (planning-derived). */
+  readonly planId: string;
+  /** Prior decision this record replaces (replanning), when present. */
+  readonly replanOf?: string;
+  /** The FULL validated planning decision record (planning-owned shape). */
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
+export interface PlanningDecisionRecordOutcome {
+  readonly executionId: string;
+  readonly decisionId: string;
+  /** The ledger sequence the decision envelope landed on. */
+  readonly sequence: number;
+  /** True when idempotent arbitration replayed the durable decision. */
+  readonly replayed: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Service
@@ -554,6 +603,13 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
 
       // 4. Append the envelope, then apply the row transition — one
       //    transaction, exactly one event, sequence = last + 1 (gapless).
+      //    The verification BINDING on the row exists iff the execution
+      //    COMPLETED (migration 0004 `executions_verification_binding_shape`:
+      //    refs on a non-COMPLETED row are unrepresentable): a `fail`
+      //    records its verification rows + envelope references, but the
+      //    ROW binding stays empty (WORK-009 fix for the latent
+      //    fail-with-results constraint violation on real PostgreSQL —
+      //    the in-memory fake could not surface it).
       const sequence = locked.lastEventSequence + 1;
       const occurredAt = iso();
       await tx.store.appendEvent({
@@ -579,7 +635,7 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
         applicationId: command.applicationId,
         nextStatus: to,
         nextSequence: sequence,
-        verificationRefs,
+        verificationRefs: to === "COMPLETED" ? verificationRefs : [],
         now: occurredAt,
       });
       return { executionId: updated.id, from, to, sequence };
@@ -618,9 +674,168 @@ export function createExecutionService(deps: ExecutionServiceDeps): ExecutionSer
     return { execution: row, applied: outcome, replayed };
   };
 
+  // ----- planning decision (WORK-009) --------------------------------------
+
+  const validatePlanningDecisionInput = (input: RecordPlanningDecisionInput): void => {
+    if (!isUuid(input.applicationId)) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a valid applicationId",
+      });
+    }
+    if (!isUuid(input.executionId)) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a valid executionId",
+      });
+    }
+    if (typeof input.tenantId !== "string" || input.tenantId.length === 0) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a non-empty tenantId",
+      });
+    }
+    if (typeof input.actorId !== "string" || input.actorId.length === 0) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a non-empty actorId",
+      });
+    }
+    if (typeof input.decisionId !== "string" || input.decisionId.length === 0) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a non-empty decisionId",
+      });
+    }
+    if (typeof input.planId !== "string" || input.planId.length === 0) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision requires a non-empty planId (the selected plan binding)",
+      });
+    }
+    if (
+      input.replanOf !== undefined &&
+      (typeof input.replanOf !== "string" || input.replanOf.length === 0)
+    ) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message: "planning decision replanOf must be a non-empty string when present",
+      });
+    }
+    if (
+      input.payload === null ||
+      typeof input.payload !== "object" ||
+      Array.isArray(input.payload) ||
+      Object.keys(input.payload).length === 0
+    ) {
+      throw new PlatformError({
+        code: "POLICY_DENIED",
+        message:
+          "planning decision requires a non-empty payload object (the validated decision record)",
+      });
+    }
+  };
+
+  const recordPlanningDecision = async (
+    input: RecordPlanningDecisionInput,
+    idempotencyKey: string,
+  ): Promise<PlanningDecisionRecordOutcome> => {
+    validatePlanningDecisionInput(input);
+
+    const fingerprint = canonicalFingerprint([
+      PLANNING_DECISION_OPERATION,
+      input.executionId,
+      input.applicationId,
+      input.decisionId,
+      input.planId,
+      input.replanOf ?? null,
+    ]);
+
+    const work = async (tx: ExecutionsTx): Promise<PlanningDecisionRecordOutcome> => {
+      // 1. Lock and re-derive: scope + state legality ALWAYS from the
+      //    locked row (the WORK-002 discipline).
+      const locked = await tx.store.lockExecution(input.applicationId, input.executionId);
+      if (locked === null) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message:
+            "execution not found in this application (missing or owned by another application)",
+          details: { executionId: input.executionId },
+        });
+      }
+      if (locked.tenantId !== input.tenantId) {
+        throw new PlatformError({
+          code: "TENANT_SCOPE_VIOLATION",
+          message: "execution belongs to a different tenant",
+          details: { executionId: input.executionId },
+        });
+      }
+
+      // 2. Planning decisions are legal ONLY while the execution is in a
+      //    planning phase — no second state machine, no out-of-phase
+      //    journaling, zero writes on violation.
+      if (locked.status !== "PLANNING" && locked.status !== "REPLANNING") {
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message:
+            "planning decisions may only be recorded while the execution is PLANNING or REPLANNING",
+          details: { executionId: input.executionId, status: locked.status },
+        });
+      }
+
+      // 3. Append the decision envelope + identity-preserving sequence
+      //    advance — ONE transaction, exactly one event, sequence =
+      //    last + 1 (gapless; the policy-denied journal precedent).
+      const sequence = locked.lastEventSequence + 1;
+      const occurredAt = iso();
+      await tx.store.appendEvent({
+        eventId: generateId(),
+        executionId: input.executionId,
+        applicationId: input.applicationId,
+        tenantId: locked.tenantId,
+        sequence,
+        type: PLANNING_DECISION_EVENT_TYPE,
+        command: "plan",
+        actor: { actorId: input.actorId, tenantId: input.tenantId },
+        cause: "planning-decision",
+        reference: {
+          decisionId: input.decisionId,
+          planId: input.planId,
+          ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
+        },
+        payload: input.payload,
+        occurredAt,
+      });
+      await tx.store.updateExecutionForTransition({
+        executionId: input.executionId,
+        applicationId: input.applicationId,
+        nextStatus: locked.status, // identity-preserving advance
+        nextSequence: sequence,
+        verificationRefs: [],
+        now: occurredAt,
+      });
+      return {
+        executionId: input.executionId,
+        decisionId: input.decisionId,
+        sequence,
+        replayed: false,
+      };
+    };
+
+    const { outcome, replayed } = await idempotency.arbitrate(
+      { actorId: input.actorId, applicationId: input.applicationId },
+      PLANNING_DECISION_OPERATION,
+      idempotencyKey,
+      fingerprint,
+      work,
+    );
+    return { ...outcome, replayed };
+  };
+
   return {
     createExecution,
     transition,
+    recordPlanningDecision,
     async getExecution(applicationId, executionId) {
       return store.getExecution(applicationId, executionId);
     },

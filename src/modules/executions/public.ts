@@ -28,11 +28,17 @@ import type {
   AppliedTransition,
   ExecutionService,
   ExecutionTransitionCommand,
+  PlanningDecisionRecordOutcome,
+  RecordPlanningDecisionInput,
   TransitionOutcome,
 } from "./application/execution-service";
 import { createExecutionService } from "./application/execution-service";
 import type { AppendEventInput, EventEnvelope } from "./domain/event";
-import { eventTypeFor, POLICY_DENIED_EVENT_TYPE } from "./domain/event";
+import {
+  eventTypeFor,
+  PLANNING_DECISION_EVENT_TYPE,
+  POLICY_DENIED_EVENT_TYPE,
+} from "./domain/event";
 import type {
   ExecutionActor,
   ExecutionConstraints,
@@ -87,6 +93,8 @@ export type {
   ExecutionStore,
   ExecutionsIdempotencyPort,
   ExecutionTransitionCommand,
+  PlanningDecisionRecordOutcome,
+  RecordPlanningDecisionInput,
   TransitionEdge,
   TransitionOutcome,
   VerificationResultInput,
@@ -106,6 +114,7 @@ export {
   isTerminal,
   NON_TERMINAL_STATUSES,
   nextState,
+  PLANNING_DECISION_EVENT_TYPE,
   POLICY_DENIED_EVENT_TYPE,
   TERMINAL_STATUSES,
   TRANSITION_TABLE,

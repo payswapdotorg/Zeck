@@ -1,7 +1,11 @@
 /**
- * `planning` application layer — use cases and orchestration local to this module.
-
-Application code reaches outward only through this module's ports; it never
-imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
+ * Planning module application barrel (WORK-009).
  */
-export {};
+
+export type {
+  PlanExecutionInput,
+  PlannerService,
+  PlannerServiceDeps,
+  PlanningOutcome,
+} from "./planner";
+export { createPlannerService } from "./planner";

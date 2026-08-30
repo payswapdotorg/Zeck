@@ -1,7 +1,19 @@
 /**
- * `planning` ports layer — outbound/inbound interfaces owned by this module.
-
-Ports are provider-neutral: no infrastructure clients, no provider SDKs.
-Adapters (in `adapters/`) implement them (`IMPLEMENTATION.md` §2–§3).
+ * Planning module ports barrel (WORK-009).
  */
-export {};
+
+export type { PlanningCapabilityAuthority } from "./capability-authority";
+export type {
+  CapabilityKindValue,
+  DeterministicCapabilityCatalog,
+  DeterministicCatalogEntry,
+  QualityConfidence,
+} from "./deterministic-catalog";
+export type { DigestPort } from "./digest";
+export type { ModelRouteCandidate, ModelRouteExplorer } from "./model-routes";
+export type {
+  PlanningDecisionSink,
+  PlanningSinkInput,
+  PlanningSinkOutcome,
+} from "./planning-sink";
+export type { PlanningPolicyInputs, ResolvedPolicyInputs } from "./policy-inputs";

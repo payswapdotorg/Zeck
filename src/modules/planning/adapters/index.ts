@@ -1,7 +1,14 @@
 /**
- * `planning` adapters layer — infrastructure and provider implementations for this module.
-
-The only module layer allowed to import `src/platform/**` and provider SDKs
-within the owning-adapter rules (`IMPLEMENTATION.md` §1, §3).
+ * Planning module adapters barrel (WORK-009).
  */
-export {};
+
+export { createCapabilityAuthorityAdapter } from "./capability-authority-adapter";
+export { publishDeterministicCapabilityFacts } from "./deterministic-capability-publisher";
+export {
+  createInMemoryDeterministicCatalog,
+  DETERMINISTIC_CATALOG_SEED,
+} from "./in-memory-deterministic-catalog";
+export { createNodeDigest } from "./node-digest";
+export { createPlanningSinkAdapter } from "./planning-sink-adapter";
+export { createPolicyInputsAdapter } from "./policy-inputs-adapter";
+export { createRouteTableExplorer } from "./route-table-explorer";
