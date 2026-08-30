@@ -50,5 +50,13 @@ Secondary implementations must not create a second authority for a requirement.
 | WOS-002 | WORK-016 | WorkflowOS owns workflow state | authority-boundary integration test |
 | WOS-003 | WORK-016 | Execution OS returns evidence/artifacts without workflow mutation | negative capability test |
 | WOS-004 | WORK-016 | concept mapping without duplicate authority | mapping compatibility test |
+| DTR-001 | WORK-021 | identify recurring AI subgraphs that can be deterministicized | recurring-subgraph discovery test |
+| DTR-002 | WORK-021 | validate replacements before promotion | replay/differential/property/mutation test |
+| DTR-003 | WORK-021 | progressive shadow/canary replacement with rollback | rollout/rollback integration test |
+| DTR-004 | WORK-021 | evidence/confidence/rationale for deterministicization | provenance/evaluation record test |
+| DTR-005 | WORK-022 | codebase subgraph AI/deterministic/hybrid advisory analysis | codebase-analysis integration test |
+| HUM-001 | WORK-022 | selective human rating when automated uncertainty is material | rating-trigger discrimination test |
+| HUM-002 | WORK-022 | human ratings are immutable candidate-linked evidence | rating persistence/provenance test |
+| HUM-003 | WORK-022 | low-confidence ratings cannot auto-promote production behavior | promotion-gate discrimination test |
 
-Total requirements: **45**.
+Total requirements: **53**.
