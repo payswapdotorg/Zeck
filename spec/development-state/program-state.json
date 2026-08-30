@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T16:12:00Z",
+  "asOf": "2026-08-30T16:15:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
@@ -10,7 +10,7 @@
   },
   "workOrders": [
     {"id":"WORK-001","title":"Repository, modular-monolith and governance foundation","status":"complete","mergedAs":{"pr":3,"mergeCommit":"c81bed4bfae95832735b09d38b9f31640a1e7ff4","implementationHead":"681543109a2a8dadf1a518c9e1f5bc193b3c5b1c"},"dependencies":[],"surfaces":{"modules":["platform","governance"],"spec":["spec/architecture.md","spec/development-state/"]}},
-    {"id":"WORK-002","title":"Identity, applications and tenant isolation","status":"complete","mergedAs":{"pr":4,"mergeCommit":"7b9cf363ff089da6b106ac35879263a6ace7e36e","implementationHead":"a0a17bfc89192e3e6b06b1c25e9452787f5d29df","finalBranchHead":"c79e86a097e58ce21a3234105e9d1b85e4154f75"},"dependencies":["WORK-001"],"surfaces":{"modules":["auth","applications"],"schema":true}},
+    {"id":"WORK-002","title":"Identity, applications and tenant isolation","status":"complete","mergedAs":{"pr":4,"mergeCommit":"7b9cf363ff089da6b106ac35879263a6ace7e36e","implementationHead":"a0a17bfc89192e3e6b06b1c25e9452787f5d29df","finalBranchHead":"c79e86a097e58ce21a3234105e9d1b85f4e6?"},"dependencies":["WORK-001"],"surfaces":{"modules":["auth","applications"],"schema":true}},
     {"id":"WORK-003","title":"Connections, BYOK and provider federation","status":"complete","mergedAs":{"pr":6,"mergeCommit":"8cdc07f21a763469042c75af6cea3ec71c3cb8fb8","implementationHead":"d8f40cdaead6ddd7174b546b18de9f6166868c0c","finalBranchHead":"9962d2dd13cc1dc876f07f76eb31144a14456bac"},"dependencies":["WORK-001","WORK-002"],"surfaces":{"modules":["connections","models"],"publicContracts":true}},
     {"id":"WORK-004","title":"Budgets, wallets, reservations and ledger","status":"complete","mergedAs":{"pr":7,"mergeCommit":"cf1d8dd5f60a75687e9c028cea36101a7655c5bb","implementationHead":"5b1ce97be55f64e0c906ea745324896eb0e7322e","finalBranchHead":"b865e7179f045e69d29c6368ce65d8c7ce4f7607"},"dependencies":["WORK-001","WORK-002","WORK-003"],"surfaces":{"modules":["budgets"],"schema":true,"concurrency":true}},
     {"id":"WORK-005","title":"Capability registry and capability evidence","status":"complete","mergedAs":{"pr":8,"mergeCommit":"d9159a0ac9b3c8cd7be60e1594fb661d5356501f","implementationHead":"20953d43596df0aa7acd203a7085d6b6237a613c","finalBranchHead":"1ac768d6fa9aff0addb08386b4e7bac8b46ea418"},"dependencies":["WORK-003"],"surfaces":{"modules":["capabilities"],"publicContracts":true}},
@@ -36,6 +36,6 @@
     {"id":"WORK-025","title":"Messaging agent deployment","status":"pending","dependencies":["WORK-023"],"surfaces":{"modules":["deployments","agents"],"externalSideEffects":true,"publicContracts":true}},
     {"id":"WORK-026","title":"Media generation agent deployment","status":"pending","dependencies":["WORK-009","WORK-010","WORK-013","WORK-023"],"surfaces":{"modules":["deployments","models","artifacts"],"externalSideEffects":true,"publicContracts":true}}
   ],
-  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md","docs/adr/ADR-0014-multimodal-agent-deployment.md"],
+  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md","docs/adr/ADR-0014-multimodal-agent-deployment.md","docs/adr/ADR-0015-multimodal-deployment-product-surface.md"],
   "postMergeFinalization":{"required":true,"completionRule":"merge evidence must match actual PR number and merge commit before program-state status can become complete"}
 }
