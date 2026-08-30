@@ -8,8 +8,10 @@ import { createScopeResolver } from "../../../src/modules/auth/application/scope
 import type { Actor, Principal, ProvisionActorInput } from "../../../src/modules/auth/domain/actor";
 import type { MembershipRecord } from "../../../src/modules/auth/domain/scope";
 import type { IdentityStore } from "../../../src/modules/auth/public";
+import type { CapabilityResolution } from "../../../src/modules/capabilities/public";
 import { createModelGateway } from "../../../src/modules/models/application/model-gateway";
 import type { ModelRequest } from "../../../src/modules/models/domain/request";
+import type { TaskCapabilityResolution } from "../../../src/modules/models/ports/capability-gate";
 import type {
   DispatchJournal,
   JournalAttempt,
@@ -62,6 +64,13 @@ class OrderIdentity implements IdentityStore {
 }
 
 const REQUEST: ModelRequest = { model: "m", messages: [{ role: "user", content: "u" }] };
+
+/** Satisfied-by-default capability gate (the boundary under discrimination lives elsewhere). */
+const SATISFIED_GATE: TaskCapabilityResolution = {
+  async resolve(): Promise<CapabilityResolution> {
+    return { satisfied: true, catalogRevision: "rev-0", satisfactions: [] };
+  },
+};
 
 export function buildOrderProbe(options?: { readonly allow?: boolean }) {
   const allow = options?.allow ?? true;
@@ -134,6 +143,7 @@ export function buildOrderProbe(options?: { readonly allow?: boolean }) {
         return allow ? { allowed: true } : { allowed: false, reason: "probe-deny" };
       },
     },
+    capabilities: SATISFIED_GATE,
     rails: { rails: ["openrouter"], providerFor: () => provider },
     journal,
     generateId: () => "attempt-order",

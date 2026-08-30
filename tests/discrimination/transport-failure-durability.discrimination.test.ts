@@ -41,6 +41,7 @@ import { createScopeResolver } from "../../src/modules/auth/application/scope-re
 import type { Actor, Principal, ProvisionActorInput } from "../../src/modules/auth/domain/actor";
 import type { MembershipRecord } from "../../src/modules/auth/domain/scope";
 import type { IdentityStore } from "../../src/modules/auth/public";
+import type { CapabilityResolution } from "../../src/modules/capabilities/public";
 import { createAnthropicAdapter } from "../../src/modules/models/adapters/anthropic";
 import { createOpenRouterAdapter } from "../../src/modules/models/adapters/openrouter";
 import type { ModelGateway } from "../../src/modules/models/application/model-gateway";
@@ -51,6 +52,7 @@ import type { ProviderFailure } from "../../src/modules/models/domain/provider-f
 import { toPlatformProviderError } from "../../src/modules/models/domain/provider-failure";
 import type { ModelRequest } from "../../src/modules/models/domain/request";
 import type { StreamEvent } from "../../src/modules/models/domain/stream";
+import type { TaskCapabilityResolution } from "../../src/modules/models/ports/capability-gate";
 import type {
   DispatchIntentInput,
   DispatchJournal,
@@ -193,6 +195,13 @@ class RecordingJournal implements DispatchJournal {
   }
 }
 
+/** Satisfied-by-default capability gate (capability gating has its own suite). */
+const SATISFIED_GATE: TaskCapabilityResolution = {
+  async resolve(): Promise<CapabilityResolution> {
+    return { satisfied: true, catalogRevision: "rev-0", satisfactions: [] };
+  },
+};
+
 function buildGateway(providers: readonly ModelProvider[], journal: DispatchJournal): ModelGateway {
   return createModelGateway({
     resolver: createScopeResolver(new FakeIdentity()),
@@ -211,6 +220,7 @@ function buildGateway(providers: readonly ModelProvider[], journal: DispatchJour
         return { allowed: true };
       },
     },
+    capabilities: SATISFIED_GATE,
     rails: {
       rails: providers.map((provider) => provider.rail),
       providerFor: (rail) => providers.find((provider) => provider.rail === rail) ?? null,

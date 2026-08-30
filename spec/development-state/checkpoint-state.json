@@ -7,53 +7,52 @@
       "baseRevision": "463e6a677630cdc3cae5914abc01aafdd154c795",
       "assuranceProfile": "CRITICAL",
       "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md","tests/integration/toolchain-contract.test.ts","tests/architecture/module-skeleton.test.ts"]},
-        "IDENTITY-IDEMPOTENCY": {"status": "scope-note", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md#checkpoint-evidence"], "note": "No durable authority boundary was introduced by WORK-001; the idempotency contracts remain frozen in spec/contracts.md and src/shared/errors.ts carries IDEMPOTENCY_KEY_REUSED. Identity primitives (UUIDv7) are proven by tests/unit/ids.test.ts."},
-        "CONCURRENCY-CRASH-SAFETY": {"status": "scope-note", "verdict": "passed", "evidence": ["docs/work-items/WORK-001.md#checkpoint-evidence"], "note": "No concurrent durable state exists yet; the first durable-authority Work Order (WORK-002+) owns real-PostgreSQL concurrency/crash proof. The UUIDv7 generator's monotonic/clock-regression safety is proven by tests/unit/ids.test.ts."},
-        "SELF-HOSTING-BOUNDARY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/discrimination/governance-gate.discrimination.test.ts","tests/integration/fresh-clone-governance.test.ts"]},
-        "DEPENDENCY-DIRECTION": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/architecture/provider-sdk-boundaries.test.ts","tests/architecture/module-skeleton.test.ts","tests/discrimination/dependency-rules.discrimination.test.ts"]}
+        "IMPLEMENTATION-COMPLETENESS": {"status":"evidence-recorded","verdict":"passed","evidence":["docs/work-items/WORK-001.md","tests/integration/toolchain-contract.test.ts","tests/architecture/module-skeleton.test.ts"]},
+        "IDENTITY-IDEMPOTENCY": {"status":"scope-note","verdict":"passed","evidence":["docs/work-items/WORK-001.md#checkpoint-evidence"],"note":"No durable authority boundary was introduced by WORK-001; the idempotency contracts remain frozen in spec/contracts.md and src/shared/errors.ts carries IDEMPOTENCY_KEY_REUSED. Identity primitives (UUIDv7) are proven by tests/unit/ids.test.ts."},
+        "CONCURRENCY-CRASH-SAFETY": {"status":"scope-note","verdict":"passed","evidence":["docs/work-items/WORK-001.md#checkpoint-evidence"],"note":"No concurrent durable state exists yet; the first durable-authority Work Order (WORK-002+) owns real-PostgreSQL concurrency/crash proof. The UUIDv7 generator's monotonic/clock-regression safety is proven by tests/unit/ids.test.ts."},
+        "SELF-HOSTING-BOUNDARY": {"status":"evidence-recorded","verdict":"passed","evidence":["tests/discrimination/governance-gate.discrimination.test.ts","tests/integration/fresh-clone-governance.test.ts"]},
+        "DEPENDENCY-DIRECTION": {"status":"evidence-recorded","verdict":"passed","evidence":["tests/architecture/dependency-direction.test.ts","tests/architecture/provider-sdk-boundaries.test.ts","tests/architecture/module-skeleton.test.ts","tests/discrimination/dependency-rules.discrimination.test.ts"]}
       }
     },
     "WORK-002": {
-      "asOf": "2026-08-30T06:24:12Z",
-      "branch": "work/WORK-002-identity-tenants",
-      "baseRevision": "f5b7d6cd59af1c9d31b82ccc3de36f02b5f5b749",
-      "assuranceProfile": "CRITICAL",
-      "mergedAs": {"pr": 4,"mergeCommit": "7b9cf363ff089da6b106ac35879263a6ace7e36e","implementationHead": "a0a17bfc89192e3e6b06b1c25e9452787f5d29df","finalBranchHead": "c79e86a097e58ce21a3234105e9d1b85e4154f75"},
-      "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {"status": "accepted", "verdict": "passed", "evidence": ["docs/work-items/WORK-002.md","tests/integration/postgres/ownership.test.ts","tests/integration/postgres/tenant-isolation.test.ts"]},
-        "IDENTITY-IDEMPOTENCY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/schema-constraints.test.ts","tests/discrimination/tenant-isolation.discrimination.test.ts"]},
-        "CONCURRENCY-CRASH-SAFETY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/migration-runner.test.ts","tests/integration/postgres/owner-retention-concurrency.test.ts"]},
-        "SELF-HOSTING-BOUNDARY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/discrimination/governance-gate.discrimination.test.ts","docs/work-items/WORK-002.md"]}
+      "asOf":"2026-08-30T06:24:12Z","branch":"work/WORK-002-identity-tenants","baseRevision":"f5b7d6cd59af1c9d31b82ccc3de36f02b5f5b749","assuranceProfile":"CRITICAL",
+      "mergedAs":{"pr":4,"mergeCommit":"7b9cf363ff089da6b106ac35879263a6ace7e36e","implementationHead":"a0a17bfc89192e3e6b06b1c25e9452787f5d29df","finalBranchHead":"c79e86a097e58ce21a3234105e9d1b85e4154f75"},
+      "outcomes":{
+        "IMPLEMENTATION-COMPLETENESS":{"status":"accepted","verdict":"passed","evidence":["docs/work-items/WORK-002.md","tests/integration/postgres/ownership.test.ts","tests/integration/postgres/tenant-isolation.test.ts"]},
+        "IDENTITY-IDEMPOTENCY":{"status":"accepted","verdict":"passed","evidence":["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/schema-constraints.test.ts","tests/discrimination/tenant-isolation.discrimination.test.ts"]},
+        "CONCURRENCY-CRASH-SAFETY":{"status":"accepted","verdict":"passed","evidence":["tests/integration/postgres/idempotency.test.ts","tests/integration/postgres/migration-runner.test.ts","tests/integration/postgres/owner-retention-concurrency.test.ts"]},
+        "SELF-HOSTING-BOUNDARY":{"status":"accepted","verdict":"passed","evidence":["tests/architecture/dependency-direction.test.ts","tests/discrimination/governance-gate.discrimination.test.ts","docs/work-items/WORK-002.md"]}
       }
     },
     "WORK-003": {
-      "asOf": "2026-08-30T07:55:00Z",
-      "branch": "work/WORK-003-connections-federation",
-      "baseRevision": "8d9b9936fe79f1ab972137c0f1732c729461a41b",
-      "assuranceProfile": "HIGH_ASSURANCE",
-      "mergedAs": {"pr": 6,"mergeCommit": "8cdc07f21a763469042c75af6cea3ec71c3cb8fb8","implementationHead": "d8f40cdaead6ddd7174b546b18de9f6166868c0c","finalBranchHead": "9962d2dd13cc1dc876f07f76eb31144a14456bac"},
-      "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {"status": "accepted", "verdict": "passed", "evidence": ["docs/work-items/WORK-003.md","tests/integration/postgres/model-dispatch.test.ts","tests/unit/models/openrouter-normalization.test.ts","tests/unit/models/anthropic-normalization.test.ts"]},
-        "IDENTITY-IDEMPOTENCY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/connections-persistence.test.ts","tests/unit/connections/connection-service.test.ts"]},
-        "CONCURRENCY-CRASH-SAFETY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/integration/postgres/connections-persistence.test.ts","tests/integration/postgres/dispatch-journal.test.ts","tests/integration/postgres/transport-failure-durability.test.ts"]},
-        "SELF-HOSTING-BOUNDARY": {"status": "accepted", "verdict": "passed", "evidence": ["tests/architecture/provider-neutrality.test.ts","tests/discrimination/provider-isolation.discrimination.test.ts","docs/work-items/WORK-003.md"]}
+      "asOf":"2026-08-30T07:55:00Z","branch":"work/WORK-003-connections-federation","baseRevision":"8d9b9936fe79f1ab972137c0f1732c729461a41b","assuranceProfile":"HIGH_ASSURANCE",
+      "mergedAs":{"pr":6,"mergeCommit":"8cdc07f21a763469042c75af6cea3ec71c3cb8fb8","implementationHead":"d8f40cdaead6ddd7174b546b18de9f6166868c0c","finalBranchHead":"9962d2dd13cc1dc876f07f76eb31144a14456bac"},
+      "outcomes":{
+        "IMPLEMENTATION-COMPLETENESS":{"status":"accepted","verdict":"passed","evidence":["docs/work-items/WORK-003.md","tests/integration/postgres/model-dispatch.test.ts","tests/unit/models/openrouter-normalization.test.ts","tests/unit/models/anthropic-normalization.test.ts"]},
+        "IDENTITY-IDEMPOTENCY":{"status":"accepted","verdict":"passed","evidence":["tests/integration/postgres/connections-persistence.test.ts","tests/unit/connections/connection-service.test.ts"]},
+        "CONCURRENCY-CRASH-SAFETY":{"status":"accepted","verdict":"passed","evidence":["tests/integration/postgres/connections-persistence.test.ts","tests/integration/postgres/dispatch-journal.test.ts","tests/integration/postgres/transport-failure-durability.test.ts"]},
+        "SELF-HOSTING-BOUNDARY":{"status":"accepted","verdict":"passed","evidence":["tests/architecture/provider-neutrality.test.ts","tests/discrimination/provider-isolation.discrimination.test.ts","docs/work-items/WORK-003.md"]}
       }
     },
     "WORK-004": {
-      "asOf": "2026-08-30T08:35:00Z",
-      "branch": "work/WORK-004-budgets-ledger",
-      "baseRevision": "82afe972f1a5774a099fbac3114a15efb3f3dafa",
-      "assuranceProfile": "CRITICAL",
-      "outcomes": {
-        "IMPLEMENTATION-COMPLETENESS": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["docs/work-items/WORK-004.md","tests/integration/postgres/budgets-schema.test.ts","tests/integration/postgres/budgets-reservations.test.ts","tests/unit/budgets/budget-service.test.ts"]},
-        "IDENTITY-IDEMPOTENCY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/integration/postgres/budgets-reservations.test.ts","tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts"]},
-        "CONCURRENCY-CRASH-SAFETY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-overspend.discrimination.test.ts","tests/integration/postgres/budgets-reservations.test.ts"]},
-        "SELF-HOSTING-BOUNDARY": {"status": "evidence-recorded", "verdict": "passed", "evidence": ["tests/architecture/dependency-direction.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts","docs/work-items/WORK-004.md"]}
+      "asOf":"2026-08-30T08:35:00Z","branch":"work/WORK-004-budgets-ledger","baseRevision":"82afe972f1a5774a099fbac3114a15efb3f3dafa","assuranceProfile":"CRITICAL",
+      "outcomes":{
+        "IMPLEMENTATION-COMPLETENESS":{"status":"evidence-recorded","verdict":"passed","evidence":["docs/work-items/WORK-004.md","tests/integration/postgres/budgets-schema.test.ts","tests/integration/postgres/budgets-reservations.test.ts","tests/unit/budgets/budget-service.test.ts"]},
+        "IDENTITY-IDEMPOTENCY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/integration/postgres/budgets-reservations.test.ts","tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts"]},
+        "CONCURRENCY-CRASH-SAFETY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/integration/postgres/budgets-concurrency.test.ts","tests/discrimination/budgets-overspend.discrimination.test.ts","tests/integration/postgres/budgets-reservations.test.ts"]},
+        "SELF-HOSTING-BOUNDARY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/architecture/dependency-direction.test.ts","tests/discrimination/budgets-settlement.discrimination.test.ts","docs/work-items/WORK-004.md"]}
+      }
+    },
+    "WORK-005": {
+      "asOf":"2026-08-30T09:30:00Z","branch":"work/WORK-005-capability-registry","baseRevision":"82afe972f1a5774a099fbac3114a15efb3f3dafa","assuranceProfile":"HIGH_ASSURANCE",
+      "outcomes":{
+        "IMPLEMENTATION-COMPLETENESS":{"status":"evidence-recorded","verdict":"passed","evidence":["docs/work-items/WORK-005.md","tests/unit/capabilities/capability-registry.test.ts","tests/unit/capabilities/capability-resolution.test.ts","tests/unit/models/capability-gateway.test.ts","tests/unit/models/rail-capability-facts.test.ts"]},
+        "IDENTITY-IDEMPOTENCY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/unit/capabilities/capability-registry.test.ts","docs/work-items/WORK-005.md"],"note":"WORK-005 introduces no new durable authority state (justified in evidence): the arbitrated capability catalog is a versioned code-resident dataset and no migration was added, so the platform idempotency contracts are untouched; publish convergence (identical republish → converged, conflicting → rejected) is the in-memory arbitration equivalent and is proven by test."},
+        "CONCURRENCY-CRASH-SAFETY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/unit/capabilities/capability-registry.test.ts","docs/work-items/WORK-005.md"],"note":"No durable state: concurrent publishes are serialized under the registry lock — concurrent identical publishes converge to one accepted record + one revision, concurrent distinct publishes lose nothing (both proven). A crash at any point loses only rebuildable in-memory catalog state; the gateway's durable dispatch evidence (journal) is unchanged and PG-proven by the existing suites."},
+        "SELF-HOSTING-BOUNDARY":{"status":"evidence-recorded","verdict":"passed","evidence":["tests/architecture/capability-order.test.ts","tests/architecture/provider-neutrality.test.ts","tests/discrimination/capability-vocabulary-neutrality.discrimination.test.ts","tests/discrimination/capability-before-route.discrimination.test.ts","tests/discrimination/capability-registry-authority.discrimination.test.ts","docs/work-items/WORK-005.md"]}
       }
     }
-
   },
-  "checkpointKinds": ["readiness","work_order","pr_conformance","verification_entry"],
-  "note": "WORK-001 checkpoints accepted after PR #3 review. WORK-002 checkpoints accepted after PR #4 merge and concurrency remediation. WORK-003 checkpoints accepted after PR #6 round-2 transport-failure remediation and merge."
+  "checkpointKinds":["readiness","work_order","pr_conformance","verification_entry"],
+  "note":"WORK-001 checkpoints accepted after PR #3 review. WORK-002 checkpoints accepted after PR #4 merge and concurrency remediation. WORK-003 checkpoints accepted after PR #6 round-2 transport-failure remediation and merge. WORK-004/WORK-005 outcomes recorded by the parallel implementers; verdicts pending architect review."
 }

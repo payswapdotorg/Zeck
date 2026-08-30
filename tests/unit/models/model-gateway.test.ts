@@ -13,11 +13,13 @@ import { createScopeResolver } from "../../../src/modules/auth/application/scope
 import type { Actor, Principal, ProvisionActorInput } from "../../../src/modules/auth/domain/actor";
 import type { MembershipRecord } from "../../../src/modules/auth/domain/scope";
 import type { IdentityStore } from "../../../src/modules/auth/public";
+import type { CapabilityResolution } from "../../../src/modules/capabilities/public";
 import { createModelGateway } from "../../../src/modules/models/application/model-gateway";
 import type { ModelCallOutcome } from "../../../src/modules/models/domain/outcome";
 import type { ProviderFailure } from "../../../src/modules/models/domain/provider-failure";
 import type { ModelRequest } from "../../../src/modules/models/domain/request";
 import { EMPTY_USAGE } from "../../../src/modules/models/domain/response";
+import type { TaskCapabilityResolution } from "../../../src/modules/models/ports/capability-gate";
 import type {
   AdmissionDecision,
   AdmissionInput,
@@ -101,6 +103,13 @@ class FakeIdentity implements IdentityStore {
     return [];
   }
 }
+
+/** Satisfied-by-default capability gate (capability gating has its own suite). */
+const SATISFIED_GATE: TaskCapabilityResolution = {
+  async resolve(): Promise<CapabilityResolution> {
+    return { satisfied: true, catalogRevision: "rev-0", satisfactions: [] };
+  },
+};
 
 function orderRecordingDeps() {
   const order: string[] = [];
@@ -204,6 +213,7 @@ describe("model gateway — frozen dispatch sequence", () => {
       },
       credentials,
       admission,
+      capabilities: SATISFIED_GATE,
       rails: {
         rails: ["openrouter"],
         providerFor: (rail) => (rail === "openrouter" ? openrouter : null),
@@ -249,6 +259,7 @@ describe("model gateway — frozen dispatch sequence", () => {
           return { allowed: false, reason: "cost ceiling exceeded" };
         },
       },
+      capabilities: SATISFIED_GATE,
       rails: { rails: ["openrouter"], providerFor: () => openrouter },
       journal,
       generateId: () => "attempt-deny",
@@ -277,6 +288,7 @@ describe("model gateway — frozen dispatch sequence", () => {
       },
       credentials,
       admission,
+      capabilities: SATISFIED_GATE,
       rails: { rails: [], providerFor: () => null },
       journal,
       generateId: () => "attempt-x",
@@ -313,6 +325,7 @@ describe("model gateway — frozen dispatch sequence", () => {
       },
       credentials,
       admission,
+      capabilities: SATISFIED_GATE,
       rails: { rails: [], providerFor: () => null },
       journal,
       generateId: () => "a",
@@ -340,6 +353,7 @@ describe("model gateway — frozen dispatch sequence", () => {
       },
       credentials,
       admission,
+      capabilities: SATISFIED_GATE,
       rails: {
         rails: ["openrouter", "anthropic"],
         providerFor: (rail) => (rail === "openrouter" ? openrouter : anthropic),
@@ -382,6 +396,7 @@ describe("model gateway — frozen dispatch sequence", () => {
       },
       credentials,
       admission,
+      capabilities: SATISFIED_GATE,
       rails: { rails: ["openrouter"], providerFor: () => openrouter },
       journal,
       generateId: () => "attempt-stream",
@@ -434,6 +449,7 @@ describe("model gateway — known transport failures are durable provider outcom
           return { allowed: true };
         },
       },
+      capabilities: SATISFIED_GATE,
       rails: { rails: [provider.rail], providerFor: () => provider },
       journal,
       generateId: () => "attempt-t",
