@@ -24,3 +24,9 @@
 | WORK-020 | Learned execution planning and automatic policy optimization | 014,017,018,019 | CRITICAL | no |
 | WORK-021 | Deterministicization discovery and progressive AI-call elimination | 013,014,017,018 | CRITICAL | no |
 | WORK-022 | Codebase AI opportunity analysis and selective human evaluation | 014,016,018 | HIGH_ASSURANCE | no |
+| WORK-023 | Multimodal agent deployment fabric | 011,012,015,016 | HIGH_ASSURANCE | no |
+| WORK-024 | Voice and realtime agent deployment | 023 | HIGH_ASSURANCE | no |
+| WORK-025 | Messaging agent deployment | 023 | HIGH_ASSURANCE | no |
+| WORK-026 | Media generation agent deployment | 009,010,013,023 | HIGH_ASSURANCE | no |
+
+Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.
