@@ -80,6 +80,16 @@ Forbidden:
 - `SELF-HOSTING-BOUNDARY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+- readiness: dependency and declared-surface verification before implementation
+- authority: capability/policy/resource admission and substrate-selection boundaries proven
+- extensibility: new workload classes can be represented without core execution changes
+
+# Evidence Contract
+
+Evidence must identify exact implementation and final branch heads, map CSX requirements to code/tests, and prove provider neutrality, authority ordering, deterministic-first compatibility and extensibility. Workers must not claim substrate capabilities or external resource results that were not actually observed.
+
 # Required Verification
 
 - governance checker
