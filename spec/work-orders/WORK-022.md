@@ -80,6 +80,16 @@ Forbidden:
 - `SELF-HOSTING-BOUNDARY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+Required assurance profile: **HIGH_ASSURANCE**.
+
+The applicable blocking contracts are enumerated in `spec/governance/checkpoint-contract.json`. Checkpoint results are evidence, not completion authority.
+
+# Evidence Contract
+
+The worker must update `docs/work-items/WORK-NNN.md` with exact revision, changed files, requirement IDs, test commands/results, checkpoint evidence, discrimination evidence where required, known limitations and PR binding. Claims without objective evidence do not satisfy completion.
+
 # Required Verification
 
 - governance checker
