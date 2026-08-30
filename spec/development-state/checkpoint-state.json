@@ -317,6 +317,62 @@
         "implementationHead": "8f0e106f6c485fe7b6e6dd703b363c9e6993b117",
         "finalBranchHead": "f11f76210fc41c2f5852cc5bd460f6a79d37b703"
       }
+    },
+    "WORK-007": {
+      "asOf": "2026-08-30T12:55:00Z",
+      "branch": "work/WORK-007-policy-engine",
+      "baseRevision": "8245191224de62f3f5a7a363761b45ae8c615e27",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-007.md",
+            "tests/unit/policies/policy-resolution.test.ts",
+            "tests/unit/policies/policy-authority.test.ts",
+            "tests/unit/executions/execution-service.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/policies/policy-authority.test.ts",
+            "tests/integration/postgres/policy-admission.test.ts",
+            "docs/work-items/WORK-007.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/policies/policy-authority.test.ts",
+            "tests/integration/postgres/policy-admission.test.ts",
+            "docs/work-items/WORK-007.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/policy-before-dispatch.test.ts",
+            "tests/discrimination/policy-admission.discrimination.test.ts",
+            "docs/work-items/WORK-007.md"
+          ]
+        },
+        "POLICY-BEFORE-DISPATCH": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/policy-before-dispatch.test.ts",
+            "tests/discrimination/policy-admission.discrimination.test.ts",
+            "tests/unit/executions/execution-service.test.ts",
+            "tests/integration/postgres/policy-admission.test.ts",
+            "docs/work-items/WORK-007.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [
