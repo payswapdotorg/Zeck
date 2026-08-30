@@ -78,6 +78,16 @@ Forbidden:
 - `CONCURRENCY-CRASH-SAFETY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+- readiness: dependency and declared-surface verification before implementation
+- safety: physical-side-effect authority, safety envelope and stale-command rejection proven
+- recovery: disconnect/reconnect convergence and provenance proven
+
+# Evidence Contract
+
+Evidence must identify the exact implementation and final branch heads, map EDGE requirements to tests, and provide objective proof that cloud orchestration does not masquerade as hard-real-time control. Any physical side effect must have an auditable authority chain.
+
 # Required Verification
 
 - governance checker
