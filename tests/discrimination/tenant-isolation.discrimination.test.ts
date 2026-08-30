@@ -74,7 +74,7 @@ describe("discrimination: scope resolution requires durable membership", () => {
     insertMembership: (async () => null) as never,
     updateMembershipRole: (async () => null) as never,
     deleteMembership: (async () => false) as never,
-    countApplicationOwners: (async () => 0) as never,
+    lockApplicationMemberships: (async () => []) as never,
   } as IdentityStore;
 
   test("REAL resolver denies an actor with no membership", async () => {

@@ -36,7 +36,7 @@ function fakeStore(over: {
     insertMembership: notImplemented("insertMembership") as never,
     updateMembershipRole: notImplemented("updateMembershipRole") as never,
     deleteMembership: notImplemented("deleteMembership") as never,
-    countApplicationOwners: (async () => 1) as never,
+    lockApplicationMemberships: (async () => []) as never,
   };
 }
 

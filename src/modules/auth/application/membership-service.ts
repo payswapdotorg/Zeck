@@ -7,8 +7,16 @@
  *
  * Authorization: `memberships:write` for add/remove; ownership transfer is
  * `ownership:transfer`; the last owner of an application can never be removed
- * or demoted (owner-retention), checked inside the same transaction as the
- * mutation by the store.
+ * or demoted (owner-retention).
+ *
+ * Concurrency (PR #4 architect finding): the owner-retention decision and
+ * the mutation are serialized per application INSIDE the arbitration
+ * transaction via `lockApplicationMemberships` — a row-lock boundary over
+ * the application's full membership set. The retention predicate (target
+ * role + owner count) is always RE-DERIVED from the locked rows, never from
+ * a pre-lock read: every owner-count-reducing mutation therefore totally
+ * orders, and the loser of a race observes the winner's committed mutation
+ * and rejects. No interleaving can commit a zero-owner application.
  */
 
 import { PlatformError } from "../../../shared/errors";
@@ -127,9 +135,14 @@ export function createMembershipService(
             // converges (retry); a DIFFERENT role is a role CHANGE — a
             // legitimate mutation, applied explicitly (never silently
             // converged away).
-            const existing = await txStore
-              .listMemberships({ applicationId: scope.applicationId ?? undefined })
-              .then((rows) => rows.find((row) => row.actorId === command.actorId));
+            //
+            // Serialization boundary FIRST: lock the application's full
+            // membership set and derive every fact of the decision from
+            // these locked rows. A concurrent owner demotion/removal or a
+            // concurrent promotion of THIS row blocks until the other
+            // transaction commits; the locked read then reflects it.
+            const members = await txStore.lockApplicationMemberships(command.applicationId);
+            const existing = members.find((row) => row.actorId === command.actorId);
             if (existing === undefined) {
               throw new PlatformError({
                 code: "PROVIDER_ERROR",
@@ -140,16 +153,16 @@ export function createMembershipService(
               return { membership: existing };
             }
             // Owner-retention applies to demotions too: demoting the last
-            // owner away from the owner role is forbidden.
-            if (
-              existing.role === "owner" &&
-              command.role !== "owner" &&
-              (await txStore.countApplicationOwners(command.applicationId)) <= 1
-            ) {
-              throw new PlatformError({
-                code: "AUTHORIZATION_DENIED",
-                message: "an application must retain at least one owner",
-              });
+            // owner away from the owner role is forbidden. The count comes
+            // from the locked rows — never a plain pre-mutation query.
+            if (existing.role === "owner" && command.role !== "owner") {
+              const owners = members.filter((row) => row.role === "owner");
+              if (owners.length <= 1) {
+                throw new PlatformError({
+                  code: "AUTHORIZATION_DENIED",
+                  message: "an application must retain at least one owner",
+                });
+              }
             }
             const updated = await txStore.updateMembershipRole(existing.id, command.role);
             if (updated === null) {
@@ -160,6 +173,9 @@ export function createMembershipService(
             }
             return { membership: updated };
           }
+          // A NEW membership insert is additive: it cannot reduce the owner
+          // count, so it needs no retention arbitration (inserts do not
+          // participate in the lock domain and cannot starve it).
           return { membership: stored };
         },
       );
@@ -196,6 +212,8 @@ export function createMembershipService(
             }
             // Cross-tenant guard: the membership must belong to the scope's
             // application/tenant — reject before any downstream execution.
+            // (tenant_id / application_id are immutable per row, so this
+            // pre-lock read is safe for the guard; ROLE is not — see below.)
             assertScopeCovers(scope, target.tenantId, { kind: "membership", id: target.id });
             if (target.applicationId !== command.applicationId) {
               throw new PlatformError({
@@ -204,9 +222,23 @@ export function createMembershipService(
                 details: { membershipId: target.id },
               });
             }
+            // Serialization boundary BEFORE the retention decision: lock the
+            // application's full membership set and re-derive BOTH facts of
+            // the decision (the target's CURRENT role — a concurrent
+            // promotion may have changed it after the read above — and the
+            // owner count) from the locked rows. A concurrent demotion,
+            // removal, or promotion of the target blocks until this
+            // transaction's predecessor commits, and this read reflects it.
+            const locked = await txStore.lockApplicationMemberships(command.applicationId);
+            const current = locked.find((row) => row.id === command.membershipId);
+            if (current === undefined) {
+              // Deleted by a concurrent committed transaction: converge to
+              // the durable outcome instead of failing.
+              return { removed: false };
+            }
             if (
-              target.role === "owner" &&
-              (await txStore.countApplicationOwners(command.applicationId)) <= 1
+              current.role === "owner" &&
+              locked.filter((row) => row.role === "owner").length <= 1
             ) {
               throw new PlatformError({
                 code: "AUTHORIZATION_DENIED",

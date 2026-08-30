@@ -200,14 +200,25 @@ RETURNING id, actor_id, application_id, tenant_id, role, created_at`,
     return deleted.rowCount > 0;
   }
 
-  async countApplicationOwners(applicationId: string): Promise<number> {
-    const counted = await this.exec.execute<{ owner_count: number }>({
-      sql: `SELECT count(*)::int AS owner_count
+  async lockApplicationMemberships(applicationId: string): Promise<readonly MembershipRecord[]> {
+    // Owner-retention serialization boundary (PR #4 architect finding):
+    // row-lock EVERY membership of the application, in deterministic id
+    // order, and return the rows as committed at lock acquisition. Under
+    // READ COMMITTED a waiter re-evaluates each row's LATEST committed
+    // version after the lock holder commits (rows demoted away from owner
+    // or deleted drop out of the result), so the loser of a retention race
+    // observes the winner's mutation and rejects. Id-ordered acquisition
+    // keeps concurrent full-set lockers deadlock-free (single-row
+    // updates/deletes hold at most one lock, so no cycle can form).
+    const locked = await this.exec.execute<MembershipRow>({
+      sql: `SELECT id, actor_id, application_id, tenant_id, role, created_at
             FROM identity.memberships
-            WHERE application_id = $1 AND role = 'owner'`,
+            WHERE application_id = $1
+            ORDER BY id
+            FOR UPDATE`,
       parameters: [applicationId],
     });
-    return counted.rows[0]?.owner_count ?? 0;
+    return locked.rows.map(toMembership);
   }
 }
 
@@ -343,6 +354,15 @@ export class SqlIdempotency implements IdempotencyPort {
           });
     return first(rows.rows)?.request_fingerprint ?? "";
   }
+}
+
+/**
+ * Transaction-bound identity store: the same store the idempotency arbiter
+ * passes into `work`, exposed for callers that drive explicit transaction
+ * interleavings (the concurrency-boundary verification tests).
+ */
+export function createTxIdentityStore(exec: Pick<DatabasePort, "execute">): IdentityStore {
+  return new SqlIdentityStore(exec);
 }
 
 export interface SqlAuthModule {

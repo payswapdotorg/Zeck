@@ -68,8 +68,31 @@ export interface IdentityStore {
   /** Delete a membership by id. Returns true when a row was deleted. */
   deleteMembership(membershipId: string): Promise<boolean>;
 
-  /** Count owner-role memberships for an application (owner-retention rule). */
-  countApplicationOwners(applicationId: string): Promise<number>;
+  /**
+   * Owner-retention serialization boundary (PR #4 architect finding).
+   *
+   * Locks EVERY membership row of the application for the remainder of the
+   * enclosing transaction and returns the rows as committed at lock
+   * acquisition. Any concurrent role-change or deletion for the same
+   * application blocks here until this transaction commits/aborts — so the
+   * retention decision the caller derives from the returned rows (target
+   * role + owner count) cannot race another owner-affecting mutation.
+   *
+   * The lock set is the FULL membership set (not only current owner rows):
+   * a concurrent promotion (member -> owner) updates a row that is not yet
+   * an owner row, so owner-set-only locking would leave a window where a
+   * stale pre-lock role read drives a deletion. Locking all rows of the
+   * application closes every mutating interleaving; inserts (new
+   * memberships) are additive and cannot reduce the owner count.
+   *
+   * MUST be called inside the same transaction as the subsequent mutation
+   * (the idempotency arbiter's transaction-bound store provides it). SQL
+   * adapters implement this with `SELECT ... FOR UPDATE` in deterministic
+   * id order (deadlock-free against other full-set lockers and single-row
+   * updates); in-memory fakes may treat it as a plain read (they are
+   * sequential by construction).
+   */
+  lockApplicationMemberships(applicationId: string): Promise<readonly MembershipRecord[]>;
 }
 
 /**

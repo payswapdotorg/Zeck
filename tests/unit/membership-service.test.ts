@@ -89,9 +89,14 @@ function fakeStore(state: StoreState): IdentityStore {
       state.deleted.push(id);
       return true;
     }) as never,
-    countApplicationOwners: (async (applicationId: string) =>
-      state.memberships.filter((m) => m.applicationId === applicationId && m.role === "owner")
-        .length) as never,
+    // Owner-retention serialization boundary: the in-memory fake is
+    // sequential by construction, so the "lock" is a plain read of the
+    // application's full membership set (mirrors the SQL adapter's return
+    // contract).
+    lockApplicationMemberships: (async (applicationId: string) =>
+      state.memberships
+        .filter((m) => m.applicationId === applicationId)
+        .map((m) => ({ ...m }))) as never,
   };
 }
 
@@ -242,6 +247,50 @@ describe("removeMember guards", () => {
       "k1",
     );
     expect(result.removed).toBe(true);
+  });
+});
+
+describe("role-change demotion retention (locked-read decision path)", () => {
+  test("sole owner cannot be demoted to a non-owner role via role change", async () => {
+    const state = seededState(); // alice = sole owner of app-1
+    const { service } = build(state);
+    await expect(
+      service.addMember(
+        { principal: alice, applicationId: "app-1", actorId: "alice", role: "admin" },
+        "k-demote",
+      ),
+    ).rejects.toMatchObject({ code: "AUTHORIZATION_DENIED" });
+    // nothing changed durably
+    expect(state.memberships.find((m) => m.id === "m-alice")?.role).toBe("owner");
+  });
+
+  test("demotion succeeds when a second owner exists; promotion needs no second owner", async () => {
+    const state = seededState();
+    // promote bob to the second owner (mutate his existing membership —
+    // exactly one membership per (actor, application), as the schema enforces)
+    const bobMembership = state.memberships.find((m) => m.id === "m-bob");
+    if (bobMembership === undefined) {
+      throw new Error("fixture missing");
+    }
+    state.memberships[state.memberships.indexOf(bobMembership)] = {
+      ...bobMembership,
+      role: "owner",
+    };
+    const { service } = build(state);
+    const demoted = await service.addMember(
+      { principal: alice, applicationId: "app-1", actorId: "alice", role: "member" },
+      "k-demote-2",
+    );
+    expect(demoted.membership.role).toBe("member");
+
+    // promotion (member -> owner) is additive: allowed even when bob is the
+    // sole remaining owner (performed by bob, who still holds
+    // memberships:write).
+    const promoted = await service.addMember(
+      { principal: bob, applicationId: "app-1", actorId: "alice", role: "owner" },
+      "k-promote",
+    );
+    expect(promoted.membership.role).toBe("owner");
   });
 });
 
