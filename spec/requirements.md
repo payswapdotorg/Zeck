@@ -115,4 +115,35 @@
 - MOD-012: Generated media and derived variants preserve artifact lineage, execution provenance and deployment version.
 - MOD-013: Media-generation jobs enforce budget-before-paid-dispatch, idempotent submission, retry/cancel semantics and verification-before-completion.
 
-Total requirements: **72**.
+## Computational substrate extensibility
+
+- CSX-001: Zeck exposes a provider-neutral computational substrate contract covering capability, modality, latency, resource, isolation and side-effect metadata.
+- CSX-002: Zeck represents interactive, realtime, asynchronous, batch, training/evaluation, edge, embodied and specialized-accelerator workloads as Execution-compatible workload classes.
+- CSX-003: Substrate selection occurs only after policy, capability and applicable resource/budget admission, with deterministic-first planning applied before provider/substrate selection.
+- CSX-004: New computational substrates can be added through replaceable adapters without creating duplicate execution, policy, capability, budget or verification authorities.
+
+## Computer use
+
+- CUI-001: Zeck provides provider-neutral browser, desktop and terminal computer-use capabilities.
+- CUI-002: Computer-use sessions isolate network, filesystem, credential and side-effect access and preserve execution provenance.
+- CUI-003: When a deterministic/API capability can satisfy a computer-use subtask, the planner can prefer it over GUI/model interaction.
+
+## Long-running execution
+
+- LNG-001: Long-running executions can checkpoint and resume without changing execution identity.
+- LNG-002: Lease, heartbeat, interruption and wake-up semantics prevent stale workers from becoming authoritative.
+- LNG-003: Resume/recovery re-enters applicable policy, capability, budget and provenance controls and prevents duplicate side effects.
+
+## Edge and embodied execution
+
+- EDGE-001: Edge and embodied targets are represented through provider-neutral execution/deployment contracts.
+- EDGE-002: Zeck can govern latency-sensitive or physical workloads without requiring the cloud control plane to sit inside a hard-real-time safety loop.
+- EDGE-003: Physical side effects require explicit authorization, safety-envelope enforcement, replay protection and durable provenance.
+
+## Training, batch and accelerators
+
+- ACC-001: Training, fine-tuning and large-batch workloads can be represented as governed Executions with resource and cost accounting.
+- ACC-002: GPU and specialized-accelerator selection uses provider-neutral capability/resource contracts and remains replaceable by adapter.
+- ACC-003: Training checkpoints, datasets, configurations and outputs preserve artifact lineage and verification status; compute success alone does not imply model-release verification.
+
+Total requirements: **86**.
