@@ -3,7 +3,13 @@
 Work Order: `spec/work-orders/WORK-003.md` (GitHub issue #5)
 Assurance: `HIGH_ASSURANCE` · Architecture: `v1.0` (frozen)
 Branch: `work/WORK-003-connections-federation` · Base: `8d9b9936fe79f1ab972137c0f1732c729461a41b`
-Implementation revision (this file binds): `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91`
+Implementation revision (this file binds, round 2): `d8f40cd7c00b16a7c83b6381bd87373ec899e962`
+
+> Round-1 binding `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91` is SUPERSEDED by the
+> round-2 remediation (architect review on PR #6 — transport failures
+> escaping the gateway). Round-1 verification output below is retained as
+> the historical record; the current verification of record is the round-2
+> table.
 
 ## Requirement mapping
 
@@ -39,7 +45,7 @@ Key mechanics:
 6. **Quality/verification outcomes have no code path into the fabric** — the journal CHECK plus the taxonomy mapping make conflation unrepresentable; `VERIFICATION_*` remains owned by the future `/verification` authority.
 7. **Anthropic structured output rides a forced single tool** (that rail's native mechanism) — extracted into the same neutral `NormalizedStructuredOutput`; schema *conformance validation* is deliberately NOT done here (verification concern, `spec/architecture.md` §18).
 
-## Verification (at implementation head `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91`)
+## Verification (round 1 — at implementation head `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91`; superseded by round 2)
 
 Toolchain: Bun 1.3.4 (CI-pinned), real PostgreSQL 16.4 at 127.0.0.1:55432 (`ZECK_PG_TEST_URL`).
 
@@ -52,6 +58,42 @@ Toolchain: Bun 1.3.4 (CI-pinned), real PostgreSQL 16.4 at 127.0.0.1:55432 (`ZECK
 | `bun run test` (full, twice consecutively) | **261/261 passed, 38 files** — includes real-PG suites |
 
 Test census ( deltas vs WORK-002's 156): unit 74→113 (crypto 10, connections 11, models: openrouter 13, anthropic 8, gateway 6, provider-vs-quality 5), integration PG 30→51 (connections-persistence 7, connections-isolation 3, dispatch-journal 6, model-dispatch 5 end-to-end), architecture 67→71 (provider-neutrality 4), discrimination 10→15+16 assertions (provider-isolation 5, byok-secret-boundary 4, policy-before-dispatch 3, connections-tenant-isolation 3, provider-quality-distinction 5).
+
+## Remediation (round 2 — architect review on PR #6)
+
+**Finding (blocking)**: known network/timeout failures escaped the gateway as exceptions instead of becoming durable provider-failure outcomes — `postJson()` threw the `ProviderFailure` produced by `transportFailure()`, neither direct adapter caught it, `ModelGateway.complete()` had no catch, and in `stream()` a `transport.send()` rejection escaped the async generator without a normalized `stream-error` or a durable observation. The already-recorded attempt remained `dispatching` indefinitely despite a KNOWN provider-side classification.
+
+**Required flow restored** (both dispatch modes):
+
+```text
+transport failure -> provider-failure normalization -> DispatchJournal.recordOutcome(...)
+```
+
+**Fix** (implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`):
+
+1. **Shared adapter boundary** (`src/modules/models/adapters/http.ts`): `postJson()` no longer throws transport failures — it returns a discriminated result whose failure is RAIL-STAMPED at the boundary (the adapter supplies its rail; the round-1 latent gap of `rail: ""` never reaching a stamp is closed). Coverage: send rejections, timeouts (`TimeoutError`/`AbortError` names, as produced by `AbortSignal.timeout`) AND mid-body read failures. New `sendForStream()` normalizes the streaming handshake the same way; new `guardedBody()` types mid-stream body rejections so adapters convert them into terminal events.
+2. **Adapters** (`openrouter.ts`, `anthropic.ts`): one-shot paths map boundary failures to `provider-failure` OUTCOMES (the call resolves — never escapes); streaming paths terminate with normalized `stream-error` events carrying the same failure taxonomy; the error-status body read is guarded too. Unknown rejections still propagate unchanged.
+3. **Gateway** (`model-gateway.ts`) defense-in-depth: a contract-violating adapter whose normalized `ProviderFailure` escapes as a THROW still gets a durable `provider-failed` record — one-shot surfaces the canonical `PROVIDER_ERROR` after journaling; streaming synthesizes the normalized terminal `stream-error` and records in the terminal-event path. UNKNOWN crashes (not structurally a `ProviderFailure`) rethrow and honestly remain `dispatching` — exactly the crash/unknown-vs-known distinction in the architect's finding and the journal contract.
+4. **Domain**: `isProviderFailure()` structural guard (exported via the domain barrel) identifies normalized failures among unknown thrown values without widening the public surface.
+
+**Red → green record** (the new discrimination suite run against the round-1 code, then the fix):
+
+- RED at `36ea0dd` (`git checkout 36ea0dd -- src/modules/models`, tests of round 2 unchanged): `transport-failure-durability.discrimination.test.ts` **0/6 — every test T1–T6 failed** exactly as the finding describes (gateway rejection, no durable outcome, attempt stuck `dispatching`); `model-gateway.test.ts` defense-in-depth cases 2/8 failed. The passing 10 (incl. "adapter-normalized provider-failure outcome is journaled") confirm the defect class precisely: RETURNED outcomes were always durable; ESCAPING transport failures were not.
+- GREEN at `d8f40cd`: 18/18 across both files; full gate below.
+
+## Verification (round 2 — at implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`; current)
+
+Toolchain: Bun 1.3.4 (CI-pinned), real PostgreSQL 16.4 at 127.0.0.1:55432 (`ZECK_PG_TEST_URL`).
+
+| Command | Result |
+|---|---|
+| `bun install --frozen-lockfile` | clean, no changes (runtime deps `[]` unchanged) |
+| `python3 scripts/governance-check.py` | `Governance OK: 20 Work Orders, 45 requirements, frontier=[]` |
+| `bun run typecheck` | 0 errors (213 files) |
+| `bun run lint` | 0 errors, 0 warnings (213 files) |
+| `bun run test` (full, twice consecutively) | **286/286 passed, 39 files** — includes 54 real-PG tests |
+
+Test census (delta vs round 1's 261): unit 113→129 (openrouter +5, anthropic +5, gateway +6 transport/durability cases), discrimination 15→21 (`transport-failure-durability` 6: T1/T2 real-fabric one-shot through BOTH adapters + gateway; T3 timeout-vs-network classification; T4 provider axis never verification/quality + status leaves `dispatching`; T5 streaming terminal event + durable record, escape mutation fails; T6 known-durable vs unknown-stays-dispatching), real-PG 51→54 (model-dispatch 5→8: network rejection, timeout rejection on the direct rail, streaming rejection — each asserting the durable `provider-failed` row, `resolved_at`, `outcomeClass='provider-failure'`, category, and material-free payloads against real PostgreSQL).
 
 ## Checkpoint evidence
 
@@ -71,10 +113,11 @@ Every named boundary has a mutation proof that a weakened protection is rejected
 | Policy before dispatch (lock 3) | denying gate: zero materialization, zero transport, `POLICY_DENIED`, journaled denial; allow path asserts admission < intent < materialize < transport; no default-allow admission exists (`policy-before-dispatch.discrimination.test.ts`) |
 | Tenant authority | foreign-tenant connection mutations rejected with ZERO downstream writes (journaled store proof); lists never surface foreign rows; no-membership callers denied pre-write (`connections-tenant-isolation.discrimination.test.ts`; PG schema proof: composite FK makes cross-tenant rows unrepresentable in `connections-isolation.test.ts`) |
 | Provider ≠ quality (CON-005) | broken mapper emitting `VERIFICATION_FAILED` fails the never-verification property; quality outcome classes rejected on the provider axis (TS mirror + real-PG CHECK); response shape mutated with a quality field fails the exact-shape guard (`provider-quality-distinction.discrimination.test.ts`, `dispatch-journal.test.ts`) |
+| Transport-failure durability (PR #6 remediation) | pre-remediation escape (boundary throws, gateway has no catch) fails every T1–T6 assertion — rejection instead of outcome, `dispatching` instead of `provider-failed`, no outcome class; streaming escape mutation yields a rejection with NO normalized terminal event and no durable record; classification-collapse (`timeout`→`network`) mutation fails; axis-conflation mutation (`network`→`VERIFICATION_INCONCLUSIVE`) fails; a gateway that durably recorded UNKNOWN crashes as provider-failed would fail the T6 honesty assertions (`transport-failure-durability.discrimination.test.ts`, red→green recorded in the Remediation section) |
 
 ## Known limitations
 
-1. **CI has no PostgreSQL service** (carried over from WORK-002, flagged there): the 51 real-PG tests skip with an explicit reason in CI; local verification output above is the recorded proof. Governance-owned follow-up.
+1. **CI has no PostgreSQL service** (carried over from WORK-002, flagged there): the 54 real-PG tests skip with an explicit reason in CI; local verification output above is the recorded proof. Governance-owned follow-up.
 2. **Tool-call, multimodal and async-job normalization** (architecture §12 fabric duties) are not yet represented in the neutral contracts — no current Work Order requires them; they belong to the fabric Work Order that first needs them (executions/tools).
 3. **Stream schema-conformance validation** of structured-output fragments is a verification concern (`/verification`, WORK-013); adapters normalize transport only.
 4. **Dispatch retries are not provider-idempotent by contract**: each `complete()` is a fresh journaled attempt; execution-level idempotency/create-or-converge over external effects belongs to the executions/external-effects Work Orders (`IMPLEMENTATION.md` §14).
@@ -84,5 +127,5 @@ Every named boundary has a mutation proof that a weakened protection is rejected
 ## PR / merge
 
 - PR: see completion report (worker opens; architect merges).
-- This evidence file binds the implementation head `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91`. The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + completion comment (two-part binding, WORK-001/WORK-002 protocol).
+- **Round-2 binding (current)**: this evidence file binds the implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`. The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + remediation comment (two-part binding, WORK-001/WORK-002 protocol). Round-1 bindings (`36ea0dd` implementation / `666d014` final) are superseded by the remediation.
 - `program-state.json` becomes `complete` only at post-merge finalization with the actual PR number + merge commit.
