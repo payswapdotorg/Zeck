@@ -77,6 +77,16 @@ Forbidden:
 - `CONCURRENCY-CRASH-SAFETY`
 - `EXECUTION-PROVENANCE`
 
+# Checkpoints
+
+- readiness: dependency, resource and declared-surface verification before implementation
+- resource-safety: budget/resource admission and provider substitution proven
+- provenance: dataset/config/checkpoint/output lineage and verification boundary proven
+
+# Evidence Contract
+
+Evidence must identify exact implementation/final revisions, map ACC requirements to code and tests, and prove resource admission occurs before paid allocation. Compute completion must remain distinct from verification or release authority.
+
 # Required Verification
 
 - governance checker
