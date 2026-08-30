@@ -45,6 +45,12 @@ describe("execution step events", () => {
       "agent-session-started",
       "agent-action-recorded",
       "agent-session-completed",
+      // WORK-013 (verification) — additive vocabulary extension.
+      "verification-requested",
+      "verification-recorded",
+      "human-evaluation-requested",
+      "human-decision-recorded",
+      "comparison-recorded",
     ]);
     expect(isStepEventCommand("tool-requested")).toBe(true);
     expect(isStepEventCommand("agent-session-started")).toBe(true);
