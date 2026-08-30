@@ -3,7 +3,7 @@
 Work Order: `spec/work-orders/WORK-003.md` (GitHub issue #5)
 Assurance: `HIGH_ASSURANCE` · Architecture: `v1.0` (frozen)
 Branch: `work/WORK-003-connections-federation` · Base: `8d9b9936fe79f1ab972137c0f1732c729461a41b`
-Implementation revision (this file binds, round 2): `d8f40cd7c00b16a7c83b6381bd87373ec899e962`
+Implementation revision (this file binds, round 2): `d8f40cdaead6ddd7174b546b18de9f6166868c0c`
 
 > Round-1 binding `36ea0dd9129a4b8079de3eef6b8988c9bc87fb91` is SUPERSEDED by the
 > round-2 remediation (architect review on PR #6 — transport failures
@@ -69,7 +69,7 @@ Test census ( deltas vs WORK-002's 156): unit 74→113 (crypto 10, connections 1
 transport failure -> provider-failure normalization -> DispatchJournal.recordOutcome(...)
 ```
 
-**Fix** (implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`):
+**Fix** (implementation head `d8f40cdaead6ddd7174b546b18de9f6166868c0c`):
 
 1. **Shared adapter boundary** (`src/modules/models/adapters/http.ts`): `postJson()` no longer throws transport failures — it returns a discriminated result whose failure is RAIL-STAMPED at the boundary (the adapter supplies its rail; the round-1 latent gap of `rail: ""` never reaching a stamp is closed). Coverage: send rejections, timeouts (`TimeoutError`/`AbortError` names, as produced by `AbortSignal.timeout`) AND mid-body read failures. New `sendForStream()` normalizes the streaming handshake the same way; new `guardedBody()` types mid-stream body rejections so adapters convert them into terminal events.
 2. **Adapters** (`openrouter.ts`, `anthropic.ts`): one-shot paths map boundary failures to `provider-failure` OUTCOMES (the call resolves — never escapes); streaming paths terminate with normalized `stream-error` events carrying the same failure taxonomy; the error-status body read is guarded too. Unknown rejections still propagate unchanged.
@@ -81,7 +81,7 @@ transport failure -> provider-failure normalization -> DispatchJournal.recordOut
 - RED at `36ea0dd` (`git checkout 36ea0dd -- src/modules/models`, tests of round 2 unchanged): `transport-failure-durability.discrimination.test.ts` **0/6 — every test T1–T6 failed** exactly as the finding describes (gateway rejection, no durable outcome, attempt stuck `dispatching`); `model-gateway.test.ts` defense-in-depth cases 2/8 failed. The passing 10 (incl. "adapter-normalized provider-failure outcome is journaled") confirm the defect class precisely: RETURNED outcomes were always durable; ESCAPING transport failures were not.
 - GREEN at `d8f40cd`: 18/18 across both files; full gate below.
 
-## Verification (round 2 — at implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`; current)
+## Verification (round 2 — at implementation head `d8f40cdaead6ddd7174b546b18de9f6166868c0c`; current)
 
 Toolchain: Bun 1.3.4 (CI-pinned), real PostgreSQL 16.4 at 127.0.0.1:55432 (`ZECK_PG_TEST_URL`).
 
@@ -127,5 +127,5 @@ Every named boundary has a mutation proof that a weakened protection is rejected
 ## PR / merge
 
 - PR: see completion report (worker opens; architect merges).
-- **Round-2 binding (current)**: this evidence file binds the implementation head `d8f40cd7c00b16a7c83b6381bd87373ec899e962`. The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + remediation comment (two-part binding, WORK-001/WORK-002 protocol). Round-1 bindings (`36ea0dd` implementation / `666d014` final) are superseded by the remediation.
+- **Round-2 binding (current)**: this evidence file binds the implementation head `d8f40cdaead6ddd7174b546b18de9f6166868c0c`. The final branch head (this evidence commit) cannot contain its own SHA and is bound in the PR body + remediation comment (two-part binding, WORK-001/WORK-002 protocol). Round-1 bindings (`36ea0dd` implementation / `666d014` final) are superseded by the remediation.
 - `program-state.json` becomes `complete` only at post-merge finalization with the actual PR number + merge commit.
