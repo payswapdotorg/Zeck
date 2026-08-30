@@ -1,0 +1,3 @@
+# WORK-010 Implementation Handoff
+
+Use canonical Work Order `spec/work-orders/WORK-010.md` and all governing repository contracts. Start from `main`, verify WORK-010 is eligible, move only WORK-010 to `in-flight`, and preserve WORK-009 as eligible. Do not merge. Tool execution must be policy-gated, capability-gated, tenant-safe, budget-aware, provenance-bearing and auditable; no hidden model calls, no second authority, and no bypass of Execution lifecycle or verification. Add discrimination proof for every safety boundary.
