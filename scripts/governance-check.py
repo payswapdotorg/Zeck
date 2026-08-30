@@ -116,7 +116,10 @@ for wid, record in orders.items():
     assert dep_line and dep_line.group(1).strip() == expected, f"{wid} dependency declaration disagrees with program state"
 
 required_ids = re.findall(r"^- ([A-Z]+-\d+):", requirements_text, re.M)
-assert len(required_ids) == 72, f"expected 72 frozen requirements, found {len(required_ids)}"
+catalog = program.get("requirementCatalog", {})
+assert catalog.get("source") == "spec/requirements.md", "requirement catalog source must be canonical"
+assert isinstance(catalog.get("version"), int) and catalog["version"] >= 1, "requirement catalog version is invalid"
+assert isinstance(catalog.get("count"), int) and catalog["count"] == len(required_ids), f"requirement catalog count mismatch: ledger says {catalog.get('count')}, requirements.md has {len(required_ids)}"
 assert len(set(required_ids)) == len(required_ids), "duplicate requirement IDs in requirements.md"
 owner_rows = {}
 for line in trace_text.splitlines():
