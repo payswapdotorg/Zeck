@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "futureGeneration": ["WORK-017","WORK-018","WORK-019","WORK-020"],
+  "futureGeneration": ["WORK-017","WORK-018","WORK-019","WORK-020","WORK-021","WORK-022"],
   "dependencies": {
     "WORK-001":[],
     "WORK-002":["WORK-001"],
@@ -21,6 +21,8 @@
     "WORK-017":["WORK-014","WORK-016"],
     "WORK-018":["WORK-010","WORK-012","WORK-014","WORK-017"],
     "WORK-019":["WORK-012","WORK-016","WORK-018"],
-    "WORK-020":["WORK-014","WORK-017","WORK-018","WORK-019"]
+    "WORK-020":["WORK-014","WORK-017","WORK-018","WORK-019"],
+    "WORK-021":["WORK-013","WORK-014","WORK-017","WORK-018"],
+    "WORK-022":["WORK-014","WORK-016","WORK-018"]
   }
 }
