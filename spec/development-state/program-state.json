@@ -42,7 +42,7 @@
     {
       "id": "WORK-004",
       "title": "Budgets, wallets, reservations and ledger",
-      "status": "pending",
+      "status": "in-flight",
       "dependencies": ["WORK-001", "WORK-002", "WORK-003"],
       "surfaces": {"modules": ["budgets"], "schema": true, "concurrency": true}
     },
