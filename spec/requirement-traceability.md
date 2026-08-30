@@ -70,5 +70,18 @@ Secondary implementations must not create a second authority for a requirement.
 | ACP-004 | WORK-011 | human approval required for policy-designated risky agent actions | approval-gate integration/discrimination test |
 | ACP-005 | WORK-016 | external/BYOA agent frameworks can be registered and governed without duplicate authorities | BYOA interoperability + authority-boundary test |
 | ACP-006 | WORK-011 | session actions are execution evidence with who/what/when/why provenance | agent session audit integration test |
+| MOD-001 | WORK-023 | provider-neutral versioned deployment profiles/plans | deployment profile/plan contract test |
+| MOD-002 | WORK-023 | deployment identity binds application/environment/agent version | deployment identity integration test |
+| MOD-003 | WORK-023 | deployment lifecycle is idempotent, auditable and concurrency-safe | deployment lifecycle/concurrency integration test |
+| MOD-004 | WORK-023 | modality adapters cannot create duplicate authorities | authority-boundary discrimination test |
+| MOD-005 | WORK-024 | realtime voice deployment through provider-neutral adapters | voice/realtime adapter integration test |
+| MOD-006 | WORK-024 | realtime identity/provenance/escalation preservation | realtime session provenance test |
+| MOD-007 | WORK-024 | voice agents may use deterministic/hybrid subtasks | deterministic-first voice route test |
+| MOD-008 | WORK-025 | provider-neutral messaging deployment with idempotent events | messaging adapter/event integration test |
+| MOD-009 | WORK-025 | messaging provenance, tenant isolation and policy-before-send | messaging boundary discrimination test |
+| MOD-010 | WORK-023 | BYOA and replaceable upstream deployment rails | deployment/BYOA adapter contract test |
+| MOD-011 | WORK-026 | provider-neutral video/image/audio generation deployment | media adapter contract test |
+| MOD-012 | WORK-026 | generated media preserves artifact/execution/deployment lineage | media lineage integration test |
+| MOD-013 | WORK-026 | media budget/idempotency/retry/cancel/verification controls | paid-job concurrency + verification integration test |
 
-Total requirements: **59**.
+Total requirements: **72**.
