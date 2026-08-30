@@ -42,7 +42,7 @@ Secondary implementations must not create a second authority for a requirement.
 | AGT-005 | WORK-011 | mediated scoped credentials with no long-lived raw secrets in agent runtime | credential mediation/security discrimination test |
 | AGT-006 | WORK-011 | policy-designated risky agent actions require explicit human approval | approval-gate discrimination test |
 | AGT-007 | WORK-016 | external/BYOA agents governed through provider-neutral adapters | BYOA adapter boundary test |
-| AGT-008 | WORK-011 | agent session action provenance is durable execution evidence | session audit/provenance integration test |
+| AGT-008 | WORK-011 | governed agent sessions record significant inputs, actions, tool calls, outputs and authorization context as execution evidence | session audit/provenance integration test |
 | ENV-001 | WORK-012 | provider-independent ComputeEnvironment | environment contract tests |
 | ENV-002 | WORK-012 | isolated containers | sandbox integration/discrimination test |
 | ENV-003 | WORK-019 | microVM/VM evolution path | fleet adapter contract test |
@@ -83,5 +83,21 @@ Secondary implementations must not create a second authority for a requirement.
 | MOD-011 | WORK-026 | provider-neutral video/image/audio generation deployment | media adapter contract test |
 | MOD-012 | WORK-026 | generated media preserves artifact/execution/deployment lineage | media lineage integration test |
 | MOD-013 | WORK-026 | media budget/idempotency/retry/cancel/verification controls | paid-job concurrency + verification integration test |
+| CSX-001 | WORK-031 | provider-neutral computational substrate contract | substrate contract and adapter test |
+| CSX-002 | WORK-031 | interactive, realtime, asynchronous, batch, training/evaluation, edge, embodied and specialized-accelerator workload classes | workload-class compatibility test |
+| CSX-003 | WORK-031 | substrate selection after policy/capability/resource admission and deterministic-first planning | admission-order discrimination test |
+| CSX-004 | WORK-031 | new substrates added through replaceable adapters without duplicate authorities | provider-neutrality/authority-boundary test |
+| CUI-001 | WORK-027 | provider-neutral browser/desktop/terminal computer-use capabilities | computer-use contract test |
+| CUI-002 | WORK-027 | isolated computer-use sessions with governed credentials/network/filesystem and provenance | isolation/security integration test |
+| CUI-003 | WORK-027 | deterministic/API alternatives preferred over GUI/model interaction when sufficient | deterministic-first computer-use discrimination test |
+| LNG-001 | WORK-028 | checkpoint/resume with stable execution identity | checkpoint/resume integration test |
+| LNG-002 | WORK-028 | lease/heartbeat/interruption/wake-up semantics prevent stale-worker authority | stale-worker concurrency test |
+| LNG-003 | WORK-028 | recovery re-enters authority controls and prevents duplicate side effects | crash/recovery discrimination test |
+| EDGE-001 | WORK-029 | provider-neutral edge and embodied targets | edge/embodied adapter test |
+| EDGE-002 | WORK-029 | latency-sensitive workloads delegate hard-real-time control to local substrate | real-time boundary test |
+| EDGE-003 | WORK-029 | physical side effects require authorization, safety envelope, replay protection and provenance | physical-side-effect discrimination test |
+| ACC-001 | WORK-030 | training, fine-tuning and large-batch workloads as governed Executions | training/batch integration test |
+| ACC-002 | WORK-030 | GPU/specialized accelerator selection via provider-neutral resource contracts | resource substitution test |
+| ACC-003 | WORK-030 | training checkpoints/datasets/config/output lineage and verification-before-release | lineage/release-gate test |
 
-Total requirements: **72**.
+Total requirements: **86**.
