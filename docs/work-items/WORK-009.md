@@ -106,8 +106,12 @@ One baseline anomaly, honestly recorded: the FIRST baseline invocation (before a
 
 ## PR / merge
 
-- PR: (bound after opening)
-- Final branch head: (bound after evidence commit)
-- CI: (bound after runs complete)
+- PR: **#18** (`https://github.com/pectoraux/Zeck/pull/18`), opened by the worker against `main` (completion report posted there). The architect is the merge authority; the worker does NOT merge/approve.
+- **Two-part binding**: this evidence file binds the implementation head `79a6f08f5133a2d769de66c7995942e426405eca` (verified against `git rev-parse HEAD`, 40-hex exact, character-by-character). The final branch head (this evidence commit) is bound in the PR body + completion comment, per the WORK-001→008 protocol.
+- `program-state.json` becomes `complete` only at post-merge finalization with the actual PR number + merge commit (WORK-011+ then unblock per the dependency graph).
 
-The implementer does not merge; the architect is the sole merge authority.
+## CI status (final head)
+
+CI could not execute for this PR: GitHub does not trigger `pull_request` workflows for conflicted PRs (no merge ref can be computed), and this PR conflicts with `main` in exactly one file (`spec/development-state/program-state.json` — the pre-disclosed parallel-wave union, verified by trial merge). At pickup `main` was governance-RED (WORK-021/022 missing protocol headings — repaired here as disclosed commit `651e29d`); `main` then advanced 20+ docs commits expanding requirements 53→78 while `scripts/governance-check.py:125` still asserts 53, leaving `main` governance-RED again (every `main` push run failing; flagged on the PR and issue #5). Modifying the checker's frozen count is architect authority — not taken.
+
+**Recorded proof in lieu of CI** (the standing no-PostgreSQL-in-CI precedent, WORK-002 onward): the full gate run locally at the final head with real PostgreSQL — governance OK, typecheck 0, lint clean, **735/735 (89 files) TWICE consecutively** — plus the ×2 runs at the implementation head. Once the architect reconciles `main` (checker count vs requirements) and performs the disclosed union-merge, CI can be re-verified on the merged result.
