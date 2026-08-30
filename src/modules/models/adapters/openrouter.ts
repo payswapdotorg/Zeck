@@ -13,6 +13,7 @@
  * usage, usage incl. rail-reported USD cost, and provider-error categories.
  */
 
+import type { PublishedCapabilityFact } from "../../capabilities/public";
 import type { ModelCallOutcome } from "../domain/outcome";
 import type { ProviderErrorCategory, ProviderFailure } from "../domain/provider-failure";
 import {
@@ -399,4 +400,78 @@ export function createOpenRouterAdapter(options: OpenRouterAdapterOptions): Mode
       }
     },
   };
+}
+
+/**
+ * Capability facts this rail's adapter PUBLISHES into the capability
+ * registry (WORK-005 / INT-002, acceptance criterion 2).
+ *
+ * Publishing is an input to the registry, never an authority: the registry
+ * validates and arbitrates these facts exactly like any other publish. The
+ * claim DESCRIPTORS are provider-neutral vocabulary; the rail identity
+ * appears ONLY in provenance/evidence (where provider specifics belong).
+ * Composition roots publish these at assembly time:
+ *
+ * ```ts
+ * for (const fact of openRouterCapabilityFacts()) await registry.publish(fact);
+ * ```
+ */
+const FACTS_PUBLISHED_AT = "2026-08-30T00:00:00Z";
+const FACTS_PUBLISHER = "models:adapter:openrouter";
+
+export function openRouterCapabilityFacts(): readonly PublishedCapabilityFact[] {
+  return [
+    {
+      claim: {
+        id: "text-generation",
+        kind: "model",
+        version: "1.1.0",
+        attributes: { input: "text", output: "text", streaming: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "openrouter-adapter:chat-completions:v1",
+      },
+    },
+    {
+      claim: {
+        id: "structured-output",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { responseFormat: "json", strict: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "openrouter-adapter:response-format-json-schema:v1",
+      },
+    },
+    {
+      claim: {
+        id: "streaming-generation",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { terminalUsage: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "openrouter-adapter:sse-include-usage:v1",
+      },
+    },
+    {
+      claim: {
+        id: "tool-use-generation",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { parallelTools: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "openrouter-adapter:tool-calls:v1",
+      },
+    },
+  ];
 }

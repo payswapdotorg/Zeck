@@ -17,6 +17,7 @@
  *   * provider errors are typed by `error.type` rather than HTTP status.
  */
 
+import type { PublishedCapabilityFact } from "../../capabilities/public";
 import type { ModelCallOutcome } from "../domain/outcome";
 import type { ProviderErrorCategory, ProviderFailure } from "../domain/provider-failure";
 import {
@@ -423,4 +424,75 @@ export function createAnthropicAdapter(options: AnthropicAdapterOptions): ModelP
       }
     },
   };
+}
+
+/**
+ * Capability facts this rail's adapter PUBLISHES into the capability
+ * registry (WORK-005 / INT-002, acceptance criterion 2).
+ *
+ * Same discipline as the aggregation rail: neutral claim descriptors, rail
+ * identity only in provenance/evidence, arbitration owned by the registry.
+ * The `structured-output` / `streaming-generation` / `tool-use-generation`
+ * claims carry IDENTICAL descriptors to the other rail's — two adapters
+ * asserting the same neutral capability converge to ONE arbitrated claim
+ * (the cross-rail convergence proof).
+ */
+const FACTS_PUBLISHED_AT = "2026-08-30T00:00:00Z";
+const FACTS_PUBLISHER = "models:adapter:anthropic";
+
+export function anthropicCapabilityFacts(): readonly PublishedCapabilityFact[] {
+  return [
+    {
+      claim: {
+        id: "text-generation",
+        kind: "model",
+        version: "1.1.0",
+        attributes: { input: "text", output: "text", streaming: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "anthropic-adapter:messages-api:v1",
+      },
+    },
+    {
+      claim: {
+        id: "structured-output",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { responseFormat: "json", strict: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "anthropic-adapter:forced-tool-input-schema:v1",
+      },
+    },
+    {
+      claim: {
+        id: "streaming-generation",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { terminalUsage: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "anthropic-adapter:sse-split-usage:v1",
+      },
+    },
+    {
+      claim: {
+        id: "tool-use-generation",
+        kind: "model",
+        version: "1.0.0",
+        attributes: { parallelTools: true },
+      },
+      provenance: { publisher: FACTS_PUBLISHER, publishedAt: FACTS_PUBLISHED_AT },
+      evidence: {
+        kind: "adapter-declared",
+        reference: "anthropic-adapter:tool-use-blocks:v1",
+      },
+    },
+  ];
 }

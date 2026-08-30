@@ -10,7 +10,8 @@
  *
  * ```text
  * request -> identity/tenant resolution -> connection facts (tenant-guarded read)
- *         -> admission (policy gate) -> rail resolution -> durable intent
+ *         -> admission (policy gate) -> capability resolution (INT-002)
+ *         -> rail resolution -> durable intent
  *         -> credential materialization -> adapter call -> observation persisted
  * ```
  *
@@ -18,6 +19,11 @@
  *   * POLICY BEFORE DISPATCH — admission decides before secret
  *     materialization and before transport; there is no default-allow path
  *     (the port must be provided — the module ships no allow-all adapter).
+ *   * CAPABILITY BEFORE PROVIDER — the task profile is arbitrated by the
+ *     capability authority BEFORE rail/provider resolution (INT-002,
+ *     `spec/architecture.md` §2.5); an unsatisfied profile fails canonical
+ *     `CAPABILITY_UNAVAILABLE` before any route is selected. There is no
+ *     default/skip capability path either (the port must be provided).
  *   * SECRETS LAST — BYOK plaintext is materialized immediately before the
  *     adapter call and exists only inside the adapter invocation scope.
  *   * DURABLE INTENT BEFORE EXTERNAL EFFECT — the journal attempt row is
@@ -30,6 +36,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { Principal, ScopeResolver, TenantScope } from "../../auth/public";
+import type { TaskCapabilityProfile } from "../../capabilities/public";
 import type {
   ConnectionCatalog,
   ConnectionCatalogScope,
@@ -40,8 +47,9 @@ import type { DispatchStatus, ModelCallOutcome } from "../domain/outcome";
 import { isProviderFailure, toPlatformProviderError } from "../domain/provider-failure";
 import type { ModelRequest } from "../domain/request";
 import type { StreamEvent } from "../domain/stream";
+import type { TaskCapabilityResolution } from "../ports/capability-gate";
 import type { DispatchAdmission } from "../ports/dispatch-admission";
-import type { DispatchJournal } from "../ports/dispatch-journal";
+import type { DispatchIntentInput, DispatchJournal } from "../ports/dispatch-journal";
 import type { ProviderDispatchContext, RailRegistry } from "../ports/model-provider";
 
 export interface ModelDispatchResult {
@@ -79,6 +87,13 @@ export interface ModelGatewayDeps {
   readonly credentials: CredentialMaterializer;
   /** Policy gate — REQUIRED; no default exists by design. */
   readonly admission: DispatchAdmission;
+  /**
+   * Capability authority gate — REQUIRED (WORK-005 / INT-002); no default or
+   * skip implementation exists by design. The task profile is resolved
+   * BEFORE any rail/provider selection; an unsatisfied profile is a
+   * canonical `CAPABILITY_UNAVAILABLE` failure.
+   */
+  readonly capabilities: TaskCapabilityResolution;
   readonly rails: RailRegistry;
   readonly journal: DispatchJournal;
   readonly generateId: () => string;
@@ -92,6 +107,39 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
 
   const outcomeStatusOf = (outcome: ModelCallOutcome): DispatchStatus =>
     outcome.kind === "provider-success" ? "succeeded" : "provider-failed";
+
+  const EMPTY_PROFILE: TaskCapabilityProfile = { requirements: [] };
+
+  /**
+   * Capability resolution (INT-002) — the ordering boundary: the task
+   * profile is arbitrated by the capability authority BEFORE any
+   * rail/provider decision. Unsatisfied → journaled denial + canonical
+   * `CAPABILITY_UNAVAILABLE` (consistent with the admission denial
+   * pattern). The gate input is deliberately rail-agnostic.
+   */
+  const resolveCapabilities = async (
+    request: ModelRequest,
+    intent: DispatchIntentInput,
+    connectionId: string,
+  ): Promise<void> => {
+    const resolution = await deps.capabilities.resolve(request.taskProfile ?? EMPTY_PROFILE);
+    if (resolution.satisfied) {
+      return;
+    }
+    const unmet = resolution.unmet
+      .map((entry) => `${entry.requirementId}(${entry.reason})`)
+      .join(", ");
+    await deps.journal.recordDenial(intent, `capability-unavailable: ${unmet}`);
+    throw new PlatformError({
+      code: "CAPABILITY_UNAVAILABLE",
+      message: "task capability profile cannot be satisfied before any route selection",
+      details: {
+        connectionId,
+        catalogRevision: resolution.catalogRevision,
+        unmet: resolution.unmet,
+      },
+    });
+  };
 
   return {
     async complete(principal, applicationId, connectionId, request) {
@@ -138,7 +186,11 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
         });
       }
 
-      // 4. Rail resolution (the adapter set is composition-owned).
+      // 4. Capability resolution (INT-002) — BEFORE any rail/provider
+      //    selection; unsatisfied profiles never reach route resolution.
+      await resolveCapabilities(request, intent, connectionId);
+
+      // 5. Rail resolution (the adapter set is composition-owned).
       const provider = deps.rails.providerFor(facts.rail);
       if (provider === null) {
         throw new PlatformError({
@@ -148,10 +200,10 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
         });
       }
 
-      // 5. Durable intent BEFORE the external effect (IMPLEMENTATION.md §14).
+      // 6. Durable intent BEFORE the external effect (IMPLEMENTATION.md §14).
       await deps.journal.recordIntent(intent);
 
-      // 6. Credential materialization — the LAST step before the adapter
+      // 7. Credential materialization — the LAST step before the adapter
       //    call; plaintext exists only inside the adapter invocation scope.
       let credential: string | null = null;
       if (facts.credentialKind === "byok") {
@@ -174,7 +226,7 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
         timeoutMs,
       };
 
-      // 7. Adapter call, 8. observation persisted.
+      // 8. Adapter call, 9. observation persisted.
       //
       // KNOWN provider failures (including any transport failure the shared
       // adapter boundary normalized) arrive as `provider-failure` OUTCOMES and
@@ -233,6 +285,11 @@ export function createModelGateway(deps: ModelGatewayDeps): ModelGateway {
           details: { connectionId, reason: decision.reason },
         });
       }
+
+      // Capability resolution (INT-002) — BEFORE any rail/provider
+      // selection; unsatisfied profiles never reach route resolution.
+      await resolveCapabilities(request, intent, connectionId);
+
       const provider = deps.rails.providerFor(facts.rail);
       if (provider === null) {
         throw new PlatformError({

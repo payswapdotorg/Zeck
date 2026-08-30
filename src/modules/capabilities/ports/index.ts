@@ -4,4 +4,10 @@
 Ports are provider-neutral: no infrastructure clients, no provider SDKs.
 Adapters (in `adapters/`) implement them (`IMPLEMENTATION.md` §2–§3).
  */
-export {};
+export type {
+  CapabilityCatalogStore,
+  CapabilityFactPublisher,
+  CapabilityRegistry,
+  CapabilityRegistryOptions,
+  FactValidator,
+} from "./capability-registry";

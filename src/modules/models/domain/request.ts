@@ -7,6 +7,8 @@
  * capabilities and connections, never provider SDK types.
  */
 
+import type { TaskCapabilityProfile } from "../../capabilities/public";
+
 export type ModelMessageRole = "system" | "user" | "assistant";
 
 export interface ModelMessage {
@@ -35,6 +37,15 @@ export interface ModelRequest {
   readonly temperature?: number;
   readonly structuredOutput?: StructuredOutputSpec;
   readonly stream?: boolean;
+  /**
+   * Task capability profile (WORK-005 / INT-002): the capability
+   * requirements derived from the task. The gateway resolves this profile
+   * through the capability authority BEFORE any rail/provider selection;
+   * an unsatisfied profile fails canonical `CAPABILITY_UNAVAILABLE`. When
+   * absent, the empty profile resolves trivially (profile derivation is
+   * `/planning`'s authority, INT-001 — a future Work Order).
+   */
+  readonly taskProfile?: TaskCapabilityProfile;
 }
 
 /** Provider-neutral stop reasons (normalized from provider finish reasons). */

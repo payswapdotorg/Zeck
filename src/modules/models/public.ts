@@ -18,6 +18,8 @@
  */
 
 import type { ModuleDescriptor } from "../../shared/module";
+import type { TaskCapabilityProfile } from "../capabilities/public";
+import { createCapabilityGate } from "./application/capability-gate";
 import {
   createModelGateway,
   type ModelDispatchResult,
@@ -37,6 +39,7 @@ import type {
 import { STOP_REASONS } from "./domain/request";
 import type { ModelResponse, NormalizedStructuredOutput, NormalizedUsage } from "./domain/response";
 import type { StreamEvent } from "./domain/stream";
+import type { TaskCapabilityResolution } from "./ports/capability-gate";
 import type {
   AdmissionDecision,
   AdmissionInput,
@@ -58,6 +61,8 @@ export { PROVIDER_AXIS_OUTCOME_CLASSES } from "./domain/outcome";
 // Streaming normalization (acceptance criterion 4).
 // Module ports.
 // Application services.
+// Capability-before-provider gate (WORK-005 / INT-002): the gateway's
+// required capability authority port and its registry-backed wiring.
 export type {
   AdmissionDecision,
   AdmissionInput,
@@ -87,8 +92,11 @@ export type {
   StopReason,
   StreamEvent,
   StructuredOutputSpec,
+  TaskCapabilityProfile,
+  TaskCapabilityResolution,
 };
 export {
+  createCapabilityGate,
   createModelGateway,
   createRailRegistry,
   PROVIDER_ERROR_CATEGORIES,

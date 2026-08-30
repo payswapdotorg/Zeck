@@ -15,6 +15,7 @@
 import { expect, test } from "vitest";
 import { createSqlAuthModule } from "../../../src/modules/auth/adapters/sql-identity-store";
 import { createScopeResolver } from "../../../src/modules/auth/application/scope-resolver";
+import type { CapabilityResolution } from "../../../src/modules/capabilities/public";
 import {
   SqlConnectionStore,
   SqlConnectionsIdempotency,
@@ -31,6 +32,7 @@ import { createSqlDispatchJournal } from "../../../src/modules/models/adapters/s
 import type { ModelGateway } from "../../../src/modules/models/application/model-gateway";
 import { createModelGateway } from "../../../src/modules/models/application/model-gateway";
 import { createRailRegistry } from "../../../src/modules/models/application/rail-registry";
+import type { TaskCapabilityResolution } from "../../../src/modules/models/ports/capability-gate";
 import type {
   HttpRequestBody,
   HttpResponse,
@@ -90,6 +92,13 @@ interface DispatchWorld {
   readonly vault: SqlCredentialVault;
 }
 
+/** Satisfied-by-default capability gate (capability gating has its own suite). */
+const SATISFIED_GATE: TaskCapabilityResolution = {
+  async resolve(): Promise<CapabilityResolution> {
+    return { satisfied: true, catalogRevision: "rev-0", satisfactions: [] };
+  },
+};
+
 async function seedDispatchWorld(db: DatabasePort, allow: boolean): Promise<DispatchWorld> {
   const tenantId = generateId();
   const applicationId = generateId();
@@ -140,6 +149,7 @@ async function seedDispatchWorld(db: DatabasePort, allow: boolean): Promise<Disp
         return allow ? { allowed: true } : { allowed: false, reason: "fixture denial" };
       },
     },
+    capabilities: SATISFIED_GATE,
     rails: registry,
     journal: createSqlDispatchJournal(db),
     generateId,
