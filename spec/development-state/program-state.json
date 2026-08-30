@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-08-30T15:40:00Z",
+  "asOf": "2026-08-30T16:05:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
@@ -32,6 +32,6 @@
     {"id":"WORK-021","title":"Deterministicization discovery and progressive AI-call elimination","status":"pending","dependencies":["WORK-013","WORK-014","WORK-017","WORK-018"],"surfaces":{"modules":["learning","planning","tools","sandbox"],"deterministicization":true,"multiModule":true}},
     {"id":"WORK-022","title":"Codebase AI opportunity analysis and selective human evaluation","status":"pending","dependencies":["WORK-014","WORK-016","WORK-018"],"surfaces":{"modules":["learning","planning","context","verification","api"],"codebaseAnalysis":true,"humanEvaluation":true,"publicContracts":true}}
   ],
-  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md"],
+  "decisions":["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md"],
   "postMergeFinalization":{"required":true,"completionRule":"merge evidence must match actual PR number and merge commit before program-state status can become complete"}
 }
