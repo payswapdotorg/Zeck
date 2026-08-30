@@ -122,7 +122,7 @@ for wid, record in orders.items():
 
 # Every frozen requirement is represented by exactly one primary owner.
 required_ids = re.findall(r"^- ([A-Z]+-\d+):", requirements_text, re.M)
-assert len(required_ids) == 45, f"expected 45 frozen requirements, found {len(required_ids)}"
+assert len(required_ids) == 53, f"expected 53 frozen requirements, found {len(required_ids)}"
 assert len(set(required_ids)) == len(required_ids), "duplicate requirement IDs in requirements.md"
 owner_rows = {}
 for line in trace_text.splitlines():
@@ -152,7 +152,6 @@ for record in program["workOrders"]:
     if "mergedAs" in record:
         assert record["status"] == "complete", f"{record['id']} has merge evidence but is not complete"
 
-# Governance model must expose a control loop / authority definition.
 assert governance.get("engineeringControlLoop") or governance.get("authority")
 
 print(f"Governance OK: {len(orders)} Work Orders, {len(required_ids)} requirements, frontier={eligible}")
