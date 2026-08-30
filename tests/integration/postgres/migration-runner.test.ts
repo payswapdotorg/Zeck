@@ -1,5 +1,7 @@
 /**
- * Real-PG: migration runner guarantees (WORK-002).
+ * Real-PG: migration runner guarantees (WORK-002; made state-independent by
+ * WORK-003, which added the second shipped migration — expectations derive
+ * from the shipped set instead of a hardcoded era snapshot).
  */
 
 import { describe, expect, test } from "vitest";
@@ -13,21 +15,25 @@ import {
 import { definePgSuite } from "./harness";
 
 definePgSuite("migration runner on real PostgreSQL", (ctx) => {
-  test("shipped migration applied and tracked", async () => {
+  test("shipped migrations applied and tracked", async () => {
     const { port } = ctx;
+    const shipped = loadMigrations("src/platform/db/migrations");
     const tracked = await port.execute<{ version: number; name: string; checksum: string }>({
       sql: "SELECT version, name, checksum FROM platform.schema_migrations ORDER BY version",
     });
-    expect(tracked.rows.map((row) => row.version)).toEqual([1]);
+    expect(tracked.rows.map((row) => row.version)).toEqual(shipped.map((file) => file.version));
     expect(tracked.rows[0]?.name).toBe("identity_tenants");
-    expect(tracked.rows[0]?.checksum).toMatch(/^[0-9a-f]{64}$/);
+    for (const row of tracked.rows) {
+      expect(row.checksum).toMatch(/^[0-9a-f]{64}$/);
+    }
   });
 
   test("re-running is a no-op (exactly-once)", async () => {
     const { port } = ctx;
-    const result = await runMigrations(port, loadMigrations("src/platform/db/migrations"));
+    const shipped = loadMigrations("src/platform/db/migrations");
+    const result = await runMigrations(port, shipped);
     expect(result.applied).toEqual([]);
-    expect(result.skipped).toBe(1);
+    expect(result.skipped).toBe(shipped.length);
   });
 
   test("a modified applied migration fails closed (checksum integrity)", async () => {
@@ -63,27 +69,37 @@ definePgSuite("migration runner on real PostgreSQL", (ctx) => {
 
   test("a new forward migration applies atomically with its tracking row", async () => {
     const { port } = ctx;
+    const shipped = loadMigrations("src/platform/db/migrations");
+    const nextVersion = (shipped[shipped.length - 1]?.version ?? 0) + 1;
     const files = [
-      ...loadMigrations("src/platform/db/migrations"),
+      ...shipped,
       {
-        version: 2,
+        version: nextVersion,
         name: "probe_forward",
         sql: "CREATE TABLE platform.probe_forward (id integer PRIMARY KEY)",
         checksum: "probe",
       },
     ];
     const result = await runMigrations(port, files);
-    expect(result.applied).toEqual([{ version: 2, name: "probe_forward" }]);
+    expect(result.applied).toEqual([{ version: nextVersion, name: "probe_forward" }]);
     // Failing forward migration rolls back its tracking row.
     const failing = [
       ...files,
-      { version: 3, name: "probe_failing", sql: "CREATE TABLE broken (", checksum: "probe3" },
+      {
+        version: nextVersion + 1,
+        name: "probe_failing",
+        sql: "CREATE TABLE broken (",
+        checksum: "probe3",
+      },
     ];
     await expect(runMigrations(port, failing)).rejects.toThrow();
     const tracked = await port.execute<{ version: number }>({
       sql: "SELECT version FROM platform.schema_migrations ORDER BY version",
     });
-    expect(tracked.rows.map((row) => row.version)).toEqual([1, 2]);
+    expect(tracked.rows.map((row) => row.version)).toEqual([
+      ...shipped.map((file) => file.version),
+      nextVersion,
+    ]);
   });
 
   test("statement splitting strips comments and keeps statements", () => {
