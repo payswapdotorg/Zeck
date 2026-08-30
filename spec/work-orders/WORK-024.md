@@ -22,7 +22,6 @@ Requires: WORK-023
 
 # Requirement IDs
 
-Primary requirements owned by this Work Order:
 - `MOD-005`
 - `MOD-006`
 - `MOD-007`
@@ -80,6 +79,16 @@ Forbidden:
 - `EXECUTION-PROVENANCE`
 - `CONCURRENCY-CRASH-SAFETY`
 - `SELF-HOSTING-BOUNDARY`
+
+# Checkpoints
+
+- readiness: realtime dependencies and declared surfaces verified before implementation
+- realtime-safety: identity, policy-before-side-effect and deterministic/hybrid routing proven
+- recovery: duplicate/reconnect, interruption and transfer behavior proven
+
+# Evidence Contract
+
+Evidence must identify exact implementation/final revisions, map MOD-005..007 to code/tests, and include provider-neutrality, tenant, policy-ordering, interruption and reconnect evidence. External realtime-provider behavior must be recorded only when actually observed.
 
 # Required Verification
 
