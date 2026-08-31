@@ -3,11 +3,12 @@
   "status": "active",
   "governingArchitectureVersion": "v1.0",
   "eligible": [
-    "WORK-017",
     "WORK-023",
     "WORK-031"
   ],
-  "inFlight": [],
+  "inFlight": [
+    "WORK-017"
+  ],
   "blocked": [
     "WORK-018",
     "WORK-019",
