@@ -1,8 +1,10 @@
 /**
- * Planning module adapters barrel (WORK-009 + WORK-014 learning seam).
+ * Planning module adapters barrel (WORK-009 + WORK-014 learning seam +
+ * WORK-017 composition seam).
  */
 
 export { createCapabilityAuthorityAdapter } from "./capability-authority-adapter";
+export { createCompositionRecommendationsAdapter } from "./composition-recommendations-adapter";
 export { publishDeterministicCapabilityFacts } from "./deterministic-capability-publisher";
 export {
   createInMemoryDeterministicCatalog,

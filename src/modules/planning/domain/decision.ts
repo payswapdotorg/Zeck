@@ -19,6 +19,8 @@
 import { PlatformError } from "../../../shared/errors";
 import type { RestrictionSet } from "../../policies/public";
 import { canonicalJson } from "./canonical";
+import type { CompositionConsultation } from "./composition-consultation";
+import { validateCompositionConsultation } from "./composition-consultation";
 import type { LearningConsultation } from "./learning-consultation";
 import { validateLearningConsultation } from "./learning-consultation";
 import type { ExecutionPlan } from "./plan";
@@ -75,6 +77,15 @@ export interface PlanningDecisionRecord {
    * learning would have preferred (M1/M8/M13).
    */
   readonly learningConsultation?: LearningConsultation;
+  /**
+   * OPTIONAL composition-recommendation consultation capture
+   * (WORK-017): the versioned tool-composition recommendations
+   * consulted AFTER the governed selection, recorded as evidence with
+   * the policy re-check verdicts. Absent when no composition seam is
+   * wired. The consultation never alters `selectedStrategyId` — it
+   * records what learning would prefer (M1/M5/M18).
+   */
+  readonly compositionConsultation?: CompositionConsultation;
   /** Prior decision this one replaces (verification-triggered replanning). */
   readonly replanOf?: string;
   readonly recordedAt: string;
@@ -198,6 +209,12 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // WORK-014: the consultation capture is part of the closed shape —
     // validated (M13 version anchors) whenever present.
     validateLearningConsultation(record.learningConsultation);
+  }
+  if (record.compositionConsultation !== undefined) {
+    // WORK-017: the composition consultation capture is part of the
+    // closed shape — validated (version anchors + provenance) whenever
+    // present.
+    validateCompositionConsultation(record.compositionConsultation);
   }
   requireString(record, "recordedAt", "recordedAt");
   requireString(record, "recordDigest", "recordDigest");

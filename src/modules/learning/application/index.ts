@@ -5,6 +5,14 @@
  * evaluator.
  */
 export type {
+  ActivateRecommendationSetRequest,
+  CompositionAdvisor,
+  CompositionAdvisorDeps,
+  ConsultRecommendationsRequest,
+  GenerateRecommendationSetRequest,
+} from "./composition-advisor";
+export { createCompositionAdvisor } from "./composition-advisor";
+export type {
   BuildScorecardRequest,
   ConsultSignalsRequest,
   LearningService,

@@ -32,6 +32,7 @@
 
 import type { ModuleDescriptor } from "../../shared/module";
 import { createCapabilityAuthorityAdapter } from "./adapters/capability-authority-adapter";
+import { createCompositionRecommendationsAdapter } from "./adapters/composition-recommendations-adapter";
 import { publishDeterministicCapabilityFacts } from "./adapters/deterministic-capability-publisher";
 import {
   createInMemoryDeterministicCatalog,
@@ -54,7 +55,9 @@ import type {
   BuildPlanInput,
   CandidateStrategy,
   CapabilityResolutionCapture,
+  CompositionConsultation,
   ComputationType,
+  ConsultedCompositionRecommendation,
   ConsultedLearningSignal,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
@@ -84,12 +87,18 @@ import type {
   TaskRiskLevel,
 } from "./domain";
 import {
+  buildCompositionConsultation,
   buildLearningConsultation,
   buildPlan,
+  COMPOSITION_PREFERENCE_MINIMUM_POPULATION,
+  CONSULTED_COMPOSITION_CLASS,
+  CONSULTED_COMPOSITION_STATUSES,
   CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
   canonicalPlanForm,
   compareCheapFirst,
+  compositionAllowedByPolicy,
+  compositionPreferredCandidateId,
   computationTypeOfStep,
   decisionRecordDigest,
   deriveTaskProfile,
@@ -106,11 +115,15 @@ import {
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
+  validateCompositionConsultation,
+  validateConsultedCompositionRecommendation,
   validateConsultedSignal,
   validateLearningConsultation,
   validatePlanningDecision,
 } from "./domain";
 import type {
+  CompositionRecommendationQuery,
+  CompositionRecommendations,
   DeterministicCapabilityCatalog,
   DeterministicCatalogEntry,
   LearningSignalQuery,
@@ -131,7 +144,11 @@ export type {
   BuildPlanInput,
   CandidateStrategy,
   CapabilityResolutionCapture,
+  CompositionConsultation,
+  CompositionRecommendationQuery,
+  CompositionRecommendations,
   ComputationType,
+  ConsultedCompositionRecommendation,
   ConsultedLearningSignal,
   DeterministicCapabilityCatalog,
   DeterministicCatalogEntry,
@@ -184,14 +201,21 @@ export type {
 // Ports: the outbound seams (catalog, authority, policy, routes, sink, digest).
 // Adapters: node digest + in-memory catalog + composition-fed route table.
 export {
+  buildCompositionConsultation,
   buildLearningConsultation,
   buildPlan,
+  COMPOSITION_PREFERENCE_MINIMUM_POPULATION,
+  CONSULTED_COMPOSITION_CLASS,
+  CONSULTED_COMPOSITION_STATUSES,
   CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
   canonicalPlanForm,
   compareCheapFirst,
+  compositionAllowedByPolicy,
+  compositionPreferredCandidateId,
   computationTypeOfStep,
   createCapabilityAuthorityAdapter,
+  createCompositionRecommendationsAdapter,
   createInMemoryDeterministicCatalog,
   createLearningSignalsAdapter,
   createNodeDigest,
@@ -216,6 +240,8 @@ export {
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
+  validateCompositionConsultation,
+  validateConsultedCompositionRecommendation,
   validateConsultedSignal,
   validateLearningConsultation,
   validatePlanningDecision,

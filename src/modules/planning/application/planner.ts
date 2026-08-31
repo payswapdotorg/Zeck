@@ -33,6 +33,7 @@ import type { CapabilityResolution, TaskCapabilityProfile } from "../../capabili
 import type { PolicyRequestContext } from "../../policies/public";
 import type {
   CandidateStrategy,
+  CompositionConsultation,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
   LearningConsultation,
@@ -42,6 +43,7 @@ import type {
   TaskProfile,
 } from "../domain";
 import {
+  buildCompositionConsultation,
   buildLearningConsultation,
   buildPlan,
   canonicalJson,
@@ -55,6 +57,7 @@ import {
   validatePlanningDecision,
 } from "../domain";
 import type { PlanningCapabilityAuthority } from "../ports/capability-authority";
+import type { CompositionRecommendations } from "../ports/composition-recommendations";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
 import type { DigestPort } from "../ports/digest";
 import type { LearningSignals } from "../ports/learning-signals";
@@ -82,6 +85,19 @@ export interface PlannerServiceDeps {
    * interaction (planning works without learning history).
    */
   readonly learningSignals?: LearningSignals;
+  /**
+   * OPTIONAL composition-recommendation READ seam (WORK-017): when
+   * wired, the planner consults the ACTIVE recommendation set AFTER
+   * the governed selection and records the consultation as decision
+   * EVIDENCE — the live selection is never changed by it (the
+   * recommendation is advisory: RECOMMENDATION ≠ AUTHORIZATION ≠
+   * planning authority — M1/M18). The consultation re-checks every
+   * recommendation's tools against the CURRENT effective policy
+   * (M5: a forbidden tool can never become a preferred recommendation
+   * regardless of its learning score). Unwired ⇒ zero composition
+   * interaction (planning works without recommendation history).
+   */
+  readonly compositionRecommendations?: CompositionRecommendations;
   /**
    * Discrimination hook (WORK-005 validation-hook precedent): the
    * deterministic-sufficiency evaluator is injectable so mutation records
@@ -268,6 +284,36 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         });
       }
 
+      // 7.6 OPTIONAL composition-recommendation consultation
+      //     (WORK-017) — READ ONLY, AFTER the governed selection: the
+      //     consultation is captured as decision evidence; it cannot
+      //     change `selected` (already computed above), cannot revive
+      //     an inadmissible candidate and cannot revisit the
+      //     deterministic-sufficiency decision (M1/M18/M23 — the
+      //     preference is recorded evidence, never applied). Every
+      //     recommendation's tools are re-checked against the CURRENT
+      //     effective policy at consultation time (M5: a forbidden
+      //     tool never becomes preferred regardless of its learning
+      //     score). A consultation failure fails the planning request
+      //     closed — a malformed/unversioned recommendation NEVER
+      //     enters a decision record (M11/M12/M13/M26) and planning
+      //     never silently degrades on corrupt learning data.
+      let compositionConsultation: CompositionConsultation | undefined;
+      if (deps.compositionRecommendations !== undefined) {
+        const consultedRecommendations = await deps.compositionRecommendations.consult({
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+          taskClass: profile.kind,
+        });
+        compositionConsultation = buildCompositionConsultation({
+          candidates: admissibleCandidates,
+          recommendations: consultedRecommendations,
+          policy: policy.effective ?? {},
+          selectedStrategyId: selected.strategyId,
+          consultedAt: iso(),
+        });
+      }
+
       // 8. The durable decision record (validated closed shape, then the
       //    executions ledger appends it — single write path). The
       //    decisionId is CONTENT-DERIVED (digest over the request identity
@@ -319,6 +365,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         selectionRationale: selection.rationale,
         subgraphEvidence,
         ...(learningConsultation === undefined ? {} : { learningConsultation }),
+        ...(compositionConsultation === undefined ? {} : { compositionConsultation }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

@@ -48,7 +48,7 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-interface TelemetryRow {
+export interface TelemetryRow {
   readonly id: string;
   readonly execution_id: string;
   readonly application_id: string;
@@ -74,7 +74,7 @@ interface TelemetryRow {
   readonly fingerprint: string;
 }
 
-function toTelemetry(row: TelemetryRow): ExecutionOutcomeTelemetry {
+export function toTelemetry(row: TelemetryRow): ExecutionOutcomeTelemetry {
   const verification = row.verification as unknown as ExecutionOutcomeTelemetry["verification"];
   return {
     telemetryId: row.id,
@@ -102,7 +102,7 @@ function toTelemetry(row: TelemetryRow): ExecutionOutcomeTelemetry {
   };
 }
 
-const TELEMETRY_COLUMNS = `id, execution_id, application_id, tenant_id, task_class, task_profile_digest,
+export const TELEMETRY_COLUMNS = `id, execution_id, application_id, tenant_id, task_class, task_profile_digest,
     context_strategy, capabilities, plan_id, plan_revision, strategy_class, routes, tools,
     environments, verification, cost_micro_usd, latency_ms, outcome, evidence_refs, subgraphs,
     recorded_at, schema_version, fingerprint`;

@@ -1,8 +1,13 @@
 /**
- * Planning module ports barrel (WORK-009 + WORK-014 learning seam).
+ * Planning module ports barrel (WORK-009 + WORK-014 learning seam +
+ * WORK-017 composition seam).
  */
 
 export type { PlanningCapabilityAuthority } from "./capability-authority";
+export type {
+  CompositionRecommendationQuery,
+  CompositionRecommendations,
+} from "./composition-recommendations";
 export type {
   CapabilityKindValue,
   DeterministicCapabilityCatalog,
