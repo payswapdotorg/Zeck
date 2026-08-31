@@ -57,6 +57,8 @@
 -- WORK-023 claims 0012 (THIS migration), WORK-031 claims 0013. No
 -- other unmerged Work Order claims any number.
 
+CREATE SCHEMA IF NOT EXISTS deployments;
+
 -- ---------------------------------------------------------------------------
 -- Versioned immutable deployment profiles (MOD-001).
 -- ---------------------------------------------------------------------------

@@ -239,7 +239,7 @@ export class InMemoryDeploymentStore implements DeploymentStore {
     });
   }
 
-  async appendEvent(input: JournalAppendInput): Promise<DeploymentEventRecord> {
+  async appendJournalEvent(input: JournalAppendInput): Promise<DeploymentEventRecord> {
     const existing = this.events.find(
       (event) =>
         event.applicationId === input.applicationId &&

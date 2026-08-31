@@ -133,8 +133,10 @@ export interface CreateDeploymentInput {
   readonly agentId: string;
   readonly agentVersion: string;
   readonly agentKind: "zeck" | "byoa";
-  /** The initial plan (its agent reference MUST match the binding). */
+  /** The initial plan identity (its agent reference MUST match the binding). */
   readonly planId: string;
+  /** The initial plan version (defaults to 1 when omitted). */
+  readonly initialPlanVersion?: number;
 }
 
 /**
@@ -201,6 +203,12 @@ export function validateCreateDeploymentInput(input: unknown): DeploymentValidat
   if (typeof c.planId !== "string" || !SLUG_PATTERN.test(c.planId)) {
     return { valid: false, reason: "planId must be an identifier" };
   }
+  if (
+    c.initialPlanVersion !== undefined &&
+    (!Number.isInteger(c.initialPlanVersion) || c.initialPlanVersion < 1)
+  ) {
+    return { valid: false, reason: "initialPlanVersion must be a positive integer when present" };
+  }
   return { valid: true };
 }
 
@@ -230,10 +238,13 @@ export function deploymentCreationFingerprint(
   return JSON.stringify([
     applicationId,
     input.slug,
+    input.name,
+    input.description ?? null,
     input.environmentId,
     input.agentId,
     input.agentVersion,
     input.agentKind,
     input.planId,
+    input.initialPlanVersion ?? 1,
   ]);
 }

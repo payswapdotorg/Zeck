@@ -312,6 +312,14 @@ export function createDeploymentService(deps: DeploymentServiceDeps): Deployment
         message: `deployment ${deployment.slug} cannot move from ${deployment.status} to ${targets.toStatus} (the journal and row converge on the committed state)`,
       });
     }
+    // Plan moves are control-plane changes: NEVER on a terminal
+    // deployment (retired deployments do not promote or roll back).
+    if ((kind === "promote" || kind === "rollback") && deployment.status === "retired") {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `deployment ${deployment.slug} is retired; retired deployments never promote or roll back`,
+      });
+    }
     // Status-mutation precondition (fail-closed, no idempotent no-ops):
     // suspend requires active; resume requires suspended.
     if (kind === "suspend" && deployment.status !== "active") {
@@ -361,7 +369,7 @@ export function createDeploymentService(deps: DeploymentServiceDeps): Deployment
       idempotencyKey: input.idempotencyKey,
       createdAt: iso(),
     };
-    await store.appendEvent(journalInput);
+    await store.appendJournalEvent(journalInput);
     const afterEvents = await store.listEvents(input.applicationId, input.deploymentId);
     return {
       revision: applied.revision,
@@ -476,7 +484,7 @@ export function createDeploymentService(deps: DeploymentServiceDeps): Deployment
         }
       }
       // The initial plan must exist and MATCH the deployment binding.
-      const planVersion = 1;
+      const planVersion = input.initialPlanVersion ?? 1;
       const plan = await store.findPlan(actor.applicationId, input.planId, planVersion);
       if (plan === null) {
         throw new PlatformError({
@@ -520,7 +528,7 @@ export function createDeploymentService(deps: DeploymentServiceDeps): Deployment
         createdAt: iso(),
       };
       const outcome = await store.insertDeployment(insert);
-      await store.appendEvent({
+      await store.appendJournalEvent({
         eventId: generateId(),
         applicationId: actor.applicationId,
         tenantId: actor.tenantId,

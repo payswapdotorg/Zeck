@@ -163,7 +163,7 @@ export interface DeploymentStore {
     | { readonly status: "converged"; readonly revision: number }
   >;
   /** Append one lifecycle event (idempotent by key; identity-ordered). */
-  appendEvent(input: JournalAppendInput): Promise<DeploymentEventRecord>;
+  appendJournalEvent(input: JournalAppendInput): Promise<DeploymentEventRecord>;
   /** The journal of one deployment in append order. */
   listEvents(
     applicationId: string,

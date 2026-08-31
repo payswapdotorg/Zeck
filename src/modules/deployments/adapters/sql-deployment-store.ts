@@ -16,7 +16,7 @@
  *  - `applyGuardedMutation`: the single-row guarded UPDATE arbitrates
  *    concurrent mutations (first writer wins; duplicates converge on
  *    the committed row);
- *  - `appendEvent`: UNIQUE (application, idempotency_key) converges
+ *  - `appendJournalEvent`: UNIQUE (application, idempotency_key) converges
  *    retried lifecycle requests;
  *  - every read is scope-filtered (application);
  *  - the environment lookup is the executions-store read-only
@@ -431,6 +431,22 @@ RETURNING id`,
             return { status: "converged", deploymentId: existing.id };
           }
         }
+        // Distinguish the identity conflict (MOD-002): the same
+        // environment+agent+version binding already exists under a
+        // different slug.
+        const identity = await this.db.execute<{ id: string }>({
+          sql: `SELECT id FROM deployments.deployments
+WHERE application_id = $1 AND environment_id = $2 AND agent_id = $3 AND agent_version = $4`,
+          parameters: [input.applicationId, input.environmentId, input.agentId, input.agentVersion],
+        });
+        const identityRow = identity.rows[0];
+        if (identityRow !== undefined) {
+          throw new PlatformError({
+            code: "IDEMPOTENCY_KEY_REUSED",
+            message: `deployments_identity_unique: this environment/agent/agent-version binding already exists (deployment ${identityRow.id}); a different agent version is a different deployment`,
+            details: { constraint: "deployments_identity_unique", deploymentId: identityRow.id },
+          });
+        }
         throw new PlatformError({
           code: "IDEMPOTENCY_KEY_REUSED",
           message: "deployment slug already exists with a different creation fingerprint",
@@ -542,7 +558,7 @@ RETURNING revision`,
     });
   }
 
-  async appendEvent(input: JournalAppendInput): Promise<DeploymentEventRecord> {
+  async appendJournalEvent(input: JournalAppendInput): Promise<DeploymentEventRecord> {
     try {
       const result = await this.db.execute<EventRow>({
         sql: `INSERT INTO deployments.deployment_events (
