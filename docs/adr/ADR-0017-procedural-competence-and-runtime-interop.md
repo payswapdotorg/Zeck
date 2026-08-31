@@ -107,7 +107,7 @@ API / deterministic capability
         ↓ insufficient
 browser automation
         ↓ insufficient
-tisolated desktop/terminal interaction
+isolated desktop/terminal interaction
 ```
 
 Each stage remains subject to the same Policy, Capability, Budget, Tenant, Credential, Execution and Verification authorities. A computer-use trajectory should produce structured, provenance-bearing observations and actions that can later be learned from or replaced by deterministic procedures.
