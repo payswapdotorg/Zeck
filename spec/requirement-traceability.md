@@ -99,22 +99,5 @@ Secondary implementations must not create a second authority for a requirement.
 | ACC-001 | WORK-030 | training, fine-tuning and large-batch workloads as governed Executions | training/batch integration test |
 | ACC-002 | WORK-030 | GPU/specialized accelerator selection via provider-neutral resource contracts | resource substitution test |
 | ACC-003 | WORK-030 | training checkpoints/datasets/config/output lineage and verification-before-release | lineage/release-gate test |
-| CMP-001 | WORK-032 | successful trajectories produce candidate reusable procedural competences | competence-provenance integration test |
-| CMP-002 | WORK-032 | competence represents procedures/compositions/programs/verification recipes without replacing core authorities | competence boundary contract test |
-| CMP-003 | WORK-032 | competences are immutable versioned artifacts with capability/dependency/compatibility metadata | competence version/immutability test |
-| CMP-004 | WORK-033 | competence promotion requires validation, verification and policy-compatible gates | promotion discrimination test |
-| CMP-005 | WORK-033 | competence retrieval supports progressive disclosure | staged retrieval/context test |
-| GAT-001 | WORK-035 | channels and external runtimes connect through provider-neutral Gateway and Session without second execution authority | gateway/session contract test |
-| GAT-002 | WORK-035 | sessions preserve tenant/application/deployment/agent/execution lineage across turns/retries/interruption | session lineage integration test |
-| GAT-003 | WORK-035 | gateway ingress/translation/retry remain distinct from execution/policy/budget/verification | gateway authority-boundary test |
-| GAT-004 | WORK-035 | gateway adapters are replaceable/provider-neutral with channel provenance | adapter neutrality test |
-| TRU-001 | WORK-034 | reusable competences/executable artifacts carry immutable identity, provenance, publisher, dependencies, capabilities, security and verification metadata | trust-metadata integration test |
-| TRU-002 | WORK-034 | untrusted external skills/plugins/competences/runtimes cannot become production-eligible without validation/verification/promotion | trust-gate discrimination test |
-| TRU-003 | WORK-034 | installation/activation/deprecation/rollback preserve historical evidence | lifecycle rollback test |
-| TRU-004 | WORK-034 | security/compatibility metadata can reject competence before execution without second policy authority | pre-execution trust gate test |
-| XRT-001 | WORK-036 | native and external runtime trajectories can be ingested through provider-neutral observation contracts | trajectory-ingestion adapter test |
-| XRT-002 | WORK-036 | cross-runtime observations retain runtime identity, task context, execution provenance and verification evidence | cross-runtime provenance test |
-| XRT-003 | WORK-036 | cross-runtime scorecards compare strategies using common execution/cost/quality/verification dimensions | cross-runtime scorecard test |
-| XRT-004 | WORK-036 | external runtime observations contribute to learning without bypassing Zeck authorities | non-authority discrimination test |
 
-Total requirements: **114**.
+Total requirements: **86**.
