@@ -21,8 +21,9 @@
  *  - NO synthesis vocabulary anywhere in the composition surfaces
  *    (M24: WORK-018 owns synthesis — no code generation, no
  *    synthesized tools);
- *  - the migration inventory claim: 0010 is the only new migration,
- *    no version renumbering (the collision rule).
+ *  - the migration inventory claim: unique, un-renumbered and
+ *    merge-order-tolerant for the parallel wave's pre-assigned
+ *    0011/0012/0013 (the collision rule; WORK-023's claim: 0012).
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -149,14 +150,27 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     expect(violations).toEqual([]);
   });
 
-  test("the migration inventory claim: 0010 is unique and next (the collision rule)", () => {
+  test("the migration inventory claim: unique, un-renumbered, wave-tolerant (the collision rule)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .map((name) => Number(name.slice(0, 4)))
       .sort((a, b) => a - b);
     const unique = new Set(migrations);
     expect(unique.size).toBe(migrations.length); // globally unique
-    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // The WORK-017 baseline (0001..0010) is intact, un-renumbered and
+    // contiguous. The parallel wave (WORK-018 | WORK-023 | WORK-031)
+    // pre-assigned 0011/0012/0013 by dispatch order, documented in every
+    // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
+    // wave numbers may be present (a sibling merged first) or absent
+    // (this branch carries only its own claim).
+    for (let version = 1; version <= 10; version += 1) {
+      expect(migrations).toContain(version);
+    }
+    expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // File-inventory gaps are LEGAL pre-merge (the runner applies in
+    // ascending order and allows gaps; each parallel branch carries only
+    // its own claim) — uniqueness + the intact baseline + this branch's
+    // own claim are the invariants under test.
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
@@ -167,6 +181,14 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // Physical immutability: both tables are trigger-guarded.
     expect(migration.includes("composition_sets_immutable_guard")).toBe(true);
     expect(migration.includes("composition_activation_immutable_guard")).toBe(true);
+    // THIS branch's own claim: 0012 is the WORK-023 deployment-fabric
+    // migration (the sibling branches carry 0011/0013 respectively).
+    const fabricMigration = readFileSync(
+      join(REPO_ROOT, "src/platform/db/migrations/0012_deployment_fabric.sql"),
+      "utf8",
+    );
+    expect(fabricMigration.includes("deployments.deployment_profiles")).toBe(true);
+    expect(fabricMigration.includes("deployments.deployment_events")).toBe(true);
   });
 
   test("the learning signal projection carries the set anchors (M13/M14)", () => {
