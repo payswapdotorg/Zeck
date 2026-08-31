@@ -1,7 +1,10 @@
 /**
- * `sandbox` adapters layer — infrastructure and provider implementations for this module.
-
-The only module layer allowed to import `src/platform/**` and provider SDKs
-within the owning-adapter rules (`IMPLEMENTATION.md` §1, §3).
+ * Sandbox module adapters barrel (WORK-012).
  */
-export {};
+export * from "./capability-gate";
+export * from "./container-provider";
+export * from "./execution-ledger";
+export * from "./in-memory-sandbox-store";
+export * from "./policy-sandbox-admission";
+export * from "./process-provider";
+export * from "./sql-sandbox-store";

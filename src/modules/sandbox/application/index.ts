@@ -1,7 +1,5 @@
 /**
- * `sandbox` application layer — use cases and orchestration local to this module.
-
-Application code reaches outward only through this module's ports; it never
-imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
+ * Sandbox module application barrel (WORK-012).
  */
-export {};
+export * from "./environment-catalog";
+export * from "./sandbox-service";
