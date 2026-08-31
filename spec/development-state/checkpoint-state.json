@@ -749,6 +749,53 @@
           ]
         }
       }
+    },
+    "WORK-016": {
+      "asOf": "2026-08-31T16:02:00Z",
+      "branch": "work/WORK-016-workflowos-integration",
+      "baseRevision": "999a90eb4d7af1a743156e27549a15276162f656",
+      "assuranceProfile": "HIGH_ASSURANCE",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-016.md",
+            "tests/unit/integrations/workflowos-service.test.ts",
+            "tests/unit/integrations/byoa-interop.test.ts",
+            "tests/unit/integrations/benchmark-harness.test.ts",
+            "tests/integration/postgres/integrations-workflowos.test.ts",
+            "tests/integration/postgres/integrations-byoa.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/integrations-workflowos.test.ts",
+            "tests/unit/integrations/workflowos-service.test.ts",
+            "tests/discrimination/integrations-boundary.discrimination.test.ts",
+            "docs/work-items/WORK-016.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/integrations-workflowos.test.ts",
+            "docs/work-items/WORK-016.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/integrations-boundary.test.ts",
+            "tests/discrimination/integrations-boundary.discrimination.test.ts",
+            "docs/work-items/WORK-016.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [
