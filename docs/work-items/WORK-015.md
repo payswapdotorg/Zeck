@@ -2,13 +2,22 @@
 
 Work Order: `spec/work-orders/WORK-015.md`
 Assurance: `HIGH_ASSURANCE` · Architecture: `v1.0` (frozen) · ADR-0001/0002/0013/0015 normative
-Branch: `work/WORK-015-public-api` · Base: `814eab0f1a8e7bb5eb64f980c8152e6fbc52128f` (actual current main at pickup, verified by `git fetch origin` — the post-WORK-012-finalization tip; main's own governance fully green at pickup: `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-014', 'WORK-015']`)
-Implementation revision (this file binds): `eda15c9205cac70b0c1d2c68041e9e8ccb1985ac` (implementation commit)
+Branch: `work/WORK-015-public-api` · Base: `db2f6665cc18528521c30b8f54935d2108e9d362` (actual current main at pickup — verified by `git fetch origin` + `git rev-parse origin/main`, the post-WORK-014-merge tip; main's own governance fully green at pickup: `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-015']` — WORK-015 the sole eligible item)
+Implementation revision (this file binds): `82f5843af147c34e4209c4b3b246c20fbe12d657` (the REBASED implementation commit — the original `eda15c9205cac70b0c1d2c68041e9e8ccb1985ac` was created against the pre-WORK-014 main `814eab0` and rebased onto `db2f666`; see "Rebase record" below)
 Final branch head: bound in the PR body (the two-phase SHA binding convention — this evidence commit cannot contain its own SHA)
 
-Parallelization status: WORK-014 (learning telemetry) is in-flight on its own open PR **#24** from base `814eab0` with DISJOINT declared surfaces (`src/modules/learning/` + `src/modules/planning/` vs this branch's `src/api/` + `sdk/` + `cli/` + `apps/dashboard/`); this branch moves ONLY WORK-015 to in-flight and leaves WORK-014 `eligible` in ITS branch-local state (the parallel-in-flight precedent of WORK-012/WORK-013). Both PRs target the same main tip; the architect sequences the merges.
+WORK-014 merge interaction: WORK-014 (learning telemetry) was merged as PR **#24** (merge commit `c45fc978378140b7d3999f4b820292fd27b19b11`; main's program-state records it `complete` with `mergedAs`). This branch — originally implemented parallel to WORK-014 from the shared base `814eab0` with disjoint declared surfaces — was REBASED onto the post-merge main `db2f666`: WORK-014's authority is preserved in full (the learning module, the planner learning-consultation seam, migration `0009_learning.sql`, its tests and evidence), the three shared governance state files were resolved as semantic unions (main's WORK-014-complete records + this branch's WORK-015-in-flight records), and the pre-rebase parallel-in-flight arrangement is retired. This branch still moves ONLY WORK-015 to in-flight; WORK-014 stays `complete`; WORK-016..031 stay `blocked`.
 
-No pre-existing main defects at pickup: pristine-main baseline measured **1242/1242 (124 files)** at the base `814eab0` (the exact post-merge state WORK-012's evidence records for its rebased final head — re-measured during WORK-014's session at the same base).
+No pre-existing main defects at pickup: pristine-main baseline measured **1377/1377 (137 files)** at the rebased base `db2f666` (full suite on a clean main checkout — zero failures, zero unhandled errors).
+
+## Rebase record
+
+- Operation: `git rebase main` (main = `db2f6665cc18528521c30b8f54935d2108e9d362`) on `work/WORK-015-public-api`; a pre-rebase backup ref `backup/pre-rebase-WORK-015` was taken at the old head `446318be97f8006853331d651648f2fa566dcc0b`.
+- Rebased commit chain: `48e55299c5eac271e9986240c1b33447d98817c1` (governance: move WORK-015 to in-flight, rebound to base `db2f666`) → `82f5843af147c34e4209c4b3b246c20fbe12d657` (the implementation commit) → `b2355409a82dc6f41480607d96991ce22872e190` (evidence + checkpoint outcomes, pre-rebase identities) → `71b690852693dc4e003518714db2180e6049feb5` (docs-only PR binding, pre-rebase identities) → this evidence-rebind commit.
+- Conflicts and resolutions (semantic unions, exactly the three files both sides touched): `spec/development-state/program-state.json` — main's WORK-014 `complete`+`mergedAs` (pr 24) preserved, WORK-015 `in-flight` with `baseRevision` rebound to `db2f666`; `spec/development-state/frontier-state.json` — `eligible: []` (WORK-014 complete, WORK-015 in-flight), `inFlight: ['WORK-015']`; `spec/development-state/checkpoint-state.json` — main's WORK-014 checkpoint item preserved AND this branch's WORK-015 checkpoint item retained with `baseRevision` rebound to `db2f666`.
+- Migration inventory check: main ships 0001–0009 (WORK-014's `0009_learning.sql` merged); this branch adds NO migration (its declared surfaces carry no schema) — no collision, no renumbering. The api-surface PG suites apply the FULL shipped set 0001–0009 cleanly per disposable database.
+- No WORK-014 file was modified by this branch: `git diff --name-only db2f666..HEAD` touches only this branch's declared/directly-required surfaces (api/sdk/cli/apps/shared/tests/state JSONs/evidence); the learning module, planner seam and migration 0009 are byte-identical to main.
+- Superseded identities (pre-rebase, all retired): base `814eab0f1a8e7bb5eb64f980c8152e6fbc52128f`; implementation `eda15c9205cac70b0c1d2c68041e9e8ccb1985ac`; governance `9739f556c31eb19df54acfef40a675bda3b16ec3`; evidence head `b215351d9e748b64025513fbc60c8ca187916fe1`; final head `446318be97f8006853331d651648f2fa566dcc0b`; CI runs 33392351978 (on `b215351`) and 33392769314 (on `446318b`) — the rebased branch re-executes the complete gate at its own heads and obtains fresh CI.
 
 ## Requirement mapping
 
@@ -85,21 +94,21 @@ Surfaces (directly required, per the Work Order's "Only directly-required tests/
 
 ## Verification (branch state finalized by this evidence commit)
 
-Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`), the shipped migration set 0001–0008 applied per suite on disposable databases (this branch's base predates WORK-014's unmerged 0009).
+Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`), the shipped migration set **0001–0009** applied per suite on disposable databases (the post-rebase base includes WORK-014's merged `0009_learning.sql`; the api-surface suites prove it applies cleanly alongside 0001–0008).
 
 | Command | Result |
 |---|---|
 | `bun install --frozen-lockfile` | clean (runtime deps `["fastify"]` — the sanctioned api transport) |
 | `bun run typecheck` | 0 errors |
-| `bun run lint` | 0 errors, 0 warnings (497 files — now covering sdk/cli/apps) |
-| `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-014']` (WORK-015 in-flight on this branch; WORK-014 in-flight on its own open PR #24 with disjoint surfaces; checker byte-identical to main) |
-| `bun run test:unit` | 773/773 (60 files; incl. 82 WORK-015 tests: api routes 43, sdk 8, cli 11 + the pre-existing suites) |
-| `bun run test:architecture` | 354 passed + 1 PG-gated skip (40 files; incl. public-surface 6 tests + the two fastify-sanctioned gate updates) |
-| `bun run test:integration` | 7 passed + 32 PG-gated skips (33 files) |
-| `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 215/215 (31 files; incl. the 14 WORK-015 PG tests: 9 execution-surface + 5 agent-surface, all through the REAL Fastify HTTP surface over the REAL SQL authorities) |
-| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively at the implementation head `eda15c9`**) | **1350/1350 (133 files) — runs 2–3 exit 0, zero unhandled errors; run 1 fired the documented `57P01` teardown-race unhandled error once (the WORK-010/013/014-documented intermittent in the shared harness teardown — results byte-identical 1350/1350, zero failing tests, not a WORK-015 file)**; pristine-main baseline at the base `814eab0`: 1242/1242 — the delta is +108 tests / +9 files, zero main-inherited failures |
+| `bun run lint` | 0 errors, 0 warnings (528 files — covering sdk/cli/apps + WORK-014's merged files) |
+| `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 31 Work Orders, 94 requirements, frontier=[]` (WORK-015 the sole in-flight item on this branch; WORK-014 `complete` with mergedAs pr 24 from main; checker byte-identical to main) |
+| `bun run test:unit` | 843/843 (67 files; incl. 82 WORK-015 tests: api routes 43, sdk 8, cli 11 + the pre-existing suites + WORK-014's merged learning suites) |
+| `bun run test:architecture` | 390/390 (42 files; incl. public-surface 6 tests + the two fastify-sanctioned gate updates + WORK-014's learning-boundary gate) |
+| `bun run test:integration` | 7 passed + 36 PG-gated skips (37 files) |
+| `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 246/246 (35 files; incl. the 14 WORK-015 PG tests: 9 execution-surface + 5 agent-surface, all through the REAL Fastify HTTP surface over the REAL SQL authorities with migrations 0001–0009) |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively on the rebased branch — at head `71b6908`, whose source is identical to the rebased implementation head `82f5843` because the two intermediate commits are docs-only**) | **1485/1485 (146 files) — both runs exit 0, zero unhandled errors**; pristine-main baseline at the rebased base `db2f666`: 1377/1377 (137 files) — the delta is +108 tests / +9 files (exactly this branch's WORK-015 tests), zero main-inherited failures. The complete gate is re-executed at THIS evidence head after the commit lands (the evidence-change rule) and recorded in the PR body |
 
-Full-suite counts at the exact final head (after this evidence commit): recorded in § "PR binding" below (the evidence-change rule).
+Full-suite counts at the exact final head (after this evidence commit): recorded in § "PR binding" below (the evidence-change rule — the complete gate is re-executed at this evidence head before push, and CI runs on the exact pushed final head).
 
 ## Checkpoint evidence
 
@@ -122,4 +131,4 @@ Recorded in `spec/development-state/checkpoint-state.json` under `WORK-015` (all
 
 ## PR binding
 
-BOUND — PR **#25** (https://github.com/pectoraux/Zeck/pull/25), head `b215351d9e748b64025513fbc60c8ca187916fe1`, base `814eab0f1a8e7bb5eb64f980c8152e6fbc52128f`. The complete gate was RE-EXECUTED at the exact final head after this evidence commit landed (the evidence-change rule): install clean; typecheck 0; lint 0 (497 files); governance OK frontier=['WORK-014']; unit 773/773; architecture 354+1skip; real-PG 215/215; full suite 1350/1350 twice consecutively (exit 0, zero unhandled errors) — all suites identical to the implementation-head gate (the docs-only change is behavior-neutral). CI on the exact final head `b215351`: workflow run **33392351978** — all three check-runs success (governance 99488722987, toolchain-detection 99488723232, implementation 99488750488). The PR is open, not merged, not approved — the architect is the sole merge authority. Parallel coordination: WORK-014 remains in-flight on PR #24 from the same base with disjoint surfaces.
+BOUND — PR **#25** (https://github.com/pectoraux/Zeck/pull/25), base `db2f6665cc18528521c30b8f54935d2108e9d362` (the post-WORK-014-merge main). The exact final head, the complete-gate re-execution at that head, and the fresh CI run identity are recorded in the PR body (the two-phase SHA binding convention: the implementation gate is recorded above at the rebased `82f5843`; the evidence head's gate is re-executed after this commit lands and recorded in the PR body before push). The pre-rebase binding (old head `b215351` over old base `814eab0`, old CI run 33392351978) is SUPERSEDED — see the Rebase record. The PR is open, not merged, not approved — the architect is the sole merge authority. WORK-014 is complete on main (PR #24, merged); no parallel coordination remains.
