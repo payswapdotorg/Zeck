@@ -17,6 +17,14 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*", "sdk/**/*", "cli/**/*", "apps/**/*", "tests/**/*", "vitest.config.ts"],
+  "include": [
+    "benchmarks/**/*",
+    "src/**/*",
+    "sdk/**/*",
+    "cli/**/*",
+    "apps/**/*",
+    "tests/**/*",
+    "vitest.config.ts"
+  ],
   "exclude": ["node_modules"]
 }
