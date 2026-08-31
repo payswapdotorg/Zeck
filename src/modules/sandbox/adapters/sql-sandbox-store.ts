@@ -2,7 +2,7 @@
  * SQL sandbox store adapter (sandbox module; WORK-012).
  *
  * Implements the `SandboxStore` port over the provider-neutral
- * `DatabasePort` against migration `0007_sandbox.sql` — the WORK-004/006/
+ * `DatabasePort` against migration `0008_sandbox.sql` — the WORK-004/006/
  * 010/011 SQL-store discipline:
  *
  *   - every insert converges through ON CONFLICT DO NOTHING unique-key

@@ -26,7 +26,7 @@ Surfaces (declared): `src/modules/sandbox/` — domain (`environment.ts`, `sandb
 
 Surfaces (directly required, disclosed — the WORK-010/011 precedent):
 - `src/modules/executions/domain/event.ts` — the step-event vocabulary extended ADDITIVELY with `sandbox-admitted` / `sandbox-denied` / `sandbox-completed`; executions remains the sole vocabulary owner (the merged WORK-011 comment block documents the same recordStepEvent seam extension chain). `tests/unit/executions/step-events.test.ts` — the one exact-vocabulary assertion updated.
-- `src/platform/db/migrations/0007_sandbox.sql` — the durable sandbox-axis state the Required Verification mandates ("real PostgreSQL integration for … durable execution work"); a NEW migration file, shipped 0001–0006 untouched.
+- `src/platform/db/migrations/0008_sandbox.sql` — the durable sandbox-axis state the Required Verification mandates ("real PostgreSQL integration for … durable execution work"); a NEW migration file, shipped 0001–0006 untouched. **Version note (renumbered 0007→0008, disclosed):** WORK-012 and the parallel WORK-013 branch both initially chose `0007`; the migration runner fails closed on duplicate versions (`loadMigrations` rejects a duplicate version under the directory), and WORK-013's PR (#22, `work/WORK-013-verification-authority`) is already open bound to `0007_verification.sql` — so this unmerged migration takes `0008` (migrations are immutable only AFTER merge; the runner permits gaps). A fresh database applies the shipped set in ascending order regardless of merge order; the only merge-order-sensitive case (0008 applied before 0007 exists, then 0007 arrives) fails closed by the runner's no-reordering rule on pre-existing databases only — CI databases are disposable per run, so both merge orders keep CI green.
 - `tests/**` — 4 unit suites + fakes, 3 real-PG suites + world fixture, 1 architecture gate, 1 discrimination suite + shared scanner lib.
 - `spec/development-state/*.json` — the in-flight transition; checkpoint outcomes (this round).
 - `docs/work-items/WORK-012.md` — this file. `package.json`/`bun.lock` untouched — runtime deps `[]`, no new packages.
@@ -46,7 +46,9 @@ Surfaces (directly required, disclosed — the WORK-010/011 precedent):
 
 ## Verification (implementation head `83dbc8b7309b6cabb8131c9c9e669eebd61059f2`)
 
-Environment: Bun 1.3.14, embedded PostgreSQL 16.4 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`), the shipped migration set incl. `0007_sandbox.sql` applied per suite on disposable databases.
+Environment: Bun 1.3.14, embedded PostgreSQL 16.4 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`), the shipped migration set applied per suite on disposable databases.
+
+**Re-verification record:** after the corrections revision (migration renumber 0007→0008 + this evidence correction — no src behavior change beyond the migration FILENAME), the ENTIRE gate was re-executed from scratch at the corrections head (the exact final head is bound in the PR body/handoff artifacts per the two-part SHA convention — this file cannot contain the SHA of a commit that contains it): `bun install --frozen-lockfile`, `bun run typecheck`, `bun run lint`, `python3 scripts/governance-check.py`, every targeted suite, and the full suite **twice consecutively** — the identical pass sets recorded in the table below (629/629 unit · 285+1skip architecture+discrimination · 7+27skips integration · 177/177 real-PG · **1099/1099 full ×2**). The renumber is proven behavior-neutral by the identical results.
 
 | Command | Result |
 |---|---|
@@ -121,11 +123,18 @@ Additional blocking boundaries from the Work Order's Checkpoints section: SANDBO
 4. **CI has no PostgreSQL service** (standing flag since WORK-002): the PG suites are env-gated and skip visibly in CI; the locally-executed real-PG runs above are the recorded proof (embedded PostgreSQL 16.4).
 5. **Secret materialization at adapter dispatch is not wired:** the runtime contract carries secret REFERENCES only (by design); the connections-vault materialization seam a real container runtime would call for allowlisted refs arrives with the runtime adapters (the WORK-003 BYOK model is untouched — no second secret store exists here).
 6. **Artifact staging for container mounts is a contract-level model:** `readOnlyArtifactRefs` are opaque references the object store stages; the recording client proves the mount projection (artifact refs + the synthetic workspace only — host-shaped sources rejected), while a real runtime client performs the actual staging.
+7. **Parallel-PR merge interaction with WORK-013 (PR #22, unmerged at the time of this evidence):** both branches extend the SAME `STEP_EVENT_COMMANDS` array in `src/modules/executions/domain/event.ts` and the SAME exact-vocabulary assertion in `tests/unit/executions/step-events.test.ts` (additive entries on both sides — a trivial textual conflict the architect resolves by taking both sides); both also touch `spec/development-state/{program,frontier,checkpoint}-state.json` (each moves only ITS OWN Work Order's entry — likewise additive at the JSON-entry level). The migration-number collision is already resolved on this side (see the Version note above: this branch ships `0008_sandbox.sql`; WORK-013's PR ships `0007_verification.sql`). No other overlapping files exist (verified: `comm -12` of the two diff file lists = the five files above).
 
-## PR binding (CURRENT)
+## PR binding (CURRENT — corrected)
 
-PR **#22** (https://github.com/pectoraux/Zeck/pull/22), opened from `work/WORK-012-sandbox-compute` against main. The PR body binds the exact base (`2310df9…`), implementation head (`83dbc8b…`), evidence head and final branch head SHAs per the two-part convention (this file binds the implementation revision; the PR body binds the final branch head).
+**Correction of a false prior binding:** the previous evidence revision (`e47ef0c`) claimed "PR **#22** … opened from `work/WORK-012-sandbox-compute`". That claim was **incorrect** and is withdrawn: PR #22 is the parallel WORK-013 PR (`work/WORK-013-verification-authority`, head `5e1195b`, verified via `git ls-remote origin refs/pull/22/head`), and `work/WORK-012-sandbox-compute` was never pushed — no GitHub credentials exist in the implementation environment (`git push` fails: no authenticatable credential; `gh` CLI absent; no token in the environment). No WORK-012 pull request exists at the time of this evidence revision. The correction commit is docs/state-only (plus the migration renumber) — no src/ behavior change.
 
-CI status on the final head: recorded in the PR body/comment after the run completes (the WORK-011 two-part convention — this evidence file cannot contain the SHA of a commit that contains it).
+**Current PR status: NOT OPEN — push blocked by missing credentials (honest record).** The handoff artifacts staged for the operator/architect:
+- `/home/z/WORK-012-branch.bundle` — a `git bundle` of the final branch (`git clone WORK-012-branch.bundle` / `git fetch WORK-012-branch.bundle work/WORK-012-sandbox-compute:work/WORK-012-sandbox-compute`), regenerated at the corrected final head.
+- `/home/z/WORK-012-pr-body.md` — the exact PR body to post when the branch is pushed (binds base/implementation/evidence/final-head SHAs per the two-part convention).
+
+When the PR is opened, its number and the final branch head SHA are to be recorded here (the two-part SHA binding convention — this evidence commit cannot contain its own SHA).
+
+CI status: the repository's CI (`.github/workflows/governance.yml`) runs on `pull_request`/`push`; since the branch cannot be pushed from this environment, no CI run exists for this head yet. The locally-executed full gate at the exact final head (recorded in the Verification table, re-run after every correction) is the standing proof until CI can run. The Work Order's CI-on-final-head requirement is therefore **not yet satisfied by a CI run** — it is satisfied by the recorded local equivalent, and this limitation is disclosed rather than papered over.
 
 NOT merged — the architect is the sole merge authority; `program-state.json` keeps WORK-012 `in-flight` until post-merge finalization.

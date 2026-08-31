@@ -1,6 +1,6 @@
 /**
  * Real-PostgreSQL — the sandbox schema's physical invariants (WORK-012;
- * migration 0007_sandbox.sql).
+ * migration 0008_sandbox.sql).
  *
  * Proves at the STORAGE boundary (violations unrepresentable, not merely
  * discouraged):
