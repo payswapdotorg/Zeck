@@ -45,7 +45,7 @@ function collectFiles(dir: string): string[] {
 }
 
 const CROSS_MODULE_IMPORT =
-  /from\s+["']\.\.\/\.\.\/(capabilities|policies|models|connections|executions|budgets|artifacts|context|auth|applications)\/public["']/;
+  /from\s+["']\.\.\/\.\.\/(capabilities|policies|models|connections|executions|budgets|artifacts|context|auth|applications|learning)\/public["']/;
 const TYPE_ONLY_IMPORT = /^import\s+type\s/;
 
 describe("architecture: planner surface and seam discipline (WORK-009)", () => {

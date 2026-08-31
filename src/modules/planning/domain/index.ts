@@ -16,6 +16,18 @@ export {
   validatePlanningDecision,
 } from "./decision";
 export type {
+  ConsultedLearningSignal,
+  LearningConsultation,
+} from "./learning-consultation";
+export {
+  buildLearningConsultation,
+  CONSULTED_SIGNAL_CLASS,
+  learningPreferredCandidateId,
+  PREFERENCE_MINIMUM_POPULATION,
+  validateConsultedSignal,
+  validateLearningConsultation,
+} from "./learning-consultation";
+export type {
   BuildPlanInput,
   ExecutionPlan,
   PlanEdge,

@@ -37,6 +37,8 @@ import {
   createInMemoryDeterministicCatalog,
   DETERMINISTIC_CATALOG_SEED,
 } from "./adapters/in-memory-deterministic-catalog";
+import type { LearningSignalsAdapterOptions } from "./adapters/learning-signals-adapter";
+import { createLearningSignalsAdapter } from "./adapters/learning-signals-adapter";
 import { createNodeDigest } from "./adapters/node-digest";
 import { createPlanningSinkAdapter } from "./adapters/planning-sink-adapter";
 import { createPolicyInputsAdapter } from "./adapters/policy-inputs-adapter";
@@ -53,9 +55,11 @@ import type {
   CandidateStrategy,
   CapabilityResolutionCapture,
   ComputationType,
+  ConsultedLearningSignal,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
   InadmissibleReasonCode,
+  LearningConsultation,
   OpportunityScore,
   OutputCharacteristics,
   PlanEdge,
@@ -80,7 +84,9 @@ import type {
   TaskRiskLevel,
 } from "./domain";
 import {
+  buildLearningConsultation,
   buildPlan,
+  CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
   canonicalPlanForm,
   compareCheapFirst,
@@ -91,18 +97,24 @@ import {
   evaluateDeterministicSufficiency,
   filterAdmissibility,
   isGenerativeStepClass,
+  learningPreferredCandidateId,
   PLAN_STEP_CLASSES,
   PLANNER_VERSION,
+  PREFERENCE_MINIMUM_POPULATION,
   routeAllowedByPolicy,
   STRATEGY_CLASSES,
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
+  validateConsultedSignal,
+  validateLearningConsultation,
   validatePlanningDecision,
 } from "./domain";
 import type {
   DeterministicCapabilityCatalog,
   DeterministicCatalogEntry,
+  LearningSignalQuery,
+  LearningSignals,
   ModelRouteCandidate,
   ModelRouteExplorer,
   PlanningCapabilityAuthority,
@@ -120,11 +132,16 @@ export type {
   CandidateStrategy,
   CapabilityResolutionCapture,
   ComputationType,
+  ConsultedLearningSignal,
   DeterministicCapabilityCatalog,
   DeterministicCatalogEntry,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
   InadmissibleReasonCode,
+  LearningConsultation,
+  LearningSignalQuery,
+  LearningSignals,
+  LearningSignalsAdapterOptions,
   ModelRouteCandidate,
   ModelRouteExplorer,
   OpportunityScore,
@@ -167,13 +184,16 @@ export type {
 // Ports: the outbound seams (catalog, authority, policy, routes, sink, digest).
 // Adapters: node digest + in-memory catalog + composition-fed route table.
 export {
+  buildLearningConsultation,
   buildPlan,
+  CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
   canonicalPlanForm,
   compareCheapFirst,
   computationTypeOfStep,
   createCapabilityAuthorityAdapter,
   createInMemoryDeterministicCatalog,
+  createLearningSignalsAdapter,
   createNodeDigest,
   createPlannerService,
   createPlanningSinkAdapter,
@@ -186,13 +206,17 @@ export {
   evaluateDeterministicSufficiency,
   filterAdmissibility,
   isGenerativeStepClass,
+  learningPreferredCandidateId,
   PLAN_STEP_CLASSES,
   PLANNER_VERSION,
+  PREFERENCE_MINIMUM_POPULATION,
   publishDeterministicCapabilityFacts,
   routeAllowedByPolicy,
   STRATEGY_CLASSES,
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
+  validateConsultedSignal,
+  validateLearningConsultation,
   validatePlanningDecision,
 };
