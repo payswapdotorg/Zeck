@@ -854,6 +854,53 @@
           ]
         }
       }
+    },
+    "WORK-018": {
+      "asOf": "2026-08-31T19:55:00Z",
+      "branch": "work/WORK-018-tool-synthesis",
+      "baseRevision": "95159210bd056ffb034d27da1b31ac4d0aca2074",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-018.md",
+            "tests/unit/tools/synthesis-domain.test.ts",
+            "tests/unit/tools/synthesis-service.test.ts",
+            "tests/unit/learning/tool-fact-origins.test.ts",
+            "tests/integration/postgres/tools-synthesis.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/tools-synthesis.test.ts",
+            "tests/unit/tools/synthesis-service.test.ts",
+            "tests/discrimination/tool-synthesis.discrimination.test.ts",
+            "docs/work-items/WORK-018.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/tools-synthesis.test.ts",
+            "src/platform/db/migrations/0011_tool_synthesis.sql",
+            "docs/work-items/WORK-018.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/tool-synthesis-boundary.test.ts",
+            "tests/discrimination/tool-synthesis.discrimination.test.ts",
+            "docs/work-items/WORK-018.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [
