@@ -4,10 +4,11 @@
   "governingArchitectureVersion": "v1.0",
   "eligible": [
     "WORK-018",
-    "WORK-023",
+    "WORK-023"
+  ],
+  "inFlight": [
     "WORK-031"
   ],
-  "inFlight": [],
   "blocked": [
     "WORK-019",
     "WORK-020",
