@@ -81,7 +81,7 @@ function resolveSpecifier(fromFile: string, specifier: string): string {
 }
 
 describe("architecture: the WORK-016 integration boundary", () => {
-  test("src/integrations imports ONLY the executions/agents public barrels + src/shared", () => {
+  test("src/integrations imports ONLY the owning public barrels + src/shared", () => {
     const violations: string[] = [];
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
@@ -109,7 +109,27 @@ describe("architecture: the WORK-016 integration boundary", () => {
           segments[3] === "public";
         const isShared = resolved.startsWith("src/shared/");
         const isIntraIntegration = resolved.startsWith("src/integrations/");
-        if (!isExecutionBarrel && !isAgentsBarrel && !isShared && !isIntraIntegration) {
+        // WORK-031 (CSX-004): the substrate-federation integration
+        // consumes the capabilities module's PUBLIC substrate registry —
+        // the one claim authority for external substrates (the
+        // workflowos precedent of consuming the owning module's public
+        // surface; allowed ONLY under src/integrations/substrate-federation/).
+        const isCapabilitiesBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "capabilities" &&
+          segments[3] === "public";
+        const isSubstrateFederation = file
+          .slice(REPO_ROOT.length + 1)
+          .startsWith("src/integrations/substrate-federation");
+        if (
+          !isExecutionBarrel &&
+          !isAgentsBarrel &&
+          !isShared &&
+          !isIntraIntegration &&
+          !(isSubstrateFederation && isCapabilitiesBarrel)
+        ) {
           violations.push(`${file}: ${specifier} -> ${resolved}`);
         }
       }
@@ -119,14 +139,23 @@ describe("architecture: the WORK-016 integration boundary", () => {
 
   test("the integration holds NO policy/budget/verification/learning authority logic", () => {
     // The integration CANNOT decide policy, budgets, verification or
-    // learning — it never imports those modules (delegation only).
+    // learning — it never imports those modules (delegation only). The
+    // substrate-federation integration (WORK-031) consumes the
+    // capabilities module's public substrate REGISTRY surface (the one
+    // claim authority) — allowed by the import rule above; it still
+    // never imports policies/budgets/verification/learning.
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
+      const isSubstrateFederation = file
+        .slice(REPO_ROOT.length + 1)
+        .startsWith("src/integrations/substrate-federation");
+      if (!isSubstrateFederation) {
+        expect(text, file).not.toMatch(
+          /modules\/(policies|budgets|verification|learning|capabilities)\//,
+        );
+      }
       expect(text, file).not.toMatch(
-        /modules\/(policies|budgets|verification|learning|capabilities)\//,
-      );
-      expect(text, file).not.toMatch(
-        /modules\/(policies|budgets|verification|learning|capabilities)\/public/,
+        /modules\/(policies|budgets|verification|learning)\/public/,
       );
     }
   });

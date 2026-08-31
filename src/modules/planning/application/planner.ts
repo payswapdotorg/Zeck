@@ -30,6 +30,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { CapabilityResolution, TaskCapabilityProfile } from "../../capabilities/public";
+import { isWorkloadClass } from "../../capabilities/public";
 import type { PolicyRequestContext } from "../../policies/public";
 import type {
   CandidateStrategy,
@@ -56,6 +57,8 @@ import {
   selectStrategy,
   validatePlanningDecision,
 } from "../domain";
+import type { SubstrateSelection } from "../domain/substrate-selection";
+import { validateSubstrateSelection } from "../domain/substrate-selection";
 import type { PlanningCapabilityAuthority } from "../ports/capability-authority";
 import type { CompositionRecommendations } from "../ports/composition-recommendations";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
@@ -64,6 +67,7 @@ import type { LearningSignals } from "../ports/learning-signals";
 import type { ModelRouteCandidate, ModelRouteExplorer } from "../ports/model-routes";
 import type { PlanningDecisionSink } from "../ports/planning-sink";
 import type { PlanningPolicyInputs } from "../ports/policy-inputs";
+import type { SubstrateCatalog } from "../ports/substrate-catalog";
 
 export interface PlannerServiceDeps {
   readonly capabilityAuthority: PlanningCapabilityAuthority;
@@ -98,6 +102,18 @@ export interface PlannerServiceDeps {
    * interaction (planning works without recommendation history).
    */
   readonly compositionRecommendations?: CompositionRecommendations;
+  /**
+   * OPTIONAL substrate catalog READ seam (WORK-031 / CSX-003): when
+   * wired AND the request declares a workload class, the planner
+   * consults the provider-neutral substrate catalog AFTER the governed
+   * selection and records the substrate selection as decision
+   * EVIDENCE with the CSX-003 ordering proof. Deterministic-first is
+   * applied BEFORE the consultation: a deterministic-sufficient
+   * strategy records "no-substrate-required" and never consults the
+   * catalog. Unwired ⇒ zero substrate interaction (planning works
+   * without a substrate catalog — CSX-004's extensibility posture).
+   */
+  readonly substrateCatalog?: SubstrateCatalog;
   /**
    * Discrimination hook (WORK-005 validation-hook precedent): the
    * deterministic-sufficiency evaluator is injectable so mutation records
@@ -134,6 +150,24 @@ export interface PlanningOutcome {
 
 export interface PlannerService {
   planExecution(input: PlanExecutionInput, idempotencyKey: string): Promise<PlanningOutcome>;
+}
+
+/**
+ * The isolation ladder rank (the policies ladder order, mirrored by
+ * value for the substrate admissibility filter — the capabilities
+ * module's substrate vocabulary mirrors the same ladder).
+ */
+const ISOLATION_LADDER: readonly string[] = [
+  "none",
+  "process",
+  "container",
+  "microvm",
+  "vm",
+  "customer-runner",
+];
+function isolationRank(isolation: string): number {
+  const rank = ISOLATION_LADDER.indexOf(isolation);
+  return rank === -1 ? 0 : rank;
 }
 
 export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
@@ -314,6 +348,122 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         });
       }
 
+      // 7.7 OPTIONAL substrate selection (WORK-031 / CSX-003) — AFTER
+      //     policy inputs (step 4), capability resolution (step 5),
+      //     deterministic-first sufficiency (step 6) and the governed
+      //     selection (step 7): the ordering is structural, and the
+      //     record carries the ordering evidence. DETERMINISTIC-FIRST
+      //     APPLIED BEFORE SUBSTRATE SELECTION: a sufficient strategy
+      //     needs no substrate at all (ADR-0016 invariant 4). The
+      //     selection is evidence — it never changes `selected` and
+      //     never dispatches anything.
+      let substrateSelection: SubstrateSelection | undefined;
+      const declaredWorkloadClass = input.task?.workloadClass;
+      if (
+        deps.substrateCatalog !== undefined &&
+        typeof declaredWorkloadClass === "string" &&
+        isWorkloadClass(declaredWorkloadClass)
+      ) {
+        const after = {
+          policyInputsCaptured: true,
+          capabilityResolutionCaptured: true,
+          deterministicSufficiencyApplied: true,
+        };
+        if (sufficiency.outcome === "sufficient") {
+          substrateSelection = validateSubstrateSelection({
+            outcome: "no-substrate-required",
+            workloadClass: declaredWorkloadClass,
+            admissible: [],
+            inadmissible: [],
+            selected: null,
+            rationale:
+              "the selected strategy is deterministic-sufficient; deterministic-first planning requires no computational substrate",
+            after,
+          });
+        } else {
+          const entries = await deps.substrateCatalog.listAvailable(
+            input.applicationId,
+            declaredWorkloadClass,
+          );
+          const admissible: import("../domain/substrate-selection").SubstrateCandidate[] = [];
+          const inadmissible: import("../domain/substrate-selection").SubstrateRejection[] = [];
+          const isolationFloor = policy.effective?.isolation?.minIsolation ?? "none";
+          const costCeilingMicroUsd = policy.effective?.cost?.maxCostMicroUsd;
+          for (const entry of entries) {
+            if (entry.status !== "available") {
+              inadmissible.push({
+                substrateId: entry.substrateId,
+                version: entry.version,
+                reason: "substrate-suspended",
+                detail: `status ${entry.status}`,
+              });
+              continue;
+            }
+            if (!entry.workloadClasses.includes(declaredWorkloadClass)) {
+              inadmissible.push({
+                substrateId: entry.substrateId,
+                version: entry.version,
+                reason: "workload-class-unsupported",
+                detail: "the catalog entry does not serve the declared workload class",
+              });
+              continue;
+            }
+            if (costCeilingMicroUsd !== undefined && entry.resource.estimatedCostMicroUsd !== "0") {
+              const ceiling = Number(costCeilingMicroUsd);
+              if (Number(entry.resource.estimatedCostMicroUsd) > ceiling) {
+                inadmissible.push({
+                  substrateId: entry.substrateId,
+                  version: entry.version,
+                  reason: "cost-above-ceiling",
+                  detail: `estimated ${entry.resource.estimatedCostMicroUsd} above the policy ceiling ${costCeilingMicroUsd}`,
+                });
+                continue;
+              }
+            }
+            admissible.push({
+              substrateId: entry.substrateId,
+              version: entry.version,
+              adapterRef: entry.adapterRef,
+              resource: entry.resource,
+              isolation: entry.isolation,
+              latencyClass: entry.latencyClass,
+            });
+          }
+          // Deterministic selection policy: catalog order (first
+          // admissible) — never a popularity/heuristic choice, and
+          // the isolation floor is applied as an admissibility filter.
+          const selectable = admissible.filter(
+            (candidate) => isolationRank(candidate.isolation) >= isolationRank(isolationFloor),
+          );
+          for (const candidate of admissible) {
+            if (!selectable.includes(candidate)) {
+              inadmissible.push({
+                substrateId: candidate.substrateId,
+                version: candidate.version,
+                reason: "isolation-below-policy",
+                detail: `isolation ${candidate.isolation} below the policy floor ${isolationFloor}`,
+              });
+            }
+          }
+          const chosen = selectable[0];
+          substrateSelection = validateSubstrateSelection({
+            outcome: chosen === undefined ? "none-admissible" : "selected",
+            workloadClass: declaredWorkloadClass,
+            admissible: selectable,
+            inadmissible,
+            selected:
+              chosen === undefined
+                ? null
+                : { substrateId: chosen.substrateId, version: chosen.version },
+            rationale:
+              chosen === undefined
+                ? "no available substrate satisfies the declared workload class and the policy constraints"
+                : `first admissible substrate in deterministic catalog order (workload class ${declaredWorkloadClass})`,
+            after,
+          });
+        }
+      }
+
       // 8. The durable decision record (validated closed shape, then the
       //    executions ledger appends it — single write path). The
       //    decisionId is CONTENT-DERIVED (digest over the request identity
@@ -366,6 +516,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         subgraphEvidence,
         ...(learningConsultation === undefined ? {} : { learningConsultation }),
         ...(compositionConsultation === undefined ? {} : { compositionConsultation }),
+        ...(substrateSelection === undefined ? {} : { substrateSelection }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

@@ -60,4 +60,15 @@ describe("module directory skeleton", () => {
       true,
     );
   });
+
+  test("the substrate-federation integration exposes its public barrel (WORK-031)", async () => {
+    const barrel = await import("../../src/integrations/substrate-federation/public");
+    expect(barrel.integrationId).toBe("substrate-federation");
+    expect(
+      existsSync(resolve(REPO_ROOT, "src/integrations/substrate-federation/adapters/index.ts")),
+    ).toBe(true);
+    expect(
+      existsSync(resolve(REPO_ROOT, "src/integrations/substrate-federation/internal/index.ts")),
+    ).toBe(true);
+  });
 });

@@ -26,6 +26,8 @@ import { validateLearningConsultation } from "./learning-consultation";
 import type { ExecutionPlan } from "./plan";
 import type { CandidateStrategy, RouteRationale } from "./strategy";
 import type { SubgraphObservation } from "./subgraph-evidence";
+import type { SubstrateSelection } from "./substrate-selection";
+import { validateSubstrateSelection } from "./substrate-selection";
 import type { DeterministicSufficiencyDecision } from "./sufficiency";
 import type { TaskProfile } from "./task-profile";
 
@@ -86,6 +88,20 @@ export interface PlanningDecisionRecord {
    * records what learning would prefer (M1/M5/M18).
    */
   readonly compositionConsultation?: CompositionConsultation;
+  /**
+   * OPTIONAL substrate-selection capture (WORK-031 / CSX-003): the
+   * provider-neutral computational substrate selected for the selected
+   * strategy — AFTER policy inputs, capability resolution and
+   * deterministic-first sufficiency (the ordering evidence is part of
+   * the record), with admissible/inadmissible candidates, typed
+   * reasons, the selected substrate's resource characteristics and the
+   * rationale. "no-substrate-required" when the strategy is
+   * deterministic-sufficient (deterministic-first applied BEFORE
+   * substrate selection). Absent when no substrate seam is wired.
+   * The selection is planning EVIDENCE: dispatch goes through the
+   * existing execution paths under the existing admission chains.
+   */
+  readonly substrateSelection?: SubstrateSelection;
   /** Prior decision this one replaces (verification-triggered replanning). */
   readonly replanOf?: string;
   readonly recordedAt: string;
@@ -215,6 +231,12 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // closed shape — validated (version anchors + provenance) whenever
     // present.
     validateCompositionConsultation(record.compositionConsultation);
+  }
+  if (record.substrateSelection !== undefined) {
+    // WORK-031: the substrate-selection capture is part of the closed
+    // shape — validated (the CSX-003 ordering evidence + the closed
+    // candidate vocabulary) whenever present.
+    validateSubstrateSelection(record.substrateSelection);
   }
   requireString(record, "recordedAt", "recordedAt");
   requireString(record, "recordDigest", "recordDigest");

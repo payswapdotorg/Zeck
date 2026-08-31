@@ -11,3 +11,4 @@ export type {
   CapabilityRegistryOptions,
   FactValidator,
 } from "./capability-registry";
+export * from "./substrate-store";

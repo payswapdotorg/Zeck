@@ -25,6 +25,7 @@ export type {
 } from "./capability";
 export { CAPABILITY_EVIDENCE_KINDS, CAPABILITY_KINDS } from "./capability";
 export { resolveProfile } from "./resolution";
+export * from "./substrate";
 export {
   compareVersions,
   parseVersion,
