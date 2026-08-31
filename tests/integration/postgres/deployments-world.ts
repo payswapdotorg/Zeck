@@ -20,7 +20,7 @@
 
 import { createHash } from "node:crypto";
 import { SqlAgentStore } from "../../../src/modules/agents/adapters/sql-agent-store";
-import { createAgentRegistry, InMemoryAgentStore } from "../../../src/modules/agents/public";
+import { createAgentRegistry } from "../../../src/modules/agents/public";
 import type {
   DeploymentPlanInput,
   DeploymentProfileInput,
@@ -31,7 +31,6 @@ import {
   createDeploymentService,
   createModalityAdapterRegistry,
   createSqlEnvironmentResolver,
-  InMemoryDeploymentStore,
   SqlDeploymentStore,
 } from "../../../src/modules/deployments/public";
 import {
@@ -217,5 +216,3 @@ export function planBody(world: {
     sessionPolicy: { maxSessionDurationMs: 600_000, maxConcurrentSessions: 8 },
   };
 }
-
-export { InMemoryDeploymentStore };

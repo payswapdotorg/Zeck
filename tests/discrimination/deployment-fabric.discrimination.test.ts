@@ -136,7 +136,6 @@ const OTHER_TENANT_ACTOR: DeploymentActor = {
 };
 const AGENT_ID = "00000000-0000-7000-8000-0000000000a1";
 const ENV_ID = "00000000-0000-7000-8000-0000000000a2";
-const EXECUTION_ID = "00000000-0000-7000-8000-0000000000e9";
 
 const PROFILE: DeploymentProfileInput = {
   profileId: "support-voice",

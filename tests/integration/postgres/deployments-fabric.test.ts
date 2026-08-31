@@ -150,7 +150,7 @@ WHERE application_id = $1 AND profile_id = 'support-voice' AND version = 1`,
 
   describe("deployment identity (MOD-002)", () => {
     test("creation binds identity; the journal records the create event with provenance", async () => {
-      const { world, actor, deploymentId } = await seededDeployment();
+      const { world, deploymentId } = await seededDeployment();
       const deployment = await world.deploymentService.getDeployment(
         world.applicationId,
         deploymentId,
