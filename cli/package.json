@@ -1,0 +1,7 @@
+{
+  "name": "@pectoraux/zeck-cli",
+  "version": "0.1.0",
+  "description": "Zeck CLI — execution-centric developer primitives (submit/inspect executions)",
+  "type": "module",
+  "private": true
+}

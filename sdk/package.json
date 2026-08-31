@@ -1,0 +1,12 @@
+{
+  "name": "@pectoraux/zeck-sdk",
+  "version": "0.1.0",
+  "description": "Zeck TypeScript SDK — the execution-centric public developer contract of AI Execution OS",
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "private": true
+}

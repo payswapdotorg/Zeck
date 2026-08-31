@@ -8,6 +8,9 @@
   "files": {
     "includes": [
       "src/**",
+      "sdk/**",
+      "cli/**",
+      "apps/**",
       "tests/**",
       "vitest.config.ts",
       "package.json",
