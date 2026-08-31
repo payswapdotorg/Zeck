@@ -56,6 +56,50 @@ WORK-031 generalizes Execution-compatible workload/substrate classes for compute
 
 ---
 
+## Computer-use strategy
+
+Computer use is deliberately treated as a **governed computational capability and escalation mode**, not as the default way an agent interacts with software.
+
+The preferred execution order is:
+
+```text
+Task
+  ↓
+Can API / deterministic capability satisfy it?
+  ├─ yes → deterministic/API execution
+  └─ no  → browser automation
+               ↓ insufficient
+            isolated desktop/terminal interaction
+```
+
+This means a capable browser/desktop agent does not automatically receive a browser or desktop call. Zeck should first determine whether an API, structured connector, deterministic tool, existing competence or other exact computation can solve the subtask.
+
+Every computer-use stage continues through:
+
+```text
+Policy
+  ↓
+Capability
+  ↓
+Tenant / credential mediation
+  ↓
+Budget
+  ↓
+Execution
+  ↓
+Sandbox / substrate
+  ↓
+Verification
+  ↓
+Evidence
+```
+
+Computer-use observations and actions should become reusable trajectory evidence. Repeated successful trajectories can later feed tool learning, competence formation and deterministicization rather than remaining permanently dependent on GUI/model interaction.
+
+The implementation target is provider-neutral contracts for browser, desktop and terminal interaction, explicit side-effect capabilities, isolated execution, structured action/observation evidence, and deterministic/API-vs-GUI discrimination tests. WORK-027 owns the concrete implementation after WORK-031.
+
+---
+
 # Post-foundation evolution
 
 The following capabilities are intentionally additive to the current architecture. They extend Learning, Planning, Deployment, Agent and Substrate foundations rather than replacing them.
@@ -280,6 +324,7 @@ WORK-018 + WORK-023 + WORK-031
 | System / idea | Action in Zeck |
 |---|---|
 | OpenClaw Gateway/channel architecture | **Integrate conceptually** into Deployment/Session/Gateway fabric |
+| OpenClaw browser/desktop capability model | **Learn + adapt** into provider-neutral Computer Use capabilities |
 | OpenClaw skills ecosystem | **Learn + adapt** into Competence Registry |
 | OpenClaw security scanning/trust metadata | **Integrate principles** into competence supply chain |
 | OpenClaw runtime | **Adapter**, not Zeck core |
