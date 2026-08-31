@@ -315,7 +315,20 @@ export function createSynthesisService(deps: SynthesisServiceDeps): SynthesisSer
           idempotencyKey: `synth-test:${program.id}:${testCase.name}`,
           timeoutMs: SYNTHESIS_DEFAULT_TIMEOUT_MS,
         };
-        const result = await sandbox.execute(dispatch);
+        let result: import("../ports/synthesis-sandbox").SynthesisSandboxResult;
+        try {
+          result = await sandbox.execute(dispatch);
+        } catch (error) {
+          // Executor REFUSALS (fail-closed PlatformErrors — e.g. the
+          // substrate confinement check) are durable per-case failures:
+          // the program can never pass a gate it cannot even run.
+          result = {
+            outcome: "failure",
+            failureClass: "admission-refused",
+            message: error instanceof Error ? error.message : String(error),
+            sandboxId: null,
+          };
+        }
         if (result.outcome === "failure") {
           passed = false;
           evidence.push({

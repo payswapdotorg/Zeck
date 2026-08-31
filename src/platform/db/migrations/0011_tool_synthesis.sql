@@ -93,7 +93,7 @@ CREATE TABLE tools.synthesized_programs (
     CONSTRAINT synth_contract_object CHECK (jsonb_typeof(contract) = 'object'),
     CONSTRAINT synth_test_cases_array CHECK (jsonb_typeof(test_cases) = 'array'),
     CONSTRAINT synth_test_cases_bounded CHECK (jsonb_array_length(test_cases) BETWEEN 1 AND 16),
-    CONSTRAINT synth_fingerprint_nonempty CHECK (length(submission_fingerprint) BETWEEN 1 AND 512),
+    CONSTRAINT synth_fingerprint_nonempty CHECK (length(submission_fingerprint) BETWEEN 1 AND 8192),
     CONSTRAINT synth_key_nonempty CHECK (length(idempotency_key) BETWEEN 1 AND 200),
     CONSTRAINT synth_expires_after_creation CHECK (expires_at > created_at),
     CONSTRAINT synth_submission_key_unique UNIQUE (application_id, idempotency_key),

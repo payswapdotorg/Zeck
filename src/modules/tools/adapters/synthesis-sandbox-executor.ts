@@ -25,8 +25,15 @@
  * The program source crosses as ONE task argument and the input as ONE
  * explicit public env entry (both bounded; raw-secret-shaped content
  * is rejected by the domain's fail-closed validation BEFORE anything
- * durable). The runner command is a composition-root choice (default:
- * `node -e`) — a neutral runtime command, never a provider SDK.
+ * durable). The runner command is a REQUIRED composition-root choice
+ * (the test/production worlds pass the concrete runtime path, e.g.
+ * `process.execPath` — the sandbox spawns argv without a shell and
+ * without ambient PATH, so the absolute runner path is the honest
+ * wiring). The ADAPTER's runtime shim materializes the validated
+ * input as a prelude constant `INPUT` — the PROGRAM source itself
+ * stays inside the pure-compute subset (no process/env access; the
+ * shim is adapter infrastructure exactly like the runner command,
+ * never user source). Never a provider SDK.
  */
 
 import { PlatformError } from "../../../shared/errors";
@@ -42,11 +49,22 @@ import type {
 /** The input env entry name (explicit, non-secret by contract). */
 export const SYNTH_INPUT_ENV = "ZECK_SYNTH_INPUT";
 
+/**
+ * The runtime shim materializing the validated input as the program's
+ * `INPUT` constant (adapter infrastructure — the program source stays
+ * inside the pure-compute subset; only the shim touches the env).
+ */
+const INPUT_PRELUDE = `const INPUT = JSON.parse(process.env["${SYNTH_INPUT_ENV}"] ?? "null");\n`;
+
 export interface SynthesisSandboxExecutorOptions {
   /** The target compute environment (must be registered in the catalog). */
   readonly environmentId: string;
-  /** The neutral runner command (default: `node`). */
-  readonly runnerCommand?: string;
+  /**
+   * The neutral runner command (REQUIRED — the concrete runtime path,
+   * e.g. `process.execPath` for the JavaScript v1 language; the sandbox
+   * spawns argv without PATH, so the absolute path is the honest wiring).
+   */
+  readonly runnerCommand: string;
   /** Extra runner arguments before the source (default: `["-e"]`). */
   readonly runnerArgs?: readonly string[];
 }
@@ -102,7 +120,7 @@ export function createSynthesisSandboxExecutor(
   deps: SynthesisSandboxExecutorDeps,
 ): SynthesisSandboxExecutor {
   const { service, catalog, options } = deps;
-  const runnerCommand = options.runnerCommand ?? "node";
+  const runnerCommand = options.runnerCommand;
   const runnerArgs = options.runnerArgs ?? ["-e"];
 
   return {
@@ -124,6 +142,16 @@ export function createSynthesisSandboxExecutor(
           outcome: "failure",
           failureClass: "tool-execution",
           message: `the serialized input exceeds the v1 bound of ${SYNTHESIS_INPUT_JSON_MAX} chars (the sandbox env-entry bound)`,
+          sandboxId: null,
+        };
+      }
+      // The combined script (shim + source) is ONE task argument: the
+      // sandbox arg bound applies to the whole thing (fail-closed).
+      if (INPUT_PRELUDE.length + dispatch.program.source.length > SYNTHESIS_INPUT_JSON_MAX) {
+        return {
+          outcome: "failure",
+          failureClass: "tool-execution",
+          message: `the shim + source exceeds the v1 task-argument bound of ${SYNTHESIS_INPUT_JSON_MAX} chars`,
           sandboxId: null,
         };
       }
@@ -151,7 +179,7 @@ export function createSynthesisSandboxExecutor(
           environmentId: options.environmentId,
           task: {
             command: runnerCommand,
-            args: [...runnerArgs, dispatch.program.source],
+            args: [...runnerArgs, `${INPUT_PRELUDE}${dispatch.program.source}`],
             publicEnv: { [SYNTH_INPUT_ENV]: inputJson },
           },
         },

@@ -73,6 +73,12 @@ export interface ToolsPgWorld {
   readonly runtime: ToolRuntime;
   readonly toolStore: SqlToolInvocationStore;
   readonly registerTool: (contract: ToolContract, adapter: ToolAdapter) => Promise<void>;
+  /**
+   * The registry map the runtime resolves from (WORK-018: the synthesis
+   * world binds synthesized tools into THE single registry — exposed so
+   * the runtime and the synthesis service share one admission surface).
+   */
+  readonly registeredTools: Map<string, { contract: ToolContract; adapter: ToolAdapter }>;
   seedExecution(status?: string): Promise<string>;
   actor(): { actorId: string; tenantId: string };
 }
@@ -161,6 +167,7 @@ export async function seedToolsWorld(db: DatabasePort): Promise<ToolsPgWorld> {
     policyAuthority: authority,
     runtime,
     toolStore,
+    registeredTools: registered,
     registerTool: async (contract, adapter) => {
       registered.set(contract.toolId, { contract, adapter });
     },

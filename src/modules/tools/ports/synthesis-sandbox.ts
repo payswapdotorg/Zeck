@@ -8,8 +8,8 @@
  * occur only inside the sandbox manager" is enforced structurally:
  *
  *   - the synthesis service (application layer) depends on this port
- *     and has NO other execution surface — there is no spawn, eval,
- *     `new Function` or worker_threads anywhere under
+ *     and has NO other execution surface — no process spawning, dynamic
+ *     evaluation or worker-thread usage exists anywhere under
  *     `src/modules/tools/` (the architecture test pins the tokens;
  *     the discrimination suite proves a mutated bypass is detected);
  *   - the ONLY shipped implementation of this port
