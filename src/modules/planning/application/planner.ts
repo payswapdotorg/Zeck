@@ -30,7 +30,6 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { CapabilityResolution, TaskCapabilityProfile } from "../../capabilities/public";
-import { isWorkloadClass } from "../domain/workload-class";
 import type { PolicyRequestContext } from "../../policies/public";
 import type {
   CandidateStrategy,
@@ -59,6 +58,7 @@ import {
 } from "../domain";
 import type { SubstrateSelection } from "../domain/substrate-selection";
 import { validateSubstrateSelection } from "../domain/substrate-selection";
+import { isWorkloadClass } from "../domain/workload-class";
 import type { PlanningCapabilityAuthority } from "../ports/capability-authority";
 import type { CompositionRecommendations } from "../ports/composition-recommendations";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
