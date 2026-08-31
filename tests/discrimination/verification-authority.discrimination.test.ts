@@ -4,7 +4,7 @@
  * POLICY-BEFORE-DISPATCH, EXECUTION-PROVENANCE, TENANT-ISOLATION,
  * IDENTITY-IDEMPOTENCY, AUTH-PRESERVATION).
  *
- * Every protection is proven by a mutant that removes it. The 24
+ * Every protection is proven by a mutant that removes it. The 26
  * mandatory mutants of the Work Order:
  *
  *   STATIC (the shared scanner over mutated REAL source — the red-record
@@ -33,6 +33,10 @@
  *         validation removed / M24 provenance validation removed /
  *         M4 PASS-evidence validation removed (domain result model
  *         gutted); M5/M6 conclusion derivation gutted.
+ *     M25 the target-resolution fail-closed rejection branch removed
+ *         (verification certifies a result without an actual target).
+ *     M26 replan/escalation becomes verifier-owned (a replan transition
+ *         method/call enters the port or the service — INT-005).
  *
  *   RUNTIME RED RECORDS (observed violations under CONSTRUCTED wiring
  *   mutants — the wiring failure each static protection makes
@@ -50,6 +54,9 @@
  *         execution and never records a PASS.
  *     R5 (M1/M2) a model judge that answers with a raw provider success
  *         payload (no bound verdict) produces INCONCLUSIVE, never PASS.
+ *     R6 (M25) an over-accepting target resolver certifies a GHOST
+ *         target (violation recorded); the honest resolver fails closed
+ *         BEFORE any evaluation (production).
  *
  * The remaining mandatory mutants are proven dynamically in the unit and
  * real-PostgreSQL suites (they are behavioral, not source-shaped):
@@ -68,6 +75,7 @@ import {
   nodePolicyHasher,
   type PolicyAuthority,
 } from "../../src/modules/policies/public";
+import type { TargetResolver } from "../../src/modules/verification/ports/target-resolvers";
 import type {
   VerificationAdmission,
   VerificationAdmissionDecision,
@@ -97,6 +105,7 @@ const TREE_PATHS = [
   "src/modules/verification/domain/evaluator.ts",
   "src/modules/verification/domain/human.ts",
   "src/modules/verification/domain/criteria.ts",
+  "src/modules/verification/ports/verification-ledger.ts",
 ];
 
 function realTree(): VerificationBoundaryFile[] {
@@ -387,6 +396,46 @@ describe("static mutants — the scanner catches every removed protection", () =
     );
     expectCaught(tree, "conclusion-unmet-surfacing-missing");
   });
+
+  test("M25: the target-resolution fail-closed rejection is gutted (certify without an actual target)", () => {
+    const tree = mutate(realTree(), treePath(0), (content) =>
+      content.replace(
+        "    if (!resolution.resolved) {",
+        "    if (false) { // mutant: unresolved targets evaluate anyway",
+      ),
+    );
+    expectCaught(tree, "verify-target-resolution-fail-closed");
+  });
+
+  test("M26: the verifier issues a replan transition itself (replanning becomes verifier-owned)", () => {
+    const tree = mutate(realTree(), treePath(0), (content) =>
+      content.replace(
+        "  async function concludeEvaluation(",
+        '  async function mutantReplan(executionId: string, applicationId: string, actor: { actorId: string; tenantId: string }) { await transitions.replan({ executionId, applicationId, actor }, "mutant-replan"); } // mutant: the verifier replans\n  async function concludeEvaluation(',
+      ),
+    );
+    expectCaught(tree, "verification-owns-replanning-transitions");
+  });
+
+  test("M26: the adapter issues a replan transition command (planner authority seized)", () => {
+    const tree = mutate(realTree(), treePath(4), (content) =>
+      content.replace(
+        '          command: "verify",',
+        '          command: "replan", // mutant: verifier-owned replanning',
+      ),
+    );
+    expectCaught(tree, "verification-owns-replanning-transitions");
+  });
+
+  test("M26: the transition port grows a replan method (the planner's authority in the verifier's port)", () => {
+    const tree = mutate(realTree(), treePath(11), (content) =>
+      content.replace(
+        "  /** VERIFYING → COMPLETED, bound to at least one PASS verification result. */",
+        "  /** MUTANT: the verifier decides to replan itself. */\n  replan(\n    input: ExecutionTransitionInput,\n    idempotencyKey: string,\n  ): Promise<ExecutionTransitionOutcome>;\n  /** VERIFYING → COMPLETED, bound to at least one PASS verification result. */",
+      ),
+    );
+    expectCaught(tree, "verification-owns-replanning-transitions");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -622,5 +671,84 @@ describe("runtime red records — the wiring failures the static protections mak
       executionId,
     );
     expect(results[0]?.status).toBe("INCONCLUSIVE");
+  });
+
+  test("R6 (M25): an over-accepting resolver certifies a GHOST target (violation) — the honest resolver fails closed BEFORE evaluation", async () => {
+    const w = createInMemoryVerificationWorld();
+    await w.declare({
+      criterionId: "count",
+      kind: "invariant",
+      definition: { assertions: [{ path: "count", op: "eq", value: 1 }] },
+    });
+    const executionId = w.seedExecution("RUNNING");
+    const { createVerificationService } = await import(
+      "../../src/modules/verification/application/verification-service"
+    );
+    const { createInvariantEvaluator } = await import(
+      "../../src/modules/verification/adapters/deterministic-evaluators"
+    );
+    const applicationId = "00000000-0000-7000-8000-0000000000a1";
+    // A GHOST target — an artifact digest that does not exist anywhere.
+    const ghost = {
+      kind: "artifact",
+      ref: "ghost-digest-000",
+      revision: "ghost-digest-000",
+    } as const;
+
+    const buildService = (resolver: TargetResolver) =>
+      createVerificationService({
+        store: w.store,
+        admission: w.admission,
+        ledger: w.ledger,
+        transitions: w.transitions,
+        evaluators: [createInvariantEvaluator()],
+        resolvers: { artifact: resolver },
+        generateId: () =>
+          `00000000-0000-7000-8000-${Math.floor(Math.random() * 1e12)
+            .toString()
+            .padStart(12, "0")}`,
+        now: () => new Date("2026-01-01T00:00:00Z"),
+        hashInput: (text) => `h-${text.length}`,
+      });
+
+    // PRODUCTION: the honest resolver reports the ghost unresolved — the
+    // service fails closed BEFORE any evaluation (typed failure, no result).
+    const honest: TargetResolver = {
+      resolveTarget: async () => ({ resolved: false, reason: "no such artifact in scope" }),
+    };
+    await expectCode(
+      buildService(honest).verifyTarget(
+        {
+          applicationId,
+          executionId,
+          actor: w.actor(),
+          target: ghost,
+          criteria: [{ criterionId: "count", version: 1 }],
+          evidence: { facts: { count: 1 }, evidenceRefs: ["r"] },
+        },
+        "key-honest-ghost",
+      ),
+      "TENANT_SCOPE_VIOLATION",
+    );
+    // Zero results exist for the honest attempt — nothing was certified.
+    expect(await w.service.listResults(applicationId, executionId)).toEqual([]);
+
+    // The MUTANT wiring: a resolver that accepts anything — the violation,
+    // recorded (verification certifies a result without an actual target).
+    const overAccepting: TargetResolver = {
+      resolveTarget: async () => ({ resolved: true }),
+    };
+    const violation = await buildService(overAccepting).verifyTarget(
+      {
+        applicationId,
+        executionId,
+        actor: w.actor(),
+        target: ghost,
+        criteria: [{ criterionId: "count", version: 1 }],
+        evidence: { facts: { count: 1 }, evidenceRefs: ["r"] },
+      },
+      "key-mutant-ghost",
+    );
+    expect(violation.criteriaMet).toBe(true); // PASS for a target that never existed
   });
 });

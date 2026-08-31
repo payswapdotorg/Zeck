@@ -48,6 +48,15 @@
  *  12. `pass-requires-results` — the pass input is built from durable
  *      results (never empty by construction; the executions authority
  *      enforces ≥1 PASS).
+ *  13. `verify-target-resolution-fail-closed` — the resolveTarget
+ *      rejection branch is load-bearing (M25): a target that does not
+ *      resolve in scope must throw BEFORE any evaluation — verification
+ *      can never certify a result without an actual target.
+ *  14. `verification-owns-replanning-transitions` — replan/escalation
+ *      stays planner-owned (M26/INT-005): the ExecutionTransitionPort
+ *      declares exactly verify/pass, and no verification file issues any
+ *      other transition command or call (the verifier reports; the
+ *      planner decides).
  */
 
 export interface VerificationBoundaryFile {
@@ -316,6 +325,28 @@ export function verificationAuthorityViolations(
     }
   }
 
+  // (13) M25: target-resolution fail-closed. The resolveTarget rejection
+  // branch is load-bearing — removing it lets the verifier certify
+  // results for targets that do not actually exist (an unresolved target
+  // must throw BEFORE any evaluation, never produce a result).
+  if (!service.content.includes("if (!resolution.resolved) {")) {
+    violations.push("verify-target-resolution-fail-closed");
+  }
+
+  // (14) M26 (port half): the ExecutionTransitionPort declares exactly
+  // the verification commands (verify/pass). Adding replan/fail/
+  // wait-human/escalate methods hands the planner's authority to the
+  // verifier (INT-005: the verifier reports; the planner decides).
+  const transitionPort = byPath.get("src/modules/verification/ports/verification-ledger.ts");
+  if (
+    transitionPort !== undefined &&
+    /(^|\n)[ \t]*(replan|fail|waitHuman|escalate|cancel|expire)[ \t]*\(/.test(
+      transitionPort.content,
+    )
+  ) {
+    violations.push("verification-owns-replanning-transitions:port");
+  }
+
   // Whole-module scans over every verification file.
   for (const file of files) {
     if (!file.path.startsWith("src/modules/verification/")) {
@@ -329,6 +360,15 @@ export function verificationAuthorityViolations(
     // module (tool success is evidence at best, never a verdict).
     if (/["'](tool-success|tool-failure)["']/.test(file.content)) {
       violations.push(`verification-tool-axis-vocabulary:${file.path}`);
+    }
+    // M26: replan/escalation stays planner-owned. The verification
+    // module issues ONLY verify/pass transitions — any other transition
+    // command or call site is the verifier becoming the planner.
+    if (
+      /command:\s*"(replan|fail|wait-human|cancel|expire)"/.test(file.content) ||
+      /transitions\.(replan|fail|waitHuman|escalate|cancel|expire)\s*\(/.test(file.content)
+    ) {
+      violations.push(`verification-owns-replanning-transitions:${file.path}`);
     }
     // M15: no policies authority logic in evaluators/adapters besides the
     // delegating admission adapter.

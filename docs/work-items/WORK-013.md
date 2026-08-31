@@ -6,6 +6,8 @@ Branch: `work/WORK-013-verification-authority` · Base: `2310df99e167ee15fb3c080
 Implementation revision (this file binds): `db21c0bd2dd7b84185a0fd85ac36331307e9c14e` (implementation commit)
 Final branch head: bound in the PR body (the two-part SHA binding convention — this evidence commit cannot contain its own SHA)
 
+Discrimination extension revision: after the implementation head, the discrimination suite was extended to the full 26-mutant list of the Work Order instruction (M25 verification-can-certify-without-an-actual-target and M26 replan/escalation-verifier-owned — their semantics were already proven under the M10/M11 input-half, M14 and INT-005 labels; the extension makes the coverage explicit): `tests/discrimination/verification-authority.discrimination.test.ts` 29 → 34 tests (+5: M25 static, M26 ×3 static — service call / adapter command / port method — and the R6 runtime red record), `tests/discrimination/lib/verification-authority.ts` checks 13/14 added (`verify-target-resolution-fail-closed`, `verification-owns-replanning-transitions`). All verification tables below were RE-MEASURED after this extension at the branch state this evidence commit finalizes.
+
 No pre-existing main defects at pickup: pristine-main baseline measured **957/957 (106 files)** — fully green including governance. WORK-012 (sandbox, the parallel frontier item) is preserved `eligible` and untouched throughout.
 
 ## Requirement mapping
@@ -45,7 +47,7 @@ Surfaces (directly required, declared by the Work Order — "the executions modi
 8. **Idempotency and convergence.** The evaluation journal keyed `(application_id, evaluation_key)` is the idempotency authority: same key + fingerprint replays the durable conclusion; different fingerprint fails `IDEMPOTENCY_KEY_REUSED`; concurrent duplicates converge via unique-index arbitration + in-process single-flight (N=4 PG test: ONE journal row, ONE PASS result, one completion); a crash-interrupted `evaluating` row is honestly re-drivable (new key) or replayed (same key+ fingerprint); human decisions and comparisons carry their own keyed anchors; the decision is journaled on its own evaluation row (M24's provenance binding holds for the human path too).
 9. **Substrate-neutral targets (ACR-003/ADR-0016).** The target vocabulary is seven kinds (execution-output, plan-revision, artifact, tool-output, model-output, record, candidate) — evidence about a result, never one modality; target resolvers validate identity in the caller's scope through the OWNING modules' public services (artifacts content-addressed identity; executions-ledger planning decisions) — no parallel artifact identity system is created.
 
-## Verification (implementation head `db21c0bd2dd7b84185a0fd85ac36331307e9c14e`)
+## Verification (branch state finalized by this evidence commit — tables re-measured after the M25/M26 discrimination extension)
 
 Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TEST_URL`), the shipped migration set incl. `0007_verification.sql` applied per suite on disposable databases.
 
@@ -56,16 +58,16 @@ Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TE
 | `bun run lint` | 0 errors, 0 warnings (436 files) |
 | `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-012']` (WORK-013 in-flight, WORK-012 preserved eligible; checker byte-identical to main) |
 | `bun run test:unit` | 636/636 (50 files; incl. 82 WORK-013 tests across 4 unit suites + the updated step-events vocabulary test) |
-| `bun run test:architecture` (architecture + discrimination; no PG env) | 276 passed + 1 skipped (277 tests; 35 files passed + 1 skipped = 36; incl. `verification-boundary` 3/3, `verification-authority.discrimination` 29/29, `governance-gate` negative control green; the 1 skip = the standing no-PG-in-CI `budgets-overspend` flag) |
+| `bun run test:architecture` (architecture + discrimination; no PG env) | 281 passed + 1 skipped (282 tests; 35 files passed + 1 skipped = 36; incl. `verification-boundary` 3/3, `verification-authority.discrimination` 34/34 — the full M1–M26 list, `governance-gate` negative control green; the 1 skip = the standing no-PG-in-CI `budgets-overspend` flag) |
 | `bun run test:integration` (no PG env) | 7 passed + 27 skipped (34 tests; 29 files; incl. `fresh-clone-governance` green; the 27 skips = the real-PG suites' env gate) |
 | `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 175/175 (27 files; incl. verification-schema 11, verification-runtime 9, verification-evidence 4 = 24 WORK-013 PG tests) |
-| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively + one more**) | **1095/1095 (115 files), all three runs, identical pass sets**; run 1 additionally reported 3 unhandled `57P01` teardown-race errors — zero failing tests, the intermittent infrastructural-transient class reproduced on pristine main's own baseline and documented as such by WORK-010's evidence; runs 2–3 fully clean (exit 0) |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively**) | **1100/1100 (115 files), both runs, identical pass sets, exit 0 both times** |
 
-Baseline comparison: pristine main at pickup measured **957/957 (106 files)** — fully green. Delta: **+138 tests / +9 files, all passing, zero regressions**.
+Baseline comparison: pristine main at pickup measured **957/957 (106 files)** — fully green. Delta: **+143 tests / +9 files, all passing, zero regressions**.
 
 ## Discrimination evidence (CRITICAL — every mandatory mutant)
 
-`tests/discrimination/verification-authority.discrimination.test.ts` (29 tests) + the shared scanner `tests/discrimination/lib/verification-authority.ts` (one definition, two uses — the architecture gate `tests/architecture/verification-boundary.test.ts` runs it over the real tree):
+`tests/discrimination/verification-authority.discrimination.test.ts` (34 tests) + the shared scanner `tests/discrimination/lib/verification-authority.ts` (one definition, two uses — the architecture gate `tests/architecture/verification-boundary.test.ts` runs it over the real tree):
 
 | Mutant | Boundary removed by the mutant | Rejected as |
 |---|---|---|
@@ -93,6 +95,8 @@ Baseline comparison: pristine main at pickup measured **957/957 (106 files)** �
 | M22 INCONCLUSIVE treated as acceptance | (comparison family) forced winner under uncertainty | `comparison-winner-selection-not-explicit` (static) + PG `comparisons_winner_shape` CHECK + unit/PG ambiguous ⇒ INCONCLUSIVE |
 | M23 verification result mutated after acceptance | (physical) result UPDATE/DELETE attempted | PG append-only trigger rejects both (schema suite) — no update path exists anywhere in the module |
 | M24 verification result detached from its evidence | Provenance validation gutted / FK-less result insert | `result-domain-provenance-validation-missing` (static) + PG `results_evaluation_fk` (journal binding mandatory) + human decisions journaled on their own evaluation rows |
+| M25 verification certifies a result without an actual target | Target-resolution fail-closed rejection gutted (unresolved targets evaluate anyway) | `verify-target-resolution-fail-closed` (static) + R6 runtime red record (over-accepting resolver certifies a GHOST target — the recorded violation; the honest resolver fails closed BEFORE any evaluation, zero results) + unit unknown-execution rejection + PG ghost plan-revision/foreign-tenant digest fail-closed |
+| M26 replan/escalation becomes verifier-owned | A replan transition call enters the service / a replan command enters the adapter / a replan method enters the ExecutionTransitionPort | `verification-owns-replanning-transitions` (static ×3 — service call site, adapter command, port declaration) + unit "an unmet outcome is REPORTED to the boundary; the verifier never replans itself" + M14 lifecycle-vocabulary scanner (the planner's REPLANNING vocabulary is unrepresentable in the module) |
 
 ## Real PostgreSQL proofs (the Work Order's durable list)
 
