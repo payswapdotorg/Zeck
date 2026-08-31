@@ -98,6 +98,19 @@ Recorded in `spec/development-state/checkpoint-state.json` under `WORK-016` (all
 - CI runs the architecture/unit/integration suites but not the real-PG suites (the standing WORK-002 flag: no PostgreSQL service in CI); PG proofs are local-verified against real PostgreSQL 17.11 and recorded above.
 - The BYOA registration seam requires the caller to hold a governed actor (the registry's actor-scoped methods); production integration credential transport (per-application integration principals with scoped tokens) extends WORK-015's `authenticate` seam pattern — future auth-surface work.
 
+## Migration inventory rule (updated session protocol)
+
+The implementer protocol was updated after delivery with an explicit migration-number collision rule (inspect the LIVE migration inventory; never assume `000X+1`; ensure global uniqueness; check whether an in-flight/unmerged Work Order already claimed a number and document the choice). Compliance audit for this branch:
+
+- **WORK-016 adds NO migration.** The integration owns no schema of its own: durable submission state rides the executions authority's existing tables (idempotency delegated — no ledger), agent registration rides the WORK-011 registry's existing tables, and benchmark evidence is a pure record returned to the caller (a durable benchmark store is a disclosed future surface, not this Work Order's).
+- **Live inventory inspected and re-verified at delivery:** `src/platform/db/migrations/` on the current main carries exactly `0001`–`0009`, all merged (0001 identity/tenants, 0002 connections/providers, 0003 budgets/ledger, 0004 executions, 0005 tools, 0006 agents, 0007 verification, 0008 sandbox, 0009 learning — the WORK-014 merge). `git diff origin/main...HEAD -- src/platform/db/migrations/` is empty on this branch.
+- **No in-flight/unmerged Work Order claims any migration number:** the only open pull request is this one (#26 — zero migration changes); the only remote branches differing from main under `migrations/` are stale already-merged branches (`work/WORK-001-foundation` adds the README, `work/WORK-012-sandbox-compute` adds the 0008 that is on main). No number is claimed twice; **zero collision risk by construction**.
+- If a future WORK-016 amendment ever requires schema, the version MUST be derived from the live inventory at that time (the inspection above is the method), never assumed from the current count.
+
+## Re-verification under the updated protocol (docs-only rebinding)
+
+After the updated session protocol was issued, the COMPLETE gate was independently re-executed at the then-final head `4b92712` (implementation head `8b741a7`, evidence head `39f32a7` — all counts identical to the table above: unit 877/877, architecture+discrimination 427/427 with `ZECK_PG_TEST_URL` set, integration 7+39 PG-gated skips, real-PG 260/260, full suite 1570/1570; one run fired the documented `57P01` teardown transient with all tests passing, followed by consecutive clean exit-0 runs), and re-executed again at THIS head after this docs-only change (the PR body binds the exact final head, the re-execution record and the CI run identity — the established two-phase binding). The local PostgreSQL instance was re-provisioned by the environment between sessions (now reporting 16.4 where the original runs used 17.11 — the harness is version-agnostic SQL; role/CREATEDB privileges verified before the runs; disclosed here for exactness).
+
 ## PR binding
 
 BOUND — see the PR body of this branch's pull request for the exact final head, the complete-gate re-execution at that head, and the CI run identity (the two-phase SHA binding convention: the implementation gate is recorded above at `8b741a7`; the evidence head's gate is re-executed after this commit lands and recorded in the PR body before push).
