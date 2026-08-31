@@ -36,8 +36,10 @@ async function runningExecution(world: ReturnType<typeof createInMemoryExecution
 describe("execution step events", () => {
   test("step-event vocabulary is owned by the executions domain", () => {
     // WORK-011 extended the vocabulary additively with the agent session
-    // evidence commands (agents produce them through the same
-    // recordStepEvent seam; executions remains the sole vocabulary owner).
+    // evidence commands, WORK-013 with the verification evidence commands,
+    // and WORK-012 with the sandbox execution commands (all three modules
+    // produce them through the same recordStepEvent seam; executions
+    // remains the sole vocabulary owner).
     expect(STEP_EVENT_COMMANDS).toEqual([
       "tool-requested",
       "tool-result",
@@ -51,9 +53,13 @@ describe("execution step events", () => {
       "human-evaluation-requested",
       "human-decision-recorded",
       "comparison-recorded",
+      "sandbox-admitted",
+      "sandbox-denied",
+      "sandbox-completed",
     ]);
     expect(isStepEventCommand("tool-requested")).toBe(true);
     expect(isStepEventCommand("agent-session-started")).toBe(true);
+    expect(isStepEventCommand("sandbox-admitted")).toBe(true);
     expect(isStepEventCommand("authorize")).toBe(false);
     expect(isStepEventCommand("tool-bogus")).toBe(false);
   });

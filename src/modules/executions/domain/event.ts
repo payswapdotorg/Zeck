@@ -103,6 +103,16 @@ export const STEP_EVENT_COMMANDS = [
   "human-evaluation-requested",
   "human-decision-recorded",
   "comparison-recorded",
+  // WORK-012 (sandbox) — sandbox execution evidence commands. Additive
+  // vocabulary extension, same discipline: sandbox admission (the
+  // immutable runtime-metadata snapshot + admission provenance),
+  // journal-then-fail admission denials, and completion (outcome +
+  // usage) ride the SAME ledger through the SAME recordStepEvent seam;
+  // the sandbox module produces these events but owns none of the
+  // vocabulary.
+  "sandbox-admitted",
+  "sandbox-denied",
+  "sandbox-completed",
 ] as const;
 export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
 

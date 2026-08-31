@@ -1,7 +1,8 @@
 /**
- * `sandbox` ports layer — outbound/inbound interfaces owned by this module.
-
-Ports are provider-neutral: no infrastructure clients, no provider SDKs.
-Adapters (in `adapters/`) implement them (`IMPLEMENTATION.md` §2–§3).
+ * Sandbox module ports barrel (WORK-012).
  */
-export {};
+export * from "./sandbox-admission";
+export * from "./sandbox-capability-gate";
+export * from "./sandbox-ledger";
+export * from "./sandbox-provider";
+export * from "./sandbox-store";
