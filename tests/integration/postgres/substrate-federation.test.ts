@@ -21,18 +21,10 @@
  *   - tenant isolation on real rows.
  */
 
-import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
-import { createInMemoryCatalogStore } from "../../../src/modules/capabilities/adapters/in-memory-catalog-store";
-import { SEED_CAPABILITY_FACTS } from "../../../src/modules/capabilities/adapters/seed-catalog";
-import { SqlSubstrateStore } from "../../../src/modules/capabilities/adapters/sql-substrate-store";
-import { createCapabilityRegistry } from "../../../src/modules/capabilities/application/capability-registry";
-import { createSubstrateRegistry } from "../../../src/modules/capabilities/application/substrate-registry";
 import { definePgSuite } from "./harness";
 import type { InMemorySubstrateFederationWorld } from "./substrates-world";
 import { seedSubstrateWorld } from "./substrates-world";
-
-const sha256Hex = (input: string): string => createHash("sha256").update(input).digest("hex");
 
 definePgSuite("substrate federation (WORK-031) on real PostgreSQL", (ctx) => {
   async function freshWorld(): Promise<InMemorySubstrateFederationWorld> {
@@ -228,7 +220,6 @@ WHERE application_id = $1 AND substrate_id = 'gpu-fleet-a'`,
       const otherApp = "00000000-0000-7000-8000-0000000000ab";
       expect(await world.substrateRegistry.get(otherApp, "gpu-fleet-a", "1.0.0")).toBeNull();
       expect(await world.substrateRegistry.list(otherApp)).toHaveLength(0);
-      void sha256Hex;
     });
   });
 });
