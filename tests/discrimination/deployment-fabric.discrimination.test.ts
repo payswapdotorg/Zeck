@@ -35,7 +35,15 @@
  *        closed;
  *   DF13 (runtime) retired is terminal (every mutation fails);
  *   DF14 (runtime) BYOA without a descriptor is unrepresentable
- *        (validation + the migration CHECK vocabulary).
+ *        (validation + the migration CHECK vocabulary);
+ *   DF15 (static) a foreign-schema SQL write (direct customer-domain
+ *        workflow mutation — M22) appearing in the adapters is
+ *        flagged; every clean write targets deployments.*;
+ *   DF16 (static) ANY authority-shaped method beyond the
+ *        non-authoritative duo appearing on the adapter port is
+ *        flagged (M10..M15 generalized by exact shape);
+ *   DF17 (runtime) a cross-APPLICATION mutation fails closed before
+ *        side effects (M3: the journal is untouched).
  */
 
 import { createHash } from "node:crypto";
@@ -501,5 +509,83 @@ describe("discrimination: deployment fabric (WORK-023)", () => {
         },
       }).valid,
     ).toBe(true);
+  });
+
+  test("DF15: a foreign-schema write (customer workflow mutation — M22) is flagged", () => {
+    const store = readFileSync(join(DEPLOYMENTS_DIR, "adapters/sql-deployment-store.ts"), "utf8");
+    const writeTargets = (source: string): string[] =>
+      [...source.matchAll(/\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+([a-z_]+\.[a-z_]+)/gi)].map(
+        (m) => m[1] ?? "",
+      );
+    // The clean adapters write ONLY deployments.* tables.
+    const clean = writeTargets(store);
+    expect(clean.length).toBeGreaterThan(0);
+    for (const target of clean) {
+      expect(target.startsWith("deployments.")).toBe(true);
+    }
+    // The mutant: a deployment adapter gains a DIRECT customer-workflow
+    // write (an integrations-owned table) — flagged by the scanner.
+    const mutated = store.replace(
+      "export class SqlDeploymentStore implements DeploymentStore {",
+      "export class SqlDeploymentStore implements DeploymentStore {\n  async mutateCustomerWorkflow(db: unknown): Promise<void> { await (db as never).execute({ sql: \"UPDATE integrations.workflow_runs SET state = 'mutated' WHERE id = $1\", parameters: [] }); }\n",
+    );
+    const mutantTargets = writeTargets(mutated);
+    expect(mutantTargets.some((target) => !target.startsWith("deployments."))).toBe(true);
+  });
+
+  test("DF16: any authority method beyond the non-authoritative duo on the adapter port is flagged (M10..M15)", () => {
+    const extractMethods = (source: string): string[] => {
+      const block =
+        /export interface ModalityChannelAdapter \{([\s\S]*?)\n\}/.exec(source)?.[1] ?? "";
+      return [...block.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_]\w*)\s*\(/gm)].map(
+        (m) => m[1] ?? "",
+      );
+    };
+    // The clean port carries EXACTLY checkBinding + describeBinding.
+    expect([...new Set(extractMethods(ADAPTER_PORT_SOURCE))].sort()).toEqual([
+      "checkBinding",
+      "describeBinding",
+    ]);
+    // Any authority-shaped method appearing on the port — execution,
+    // verification, policy admission, capability registration, budget,
+    // a second agent registry — is a violation of the exact shape.
+    for (const authority of [
+      "execute",
+      "verify",
+      "authorize",
+      "admit",
+      "registerAgent",
+      "budget",
+    ]) {
+      const mutated = ADAPTER_PORT_SOURCE.replace(
+        "checkBinding(binding: ChannelBinding): Promise<ModalityBindingCheck>;",
+        `checkBinding(binding: ChannelBinding): Promise<ModalityBindingCheck>;\n  ${authority}(binding: ChannelBinding): Promise<unknown>;`,
+      );
+      expect(extractMethods(mutated), `${authority} must be flagged when present`).toContain(
+        authority,
+      );
+    }
+  });
+
+  test("DF17: a cross-APPLICATION mutation fails closed before side effects (M3)", async () => {
+    const world = await seededWorld();
+    const before = await world.service.listEvents(ACTOR.applicationId, world.deploymentId);
+    const OTHER_APPLICATION = "00000000-0000-7000-8000-0000000000f2";
+    await expect(
+      world.service.promoteDeployment({
+        applicationId: OTHER_APPLICATION,
+        deploymentId: world.deploymentId,
+        idempotencyKey: "key-cross-application",
+        actorId: ACTOR.actorId,
+        tenantId: ACTOR.tenantId,
+        toPlanVersion: 2,
+      }),
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: expect.stringContaining("not found in this application"),
+    });
+    // Fail BEFORE side effects: the journal is untouched.
+    const after = await world.service.listEvents(ACTOR.applicationId, world.deploymentId);
+    expect(after).toEqual(before);
   });
 });

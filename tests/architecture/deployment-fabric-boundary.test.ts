@@ -7,7 +7,9 @@
  *  - D1 the modality-adapter port carries NO authority surface
  *    (MOD-004): no admission/authorize/budget/execute/invoke method
  *    names, no store/service handles — duplicate authorities are
- *    unrepresentable in the port's shape;
+ *    unrepresentable in the port's shape, and the port's METHOD set
+ *    is exactly the non-authoritative duo (M10..M15: ANY added
+ *    authority-shaped method is a violation);
  *  - D2 the deployment service deps are pinned: exactly {store,
  *    agentInventory, environmentResolver, adapters, digest,
  *    generateId, now} — no policy/budget/capability/execution
@@ -30,7 +32,11 @@
  *    calls only getAgent/listVersions (no registration, promotion or
  *    session mutation crosses);
  *  - D8 no cross-module internal imports (the shared dependency-rules
- *    engine covers the tree; pinned explicitly for the new module).
+ *    engine covers the tree; pinned explicitly for the new module);
+ *  - D9 the adapters' SQL WRITE targets are ONLY deployments.* tables
+ *    (M22: no direct customer-domain workflow mutation, no
+ *    cross-module SQL writes — reads stay the documented read-only
+ *    precedents).
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -86,6 +92,15 @@ describe("architecture: the deployment fabric boundary (WORK-023)", () => {
     expect(port.includes("checkBinding")).toBe(true);
     expect(port.includes("describeBinding")).toBe(true);
     expect(port.includes("descriptor")).toBe(true);
+    // The port's METHOD set is EXACTLY the non-authoritative duo: ANY
+    // added method (execute/verify/authorize/admit/registerAgent/…)
+    // is an authority-shaped leak (M10..M15) and fails this gate.
+    const adapterInterface =
+      /export interface ModalityChannelAdapter \{([\s\S]*?)\n\}/.exec(port)?.[1] ?? "";
+    const methodNames = [
+      ...adapterInterface.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_]\w*)\s*\(/gm),
+    ].map((m) => m[1] ?? "");
+    expect([...new Set(methodNames)].sort()).toEqual(["checkBinding", "describeBinding"]);
   });
 
   test("D2: the deployment service deps are pinned (no authority seam)", () => {
@@ -208,5 +223,24 @@ describe("architecture: the deployment fabric boundary (WORK-023)", () => {
       v.path.startsWith("src/modules/deployments"),
     );
     expect(deploymentViolations.map((v) => `${v.rule} @ ${v.path}`)).toEqual([]);
+  });
+
+  test("D9: the adapters' SQL writes target ONLY the deployments schema (M22)", () => {
+    const writeTargets: string[] = [];
+    for (const file of FILES.filter((f) => f.includes("/adapters/"))) {
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(
+        /\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+([a-z_]+\.[a-z_]+)/gi,
+      )) {
+        writeTargets.push(`${file.slice(REPO_ROOT.length + 1)}: ${match[1]}`);
+      }
+    }
+    // The durable store writes; every write targets deployments.*.
+    expect(writeTargets.length).toBeGreaterThan(0);
+    const foreign = writeTargets.filter((target) => {
+      const schema = target.split(": ")[1]?.split(".")[0] ?? "";
+      return schema !== "deployments";
+    });
+    expect(foreign).toEqual([]);
   });
 });

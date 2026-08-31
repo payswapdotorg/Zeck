@@ -528,20 +528,26 @@ export function createDeploymentService(deps: DeploymentServiceDeps): Deployment
         createdAt: iso(),
       };
       const outcome = await store.insertDeployment(insert);
-      await store.appendJournalEvent({
-        eventId: generateId(),
-        applicationId: actor.applicationId,
-        tenantId: actor.tenantId,
-        deploymentId: outcome.deploymentId,
-        kind: "create",
-        actorId: actor.actorId,
-        cause: null,
-        priorPlanVersion: null,
-        currentPlanVersion: planVersion,
-        executionId: null,
-        idempotencyKey: `${idempotencyKey}:create`,
-        createdAt: iso(),
-      });
+      // A concurrent duplicate that converged on the committed row NEVER
+      // double-journals: the winner's create event is the truth (the
+      // exact-once discipline — §10's "concurrent duplicate: single
+      // durable result").
+      if (outcome.status !== "converged") {
+        await store.appendJournalEvent({
+          eventId: generateId(),
+          applicationId: actor.applicationId,
+          tenantId: actor.tenantId,
+          deploymentId: outcome.deploymentId,
+          kind: "create",
+          actorId: actor.actorId,
+          cause: null,
+          priorPlanVersion: null,
+          currentPlanVersion: planVersion,
+          executionId: null,
+          idempotencyKey: `${idempotencyKey}:create`,
+          createdAt: iso(),
+        });
+      }
       return {
         deploymentId: outcome.deploymentId,
         replayed: outcome.status === "converged",

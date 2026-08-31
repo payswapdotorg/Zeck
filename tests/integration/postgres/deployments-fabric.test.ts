@@ -368,6 +368,257 @@ WHERE application_id = $1 AND deployment_id = $2`,
     });
   });
 
+  describe("the §9 concurrency completion: rollback, suspension and creation races (M5/M6/M7)", () => {
+    async function promotedToV2() {
+      const { world, actor, deploymentId } = await seededDeployment();
+      await world.deploymentService.promoteDeployment({
+        applicationId: world.applicationId,
+        deploymentId,
+        idempotencyKey: "race-setup-promote",
+        actorId: actor.actorId,
+        tenantId: world.tenantId,
+        toPlanVersion: 2,
+      });
+      return { world, actor, deploymentId };
+    }
+
+    test("CONCURRENT rollbacks converge: exactly one journal event, one pointer move (M6)", async () => {
+      const { world, actor, deploymentId } = await promotedToV2();
+      const rollback = (key: string) =>
+        world.deploymentService.rollbackDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: key,
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+        });
+      // Both derive the SAME prior version (v1) from the journal; the
+      // guarded single-row UPDATE admits exactly one writer; the loser
+      // converges on the committed row WITHOUT double-journaling.
+      const outcomes = await Promise.allSettled([
+        rollback("race-rollback-a"),
+        rollback("race-rollback-b"),
+      ]);
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+      const deployment = await world.deploymentService.getDeployment(
+        world.applicationId,
+        deploymentId,
+      );
+      expect(deployment?.currentPlanVersion).toBe(1);
+      const events = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      expect(events.filter((event) => event.kind === "rollback")).toHaveLength(1);
+    });
+
+    test("CONCURRENT rollback vs promotion: the pointer is never torn (first writer wins, M6)", async () => {
+      const { world, actor, deploymentId } = await promotedToV2();
+      await world.deploymentService.publishPlan(
+        {
+          ...planBody(world),
+          sessionPolicy: { maxSessionDurationMs: 200_000, maxConcurrentSessions: 2 },
+        },
+        { version: 3 },
+        actor,
+      );
+      const movesBefore = (
+        await world.deploymentService.listEvents(world.applicationId, deploymentId)
+      ).filter((event) => event.kind === "promote" || event.kind === "rollback");
+      const outcomes = await Promise.allSettled([
+        world.deploymentService.rollbackDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: "race-rb-vs-promote-rb",
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+        }),
+        world.deploymentService.promoteDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: "race-rb-vs-promote-p",
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+          toPlanVersion: 3,
+        }),
+      ]);
+      // Exactly one writer wins the guard; the loser fails closed
+      // (INVALID_STATE_TRANSITION — its target differs from the
+      // committed row, so it can never silently converge).
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const deployment = await world.deploymentService.getDeployment(
+        world.applicationId,
+        deploymentId,
+      );
+      expect([1, 3]).toContain(deployment?.currentPlanVersion);
+      const events = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      const moves = events.filter((event) => event.kind === "promote" || event.kind === "rollback");
+      expect(moves).toHaveLength(movesBefore.length + 1);
+      // The committed pointer matches the LAST journaled move (never
+      // torn, never lost).
+      const lastMove = moves[moves.length - 1];
+      expect(lastMove?.currentPlanVersion).toBe(deployment?.currentPlanVersion);
+    });
+
+    test("CONCURRENT suspensions converge: exactly one suspend event (M7)", async () => {
+      const { world, actor, deploymentId } = await seededDeployment();
+      const suspend = (key: string) =>
+        world.deploymentService.suspendDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: key,
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+        });
+      const outcomes = await Promise.allSettled([
+        suspend("race-suspend-a"),
+        suspend("race-suspend-b"),
+      ]);
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+      const deployment = await world.deploymentService.getDeployment(
+        world.applicationId,
+        deploymentId,
+      );
+      expect(deployment?.status).toBe("suspended");
+      const events = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      expect(events.filter((event) => event.kind === "suspend")).toHaveLength(1);
+    });
+
+    test("CONCURRENT suspend vs retire: the final status is unambiguous and journaled once (M7)", async () => {
+      const { world, actor, deploymentId } = await seededDeployment();
+      const outcomes = await Promise.allSettled([
+        world.deploymentService.suspendDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: "race-suspend-vs-retire-s",
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+        }),
+        world.deploymentService.retireDeployment({
+          applicationId: world.applicationId,
+          deploymentId,
+          idempotencyKey: "race-suspend-vs-retire-r",
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+        }),
+      ]);
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const deployment = await world.deploymentService.getDeployment(
+        world.applicationId,
+        deploymentId,
+      );
+      expect(["suspended", "retired"]).toContain(deployment?.status);
+      const events = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      const statusEvents = events.filter(
+        (event) => event.kind === "suspend" || event.kind === "retire",
+      );
+      expect(statusEvents).toHaveLength(1);
+      // The journaled status change matches the committed row.
+      expect(statusEvents[0]?.kind === "retire" ? "retired" : "suspended").toBe(deployment?.status);
+    });
+
+    test("CONCURRENT duplicate creations converge: one row, one create event (the winner journals — §10)", async () => {
+      const { world, actor } = await seeded();
+      const create = (key: string) =>
+        world.deploymentService.createDeployment(
+          {
+            slug: "race-create-prod",
+            name: "Race create",
+            environmentId: world.environmentId,
+            agentId: world.agentId,
+            agentVersion: world.agentVersion,
+            agentKind: "zeck",
+            planId: "support-voice-plan",
+          },
+          key,
+          actor,
+        );
+      // Two concurrent duplicates (different keys, same creation): the
+      // slug UNIQUE + fingerprint arbitration yield a SINGLE durable
+      // result — one row, one journal event, both callers agree on the
+      // deployment id.
+      const outcomes = await Promise.allSettled([create("race-create-a"), create("race-create-b")]);
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(2);
+      const ids = outcomes
+        .filter(
+          (r): r is PromiseFulfilledResult<{ deploymentId: string; replayed: boolean }> =>
+            r.status === "fulfilled",
+        )
+        .map((r) => r.value.deploymentId);
+      expect(new Set(ids).size).toBe(1);
+      const rows = await world.db.execute<{ id: string }>({
+        sql: `SELECT id FROM deployments.deployments WHERE application_id = $1 AND slug = 'race-create-prod'`,
+        parameters: [world.applicationId],
+      });
+      expect(rows.rows).toHaveLength(1);
+      const events = await world.deploymentService.listEvents(
+        world.applicationId,
+        rows.rows[0]?.id ?? "",
+      );
+      expect(events.filter((event) => event.kind === "create")).toHaveLength(1);
+    });
+
+    test("CONCURRENT identity collisions: the physical UNIQUE refuses the second deployment (M1)", async () => {
+      const { world, actor } = await seeded();
+      const create = (slug: string, key: string) =>
+        world.deploymentService.createDeployment(
+          {
+            slug,
+            name: "Identity race",
+            environmentId: world.environmentId,
+            agentId: world.agentId,
+            agentVersion: world.agentVersion,
+            agentKind: "zeck",
+            planId: "support-voice-plan",
+          },
+          key,
+          actor,
+        );
+      // Same (environment, agent, agent-version) binding under two
+      // different slugs, concurrently: the identity UNIQUE admits
+      // exactly one row.
+      const outcomes = await Promise.allSettled([
+        create("identity-race-a", "identity-race-key-a"),
+        create("identity-race-b", "identity-race-key-b"),
+      ]);
+      expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      const rejected = outcomes.find((r) => r.status === "rejected");
+      expect((rejected as PromiseRejectedResult | undefined)?.reason).toMatchObject({
+        code: "IDEMPOTENCY_KEY_REUSED",
+      });
+      const rows = await world.db.execute<{ id: string }>({
+        sql: `SELECT id FROM deployments.deployments WHERE application_id = $1 AND slug LIKE 'identity-race-%'`,
+        parameters: [world.applicationId],
+      });
+      expect(rows.rows).toHaveLength(1);
+    });
+
+    test("cross-APPLICATION mutation fails closed before side effects (M3)", async () => {
+      const { world, actor, deploymentId } = await seededDeployment();
+      const before = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      const otherApplication = "00000000-0000-7000-8000-0000000000fc";
+      await expect(
+        world.deploymentService.promoteDeployment({
+          applicationId: otherApplication,
+          deploymentId,
+          idempotencyKey: "cross-app-key",
+          actorId: actor.actorId,
+          tenantId: world.tenantId,
+          toPlanVersion: 2,
+        }),
+      ).rejects.toMatchObject({
+        code: "PROVIDER_ERROR",
+        message: expect.stringContaining("not found in this application"),
+      });
+      // Fail BEFORE side effects: the row and the journal are unchanged.
+      const deployment = await world.deploymentService.getDeployment(
+        world.applicationId,
+        deploymentId,
+      );
+      expect(deployment?.currentPlanVersion).toBe(1);
+      expect(deployment?.status).toBe("active");
+      const after = await world.deploymentService.listEvents(world.applicationId, deploymentId);
+      expect(after).toEqual(before);
+    });
+  });
+
   describe("tenant isolation + terminal state", () => {
     test("cross-tenant mutations fail closed; scope-filtered reads are empty", async () => {
       const { world, actor, deploymentId } = await seededDeployment();
