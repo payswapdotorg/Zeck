@@ -2,11 +2,10 @@
   "schemaVersion": 1,
   "status": "active",
   "governingArchitectureVersion": "v1.0",
-  "eligible": [
-    "WORK-012"
-  ],
+  "eligible": [],
   "inFlight": [
-    "WORK-013"
+    "WORK-013",
+    "WORK-012"
   ],
   "blocked": [
     "WORK-014",
