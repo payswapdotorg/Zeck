@@ -10,8 +10,11 @@
  * physical, not documented).
  */
 export * from "./canonical";
+export * from "./composition";
+export * from "./composition-analysis";
 export * from "./rating";
 export * from "./scorecard";
 export * from "./shadow";
 export * from "./signal";
 export * from "./telemetry";
+export * from "./tool-facts";

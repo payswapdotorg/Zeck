@@ -796,6 +796,64 @@
           ]
         }
       }
+    },
+    "WORK-017": {
+      "asOf": "2026-08-31T18:30:00Z",
+      "branch": "work/WORK-017-tool-composition-learning",
+      "baseRevision": "d35c5b6f664b3418e90fcdb20e2eb5d3cc0d936d",
+      "assuranceProfile": "STANDARD",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-017.md",
+            "tests/unit/learning/composition-domain.test.ts",
+            "tests/unit/learning/composition-analysis.test.ts",
+            "tests/unit/learning/composition-advisor.test.ts",
+            "tests/unit/planning/composition-consultation.test.ts",
+            "tests/unit/planning/planner-composition.test.ts",
+            "tests/integration/postgres/learning-compositions.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/learning-compositions.test.ts",
+            "tests/unit/learning/composition-advisor.test.ts",
+            "tests/discrimination/composition-nonauthority.discrimination.test.ts",
+            "docs/work-items/WORK-017.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/learning-compositions.test.ts",
+            "docs/work-items/WORK-017.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/composition-boundary.test.ts",
+            "tests/discrimination/composition-nonauthority.discrimination.test.ts",
+            "docs/work-items/WORK-017.md"
+          ]
+        },
+        "LEARNING-NONAUTHORITY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/learning-boundary.test.ts",
+            "tests/architecture/composition-boundary.test.ts",
+            "tests/discrimination/composition-nonauthority.discrimination.test.ts",
+            "docs/work-items/WORK-017.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

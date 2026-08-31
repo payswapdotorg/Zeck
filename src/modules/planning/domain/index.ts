@@ -1,8 +1,22 @@
 /**
- * Planning module domain barrel (WORK-009).
+ * Planning module domain barrel (WORK-009 + WORK-017 composition seam).
  */
 
 export { canonicalJson, isCanonicalizable } from "./canonical";
+export type {
+  CompositionConsultation,
+  ConsultedCompositionRecommendation,
+} from "./composition-consultation";
+export {
+  buildCompositionConsultation,
+  COMPOSITION_PREFERENCE_MINIMUM_POPULATION,
+  CONSULTED_COMPOSITION_CLASS,
+  CONSULTED_COMPOSITION_STATUSES,
+  compositionAllowedByPolicy,
+  compositionPreferredCandidateId,
+  validateCompositionConsultation,
+  validateConsultedCompositionRecommendation,
+} from "./composition-consultation";
 export type {
   CapabilityResolutionCapture,
   PlanningDecisionRecord,

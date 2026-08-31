@@ -48,10 +48,24 @@
  */
 
 import type { ModuleDescriptor } from "../../shared/module";
+import type {
+  InMemoryCompositionStore,
+  TelemetrySource,
+} from "./adapters/in-memory-composition-store";
+import { createInMemoryCompositionStore } from "./adapters/in-memory-composition-store";
 import type { InMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createInMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createNodeDigest } from "./adapters/node-digest";
+import { SqlCompositionStore } from "./adapters/sql-composition-store";
 import { SqlLearningStore } from "./adapters/sql-learning-store";
+import type {
+  ActivateRecommendationSetRequest,
+  CompositionAdvisor,
+  CompositionAdvisorDeps,
+  ConsultRecommendationsRequest,
+  GenerateRecommendationSetRequest,
+} from "./application/composition-advisor";
+import { createCompositionAdvisor } from "./application/composition-advisor";
 import type {
   LearningService,
   LearningServiceDeps,
@@ -65,6 +79,49 @@ import type {
   ShadowEvaluatorDeps,
 } from "./application/shadow-evaluator";
 import { createShadowEvaluator } from "./application/shadow-evaluator";
+import type {
+  CompositionCheck,
+  CompositionEdge,
+  CompositionStep,
+  CompositionUnsupportedReason,
+  ToolComposition,
+} from "./domain/composition";
+import {
+  COMPOSITION_SCHEMA_VERSION,
+  COMPOSITION_UNSUPPORTED_REASONS,
+  checkToolComposition,
+  compositionToolRefs,
+  edgeCompatible,
+  linearCompositionOf,
+} from "./domain/composition";
+import type {
+  CompositionRecommendation,
+  CompositionRecommendationSet,
+  CompositionRecommendationSignal,
+  CompositionRecommendationStatus,
+  OutcomeCount,
+  PopulationContextKey,
+  RecommendationConfidence,
+  RecommendationSetActivation,
+} from "./domain/composition-analysis";
+import {
+  analyzeToolSequences,
+  COMPOSITION_ANALYSIS_VERSION,
+  COMPOSITION_RECOMMENDATION_CLASS,
+  COMPOSITION_RECOMMENDATION_SCHEMA_VERSION,
+  COMPOSITION_RECOMMENDATION_STATUSES,
+  canonicalContextKey,
+  classifyRecommendationConfidence,
+  MINIMUM_SEQUENCE_POPULATION,
+  populationContextKeyOf,
+  RECOMMENDATION_ACTIVATION_REASONS,
+  recommendationSetDigestBasis,
+  signalFromRecommendation,
+  toolSequenceOf,
+  validateCompositionRecommendation,
+  validateCompositionRecommendationSet,
+  validateRecommendationSetActivation,
+} from "./domain/composition-analysis";
 import type { UserRatingRecord } from "./domain/rating";
 import {
   RATING_MAX,
@@ -131,6 +188,24 @@ import {
   telemetryFingerprintBasis,
   validateExecutionTelemetry,
 } from "./domain/telemetry";
+import type {
+  ToolFact,
+  ToolFactCatalog,
+  ToolFactField,
+  ToolFactFieldType,
+  ToolVersionRef,
+} from "./domain/tool-facts";
+import {
+  findToolFact,
+  TOOL_FACT_FIELD_TYPES,
+  toolExistsInCatalog,
+  validateToolFacts,
+} from "./domain/tool-facts";
+import type {
+  ActivationAppendOutcome,
+  CompositionStore,
+  RecommendationSetScope,
+} from "./ports/composition-store";
 import type { DigestPort } from "./ports/digest";
 import type {
   LearningStore,
@@ -141,6 +216,34 @@ import type {
 } from "./ports/learning-store";
 
 export const moduleDescriptor: ModuleDescriptor = { id: "learning" };
+
+/**
+ * The READ seam planning consumes for tool-composition
+ * recommendations (WORK-017 / advisory evidence, never authority:
+ * RECOMMENDATION ≠ AUTHORIZATION — the frozen §10 invariant).
+ */
+export interface CompositionRecommendationSource {
+  consult(request: {
+    readonly applicationId: string;
+    readonly tenantId: string;
+    readonly taskClass?: string;
+  }): Promise<readonly CompositionRecommendationSignal[]>;
+}
+
+/**
+ * Adapt the composition advisor into the recommendation READ seam (a
+ * projection, never an authority: recommendations leave as validated
+ * immutable evidence records).
+ */
+export function createCompositionRecommendationSource(
+  advisor: CompositionAdvisor,
+): CompositionRecommendationSource {
+  return {
+    async consult(request) {
+      return advisor.consultRecommendations(request);
+    },
+  };
+}
 
 /** The READ seam planning consumes (implemented over `consultSignals`). */
 export interface LearningSignalSource {
@@ -167,21 +270,43 @@ export function createLearningSignalSource(service: LearningService): LearningSi
 
 // Application: the observational services.
 // Domain: the observation model (telemetry, scorecards, signals, shadow,
-// ratings) + closed-shape validation.
-// Ports: the durable store seam + the digest seam.
-// Adapters: in-memory store (reference semantics), node digest
-// (crypto confinement), SQL store (migration 0009).
+// ratings) + the tool-composition learning model (facts, compositions,
+// analysis, recommendation sets).
+// Ports: the durable store seam + the composition store seam + the digest seam.
+// Adapters: in-memory stores (reference semantics), node digest
+// (crypto confinement), SQL stores (migrations 0009 + 0010).
 export type {
+  ActivateRecommendationSetRequest,
+  ActivationAppendOutcome,
   AggregationDefinition,
+  CompositionAdvisor,
+  CompositionAdvisorDeps,
+  CompositionCheck,
+  CompositionEdge,
+  CompositionRecommendation,
+  CompositionRecommendationSet,
+  CompositionRecommendationSignal,
+  CompositionRecommendationStatus,
+  CompositionStep,
+  CompositionStore,
+  CompositionUnsupportedReason,
+  ConsultRecommendationsRequest,
   DigestPort,
   EvaluateShadowInput,
   ExecutionOutcomeTelemetry,
+  GenerateRecommendationSetRequest,
+  InMemoryCompositionStore,
   InMemoryLearningStore,
   LearningService,
   LearningServiceDeps,
   LearningSignal,
   LearningStore,
+  OutcomeCount,
+  PopulationContextKey,
   RatingIngestionOutcome,
+  RecommendationConfidence,
+  RecommendationSetActivation,
+  RecommendationSetScope,
   RecordRatingInput,
   RecordTelemetryInput,
   RouteObservation,
@@ -203,44 +328,80 @@ export type {
   TelemetryIngestionOutcome,
   TelemetryOutcome,
   TelemetryQuery,
+  TelemetrySource,
+  ToolComposition,
+  ToolFact,
+  ToolFactCatalog,
+  ToolFactField,
+  ToolFactFieldType,
+  ToolVersionRef,
   UncertaintyLevel,
   UserRatingRecord,
   VerificationObservation,
 };
 export {
   AGGREGATION_DEFINITIONS,
+  analyzeToolSequences,
   buildScorecard,
+  COMPOSITION_ANALYSIS_VERSION,
+  COMPOSITION_RECOMMENDATION_CLASS,
+  COMPOSITION_RECOMMENDATION_SCHEMA_VERSION,
+  COMPOSITION_RECOMMENDATION_STATUSES,
+  COMPOSITION_SCHEMA_VERSION,
+  COMPOSITION_UNSUPPORTED_REASONS,
+  canonicalContextKey,
+  checkToolComposition,
+  classifyRecommendationConfidence,
   compareShadowScores,
+  compositionToolRefs,
+  createCompositionAdvisor,
+  createInMemoryCompositionStore,
   createInMemoryLearningStore,
   createLearningService,
   createNodeDigest,
   createShadowEvaluator,
+  edgeCompatible,
   findAggregationDefinition,
+  findToolFact,
   isScorecardSubjectKind,
   isShadowEvaluationStatus,
   isTelemetryOutcome,
   LEARNING_SIGNAL_CLASS,
   LEARNING_SIGNAL_SCHEMA_VERSION,
+  linearCompositionOf,
+  MINIMUM_SEQUENCE_POPULATION,
+  populationContextKeyOf,
   RATING_MAX,
   RATING_MIN,
   RATING_SCHEMA_VERSION,
   RATING_SOURCES,
+  RECOMMENDATION_ACTIVATION_REASONS,
   ratingFingerprintBasis,
+  recommendationSetDigestBasis,
   SCORECARD_SUBJECT_KINDS,
   SHADOW_EVALUATION_STATUSES,
   SHADOW_RECORD_CLASSES,
   SHADOW_SCHEMA_VERSION,
+  SqlCompositionStore,
   SqlLearningStore,
   scorecardDigestBasis,
   scoreShadowSubjects,
+  signalFromRecommendation,
   signalFromScorecardEntry,
   TELEMETRY_OUTCOMES,
   TELEMETRY_SCHEMA_VERSION,
+  TOOL_FACT_FIELD_TYPES,
   telemetryFingerprintBasis,
+  toolExistsInCatalog,
+  toolSequenceOf,
   UNCERTAINTY_LEVELS,
+  validateCompositionRecommendation,
+  validateCompositionRecommendationSet,
   validateExecutionTelemetry,
   validateLearningSignal,
+  validateRecommendationSetActivation,
   validateScorecard,
   validateShadowEvaluationRecord,
+  validateToolFacts,
   validateUserRating,
 };
