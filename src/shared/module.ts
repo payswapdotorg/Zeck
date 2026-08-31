@@ -22,6 +22,7 @@ export const ARCHITECTURE_MODULE_IDS = [
   "models",
   "tools",
   "agents",
+  "deployments",
   "context",
   "sandbox",
   "verification",

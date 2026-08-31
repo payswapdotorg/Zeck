@@ -39,6 +39,7 @@ src/
     models/
     tools/
     agents/
+    deployments/
     context/
     sandbox/
     verification/
