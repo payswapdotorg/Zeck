@@ -19,6 +19,8 @@
 import { PlatformError } from "../../../shared/errors";
 import type { RestrictionSet } from "../../policies/public";
 import { canonicalJson } from "./canonical";
+import type { LearningConsultation } from "./learning-consultation";
+import { validateLearningConsultation } from "./learning-consultation";
 import type { ExecutionPlan } from "./plan";
 import type { CandidateStrategy, RouteRationale } from "./strategy";
 import type { SubgraphObservation } from "./subgraph-evidence";
@@ -65,6 +67,14 @@ export interface PlanningDecisionRecord {
   readonly selectedStrategyId: string;
   readonly selectionRationale: string;
   readonly subgraphEvidence: readonly SubgraphObservation[];
+  /**
+   * OPTIONAL learning consultation capture (WORK-014 / INT-006): the
+   * versioned learning signals consulted AFTER the governed selection,
+   * recorded as evidence. Absent when no learning seam is wired. The
+   * consultation never alters `selectedStrategyId` — it records what
+   * learning would have preferred (M1/M8/M13).
+   */
+  readonly learningConsultation?: LearningConsultation;
   /** Prior decision this one replaces (verification-triggered replanning). */
   readonly replanOf?: string;
   readonly recordedAt: string;
@@ -183,6 +193,11 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
       code: "PROVIDER_ERROR",
       message: "planning decision replanOf must be a string when present",
     });
+  }
+  if (record.learningConsultation !== undefined) {
+    // WORK-014: the consultation capture is part of the closed shape —
+    // validated (M13 version anchors) whenever present.
+    validateLearningConsultation(record.learningConsultation);
   }
   requireString(record, "recordedAt", "recordedAt");
   requireString(record, "recordDigest", "recordDigest");

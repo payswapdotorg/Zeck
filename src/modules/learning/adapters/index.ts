@@ -1,7 +1,8 @@
 /**
- * `learning` adapters layer — infrastructure and provider implementations for this module.
-
-The only module layer allowed to import `src/platform/**` and provider SDKs
-within the owning-adapter rules (`IMPLEMENTATION.md` §1, §3).
+ * `learning` module adapters barrel (WORK-014).
  */
-export {};
+
+export type { InMemoryLearningStore } from "./in-memory-learning-store";
+export { createInMemoryLearningStore } from "./in-memory-learning-store";
+export { createNodeDigest } from "./node-digest";
+export { SqlLearningStore } from "./sql-learning-store";

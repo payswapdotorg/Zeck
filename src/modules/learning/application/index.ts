@@ -1,7 +1,22 @@
 /**
- * `learning` application layer — use cases and orchestration local to this module.
-
-Application code reaches outward only through this module's ports; it never
-imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
+ * `learning` application layer (WORK-014): the observational substrate
+ * services — telemetry ingestion, scorecard building, signal
+ * consultation, rating recording and the side-effect-free shadow
+ * evaluator.
  */
-export {};
+export type {
+  BuildScorecardRequest,
+  ConsultSignalsRequest,
+  LearningService,
+  LearningServiceDeps,
+  RecordRatingInput,
+  RecordTelemetryInput,
+} from "./learning-service";
+export { createLearningService } from "./learning-service";
+export type {
+  EvaluateShadowInput,
+  ShadowEvaluator,
+  ShadowEvaluatorDeps,
+  ShadowStrategyInput,
+} from "./shadow-evaluator";
+export { createShadowEvaluator } from "./shadow-evaluator";

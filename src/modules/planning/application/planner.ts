@@ -35,12 +35,14 @@ import type {
   CandidateStrategy,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
+  LearningConsultation,
   PlanningDecisionRecord,
   RouteRationale,
   TaskConstraintInput,
   TaskProfile,
 } from "../domain";
 import {
+  buildLearningConsultation,
   buildPlan,
   canonicalJson,
   decisionRecordDigest,
@@ -55,6 +57,7 @@ import {
 import type { PlanningCapabilityAuthority } from "../ports/capability-authority";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
 import type { DigestPort } from "../ports/digest";
+import type { LearningSignals } from "../ports/learning-signals";
 import type { ModelRouteCandidate, ModelRouteExplorer } from "../ports/model-routes";
 import type { PlanningDecisionSink } from "../ports/planning-sink";
 import type { PlanningPolicyInputs } from "../ports/policy-inputs";
@@ -70,6 +73,15 @@ export interface PlannerServiceDeps {
   readonly digest: DigestPort;
   readonly generateId: () => string;
   readonly now: () => Date;
+  /**
+   * OPTIONAL learning READ seam (WORK-014 / INT-006): when wired, the
+   * planner consults versioned learning signals AFTER the governed
+   * selection and records the consultation as decision EVIDENCE — the
+   * live selection is never changed by it (M1/M8: learning is
+   * consultable, never commanding). Unwired ⇒ zero learning
+   * interaction (planning works without learning history).
+   */
+  readonly learningSignals?: LearningSignals;
   /**
    * Discrimination hook (WORK-005 validation-hook precedent): the
    * deterministic-sufficiency evaluator is injectable so mutation records
@@ -216,6 +228,46 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       }
       const subgraphEvidence = emitSubgraphEvidence(selected.plan, catalog, routeCosts);
 
+      // 7.5 OPTIONAL learning consultation (WORK-014 / INT-006) — READ
+      //     ONLY, AFTER the governed selection: the consultation is
+      //     captured as decision evidence; it cannot change `selected`
+      //     (already computed above), cannot revive an inadmissible
+      //     candidate (the preference considers ADMISSIBLE candidates
+      //     only) and cannot bypass deterministic-first (M1/M8). A
+      //     consultation failure fails the planning request closed — a
+      //     malformed/unversioned signal NEVER enters a decision record
+      //     (M13) and planning never silently degrades on corrupt
+      //     learning data.
+      let learningConsultation: LearningConsultation | undefined;
+      if (deps.learningSignals !== undefined) {
+        const subjectKeys = [
+          ...new Set(
+            admissibleCandidates.flatMap((candidate) =>
+              candidate.plan.steps.flatMap((step) =>
+                step.routeRef === undefined
+                  ? []
+                  : [`${step.routeRef.provider}/${step.routeRef.model}`],
+              ),
+            ),
+          ),
+        ];
+        const consultedSignals =
+          subjectKeys.length === 0
+            ? []
+            : await deps.learningSignals.consult({
+                applicationId: input.applicationId,
+                tenantId: input.tenantId,
+                taskClass: profile.kind,
+                subjectKeys,
+              });
+        learningConsultation = buildLearningConsultation({
+          candidates: admissibleCandidates,
+          signals: consultedSignals,
+          selectedStrategyId: selected.strategyId,
+          consultedAt: iso(),
+        });
+      }
+
       // 8. The durable decision record (validated closed shape, then the
       //    executions ledger appends it — single write path). The
       //    decisionId is CONTENT-DERIVED (digest over the request identity
@@ -266,6 +318,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         selectedStrategyId: selected.strategyId,
         selectionRationale: selection.rationale,
         subgraphEvidence,
+        ...(learningConsultation === undefined ? {} : { learningConsultation }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

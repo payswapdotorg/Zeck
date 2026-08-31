@@ -1,5 +1,5 @@
 /**
- * Planning module ports barrel (WORK-009).
+ * Planning module ports barrel (WORK-009 + WORK-014 learning seam).
  */
 
 export type { PlanningCapabilityAuthority } from "./capability-authority";
@@ -10,6 +10,7 @@ export type {
   QualityConfidence,
 } from "./deterministic-catalog";
 export type { DigestPort } from "./digest";
+export type { LearningSignalQuery, LearningSignals } from "./learning-signals";
 export type { ModelRouteCandidate, ModelRouteExplorer } from "./model-routes";
 export type {
   PlanningDecisionSink,
