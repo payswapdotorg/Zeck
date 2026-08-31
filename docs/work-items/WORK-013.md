@@ -61,7 +61,7 @@ Environment: Bun 1.3.14, real PostgreSQL 17.11 at `127.0.0.1:55432` (`ZECK_PG_TE
 | `bun run test:architecture` (architecture + discrimination; no PG env) | 281 passed + 1 skipped (282 tests; 35 files passed + 1 skipped = 36; incl. `verification-boundary` 3/3, `verification-authority.discrimination` 34/34 — the full M1–M26 list, `governance-gate` negative control green; the 1 skip = the standing no-PG-in-CI `budgets-overspend` flag) |
 | `bun run test:integration` (no PG env) | 7 passed + 27 skipped (34 tests; 29 files; incl. `fresh-clone-governance` green; the 27 skips = the real-PG suites' env gate) |
 | `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 175/175 (27 files; incl. verification-schema 11, verification-runtime 9, verification-evidence 4 = 24 WORK-013 PG tests) |
-| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively**) | **1100/1100 (115 files), both runs, identical pass sets, exit 0 both times** |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively at the implementation head + 9 runs at the exact final head after the M25/M26 evidence commit**) | **1100/1100 (115 files), identical pass sets across every run, zero failing tests**; the documented `57P01` teardown-race unhandled error fires intermittently in the UNTOUCHED `tests/integration/postgres/executions-concurrency.test.ts` PG suite (a pooled connection receiving FATAL when the disposable database is dropped after tests pass — the same infrastructural-transient class documented by WORK-010's evidence and reproduced on pristine main's own baseline; zero failing tests in every run — vitest reports it as an unhandled error during teardown, not a test assertion). At the implementation head: runs 1–2 fully clean (exit 0). At the exact final head: 4 of 9 runs fully clean exit 0 (runs 1, 5, 7, 8); the remaining 5 fired the transient (exit 1) — the test RESULTS are byte-identical across all 9 (1100/1100, same pass set). The transient originates in a file this branch does not touch and is not a regression |
 
 Baseline comparison: pristine main at pickup measured **957/957 (106 files)** — fully green. Delta: **+143 tests / +9 files, all passing, zero regressions**.
 
@@ -123,7 +123,7 @@ Contract verdicts are recorded in `spec/development-state/checkpoint-state.json`
 - `IDENTITY-IDEMPOTENCY` — passed. Journal/request/comparison keyed anchors; replay + conflict + N=4 convergence over real PostgreSQL.
 - `CONCURRENCY-CRASH-SAFETY` — passed. Concurrent duplicate convergence; crash-interrupted evaluation re-drive; exactly-once human answer binding; terminal-immutable journal rows.
 - `SELF-HOSTING-BOUNDARY` — passed. Governance green with WORK-013 in-flight (WORK-012 preserved eligible); checker byte-identical to main; frozen architecture untouched.
-- `VERIFICATION-SEPARATION` — passed. The four-layer provider-success ≠ PASS boundary; scanner + 24 mutants + runtime red records; PG vocabulary CHECKs.
+- `VERIFICATION-SEPARATION` — passed. The four-layer provider-success ≠ PASS boundary; scanner + 26 mutants + runtime red records; PG vocabulary CHECKs.
 - `EXECUTION-PROVENANCE` — passed. Canonical-ledger evidence for every result/decision/comparison; completion bound through the executions authority; WHO/WHAT/WHEN/WHY envelope assertions.
 
 ## Known limitations
@@ -137,6 +137,6 @@ Contract verdicts are recorded in `spec/development-state/checkpoint-state.json`
 
 ## PR binding (CURRENT)
 
-PR: bound in the PR body at opening (the two-part SHA binding convention — the PR body carries the final head after the evidence commit).
+PR: #22 (`https://github.com/pectoraux/Zeck/pull/22`). The PR body carries the final-head binding (the two-part SHA binding convention — the evidence commit cannot contain its own SHA). The implementation head `db21c0bd2dd7b84185a0fd85ac36331307e9c14e` produced the core verification tables; the M25/M26 discrimination-extension commit and this evidence-correction commit finalize the branch head bound in the PR body.
 
-All identities in this file are superseded by the PR body's final-head binding when it differs; this file records the implementation head `db21c0bd2dd7b84185a0fd85ac36331307e9c14e` and the verification tables above were produced at exactly that revision.
+All identities in this file are superseded by the PR body's final-head binding when it differs; this file records the implementation head `db21c0bd2dd7b84185a0fd85ac36331307e9c14e` and the verification tables above were re-measured at the branch state finalized by the M25/M26 extension + this correction.
