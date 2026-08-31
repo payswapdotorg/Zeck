@@ -2,9 +2,31 @@
 
 Work Order: `spec/work-orders/WORK-012.md`
 Assurance: `CRITICAL` · Architecture: `v1.0` (frozen) · ADR-0004 normative (ADR-0016 alignment)
-Branch: `work/WORK-012-sandbox-compute` · Base: `2310df99e167ee15fb3c080b2af50e9449abfcfc` (actual current main at pickup, verified by `git fetch origin` — main = the post-WORK-011-finalization tip: WORK-011 merged as `d06f2a7` [PR #21])
-Implementation revision (this file binds): `83dbc8be4faf564fae31b13003f838988fbf031f` (implementation commit; **CORRECTED** — see the disclosure in § PR binding)
+Branch: `work/WORK-012-sandbox-compute` · Base: `cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf` (**REBASED** — actual current main, verified by `git fetch origin`: the WORK-013 merge commit [PR #22]; the pre-rebase base `2310df99e167ee15fb3c080b2af50e9449abfcfc` is superseded — see § Rebase record)
+Implementation revision (this file binds): `90feb13ecfc62688dfaa33260613055f96cff0d7` (the **REBASED** implementation commit; the pre-rebase implementation `83dbc8be4faf564fae31b13003f838988fbf031f` is superseded — see § Rebase record; its own correction history remains recorded in § PR binding)
 Final branch head: bound in the PR body (the two-part SHA binding convention — this evidence commit cannot contain its own SHA)
+
+## Rebase record (rebase onto main@cb34987 — post-WORK-013-merge)
+
+WORK-013 (verification, evaluators and quality gates) was merged to main as PR #22 while this branch was in flight: `origin/main` advanced `2310df9…` → `cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf` (merge commit; second parent `5e1195b4d61d3bcab1f97c9005cb27036a1a37f2` = the WORK-013 branch head). Per the architect instruction and the WORK-010 precedent (final rebase `354e13c` onto the WORK-009 merge `31206d3`), the branch was rebased onto the ACTUAL current main (verified by `git fetch origin`, not assumed from the instruction) and the complete gate re-executed from scratch at the rebased tree.
+
+- **Conflicts — exactly 5 shared files, every one resolved as a semantic union with merged main as authority:** `src/modules/executions/domain/event.ts` and `tests/unit/executions/step-events.test.ts` (both branches extended the SAME `STEP_EVENT_COMMANDS` array additively; the union keeps WORK-013's five verification commands in the merged position AND appends WORK-012's three sandbox commands; the exact-vocabulary test asserts the union in exactly that order), plus `spec/development-state/{program,frontier,checkpoint}-state.json` (each side moved only its own Work Order's entry; the union keeps both, then this commit finalizes WORK-013's entry — below).
+- **WORK-013 merged code preserved (verified byte-identical to `origin/main`):** `src/modules/verification/**` and `src/platform/db/migrations/0007_verification.sql` — `git diff origin/main HEAD` over both paths is empty. No revert, no renumber, no modification of WORK-013's merged verification vocabulary or migration.
+- **WORK-012 implementation preserved (verified byte-identical to the pre-rebase branch):** `src/platform/db/migrations/0008_sandbox.sql` and the 39 non-shared implementation files — `git diff backup/pre-rebase-WORK-012 HEAD -- src/ tests/` is empty for them. Both migrations coexist with NO version collision: the real-PG harness applies the full shipped set 0001–0008 on every disposable database, so every one of the 201 PG tests at this tree proves `0007_verification.sql` and `0008_sandbox.sql` apply together on a fresh database.
+- **WORK-013 post-merge finalization (architect-instructed; the `2301206`/`354e13c` convention):** `program-state.json` now records WORK-013 `complete` + `mergedAs {pr:22, mergeCommit:cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf, implementationHead:db21c0bd2dd7b84185a0fd85ac36331307e9c14e, finalBranchHead:5e1195b4d61d3bcab1f97c9005cb27036a1a37f2}`; WORK-012 remains the ONLY in-flight Work Order (`inFlight: ["WORK-012"]`); the checker-derived frontier becomes `['WORK-014','WORK-015']` (their dependencies completed with WORK-013). WORK-013's `checkpoint-state.json` entry is byte-identical to merged main; this branch's own entry updates only its `baseRevision`/`asOf`.
+- **Identity supersede table** (all pre-rebase identities are SUPERSEDED; preserved readable at the local backup ref `backup/pre-rebase-WORK-012` = `30fdfcbf77b85d94c4b73ca02197f2c6c4a917c0` until the branch's force-push, and in this repository's object store):
+
+| Identity | Pre-rebase (SUPERSEDED) | Rebased (current) |
+|---|---|---|
+| Base | `2310df99e167ee15fb3c080b2af50e9449abfcfc` | `cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf` |
+| Move to in-flight | `68b176514f8f9cde0e96455e1d00a56292729447` | `e5cbcdcaf07faf70bb1139abe99af738725dc906` |
+| Implementation | `83dbc8be4faf564fae31b13003f838988fbf031f` | `90feb13ecfc62688dfaa33260613055f96cff0d7` |
+| Evidence | `e47ef0c16e1c9051d63894cc7c4fb35e6af7fac0` | `37defbd0176e54eb172de3569c0434c023548e52` |
+| Corrections-1 | `55da7d7d7d31bc4b79c1e6c7753199ca3452cc6f` | `8ce36ed5a97ae6b68e2ae6588fd5b1eca34aa3de` |
+| Corrections-2 | `d1bab12f105d76db5d9c321e0da964c05b240883` | `d4c1436ffd51aeab2351ccfee1148af0ea460a4a` |
+| PR-binding head | `30fdfcbf77b85d94c4b73ca02197f2c6c4a917c0` | superseded by the rebase-record commit (this commit) |
+
+- **Pre-rebase CI runs do NOT prove the rebased head and are not claimed as such:** run `33357867365` (green, at superseded `d1bab12…`) and run `33358089182` (green, at superseded `30fdfcb…`) bound the pre-rebase presentations only. CI re-runs on the ACTUAL rebased heads (§ PR binding).
 
 ## Pre-existing main defects
 
@@ -63,6 +85,22 @@ Environment: Bun 1.3.14, embedded PostgreSQL 16.4 at `127.0.0.1:55432` (`ZECK_PG
 | `ZECK_PG_TEST_URL=… bun run test` (FULL suite, **twice consecutively**) | **1099/1099 (115 files) — both runs, identical pass sets** |
 
 Baseline comparison: pristine main at pickup measured **957/957 (106 files)**. Delta: **+142 tests / +9 files, all passing; zero main-inherited failures** (75 unit + 5 architecture + 36 discrimination + 26 real-PG).
+
+### Rebase verification (complete gate re-executed at the rebased tree)
+
+| Command | Result |
+|---|---|
+| `bun install --frozen-lockfile` | clean (verified on a pristine worktree of the new base; runtime deps `[]`) |
+| `bun run typecheck` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings (468 files — WORK-013's merged files included) |
+| `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 31 Work Orders, 94 requirements, frontier=['WORK-014', 'WORK-015']` (WORK-013 complete+mergedAs; WORK-012 the only in-flight) |
+| `bun run test:unit` | 711/711 (54 files; incl. the 75 WORK-012 tests + the UNIONED step-events vocabulary test + WORK-013's verification unit suites) |
+| `bun run test:architecture` | 322 passed + 1 PG-gated skip (37+1 files; incl. `sandbox-boundary` 5/5, `sandbox.discrimination` 36/36, `verification-boundary`, `verification-authority.discrimination`) |
+| `bun run test:integration` | 7 passed + 30 PG-gated skips (32 files) |
+| `bun run test:pg` (real PostgreSQL) | 201/201 (30 files; every disposable database applies migrations 0001–0008 — BOTH `0007_verification` and `0008_sandbox` — before each suite) |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite) | **1242/1242 (124 files)** at the rebased tree; consecutive full-suite runs at the exact committed heads are recorded in § PR binding (the Work Order's evidence-change rule) |
+
+Baseline comparison: pristine main at the NEW base `cb34987` measured **1100/1100 (115 files)** with real PostgreSQL (zero failures, zero skips, zero 57P01 noise — measured on a detached worktree of the merge commit). Delta at the rebased tree: **+142 tests / +9 files, all passing; zero main-inherited failures.** The pre-rebase baseline (957/957, 106 files at `2310df9`) is superseded.
 
 ## Discrimination evidence (CRITICAL — every named boundary)
 
@@ -134,5 +172,7 @@ Additional blocking boundaries from the Work Order's Checkpoints section: SANDBO
 **PR OPENED (bound):** PR **#23** (https://github.com/pectoraux/Zeck/pull/23), opened from `work/WORK-012-sandbox-compute` against main (`2310df9…`). The branch was pushed at `d1bab12f105d76db5d9c321e0da964c05b240883` (the corrections-2 head, object-identity-verified before and after the push by the fail-closed checks: head/parent/impl/base all match) and **CI ran GREEN on that exact head** — run https://github.com/pectoraux/Zeck/actions/runs/33357867365, all three jobs success: `governance` (governance-check.py), `toolchain-detection`, `implementation` (typecheck, lint, architecture tests, unit tests, integration tests). The real-PG suites are env-gated and skip in CI (standing flag since WORK-002); the locally-recorded 177/177 real-PG runs in the Verification table are the durable-claim proof. The push credential (a GitHub PAT) was supplied by the repository operator out-of-band; it is never committed to the repository and never written into any tracked file.
 
 This docs-only PR-identity-binding commit (the WORK-011 precedent, merged commit `57e954c`) advances the branch head past `d1bab12…` (**superseded final head, disclosed per the Work Order §21**). CI re-runs on the advanced head and the **final branch head binding lives in the PR body** (updated there per the two-part convention — a commit cannot contain its own SHA, so this file never states the final head). The complete local verification gate was additionally re-executed at this binding head before the push (docs-only change; identical pass sets).
+
+**REBASE REBINDING (post-WORK-013-merge — supersedes the pre-rebase push/CI identities above):** per the architect instruction the branch was rebased onto `cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf` and force-pushed. Every pre-rebase push/CI identity is SUPERSEDED and explicitly labelled: push head `d1bab12…` (CI run `33357867365` — green, pre-rebase, superseded) and binding head `30fdfcb…` (CI run `33358089182` — green, pre-rebase, superseded); those runs bind the pre-rebase presentations only and do NOT prove any rebased head. The rebased branch pushes at the rebase-record head; CI runs on the ACTUAL rebased heads; the FINAL rebased head binding lives in the PR body (two-part convention — a commit cannot contain its own SHA). PR #23 remains the PR identity throughout (no new PR).
 
 NOT merged — the architect is the sole merge authority; `program-state.json` keeps WORK-012 `in-flight` until post-merge finalization.
