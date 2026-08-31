@@ -89,6 +89,20 @@ export const STEP_EVENT_COMMANDS = [
   "agent-session-started",
   "agent-action-recorded",
   "agent-session-completed",
+  // WORK-013 (verification) — verification evidence commands. Additive
+  // vocabulary extension: the verification authority's durable evidence
+  // (evaluation intents, recorded results/conclusions, mediated human
+  // evaluation requests/decisions, candidate comparisons) rides the SAME
+  // ledger through the SAME recordStepEvent seam; the verification
+  // module produces these events but owns none of the vocabulary (this
+  // module remains the single event-vocabulary authority, and the
+  // execution lifecycle itself stays untouched — these are
+  // status-preserving observations, never transitions).
+  "verification-requested",
+  "verification-recorded",
+  "human-evaluation-requested",
+  "human-decision-recorded",
+  "comparison-recorded",
 ] as const;
 export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
 
