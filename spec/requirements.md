@@ -146,4 +146,33 @@
 - ACC-002: GPU and specialized-accelerator selection uses provider-neutral capability/resource contracts and remains replaceable by adapter.
 - ACC-003: Training checkpoints, datasets, configurations and outputs preserve artifact lineage and verification status; compute success alone does not imply model-release verification.
 
-Total requirements: **86**.
+## Procedural competence
+
+- CMP-001: Successful execution trajectories can produce candidate reusable procedural competences with durable provenance.
+- CMP-002: A competence can represent procedural guidance, tool compositions, deterministic procedures, synthesized programs or verification recipes without replacing Tool, Plan, Execution or Agent authorities.
+- CMP-003: Competences are immutable versioned artifacts with explicit capabilities, dependencies, compatibility and promotion state.
+- CMP-004: Competence promotion requires validation, verification and policy-compatible promotion gates; an agent cannot directly promote its own competence.
+- CMP-005: Competence retrieval supports progressive disclosure so only the minimum relevant procedural context is loaded before execution.
+
+## Session and gateway fabric
+
+- GAT-001: Channels and external runtimes can connect through a provider-neutral Gateway and Session abstraction without creating a second execution authority.
+- GAT-002: Sessions preserve tenant, application, deployment, agent and execution lineage across turns, retries and interruptions.
+- GAT-003: Gateway ingress, translation and delivery retry handling are distinct from execution, policy, budget and verification authorities.
+- GAT-004: Gateway adapters are replaceable and provider-neutral while preserving channel-specific provenance.
+
+## Competence trust and ecosystem
+
+- TRU-001: Reusable competences and executable artifacts carry immutable identity, version, provenance, publisher, dependencies, capabilities, security and verification metadata.
+- TRU-002: Untrusted external skills, plugins, competences and runtimes cannot become production-eligible without the normal validation, verification and promotion gates.
+- TRU-003: Competence installation, activation, deprecation and rollback preserve historical evidence and provenance.
+- TRU-004: Compatibility and security metadata can reject a competence before execution without creating a second policy authority.
+
+## Cross-runtime learning
+
+- XRT-001: Zeck can ingest execution trajectories from native agents and external runtimes through provider-neutral observation contracts.
+- XRT-002: Cross-runtime observations retain runtime identity, task context, execution provenance and verification evidence without granting runtime authority.
+- XRT-003: Cross-runtime scorecards can compare strategies using common execution, cost, quality and verification dimensions.
+- XRT-004: External runtime observations can contribute to learning without bypassing Zeck policy, capability, budget or verification.
+
+Total requirements: **114**.
