@@ -28,9 +28,33 @@
  * `tool-failure`), physically disjoint from verification and provider
  * classes; tools cannot mutate customer-domain workflow state or platform
  * authority state (the adapter port hands them no such surface).
+ *
+ * WORK-018 adds governed program synthesis INSIDE the tool abstraction
+ * (TOL-004): synthesized tools are ephemeral, content-addressed
+ * artifacts with explicit schemas/capabilities; compilation and
+ * execution occur ONLY inside the sandbox manager (the REQUIRED
+ * `SynthesisSandboxExecutor` seam — its only implementation wraps the
+ * sandbox module's public service); static validation + runtime tests
+ * gate usability (the `draft → validated → usable` lifecycle with
+ * terminal `rejected`/`retired`, physically guarded by migration
+ * 0011); source, build digest, test evidence and execution provenance
+ * are durable; and synthesized code cannot obtain capabilities beyond
+ * policy grants — the SAME registry/runtime admission chain governs
+ * every invocation, and the executor confines the substrate layer to
+ * the target environment's grants before dispatch.
  */
 
 import type { ModuleDescriptor } from "../../shared/module";
+import type {
+  SubmitProgramOutcome,
+  SynthesisActor,
+  SynthesisService,
+  SynthesisServiceDeps,
+} from "./application/synthesis-service";
+import {
+  createSynthesisService,
+  SYNTHESIS_DEFAULT_TIMEOUT_MS,
+} from "./application/synthesis-service";
 import { createToolRegistry } from "./application/tool-registry";
 import type { ToolRuntime, ToolRuntimeDeps } from "./application/tool-runtime";
 import { createToolRuntime, toolRequestFingerprint } from "./application/tool-runtime";
@@ -52,6 +76,39 @@ import {
 } from "./domain/invocation";
 import type { SchemaCheck, ToolFieldSchema, ToolFieldSpec, ToolFieldType } from "./domain/schema";
 import { checkAgainstSchema, TOOL_FIELD_TYPES } from "./domain/schema";
+import type {
+  SynthesisLanguage,
+  SynthesisRejection,
+  SynthesisRejectionPhase,
+  SynthesisRequest,
+  SynthesisRuntimeTests,
+  SynthesisStaticValidation,
+  SynthesisTestCase,
+  SynthesisTestCaseEvidence,
+  SynthesizedProgramRecord,
+  SynthesizedProgramStatus,
+  SynthesizedToolFact,
+  ToolFactOrigin,
+} from "./domain/synthesis";
+import {
+  canonicalOutputJson,
+  canonicalSynthesisJson,
+  parseSynthesizedOutput,
+  SYNTHESIS_FORBIDDEN_SOURCE_TOKENS,
+  SYNTHESIS_INPUT_JSON_MAX,
+  SYNTHESIS_KEY_PATTERN,
+  SYNTHESIS_LANGUAGES,
+  SYNTHESIS_SOURCE_BOUNDS,
+  SYNTHESIS_TEST_CASE_BOUNDS,
+  SYNTHESIZED_PROGRAM_STATUSES,
+  SYNTHESIZED_PROGRAM_TRANSITIONS,
+  SYNTHESIZED_TOOL_ID_PATTERN,
+  scanLanguageSubset,
+  synthesisSubmissionFingerprint,
+  TERMINAL_SYNTHESIZED_STATUSES,
+  TOOL_FACT_ORIGINS,
+  validateSynthesisRequest,
+} from "./domain/synthesis";
 import type {
   ToolCapabilityIdentity,
   ToolContract,
@@ -75,6 +132,18 @@ import type {
   LedgerStepEvent,
   LedgerStepEventOutcome,
 } from "./ports/execution-ledger";
+import type { SynthesizedToolAdapterFactory } from "./ports/synthesis-adapter-factory";
+import type {
+  SynthesisSandboxDispatch,
+  SynthesisSandboxExecutor,
+  SynthesisSandboxResult,
+} from "./ports/synthesis-sandbox";
+import type {
+  SynthesisInsertInput,
+  SynthesisInsertOutcome,
+  SynthesisStore,
+  SynthesisTransitionInput,
+} from "./ports/synthesis-store";
 import type {
   ToolAdapter,
   ToolDispatch,
@@ -106,12 +175,18 @@ export {
   BUILT_IN_TOOLS,
   CALCULATOR_CONTRACT,
   calculatorAdapter,
+  confinementCheck,
   createExecutionLedgerAdapter,
   createPolicyToolAdmission,
+  createSynthesisSandboxExecutor,
+  createSynthesizedAdapterFactory,
   createToolCapabilityGate,
+  InMemorySynthesisStore,
   SCHEMA_VALIDATOR_CONTRACT,
   SEED_BUILT_IN_TOOL_FACTS,
+  SqlSynthesisStore,
   SqlToolInvocationStore,
+  SYNTH_INPUT_ENV,
   schemaValidatorAdapter,
 } from "./adapters";
 export { isToolFieldSchema } from "./domain/schema";
@@ -132,6 +207,29 @@ export type {
   RegisteredTool,
   RegisterToolOutcome,
   SchemaCheck,
+  SubmitProgramOutcome,
+  SynthesisActor,
+  SynthesisInsertInput,
+  SynthesisInsertOutcome,
+  SynthesisLanguage,
+  SynthesisRejection,
+  SynthesisRejectionPhase,
+  SynthesisRequest,
+  SynthesisRuntimeTests,
+  SynthesisSandboxDispatch,
+  SynthesisSandboxExecutor,
+  SynthesisSandboxResult,
+  SynthesisService,
+  SynthesisServiceDeps,
+  SynthesisStaticValidation,
+  SynthesisStore,
+  SynthesisTestCase,
+  SynthesisTestCaseEvidence,
+  SynthesisTransitionInput,
+  SynthesizedProgramRecord,
+  SynthesizedProgramStatus,
+  SynthesizedToolAdapterFactory,
+  SynthesizedToolFact,
   ToolAdapter,
   ToolAdmission,
   ToolAdmissionDecision,
@@ -146,6 +244,7 @@ export type {
   ToolEgressMode,
   ToolEvidenceContract,
   ToolExecutionRequirements,
+  ToolFactOrigin,
   ToolFailureClass,
   ToolFieldSchema,
   ToolFieldSpec,
@@ -167,11 +266,29 @@ export type {
   ToolSideEffectClass,
 };
 export {
+  canonicalOutputJson,
+  canonicalSynthesisJson,
   checkAgainstSchema,
+  createSynthesisService,
   createToolRegistry,
   createToolRuntime,
+  parseSynthesizedOutput,
+  SYNTHESIS_DEFAULT_TIMEOUT_MS,
+  SYNTHESIS_FORBIDDEN_SOURCE_TOKENS,
+  SYNTHESIS_INPUT_JSON_MAX,
+  SYNTHESIS_KEY_PATTERN,
+  SYNTHESIS_LANGUAGES,
+  SYNTHESIS_SOURCE_BOUNDS,
+  SYNTHESIS_TEST_CASE_BOUNDS,
+  SYNTHESIZED_PROGRAM_STATUSES,
+  SYNTHESIZED_PROGRAM_TRANSITIONS,
+  SYNTHESIZED_TOOL_ID_PATTERN,
+  scanLanguageSubset,
+  synthesisSubmissionFingerprint,
+  TERMINAL_SYNTHESIZED_STATUSES,
   TOOL_DENIAL_CLASSES,
   TOOL_EGRESS_MODES,
+  TOOL_FACT_ORIGINS,
   TOOL_FAILURE_CLASSES,
   TOOL_FIELD_TYPES,
   TOOL_INVOCATION_STATUSES,
@@ -179,5 +296,6 @@ export {
   TOOL_SECRET_ACCESS_MODES,
   TOOL_SIDE_EFFECT_CLASSES,
   toolRequestFingerprint,
+  validateSynthesisRequest,
   validateToolContract,
 };

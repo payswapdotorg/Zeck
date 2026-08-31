@@ -21,8 +21,10 @@
  *  - NO synthesis vocabulary anywhere in the composition surfaces
  *    (M24: WORK-018 owns synthesis — no code generation, no
  *    synthesized tools);
- *  - the migration inventory claim: 0010 is the only new migration,
- *    no version renumbering (the collision rule).
+ *  - the migration inventory claim: migrations are unique and un-renumbered;
+ *    0010 is WORK-017's composition migration, 0011 is WORK-018's
+ *    tool-synthesis claim (the collision rule, evolved by the parallel
+ *    wave's documented number assignment).
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -149,14 +151,18 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     expect(violations).toEqual([]);
   });
 
-  test("the migration inventory claim: 0010 is unique and next (the collision rule)", () => {
+  test("the migration inventory claim: unique, no renumbering (the collision rule, evolved by WORK-018)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .map((name) => Number(name.slice(0, 4)))
       .sort((a, b) => a - b);
     const unique = new Set(migrations);
     expect(unique.size).toBe(migrations.length); // globally unique
-    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // The WORK-017 baseline (0001..0010) is intact and un-renumbered; 0011
+    // is WORK-018's tool-synthesis claim (the parallel-wave collision-rule
+    // discipline: 0011/0012/0013 pre-assigned to WORK-018/023/031 by the
+    // dispatch and documented in every sibling evidence file).
+    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
@@ -167,6 +173,14 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // Physical immutability: both tables are trigger-guarded.
     expect(migration.includes("composition_sets_immutable_guard")).toBe(true);
     expect(migration.includes("composition_activation_immutable_guard")).toBe(true);
+    // 0011 is the WORK-018 tool-synthesis migration (tools schema + the
+    // additive sandbox output-evidence column).
+    const synthesisMigration = readFileSync(
+      join(REPO_ROOT, "src/platform/db/migrations/0011_tool_synthesis.sql"),
+      "utf8",
+    );
+    expect(synthesisMigration.includes("tools.synthesized_programs")).toBe(true);
+    expect(synthesisMigration.includes("ADD COLUMN output jsonb")).toBe(true);
   });
 
   test("the learning signal projection carries the set anchors (M13/M14)", () => {

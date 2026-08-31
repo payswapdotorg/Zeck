@@ -8,4 +8,5 @@
 
 export * from "./invocation";
 export * from "./schema";
+export * from "./synthesis";
 export * from "./tool";

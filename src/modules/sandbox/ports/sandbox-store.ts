@@ -99,6 +99,8 @@ export interface RecordOutcomeInput {
   readonly failureMessage: string | null;
   readonly retryable: boolean;
   readonly outputDigest: string | null;
+  /** The bounded observation output (WORK-018 durable output evidence). */
+  readonly output: Readonly<Record<string, unknown>> | null;
   readonly usageMicroUsd: string | null;
   readonly dispatchedAt: string;
   readonly completedAt: string;
