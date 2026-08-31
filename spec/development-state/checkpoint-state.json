@@ -702,6 +702,53 @@
           ]
         }
       }
+    },
+    "WORK-015": {
+      "asOf": "2026-08-31T14:51:00Z",
+      "branch": "work/WORK-015-public-api",
+      "baseRevision": "db2f6665cc18528521c30b8f54935d2108e9d362",
+      "assuranceProfile": "HIGH_ASSURANCE",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-015.md",
+            "tests/unit/api/executions-routes.test.ts",
+            "tests/integration/postgres/api-surface.test.ts",
+            "tests/unit/sdk/client.test.ts",
+            "tests/unit/cli/cli.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/api-surface.test.ts",
+            "tests/unit/api/executions-routes.test.ts",
+            "tests/discrimination/public-surface.discrimination.test.ts",
+            "docs/work-items/WORK-015.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/api-surface.test.ts",
+            "docs/work-items/WORK-015.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/public-surface.test.ts",
+            "tests/architecture/dependency-direction.test.ts",
+            "tests/discrimination/public-surface.discrimination.test.ts",
+            "docs/work-items/WORK-015.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

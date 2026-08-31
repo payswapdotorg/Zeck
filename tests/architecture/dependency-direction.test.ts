@@ -19,7 +19,10 @@ describe("dependency direction over the real src/ tree", () => {
 
   test("the source tree is non-empty and scanned", () => {
     expect(files.length).toBeGreaterThan(100);
-    expect(allowedPackages).toEqual([]);
+    // WORK-015 adds the sanctioned runtime dependency fastify
+    // (IMPLEMENTATION.md §1 "HTTP/API: Fastify", confined to src/api/ by
+    // the SDK-boundary table). Everything else still fails closed.
+    expect(allowedPackages).toEqual(["fastify"]);
   });
 
   test("no rule violations anywhere in src/", () => {

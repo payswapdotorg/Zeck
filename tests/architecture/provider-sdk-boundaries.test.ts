@@ -26,7 +26,7 @@ describe("provider SDK boundaries", () => {
   const files = collectSourceFiles(REPO_ROOT);
   const allowedPackages = declaredRuntimePackages(REPO_ROOT);
 
-  test("src/ contains zero provider SDK imports while none are declared", () => {
+  test("src/ contains only the declared sanctioned runtime import (fastify, api-confined)", () => {
     const sdkImports = new Set<string>();
     for (const file of files) {
       for (const specifier of extractImportSpecifiers(file.content)) {
@@ -40,7 +40,10 @@ describe("provider SDK boundaries", () => {
         sdkImports.add(packageNameOf(specifier));
       }
     }
-    expect([...sdkImports].sort()).toEqual([]);
+    // WORK-015 declares fastify (the sanctioned API transport); it must
+    // be the ONLY bare import in src/ and the boundary table confines it
+    // to src/api/ (proven by the provider-sdk-outside-adapter rule).
+    expect([...sdkImports].sort()).toEqual(["fastify"]);
   });
 
   test("the SDK boundary table pins every known provider family to its owning adapter", () => {
