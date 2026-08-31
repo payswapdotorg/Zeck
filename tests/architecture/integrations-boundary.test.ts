@@ -154,9 +154,7 @@ describe("architecture: the WORK-016 integration boundary", () => {
           /modules\/(policies|budgets|verification|learning|capabilities)\//,
         );
       }
-      expect(text, file).not.toMatch(
-        /modules\/(policies|budgets|verification|learning)\/public/,
-      );
+      expect(text, file).not.toMatch(/modules\/(policies|budgets|verification|learning)\/public/);
     }
   });
 

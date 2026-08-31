@@ -33,9 +33,9 @@
 -- the live inventory at authoring time is 0001..0010 (merged on
 -- main); the sibling branches claim 0011 (WORK-018, pushed) and 0012
 -- (WORK-023, pushed). The wave pre-assigned numbers by dispatch
--- order: WORK-018 claims 0011, WORK-023 claims 0012, WORK-031 claims
--- 0013 (THIS migration). No other unmerged Work Order claims any
--- number.
+-- order: WORK-018 claims 0011, WORK-023 claims 0012,
+-- WORK-031 claims 0013 (THIS migration). No other unmerged Work
+-- Order claims any number.
 
 CREATE SCHEMA IF NOT EXISTS capabilities;
 

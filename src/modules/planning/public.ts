@@ -44,6 +44,7 @@ import { createNodeDigest } from "./adapters/node-digest";
 import { createPlanningSinkAdapter } from "./adapters/planning-sink-adapter";
 import { createPolicyInputsAdapter } from "./adapters/policy-inputs-adapter";
 import { createRouteTableExplorer } from "./adapters/route-table-explorer";
+import { createSubstrateCatalogAdapter } from "./adapters/substrate-catalog-adapter";
 import type {
   PlanExecutionInput,
   PlannerService,
@@ -77,6 +78,10 @@ import type {
   StrategyClass,
   StrategySelection,
   SubgraphObservation,
+  SubstrateCandidate,
+  SubstrateInadmissibleReason,
+  SubstrateRejection,
+  SubstrateSelection,
   SufficiencyInput,
   SufficiencyOutcome,
   SufficiencyReason,
@@ -85,6 +90,7 @@ import type {
   TaskKind,
   TaskProfile,
   TaskRiskLevel,
+  WorkloadClassProfile,
 } from "./domain";
 import {
   buildCompositionConsultation,
@@ -106,12 +112,14 @@ import {
   evaluateDeterministicSufficiency,
   filterAdmissibility,
   isGenerativeStepClass,
+  isSubstrateInadmissibleReason,
   learningPreferredCandidateId,
   PLAN_STEP_CLASSES,
   PLANNER_VERSION,
   PREFERENCE_MINIMUM_POPULATION,
   routeAllowedByPolicy,
   STRATEGY_CLASSES,
+  SUBSTRATE_INADMISSIBLE_REASONS,
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
@@ -120,6 +128,10 @@ import {
   validateConsultedSignal,
   validateLearningConsultation,
   validatePlanningDecision,
+  validateSubstrateSelection,
+  validateWorkloadClassProfile,
+  WORKLOAD_CLASS_REQUIREMENTS,
+  workloadClassProfileOf,
 } from "./domain";
 import type {
   CompositionRecommendationQuery,
@@ -136,6 +148,8 @@ import type {
   PlanningSinkInput,
   PlanningSinkOutcome,
   ResolvedPolicyInputs,
+  SubstrateCatalog,
+  SubstrateCatalogEntry,
 } from "./ports";
 
 export const moduleDescriptor: ModuleDescriptor = { id: "planning" };
@@ -185,6 +199,12 @@ export type {
   StrategyClass,
   StrategySelection,
   SubgraphObservation,
+  SubstrateCandidate,
+  SubstrateCatalog,
+  SubstrateCatalogEntry,
+  SubstrateInadmissibleReason,
+  SubstrateRejection,
+  SubstrateSelection,
   SufficiencyInput,
   SufficiencyOutcome,
   SufficiencyReason,
@@ -193,6 +213,7 @@ export type {
   TaskKind,
   TaskProfile,
   TaskRiskLevel,
+  WorkloadClassProfile,
 };
 // Application: the deterministic-first planner service.
 // Domain: task profiling (INT-001), immutable typed plan DAGs (INT-003),
@@ -223,6 +244,7 @@ export {
   createPlanningSinkAdapter,
   createPolicyInputsAdapter,
   createRouteTableExplorer,
+  createSubstrateCatalogAdapter,
   DETERMINISTIC_CATALOG_SEED,
   decisionRecordDigest,
   deriveTaskProfile,
@@ -230,6 +252,7 @@ export {
   evaluateDeterministicSufficiency,
   filterAdmissibility,
   isGenerativeStepClass,
+  isSubstrateInadmissibleReason,
   learningPreferredCandidateId,
   PLAN_STEP_CLASSES,
   PLANNER_VERSION,
@@ -237,6 +260,7 @@ export {
   publishDeterministicCapabilityFacts,
   routeAllowedByPolicy,
   STRATEGY_CLASSES,
+  SUBSTRATE_INADMISSIBLE_REASONS,
   selectStrategy,
   TASK_KINDS,
   TASK_RISK_LEVELS,
@@ -245,4 +269,8 @@ export {
   validateConsultedSignal,
   validateLearningConsultation,
   validatePlanningDecision,
+  validateSubstrateSelection,
+  validateWorkloadClassProfile,
+  WORKLOAD_CLASS_REQUIREMENTS,
+  workloadClassProfileOf,
 };

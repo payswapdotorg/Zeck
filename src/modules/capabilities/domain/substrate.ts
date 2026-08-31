@@ -344,15 +344,12 @@ export function validateComputationalSubstrate(input: unknown): SubstrateValidat
   }
   if (
     s.description !== undefined &&
+    s.description !== null &&
     (typeof s.description !== "string" || s.description.length > MAX_DESCRIPTION)
   ) {
     return { valid: false, reason: `description must be at most ${MAX_DESCRIPTION} characters` };
   }
-  if (
-    s.description !== undefined &&
-    typeof s.description === "string" &&
-    substrateContainsRawSecretValue(s.description)
-  ) {
+  if (typeof s.description === "string" && substrateContainsRawSecretValue(s.description)) {
     return { valid: false, reason: "description looks like it embeds a raw secret value" };
   }
   return { valid: true };
