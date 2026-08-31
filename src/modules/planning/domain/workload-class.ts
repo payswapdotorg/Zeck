@@ -14,7 +14,29 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { CapabilityRequirement, WorkloadClass } from "../../capabilities/public";
-import { isWorkloadClass } from "../../capabilities/public";
+
+/**
+ * The planning-side mirror of the capabilities module's frozen
+ * workload-class vocabulary (the planner-surface discipline: planning
+ * domain/application consult other modules TYPE-ONLY — values live in
+ * adapters — so the vocabulary is mirrored by value here and PINNED
+ * against the capabilities authority by unit test, exactly the way the
+ * sandbox mirrors the tools field vocabulary).
+ */
+export const WORKLOAD_CLASS_VOCABULARY: readonly WorkloadClass[] = [
+  "interactive",
+  "realtime",
+  "asynchronous",
+  "batch",
+  "training-evaluation",
+  "edge",
+  "embodied",
+  "specialized-accelerator",
+];
+
+export function isWorkloadClass(value: string): value is WorkloadClass {
+  return (WORKLOAD_CLASS_VOCABULARY as readonly string[]).includes(value);
+}
 
 /**
  * The frozen workload-class → requirement mapping. Adding a class or

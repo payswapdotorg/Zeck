@@ -30,7 +30,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { CapabilityResolution, TaskCapabilityProfile } from "../../capabilities/public";
-import { isWorkloadClass } from "../../capabilities/public";
+import { isWorkloadClass } from "../domain/workload-class";
 import type { PolicyRequestContext } from "../../policies/public";
 import type {
   CandidateStrategy,

@@ -149,14 +149,24 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     expect(violations).toEqual([]);
   });
 
-  test("the migration inventory claim: 0010 is unique and next (the collision rule)", () => {
+  test("the migration inventory claim: unique, un-renumbered, wave-tolerant (the collision rule)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .map((name) => Number(name.slice(0, 4)))
       .sort((a, b) => a - b);
     const unique = new Set(migrations);
     expect(unique.size).toBe(migrations.length); // globally unique
-    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    // The WORK-017 baseline (0001..0010) is intact, un-renumbered and
+    // contiguous. The parallel wave (WORK-018 | WORK-023 | WORK-031)
+    // pre-assigned 0011/0012/0013 by dispatch order, documented in every
+    // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
+    // wave numbers may be present (a sibling merged first) or absent
+    // (this branch carries only its own claim; file gaps are legal
+    // pre-merge — the runner applies in ascending order and allows gaps).
+    for (let version = 1; version <= 10; version += 1) {
+      expect(migrations).toContain(version);
+    }
+    expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
@@ -167,6 +177,13 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // Physical immutability: both tables are trigger-guarded.
     expect(migration.includes("composition_sets_immutable_guard")).toBe(true);
     expect(migration.includes("composition_activation_immutable_guard")).toBe(true);
+    // THIS branch's own claim: 0013 is the WORK-031 substrate-federation
+    // migration (the sibling branches carry 0011/0012 respectively).
+    const substrateMigration = readFileSync(
+      join(REPO_ROOT, "src/platform/db/migrations/0013_substrate_federation.sql"),
+      "utf8",
+    );
+    expect(substrateMigration.includes("capabilities.substrates")).toBe(true);
   });
 
   test("the learning signal projection carries the set anchors (M13/M14)", () => {

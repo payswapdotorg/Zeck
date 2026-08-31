@@ -77,6 +77,13 @@ describe("the frozen vocabularies (CSX-001/CSX-002)", () => {
     ]);
   });
 
+  test("the planning-side mirror is PINNED to the capabilities authority (the type-only discipline)", async () => {
+    const { WORKLOAD_CLASS_VOCABULARY } = await import(
+      "../../../src/modules/planning/domain/workload-class"
+    );
+    expect([...WORKLOAD_CLASS_VOCABULARY]).toEqual([...WORKLOAD_CLASSES]);
+  });
+
   test("the substrate lifecycle is strict (retired terminal)", () => {
     expect(SUBSTRATE_LIFECYCLE_TRANSITIONS.available).toEqual(["suspended", "retired"]);
     expect(SUBSTRATE_LIFECYCLE_TRANSITIONS.suspended).toEqual(["available", "retired"]);

@@ -26,7 +26,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { WorkloadClass } from "../../capabilities/public";
-import { isWorkloadClass } from "../../capabilities/public";
+import { isWorkloadClass } from "./workload-class";
 
 /** Why a substrate candidate was inadmissible (typed, closed). */
 export const SUBSTRATE_INADMISSIBLE_REASONS = [
