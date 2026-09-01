@@ -159,15 +159,20 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // The WORK-017 baseline (0001..0010) is intact, un-renumbered and
     // contiguous. The parallel wave (WORK-018 | WORK-023 | WORK-031)
     // pre-assigned 0011/0012/0013 by dispatch order, documented in every
-    // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
-    // wave numbers may be present (a sibling merged first) or absent
-    // (this branch carries only its own claim; file gaps are legal
-    // pre-merge — the runner applies in ascending order and allows gaps).
+    // sibling evidence file; WORK-032 (landed on main as PR #36) adds
+    // 0014_economic_actions.sql. The assertion is MERGE-ORDER TOLERANT:
+    // this branch carries its own 0013 claim and main's 0014 claim, while
+    // 0011/0012 arrive with their sibling work orders' merges (file gaps
+    // are legal pre-merge — the runner applies in ascending order and
+    // allows gaps).
     for (let version = 1; version <= 10; version += 1) {
       expect(migrations).toContain(version);
     }
     expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    // 0010 is the WORK-017 composition migration.
+    // 0010 is the WORK-017 composition migration. WORK-032's 0014 claim is
+    // on main and therefore present here; 0013 is THIS branch's own claim.
+    expect(migrations).toContain(13);
+    expect(migrations).toContain(14);
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
       "utf8",

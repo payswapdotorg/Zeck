@@ -3,7 +3,25 @@
 import type { Authenticate } from "../../../src/api";
 import type { AgentRegistry } from "../../../src/modules/agents/public";
 import type { ScopeResolver } from "../../../src/modules/auth/public";
+import type { EconomicActionService } from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/public";
+
+export function fakeEconomicsService(): EconomicActionService {
+  const reject = (name: string) => async () => {
+    throw new Error(`not exercised by the architecture gate: ${name}`);
+  };
+  return {
+    createEconomicAction: reject("createEconomicAction") as never,
+    authorizeEconomicAction: reject("authorizeEconomicAction") as never,
+    chargeEconomicAction: reject("chargeEconomicAction") as never,
+    recordExternalSettlement: reject("recordExternalSettlement") as never,
+    recordDeliveryObservation: reject("recordDeliveryObservation") as never,
+    getEconomicAction: (async () => null) as never,
+    listEconomicActionEvents: (async () => []) as never,
+    deliveryEvidence: (async () => null) as never,
+    economicOutcomeFacts: (async () => []) as never,
+  };
+}
 
 export function fakeExecutionsService(): ExecutionService {
   const reject = (name: string) => async () => {

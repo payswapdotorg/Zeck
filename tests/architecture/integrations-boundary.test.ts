@@ -24,7 +24,7 @@
  *  - benchmarks import only public barrels (no internals/platform).
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 
@@ -81,7 +81,7 @@ function resolveSpecifier(fromFile: string, specifier: string): string {
 }
 
 describe("architecture: the WORK-016 integration boundary", () => {
-  test("src/integrations imports ONLY the owning public barrels + src/shared", () => {
+  test("src/integrations imports ONLY the executions/agents public barrels + src/shared (payment-rails may additionally import the economics barrel; substrate-federation the capabilities barrel)", () => {
     const violations: string[] = [];
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
@@ -107,6 +107,18 @@ describe("architecture: the WORK-016 integration boundary", () => {
           segments[1] === "modules" &&
           segments[2] === "agents" &&
           segments[3] === "public";
+        // WORK-032: the payment-rails integration implements the
+        // economics module's PaymentRail port — it may import the
+        // economics public barrel (the rail contract). This allowance is
+        // scoped to the payment-rails namespace ONLY: the workflowos
+        // tree keeps its original allowlist.
+        const isEconomicsBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "economics" &&
+          segments[3] === "public";
+        const isPaymentRailsNamespace = file.includes("src/integrations/payment-rails/");
         const isShared = resolved.startsWith("src/shared/");
         const isIntraIntegration = resolved.startsWith("src/integrations/");
         // WORK-031 (CSX-004): the substrate-federation integration
@@ -128,7 +140,8 @@ describe("architecture: the WORK-016 integration boundary", () => {
           !isAgentsBarrel &&
           !isShared &&
           !isIntraIntegration &&
-          !(isSubstrateFederation && isCapabilitiesBarrel)
+          !(isSubstrateFederation && isCapabilitiesBarrel) &&
+          !(isPaymentRailsNamespace && isEconomicsBarrel)
         ) {
           violations.push(`${file}: ${specifier} -> ${resolved}`);
         }
@@ -137,13 +150,27 @@ describe("architecture: the WORK-016 integration boundary", () => {
     expect(violations).toEqual([]);
   });
 
-  test("the integration holds NO policy/budget/verification/learning authority logic", () => {
-    // The integration CANNOT decide policy, budgets, verification or
-    // learning — it never imports those modules (delegation only). The
+  test("the payment-rails integration exposes its public barrel and rail adapters", async () => {
+    const barrel = await import("../../src/integrations/payment-rails/public");
+    expect(barrel.integrationId).toBe("payment-rails");
+    expect(existsSync(join(REPO_ROOT, "src/integrations/payment-rails/adapters/index.ts"))).toBe(
+      true,
+    );
+    expect(existsSync(join(REPO_ROOT, "src/integrations/payment-rails/internal/index.ts"))).toBe(
+      true,
+    );
+  });
+
+  test("the integration holds NO policy/budget/verification/learning/capability authority logic", () => {
+    // The integration CANNOT decide policy, budgets, verification, learning
+    // or capabilities — it never imports those modules (delegation only).
+    // Two scoped allowances exist (both import-rule-scoped above): the
+    // payment-rails namespace imports the economics PUBLIC barrel — the
+    // neutral rail contract, no authority surface — and the
     // substrate-federation integration (WORK-031) consumes the
     // capabilities module's public substrate REGISTRY surface (the one
-    // claim authority) — allowed by the import rule above; it still
-    // never imports policies/budgets/verification/learning.
+    // claim authority); neither ever imports
+    // policies/budgets/verification/learning.
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
       const isSubstrateFederation = file
@@ -158,7 +185,7 @@ describe("architecture: the WORK-016 integration boundary", () => {
     }
   });
 
-  test("M1/M2/M9: no WorkflowOS-state mutation channel exists (no network, no SQL, no SDK)", () => {
+  test("M1/M2/M9: no WorkflowOS-state mutation channel exists (no network, no SQL, no SDK; the payment-rails tree is network-free too until a real rail arrives with its own governed dependency)", () => {
     for (const file of [...INTEGRATION_FILES, ...BENCHMARK_FILES]) {
       const text = readFileSync(file, "utf8");
       expect(text, file).not.toMatch(NETWORK_OR_SQL);

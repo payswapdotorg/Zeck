@@ -855,6 +855,50 @@
         }
       }
     },
+    "WORK-032": {
+      "asOf": "2026-09-01T05:25:00Z",
+      "branch": "work/WORK-032-economic-actions",
+      "baseRevision": "3e974984e8ebc12ae062c7ff0c131b2bff2e6acb",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/economics/idempotency.test.ts",
+            "tests/unit/economics/economic-action-contract.test.ts",
+            "tests/integration/postgres/economic-actions.test.ts",
+            "tests/discrimination/economic-actions.discrimination.test.ts",
+            "docs/work-items/WORK-032.md"
+          ]
+        },
+        "ECONOMIC-AUTHORITY-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/economics/authorization-constraints.test.ts",
+            "tests/unit/economics/service-ordering.test.ts",
+            "tests/unit/economics/rails.test.ts",
+            "tests/unit/economics/machine-payment.test.ts",
+            "tests/architecture/integrations-boundary.test.ts",
+            "tests/discrimination/economic-actions.discrimination.test.ts",
+            "tests/integration/postgres/economic-actions.test.ts",
+            "docs/work-items/WORK-032.md"
+          ]
+        },
+        "EXECUTION-PROVENANCE": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/unit/economics/settlement-delivery.test.ts",
+            "tests/unit/executions/step-events.test.ts",
+            "tests/integration/postgres/economic-actions.test.ts",
+            "tests/discrimination/economic-actions.discrimination.test.ts",
+            "docs/work-items/WORK-032.md"
+          ]
+        }
+      }
+    },
     "WORK-031": {
       "asOf": "2026-08-31T21:25:00Z",
       "branch": "work/WORK-031-substrate-federation",
