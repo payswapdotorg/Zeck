@@ -4,7 +4,7 @@
 
 **Optimize execution precision, cost, deterministicism and developer simplicity.**
 
-Zeck should make AI integration feel like Stripe: developers declare an outcome and constraints; Zeck selects and orchestrates the cheapest sufficiently reliable combination of deterministic computation, tools, models, agents, external runtimes and human intervention.
+Zeck should make AI integration feel like Stripe: developers declare an outcome and constraints; Zeck selects and orchestrates the cheapest sufficiently reliable combination of deterministic computation, tools, models, agents, external runtimes, human intervention and—when explicitly authorized—economic actions.
 
 ## Core architectural rule
 
@@ -102,7 +102,7 @@ The implementation target is provider-neutral contracts for browser, desktop and
 
 # Post-foundation evolution
 
-The following capabilities are intentionally additive to the current architecture. They extend Learning, Planning, Deployment, Agent and Substrate foundations rather than replacing them.
+The following capabilities are intentionally additive to the current architecture. They extend Learning, Planning, Deployment, Agent, Substrate and Economic foundations rather than replacing them.
 
 ## 1. Procedural competence
 
@@ -284,6 +284,71 @@ The public product should eventually tell developers:
 
 Recommendations remain advisory until they pass the normal validation/promotion gates.
 
+## 9. Agentic economic actions and payment rails
+
+Zeck should eventually govern agent-initiated economic activity through the same execution-control principles used for AI computation.
+
+The platform abstraction is **EconomicAction**, not a provider-specific payment object. Payment is one economic action alongside purchase, transfer, refund, charge and future machine-commerce operations.
+
+The intended flow is:
+
+```text
+agent/developer intent
+        |
+        v
+economic intent
+        |
+        v
+policy
+        |
+        v
+budget reservation
+        |
+        v
+economic/payment authorization
+        |
+        v
+provider-neutral rail adapter
+        |
+        v
+settlement / resource delivery
+        |
+        v
+verification
+        |
+        v
+evidence
+        |
+        v
+learning
+```
+
+### Core invariants
+
+```text
+intent ≠ authorization ≠ transaction ≠ settlement ≠ verification
+```
+
+Agents must not receive unrestricted financial credentials. Authorizations should instead be bounded by the deterministic constraints Zeck already knows how to enforce, such as:
+
+- seller/recipient
+- maximum amount
+- currency
+- purpose/resource
+- expiration
+- execution/application/tenant scope
+- one-time or bounded reuse
+
+Payment rails remain replaceable adapters. Candidate rails include Stripe, Machine Payments Protocol (MPP), x402, network-token/payment APIs, bank rails, wallets, stablecoin rails and regional payment providers.
+
+The economic layer must reuse Zeck's existing budget/economic authority rather than create a second accounting truth. External rail ledgers are settlement records correlated to Zeck evidence, not replacement Zeck ledgers.
+
+Machine-readable payment-required flows such as HTTP 402 should be treated as inputs to economic planning, not as authorization by themselves.
+
+A successful payment must never automatically imply that the purchased resource or business outcome succeeded; verification remains independent.
+
+The implementation target is a provider-neutral EconomicAction/PaymentAuthority seam plus bounded rail adapters. Regulated financial services, KYC/AML, custody, money transmission, card issuance and similar infrastructure require separate Work Orders and compliance/security review.
+
 ---
 
 # Recommended implementation sequencing
@@ -317,6 +382,19 @@ WORK-018 + WORK-023 + WORK-031
 5. automatic shadow/canary evaluation
 6. safe promotion/rollback
 
+### Wave E — Economic control plane
+
+1. EconomicAction and PaymentAuthority contracts
+2. bounded agent-payment authorization
+3. payment rail adapter contract
+4. Stripe / MPP / x402 integrations
+5. machine-readable 402 payment-required handling
+6. payment/resource-delivery verification
+7. economic trajectory telemetry and optimization
+8. machine-to-machine commerce and agent-to-agent settlement
+
+No payment rail becomes a Zeck core dependency; Zeck remains the neutral orchestration and governance layer.
+
 ---
 
 # Borrow vs integrate vs avoid
@@ -332,6 +410,9 @@ WORK-018 + WORK-023 + WORK-031
 | Hermes autonomous skill improvement | **Promote to Zeck learning/evaluation lifecycle**, never direct agent authority |
 | Hermes memory/skills separation | **Integrate conceptually** into Context + Competence |
 | Hermes gateway/profile isolation | **Learn + adapt** into Session/Deployment |
+| Stripe agentic payment authorization/tokenization | **Integrate principles** into EconomicAction/PaymentAuthority |
+| Stripe Machine Payments Protocol | **Adapter target**, not Zeck core |
+| x402 / other machine-payment protocols | **Adapter targets**, not Zeck core |
 | Third-party framework internals | **Do not copy into core** |
 
 ---
@@ -339,42 +420,51 @@ WORK-018 + WORK-023 + WORK-031
 # Strategic end state
 
 ```text
-                       ZECK
-                        |
-             Developer API / SDK / CLI
-                        |
-                 Execution Control
-                        |
-        +---------------+---------------+
-        |               |               |
-      Policy        Capabilities      Budget
-        |               |               |
-        +---------------+---------------+
-                        |
-                     Planner
-                        |
-             Deterministic-first choice
-                        |
-      +-----------------+------------------+
-      |                 |                  |
- deterministic      tools/skills        AI models
-      code          competence           / agents
-      |                 |                  |
-      +-----------------+------------------+
-                        |
-                 Substrate / Sandbox
-                        |
-                  Verification
-                        |
-                     Evidence
-                        |
-                    Learning
-                        |
-             Competence promotion
-                        |
-                Planner improves
+                         ZECK
+                          |
+               Developer API / SDK / CLI
+                          |
+                   Execution Control
+                          |
+          +---------------+---------------+
+          |               |               |
+        Policy        Capabilities      Budget
+          |               |               |
+          +---------------+---------------+
+                          |
+                       Planner
+                          |
+               Deterministic-first choice
+                          |
+        +-----------------+------------------+
+        |                 |                  |
+   deterministic      tools/skills        AI models
+        code          competence           / agents
+        |                 |                  |
+        +-----------------+------------------+
+                          |
+                   Substrate / Sandbox
+                          |
+                     Verification
+                          |
+                       Evidence
+                          |
+                      Learning
+                          |
+               Competence promotion
+                          |
+                    Planner improves
+                          |
+              +-----------+-----------+
+              |                       |
+       External runtimes       Economic actions
+       OpenClaw/Hermes/etc.    payments/purchases
+              |                       |
+              +-----------+-----------+
+                          |
+                     Rail adapters
 ```
 
-The strategic goal is not to build the biggest agent framework.
+The strategic goal is not to build the biggest agent framework, payment processor or runtime.
 
-The goal is to become the neutral execution layer that makes every agent framework, model, tool and computational substrate **cheaper, safer, more deterministic, more precise and easier for developers to use**.
+The goal is to become the neutral execution layer that makes every agent framework, model, tool, computational substrate and authorized economic interaction **cheaper, safer, more deterministic, more precise and easier for developers to use**.
