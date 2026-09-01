@@ -34,8 +34,8 @@ As of 2026-09-01, the active implementation is **WORK-022 — Codebase AI opport
 - Work branch: `work/WORK-022-opportunity-analysis`
 - PR: `#40`
 - PR URL: https://github.com/pectoraux/Zeck/pull/40
-- Current PR head: `86093eac92f9e87c16142567c95e1d8a79fdb950`
-- Current `main`: `18dadf91b2d6d27724a8cff6202c1363d7b6c09d` (WORK-019 merge)
+- Current PR head: `35c6aa01666ec366aa09e29d6193cc1c08c4b8d1`
+- Current `main`: `f15c2cc91ef2b5b36cdea7682f98b37a657db433`
 - PR #40 is currently open and GitHub reports it as non-mergeable; do not assume the PR description reflects a reconciled merge state.
 
 ## Current work product
@@ -48,7 +48,7 @@ The primary evidence document is:
 
 Its implementation/evidence history and requirement mapping should be treated as the canonical description of what WORK-022 actually contains.
 
-## Verified evidence recorded on the current PR head
+## Verified evidence recorded before the continuation commits
 
 The Repository Governance workflow for `86093eac92f9e87c16142567c95e1d8a79fdb950` completed successfully.
 
@@ -62,7 +62,7 @@ Recorded local evidence in the PR/work-item includes:
 - real PostgreSQL: 337/337
 - full regression: 2212/2212 twice consecutively at the recorded exact final head
 
-These are historical evidence claims. A fresh architect must re-run the required gate after any branch/base reconciliation or source change.
+These are historical evidence claims. They do not certify the later continuation commits or a post-WORK-019 reconciliation. A fresh architect must re-run the required gate after any branch/base reconciliation or source/state change.
 
 ## Immediate next action
 
