@@ -24,8 +24,25 @@ import type {
 } from "../../../src/modules/agents/public";
 import type { IdentityStore, MembershipRecord } from "../../../src/modules/auth/public";
 import { createScopeResolver, type ScopeResolver } from "../../../src/modules/auth/public";
+import {
+  createCapabilityRegistry,
+  createInMemoryCatalogStore,
+} from "../../../src/modules/capabilities/public";
+import {
+  createCapabilityEconomicAdmission,
+  createEconomicActionService,
+  createPolicyEconomicAdmission,
+  type EconomicActionService,
+  InMemoryEconomicStore,
+  InMemoryEconomicsIdempotency,
+} from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/application/execution-service";
 import type { ExecutionCreateInput } from "../../../src/modules/executions/domain/execution";
+import {
+  createPolicyAuthority,
+  InMemoryPolicyStore,
+  nodePolicyHasher,
+} from "../../../src/modules/policies/public";
 import { PlatformError } from "../../../src/shared/errors";
 import { createInMemoryExecutions } from "../executions/fakes";
 
@@ -40,6 +57,7 @@ export interface ApiWorld {
   readonly otherTenantId: string;
   readonly executions: ExecutionService;
   readonly agentRegistry: FakeAgentRegistry;
+  readonly economics: EconomicActionService;
   readonly bearerToken: string;
   readonly otherTenantToken: string;
   readonly authenticateCalls: () => number;
@@ -255,11 +273,43 @@ export async function seedApiWorld(): Promise<ApiWorld> {
   executionsWorld.store.seedApplication(otherTenantApplicationId, otherTenantId);
   const executions = executionsWorld.service;
 
+  // Economics: the REAL economic-action service over the in-memory store
+  // (the authority the routes delegate to). The admission seams are REAL:
+  // policy delegates to the REAL in-memory policy authority (default
+  // platform policy, as in the executions world), capabilities to the REAL
+  // registry over an in-memory catalog; the budgets seam is the world's
+  // recording fake (the API surface creates intents and reads outcomes —
+  // reserve/settle stay exercised by the economics suites' own worlds).
+  const policyAuthority = createPolicyAuthority({
+    store: new InMemoryPolicyStore(),
+    hasher: nodePolicyHasher,
+  });
+  await policyAuthority.publish({
+    id: "default",
+    version: 1,
+    documents: [{ scope: "platform", selector: {}, restrictions: {} }],
+  });
+  const capabilityRegistry = await createCapabilityRegistry({
+    store: createInMemoryCatalogStore(),
+  });
+  const economicStore = new InMemoryEconomicStore();
+  const economics = createEconomicActionService({
+    store: economicStore,
+    idempotency: new InMemoryEconomicsIdempotency(economicStore),
+    policy: createPolicyEconomicAdmission(policyAuthority),
+    capabilities: createCapabilityEconomicAdmission(capabilityRegistry),
+    budget: executionsWorld.budgets.impl,
+    executions,
+    generateId: executionsWorld.generateId,
+    now: () => new Date(),
+  });
+
   const agentRegistry = new FakeAgentRegistry();
 
   const server = createApiServer({
     executions,
     agents: agentRegistry,
+    economics,
     scopeResolver,
     authenticate,
     listAgentIdsOfApplication: async (appId) =>
@@ -276,6 +326,7 @@ export async function seedApiWorld(): Promise<ApiWorld> {
     otherTenantId,
     executions,
     agentRegistry,
+    economics,
     bearerToken,
     otherTenantToken,
     authenticateCalls: () => authenticateCalls,

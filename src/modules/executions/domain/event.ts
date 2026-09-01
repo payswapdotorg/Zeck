@@ -113,6 +113,21 @@ export const STEP_EVENT_COMMANDS = [
   "sandbox-admitted",
   "sandbox-denied",
   "sandbox-completed",
+  // WORK-032 (economics) — economic-action evidence commands. Additive
+  // vocabulary extension, same discipline: the governed economic-action
+  // boundary's material boundary events (intent recorded, admission
+  // denial, bounded authorization issued, terminal settlement/failure)
+  // ride the SAME ledger through the SAME recordStepEvent seam; the
+  // economics module produces these events but owns none of the
+  // vocabulary (this module remains the single event-vocabulary
+  // authority, and the execution lifecycle itself stays untouched —
+  // these are status-preserving observations, never transitions; the
+  // economics module never writes execution status).
+  "economic-action-recorded",
+  "economic-action-denied",
+  "economic-action-authorized",
+  "economic-action-settled",
+  "economic-action-failed",
 ] as const;
 export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
 

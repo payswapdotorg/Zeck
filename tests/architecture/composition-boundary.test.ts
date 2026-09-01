@@ -21,10 +21,9 @@
  *  - NO synthesis vocabulary anywhere in the composition surfaces
  *    (M24: WORK-018 owns synthesis — no code generation, no
  *    synthesized tools);
- *  - the migration inventory claim: migrations are unique and un-renumbered;
- *    0010 is WORK-017's composition migration, 0011 is WORK-018's
- *    tool-synthesis claim (the collision rule, evolved by the parallel
- *    wave's documented number assignment).
+ *  - the migration inventory claim: unique, un-renumbered and
+ *    merge-order-tolerant for the parallel wave's pre-assigned
+ *    0011/0012/0013 (the collision rule; WORK-018's claim: 0011).
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -151,18 +150,30 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     expect(violations).toEqual([]);
   });
 
-  test("the migration inventory claim: unique, no renumbering (the collision rule, evolved by WORK-018)", () => {
+  test("the migration inventory claim: unique, un-renumbered, wave-tolerant (the collision rule)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .map((name) => Number(name.slice(0, 4)))
       .sort((a, b) => a - b);
     const unique = new Set(migrations);
     expect(unique.size).toBe(migrations.length); // globally unique
-    // The WORK-017 baseline (0001..0010) is intact and un-renumbered; 0011
-    // is WORK-018's tool-synthesis claim (the parallel-wave collision-rule
-    // discipline: 0011/0012/0013 pre-assigned to WORK-018/023/031 by the
-    // dispatch and documented in every sibling evidence file).
-    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    // The WORK-017 baseline (0001..0010) is intact, un-renumbered and
+    // contiguous. The parallel wave (WORK-018 | WORK-023 | WORK-031)
+    // pre-assigned 0011/0012/0013 by dispatch order, documented in every
+    // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
+    // wave numbers may be present (a sibling merged first) or absent
+    // (this branch carries only its own claim). WORK-032 landed on main
+    // (PR #36) and contributes 0014_economic_actions.sql; 0012-0013
+    // arrive with their sibling work orders' merges, so the reconciled
+    // inventory is [1..10, 11, 14] with file gaps LEGAL pre-merge (the
+    // runner applies in ascending order and allows gaps) — uniqueness +
+    // the intact baseline + the present claims are the invariants.
+    for (let version = 1; version <= 10; version += 1) {
+      expect(migrations).toContain(version);
+    }
+    expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(migrations).toContain(11); // this branch's claim (WORK-018, asserted below via the file read)
+    expect(migrations).toContain(14); // WORK-032 economic actions (landed on main)
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),

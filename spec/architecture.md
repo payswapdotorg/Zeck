@@ -149,6 +149,7 @@ The initial modular-monolith modules are:
 | `/connections` | provider connections, BYOK, customer endpoints |
 | `/policies` | effective policy resolution and enforcement contracts |
 | `/budgets` | funding, reservations and append-only accounting |
+| `/economics` | agentic economic actions and provider-neutral payment-rail seams |
 | `/capabilities` | capability catalog and capability evidence |
 | `/executions` | execution identity, plan lifecycle, steps and events |
 | `/planning` | task profiling, plan generation and deterministic plan selection |

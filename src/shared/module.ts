@@ -16,6 +16,7 @@ export const ARCHITECTURE_MODULE_IDS = [
   "connections",
   "policies",
   "budgets",
+  "economics",
   "capabilities",
   "executions",
   "planning",

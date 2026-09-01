@@ -28,15 +28,19 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import type { AgentRegistry } from "../modules/agents/public";
 import type { ScopeResolver } from "../modules/auth/public";
+import type { EconomicActionService } from "../modules/economics/public";
 import type { ExecutionService } from "../modules/executions/public";
 import { PlatformError } from "../shared/errors";
 import type { Authenticate } from "./request-identity";
 import { registerAgentRoutes } from "./routes/agents";
+import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
 
 export interface ApiServerDeps {
   readonly executions: ExecutionService;
   readonly agents: AgentRegistry;
+  /** The economics AUTHORITY (WORK-032 economic-action surface). */
+  readonly economics: EconomicActionService;
   readonly scopeResolver: ScopeResolver;
   readonly authenticate: Authenticate;
   /**
@@ -78,6 +82,11 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
     scopeResolver: deps.scopeResolver,
     authenticate: deps.authenticate,
     listAgentIdsOfApplication: deps.listAgentIdsOfApplication,
+  });
+  registerEconomicActionRoutes(app, {
+    economics: deps.economics,
+    scopeResolver: deps.scopeResolver,
+    authenticate: deps.authenticate,
   });
 
   return {

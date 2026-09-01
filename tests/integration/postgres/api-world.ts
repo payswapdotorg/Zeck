@@ -22,6 +22,18 @@ import {
   createAgentRegistry,
 } from "../../../src/modules/agents/application/agent-registry";
 import { createScopeResolver, type ScopeResolver } from "../../../src/modules/auth/public";
+import type { BudgetAuthority } from "../../../src/modules/budgets/public";
+import {
+  createCapabilityRegistry,
+  createInMemoryCatalogStore,
+} from "../../../src/modules/capabilities/public";
+import {
+  createCapabilityEconomicAdmission,
+  createEconomicActionService,
+  createPolicyEconomicAdmission,
+  createSqlEconomicsModule,
+  type EconomicActionService,
+} from "../../../src/modules/economics/public";
 import {
   SqlExecutionStore,
   SqlExecutionsIdempotency,
@@ -50,6 +62,7 @@ export interface ApiPgWorld {
   readonly otherApplicationId: string;
   readonly executions: ExecutionService;
   readonly agents: AgentRegistry;
+  readonly economics: EconomicActionService;
   readonly bearerToken: string;
   readonly otherBearerToken: string;
   readonly actorId: string;
@@ -189,6 +202,39 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
       createHash("sha256").update(canonicalJson, "utf8").digest("hex"),
   });
 
+  // Economics: the REAL economic-action authority over the SQL fabric
+  // (migration 0014) with REAL admission seams (the policy authority
+  // above; the REAL capability registry over an in-memory catalog). The
+  // budgets seam is a typed fail-closed stub: this world exercises the
+  // economic-action API surface (intent creation + outcome reads); the
+  // reserve/settle chain is proven against the REAL budgets authority in
+  // the economics suites' own PostgreSQL worlds.
+  const budgetStub = (operation: string): never => {
+    throw new Error(`budget ${operation} is not exercised in the api world`);
+  };
+  const budgetSeam: BudgetAuthority = {
+    reserve: async () => budgetStub("reserve"),
+    settle: async () => budgetStub("settle"),
+    release: async () => budgetStub("release"),
+  };
+  const capabilityRegistry = await createCapabilityRegistry({
+    store: createInMemoryCatalogStore(),
+  });
+  const { store: economicStore, idempotency: economicIdempotency } = createSqlEconomicsModule(
+    db,
+    generateId,
+  );
+  const economics = createEconomicActionService({
+    store: economicStore,
+    idempotency: economicIdempotency,
+    policy: createPolicyEconomicAdmission(policyAuthority),
+    capabilities: createCapabilityEconomicAdmission(capabilityRegistry),
+    budget: budgetSeam,
+    executions,
+    generateId,
+    now: () => new Date(),
+  });
+
   const tokens = new Map<string, string>([
     [bearerToken, actorId],
     [otherBearerToken, otherActorId],
@@ -208,6 +254,7 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
   const server = createApiServer({
     executions,
     agents,
+    economics,
     scopeResolver,
     authenticate,
     // The inventory enumeration seam over the real agents table.
@@ -229,6 +276,7 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
     otherApplicationId,
     executions,
     agents,
+    economics,
     bearerToken,
     otherBearerToken,
     actorId,
