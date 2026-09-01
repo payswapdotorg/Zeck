@@ -88,3 +88,53 @@ Recorded in `spec/development-state/checkpoint-state.json` under `WORK-031` (the
 ## PR binding
 
 BOUND — the PR body of this branch's pull request records the exact final head, the complete-gate re-execution at that head, and the CI run identity (the two-phase SHA binding convention: the implementation gate is recorded above at `fd9ff20`; the evidence head's gate is re-executed after this commit lands and recorded in the PR body before push).
+
+## Reconciliation onto main@286b3f8 (post WORK-032 landing)
+
+WORK-032 landed on main while this branch was in flight (PR #36 merge `778c422`, finalized by PR #37 → main `286b3f83118364cb31acd680ca56ad96448c3776`), which left PR #33 mergeable=false. Per the reconciliation instruction, the branch was reconciled by a MERGE (no rebase, no force-push):
+
+- **Historical provenance (old verified head)**: `155e1defacd48f60f9cd160ee96e416f479e8854` — the wave-verified final head (CI run 33441218477, 3/3 green; the gate numbers in the sections above are that head's record). A local-only backup branch `backup/WORK-031-wave` pins it.
+- **Reconciliation merge (implementation head)**: `4e9f66decac4e65ea7cddaf2e129d22032a7bccf` — merge commit with parents (`155e1de`, `286b3f8`): the old verified head stays an ancestor, the push is a plain fast-forward.
+- **Final head**: THIS evidence commit (the rebind; docs-only on top of the merge).
+- **WORK-032 state preserved**: main's full change set is an ancestor; `git diff 286b3f8..HEAD` shows ZERO file deletions and zero loss of main-side content (the only line-level deletions are the conflict resolutions below, each of which keeps main's semantics — verified line-by-line).
+
+### Conflicts resolved (semantic union)
+
+1. `spec/development-state/checkpoint-state.json` — union of the items maps: ALL of main's entries (incl. the WORK-032 record: IDENTITY-IDEMPOTENCY / ECONOMIC-AUTHORITY-BOUNDARY / EXECUTION-PROVENANCE, all passed) AND this branch's `WORK-031` entry (SELF-HOSTING-BOUNDARY / EXECUTION-PROVENANCE / IMPLEMENTATION-COMPLETENESS) byte-identical to `155e1de`. Common entries are main's bytes.
+2. `spec/development-state/program-state.json` — main's file verbatim (compact format, requirementCatalog v3/102, WORK-032 `complete` with mergedAs PR #36) + this branch's ONLY semantic delta applied: the WORK-031 line flipped `pending`→`in-flight`. WORK-031 remains the sole in-flight work order; WORK-018/WORK-023 stay pending.
+3. `tests/architecture/composition-boundary.test.ts` (the migration inventory gate) — union: this branch's merge-order-tolerant assertions (1..10 unique/un-renumbered/contiguous) + main's WORK-032 claim (`0014` present — `expect(migrations).toContain(14)`) + this branch's own claim (`0013` present, and the `0013_substrate_federation.sql` content assertions unchanged). Main's exact-list assertion `toEqual([1..10, 14])` was subsumed by the tolerant union form (which holds for the reconciled inventory `[1..10, 13, 14]` and for any later sibling merge order); no test case from either side was dropped (10 tests before and after; all of main's and this branch's assertions survive as the union set).
+4. `tests/architecture/integrations-boundary.test.ts` — union of the import-rule allowances and cases: main's payment-rails/economics-barrel allowance AND this branch's substrate-federation/capabilities-barrel allowance (both as scoped conjuncts of the same whitelist); main's new "the payment-rails integration exposes its public barrel and rail adapters" case kept verbatim; the authority-logic case keeps main's title (no policy/budget/verification/learning/CAPABILITY authority) with this branch's scoped capabilities exemption for `src/integrations/substrate-federation/` (payment-rails keeps main's blanket ban — it imports no capabilities); main's M1/M2/M9 title (payment-rails network-free note) kept. The file carries main's full 9-case set; this branch's 8 cases all survive in the union bodies (3 titles reworded to the union/main forms — the import-rule title, the authority-logic title, the M1/M2/M9 title; every branch condition and assertion kept, the capabilities allowance added as a second scoped conjunct).
+5. `spec/development-state/frontier-state.json` (auto-merged, semantically reviewed) — the union state exactly as required: `eligible=['WORK-018','WORK-023']`, `inFlight=['WORK-031']` (WORK-032 done/absent, blocked set unchanged).
+
+### Byte-for-byte guarantees (re-verified on the reconciled tree)
+
+- `git diff 155e1de..HEAD -- src/platform/db/migrations/0013_substrate_federation.sql` is EMPTY (byte-identical; not renumbered; header claim unchanged).
+- `git diff 286b3f8..HEAD -- src/platform/db/migrations/0014_economic_actions.sql` is EMPTY (WORK-032's migration preserved).
+- Inventory on this branch: 0001–0010 + 0013 + 0014. 0011/0012 remain ABSENT by design (sibling branches not yet merged; never created here). The migration runner tolerates the gaps (the same shape WORK-032's branch ran green: 0001–0010 + 0014).
+
+### Preservation proof (user step 1)
+
+- WORK-031's owned change set (`git diff --name-status 9515921 155e1de`): 44 files (27 added + 17 modified).
+- All 27 ADDED files (implementation, tests, migration, this evidence file) are byte-identical on the merge commit (`git diff 155e1de 4e9f66d -- <file>` empty for every one).
+- Of the 17 modified files, 14 carry ZERO deletions vs `155e1de` (pure main-side additions — the WORK-032 code landed around WORK-031's edits without touching them: the sibling surfaces were disjoint). The 3 with textual deletions are exactly the conflict files above, and their deletions are format/union restructurings only: `program-state.json` (main's compact reformat — the branch's only semantic change, the in-flight flip, preserved), `composition-boundary.test.ts` (5 comment lines reworded; every assertion kept), `integrations-boundary.test.ts` (titles/comments/one import line for main's kept payment-rails case; every branch condition kept as a conjunct).
+- Versus main: `git diff 286b3f8..HEAD` — no file deleted; all of WORK-032's code, tests, migration 0014, and governance records present.
+- All WORK-031 tests preserved: substrate-federation unit 25, planner-substrate 5, the 9-gate architecture boundary file, the 12-mutant discrimination suite, the 8 real-PG substrate tests — all byte-identical files.
+
+### Complete verification gate at the reconciliation merge `4e9f66d` (recorded before this evidence commit; per the evidence-change rule the full gate is RE-EXECUTED at the exact final head — this commit — and recorded in the PR body)
+
+Environment: Bun 1.3.14, real PostgreSQL 16.4 at `127.0.0.1:55432`, migrations on the branch = 0001–0010 + 0013 + 0014.
+
+| Command | Result |
+|---|---|
+| `bun install --frozen-lockfile` | clean, no changes (116 installs / 165 packages; no new dependency) |
+| `bun run typecheck` | 0 errors |
+| `bun run lint` | 0 errors / 0 warnings (649 files) |
+| `python3 scripts/governance-check.py` | exit 0 — `Governance OK: 32 Work Orders, 102 requirements, frontier=['WORK-018', 'WORK-023']` (WORK-031 sole in-flight; WORK-032's 102-requirement catalog preserved) |
+| `bunx vitest run tests/architecture` | 116/116 (18 files; incl. the 9-gate substrate-federation boundary + the union inventory gate + main's WORK-032 architecture cases) |
+| `bunx vitest run tests/discrimination` | 427/427 (31 files; incl. SF1..SF12 + main's 48 economics mutants) |
+| `bun run test:integration` (with `ZECK_PG_TEST_URL`) | 295/295 (42 files) |
+| `ZECK_PG_TEST_URL=… bun run test:pg` (real PostgreSQL) | 289/289 (40 files; incl. the 8 WORK-031 substrate PG tests and main's 12 economics PG tests; migrations 0001–0010+0013+0014 applied per disposable DB) — runs 1–2 fired the DOCUMENTED 57P01/`pg_terminate_backend` permission teardown transient on the pre-existing `idempotency.test.ts` file (ALL 289 tests passing each time; exit 1 from cleanup only); run 3 clean exit-0 (`/tmp/rec3-pg-run3.log`) |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite) | **1903/1903 (177 files) ×2 CONSECUTIVE clean exit-0** (`/tmp/rec3-merge-full1.log`, `/tmp/rec3-merge-full2.log`, ~60s each, zero unhandled errors) |
+| `bun run test:unit` (supplementary) | 1065/1065 (86 files) |
+
+Deltas vs the two parents: main `286b3f8` was 1848/1848 (172 files) → +55 tests / +5 files (exactly WORK-031's test set); old branch head `155e1de` was 1738/1738 (166 files) → +165 tests / +11 files (exactly WORK-032's landing). No test from either side was lost.
