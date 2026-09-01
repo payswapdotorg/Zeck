@@ -22,6 +22,16 @@ export type {
 } from "./learning-service";
 export { createLearningService } from "./learning-service";
 export type {
+  AdvanceFindingRequest,
+  AnalyzeSubgraphRequest,
+  ConsultOpportunitySignalsRequest,
+  OpportunityAnalyzer,
+  OpportunityAnalyzerDeps,
+  OpportunitySignal,
+  RecordEvaluationRatingInput,
+} from "./opportunity-analyzer";
+export { createOpportunityAnalyzer } from "./opportunity-analyzer";
+export type {
   EvaluateShadowInput,
   ShadowEvaluator,
   ShadowEvaluatorDeps,

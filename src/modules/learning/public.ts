@@ -1,5 +1,6 @@
 /**
- * Public contract barrel of the `learning` module (WORK-014).
+ * Public contract barrel of the `learning` module (WORK-014; WORK-022
+ * adds the codebase-opportunity advisory surface).
  *
  * This file is the ONLY supported import surface for other modules and
  * for the API layer (`IMPLEMENTATION.md` §2, `spec/contracts.md` "Public
@@ -33,7 +34,20 @@
  *    policy, budgets, capabilities or execution state (M7/M8: the
  *    evaluator's deps are store + digest + clock + id only — a live side
  *    effect is unrepresentable in its wiring);
- *  - user/human ratings as immutable learning evidence (never authority).
+ *  - user/human ratings as immutable learning evidence (never authority);
+ *  - WORK-022 codebase-opportunity advisory analysis (DTR-005,
+ *    HUM-001..003): customer-selected subgraphs -> normalized
+ *    execution graphs -> advisory findings (deterministic-replacement
+ *    CANDIDATES, honest confidence, observed-or-unknown cost/latency)
+ *    -> selective human-evaluation prompts gated by the deterministic
+ *    value-of-information rule -> evaluation ratings as immutable
+ *    preference-only evidence -> the evidence-gated advisory ->
+ *    candidate -> verified finding transitions (never 'promoted':
+ *    promotion belongs to the external validation gate). The analyzer
+ *    runs as part of a governed EXECUTION composed by the API layer
+ *    through the executions authority's public contract ("Analysis is
+ *    an Execution"); the learning module itself stays a pure
+ *    observation island.
  *
  * THE NON-AUTHORITY BOUNDARY (LEARNING-NONAUTHORITY checkpoint): nothing
  * in this module authorizes, dispatches or mutates. There is no policy
@@ -55,9 +69,12 @@ import type {
 import { createInMemoryCompositionStore } from "./adapters/in-memory-composition-store";
 import type { InMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createInMemoryLearningStore } from "./adapters/in-memory-learning-store";
+import type { InMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
+import { createInMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createNodeDigest } from "./adapters/node-digest";
 import { SqlCompositionStore } from "./adapters/sql-composition-store";
 import { SqlLearningStore } from "./adapters/sql-learning-store";
+import { SqlOpportunityStore } from "./adapters/sql-opportunity-store";
 import type {
   ActivateRecommendationSetRequest,
   CompositionAdvisor,
@@ -73,6 +90,16 @@ import type {
   RecordTelemetryInput,
 } from "./application/learning-service";
 import { createLearningService } from "./application/learning-service";
+import type {
+  AdvanceFindingRequest,
+  AnalyzeSubgraphRequest,
+  ConsultOpportunitySignalsRequest,
+  OpportunityAnalyzer,
+  OpportunityAnalyzerDeps,
+  OpportunitySignal,
+  RecordEvaluationRatingInput,
+} from "./application/opportunity-analyzer";
+import { createOpportunityAnalyzer } from "./application/opportunity-analyzer";
 import type {
   EvaluateShadowInput,
   ShadowEvaluator,
@@ -122,6 +149,97 @@ import {
   validateCompositionRecommendationSet,
   validateRecommendationSetActivation,
 } from "./domain/composition-analysis";
+import type { EvaluationRatingRecord } from "./domain/evaluation-rating";
+import {
+  EVALUATION_RATING_ANSWERS,
+  EVALUATION_RATING_SCHEMA_VERSION,
+  evaluationRatingFingerprintBasis,
+  isEvaluationRatingAnswer,
+  validateEvaluationRating,
+} from "./domain/evaluation-rating";
+import type {
+  ExecutionGraph,
+  ExecutionGraphEdge,
+  ExecutionGraphNode,
+  ExecutionGraphNodeKind,
+  NodeObservation,
+  SelectedSubgraph,
+  SourceProvenance,
+} from "./domain/execution-graph";
+import {
+  buildExecutionGraph,
+  EXECUTION_GRAPH_EDGE_RELATIONS,
+  EXECUTION_GRAPH_NODE_KINDS,
+  EXECUTION_GRAPH_SCHEMA_VERSION,
+  isExecutionGraphNodeKind,
+  validateExecutionGraph,
+} from "./domain/execution-graph";
+import type { FindingTransitionRecord } from "./domain/finding-transitions";
+import {
+  FINDING_TRANSITION_EVIDENCE_KINDS,
+  FINDING_TRANSITION_SCHEMA_VERSION,
+  FINDING_TRANSITION_TABLE,
+  isFindingTransitionEvidenceKind,
+  type VerifiedEquivalenceEvidence,
+  validateFindingTransition,
+  validateFindingTransitionRecord,
+  validateVerifiedEquivalenceEvidence,
+} from "./domain/finding-transitions";
+import type {
+  EvaluationPrompt,
+  EvaluationQuestionKind,
+  FrictionConfig,
+} from "./domain/human-evaluation";
+import {
+  DEFAULT_FRICTION_CONFIG,
+  DEFAULT_MAX_PROMPTS,
+  DEFAULT_USER_FRICTION_THRESHOLD,
+  decideEvaluationPrompts,
+  EVALUATION_PROMPT_SCHEMA_VERSION,
+  EVALUATION_QUESTION_KINDS,
+  EVALUATION_QUESTIONS,
+  EXPECTED_INFORMATION_GAIN,
+  isEvaluationQuestionKind,
+  questionKindForClass,
+  validateEvaluationPrompt,
+} from "./domain/human-evaluation";
+import type {
+  CostImpact,
+  DeterministicEquivalence,
+  DeterministicEquivalencePotential,
+  FindingConfidenceLevel,
+  FindingState,
+  ImpactBasis,
+  LatencyImpact,
+  OpportunityAnalysis,
+  OpportunityClass,
+  OpportunityFinding,
+} from "./domain/opportunity-analysis";
+import {
+  buildFindings,
+  CACHEABLE_INPUT_RATIO,
+  CONFIDENCE_HIGH_POPULATION,
+  CONFIDENCE_LOW_POPULATION,
+  CONFIDENCE_MEDIUM_POPULATION,
+  CONSTANT_OUTPUT_CEILING,
+  classifyFindingConfidence,
+  detectOpportunities,
+  FINDING_CONFIDENCE_LEVELS,
+  FINDING_STATES,
+  HIGH_ERROR_RATE,
+  IMPACT_BASES,
+  isFindingConfidenceLevel,
+  isFindingState,
+  isOpportunityClass,
+  LOW_ERROR_RATE,
+  MINIMUM_DETERMINISTIC_POPULATION,
+  OPPORTUNITY_ANALYSIS_SCHEMA_VERSION,
+  OPPORTUNITY_ANALYSIS_VERSION,
+  OPPORTUNITY_CLASSES,
+  OPPORTUNITY_FINDING_SCHEMA_VERSION,
+  opportunityAnalysisDigestBasis,
+  validateOpportunityFinding,
+} from "./domain/opportunity-analysis";
 import type { UserRatingRecord } from "./domain/rating";
 import {
   RATING_MAX,
@@ -216,6 +334,14 @@ import type {
   TelemetryIngestionOutcome,
   TelemetryQuery,
 } from "./ports/learning-store";
+import type {
+  AnalysisInsertOutcome,
+  FindingInsertOutcome,
+  OpportunityScope,
+  OpportunityStore,
+  RatingInsertOutcome,
+  TransitionAppendOutcome,
+} from "./ports/opportunity-store";
 
 export const moduleDescriptor: ModuleDescriptor = { id: "learning" };
 
@@ -270,6 +396,39 @@ export function createLearningSignalSource(service: LearningService): LearningSi
   };
 }
 
+/**
+ * The READ seam for codebase-opportunity findings (WORK-022; DTR-005
+ * advisory evidence, never authority: FINDING ≠ AUTHORIZATION — the
+ * frozen §10/§17 invariant). Planning or developer tooling may consult
+ * the validated, version-anchored, provenance-pinned signals; there is
+ * no method here that could change a plan, an authorization, a policy,
+ * a budget or any state (the same shape as the two seams above).
+ */
+export interface OpportunitySignalSource {
+  consult(request: {
+    readonly applicationId: string;
+    readonly tenantId: string;
+    readonly repository?: string;
+    readonly class?: string;
+    readonly analysisId?: string;
+  }): Promise<readonly OpportunitySignal[]>;
+}
+
+/**
+ * Adapt the opportunity analyzer into the finding READ seam (a
+ * projection, never an authority: findings leave as validated immutable
+ * evidence records with their full provenance anchors).
+ */
+export function createOpportunitySignalSource(
+  analyzer: OpportunityAnalyzer,
+): OpportunitySignalSource {
+  return {
+    async consult(request) {
+      return analyzer.consultOpportunitySignals(request);
+    },
+  };
+}
+
 // Application: the observational services.
 // Domain: the observation model (telemetry, scorecards, signals, shadow,
 // ratings) + the tool-composition learning model (facts, compositions,
@@ -280,7 +439,10 @@ export function createLearningSignalSource(service: LearningService): LearningSi
 export type {
   ActivateRecommendationSetRequest,
   ActivationAppendOutcome,
+  AdvanceFindingRequest,
   AggregationDefinition,
+  AnalysisInsertOutcome,
+  AnalyzeSubgraphRequest,
   CompositionAdvisor,
   CompositionAdvisorDeps,
   CompositionCheck,
@@ -292,23 +454,53 @@ export type {
   CompositionStep,
   CompositionStore,
   CompositionUnsupportedReason,
+  ConsultOpportunitySignalsRequest,
   ConsultRecommendationsRequest,
+  CostImpact,
+  DeterministicEquivalence,
+  DeterministicEquivalencePotential,
   DigestPort,
   EvaluateShadowInput,
+  EvaluationPrompt,
+  EvaluationQuestionKind,
+  EvaluationRatingRecord,
+  ExecutionGraph,
+  ExecutionGraphEdge,
+  ExecutionGraphNode,
+  ExecutionGraphNodeKind,
   ExecutionOutcomeTelemetry,
+  FindingConfidenceLevel,
+  FindingInsertOutcome,
+  FindingState,
+  FindingTransitionRecord,
+  FrictionConfig,
   GenerateRecommendationSetRequest,
+  ImpactBasis,
   InMemoryCompositionStore,
   InMemoryLearningStore,
+  InMemoryOpportunityStore,
+  LatencyImpact,
   LearningService,
   LearningServiceDeps,
   LearningSignal,
   LearningStore,
+  NodeObservation,
+  OpportunityAnalysis,
+  OpportunityAnalyzer,
+  OpportunityAnalyzerDeps,
+  OpportunityClass,
+  OpportunityFinding,
+  OpportunityScope,
+  OpportunitySignal,
+  OpportunityStore,
   OutcomeCount,
   PopulationContextKey,
   RatingIngestionOutcome,
+  RatingInsertOutcome,
   RecommendationConfidence,
   RecommendationSetActivation,
   RecommendationSetScope,
+  RecordEvaluationRatingInput,
   RecordRatingInput,
   RecordTelemetryInput,
   RouteObservation,
@@ -317,6 +509,7 @@ export type {
   ScorecardScope,
   ScorecardSubjectKind,
   ScorecardUncertainty,
+  SelectedSubgraph,
   ShadowComparison,
   ShadowEvaluationBasis,
   ShadowEvaluationRecord,
@@ -326,6 +519,7 @@ export type {
   ShadowRecordClass,
   ShadowStrategyDescription,
   ShadowSubjectScore,
+  SourceProvenance,
   SubgraphTelemetryObservation,
   TelemetryIngestionOutcome,
   TelemetryOutcome,
@@ -338,42 +532,91 @@ export type {
   ToolFactFieldType,
   ToolFactOrigin,
   ToolVersionRef,
+  TransitionAppendOutcome,
   UncertaintyLevel,
   UserRatingRecord,
   VerificationObservation,
+  VerifiedEquivalenceEvidence,
 };
 export {
   AGGREGATION_DEFINITIONS,
   analyzeToolSequences,
+  buildExecutionGraph,
+  buildFindings,
   buildScorecard,
+  CACHEABLE_INPUT_RATIO,
   COMPOSITION_ANALYSIS_VERSION,
   COMPOSITION_RECOMMENDATION_CLASS,
   COMPOSITION_RECOMMENDATION_SCHEMA_VERSION,
   COMPOSITION_RECOMMENDATION_STATUSES,
   COMPOSITION_SCHEMA_VERSION,
   COMPOSITION_UNSUPPORTED_REASONS,
+  CONFIDENCE_HIGH_POPULATION,
+  CONFIDENCE_LOW_POPULATION,
+  CONFIDENCE_MEDIUM_POPULATION,
+  CONSTANT_OUTPUT_CEILING,
   canonicalContextKey,
   checkToolComposition,
+  classifyFindingConfidence,
   classifyRecommendationConfidence,
   compareShadowScores,
   compositionToolRefs,
   createCompositionAdvisor,
   createInMemoryCompositionStore,
   createInMemoryLearningStore,
+  createInMemoryOpportunityStore,
   createLearningService,
   createNodeDigest,
+  createOpportunityAnalyzer,
   createShadowEvaluator,
+  DEFAULT_FRICTION_CONFIG,
+  DEFAULT_MAX_PROMPTS,
+  DEFAULT_USER_FRICTION_THRESHOLD,
+  decideEvaluationPrompts,
+  detectOpportunities,
+  EVALUATION_PROMPT_SCHEMA_VERSION,
+  EVALUATION_QUESTION_KINDS,
+  EVALUATION_QUESTIONS,
+  EVALUATION_RATING_ANSWERS,
+  EVALUATION_RATING_SCHEMA_VERSION,
+  EXECUTION_GRAPH_EDGE_RELATIONS,
+  EXECUTION_GRAPH_NODE_KINDS,
+  EXECUTION_GRAPH_SCHEMA_VERSION,
+  EXPECTED_INFORMATION_GAIN,
   edgeCompatible,
+  evaluationRatingFingerprintBasis,
+  FINDING_CONFIDENCE_LEVELS,
+  FINDING_STATES,
+  FINDING_TRANSITION_EVIDENCE_KINDS,
+  FINDING_TRANSITION_SCHEMA_VERSION,
+  FINDING_TRANSITION_TABLE,
   findAggregationDefinition,
   findToolFact,
+  HIGH_ERROR_RATE,
+  IMPACT_BASES,
+  isEvaluationQuestionKind,
+  isEvaluationRatingAnswer,
+  isExecutionGraphNodeKind,
+  isFindingConfidenceLevel,
+  isFindingState,
+  isFindingTransitionEvidenceKind,
+  isOpportunityClass,
   isScorecardSubjectKind,
   isShadowEvaluationStatus,
   isTelemetryOutcome,
   LEARNING_SIGNAL_CLASS,
   LEARNING_SIGNAL_SCHEMA_VERSION,
+  LOW_ERROR_RATE,
   linearCompositionOf,
+  MINIMUM_DETERMINISTIC_POPULATION,
   MINIMUM_SEQUENCE_POPULATION,
+  OPPORTUNITY_ANALYSIS_SCHEMA_VERSION,
+  OPPORTUNITY_ANALYSIS_VERSION,
+  OPPORTUNITY_CLASSES,
+  OPPORTUNITY_FINDING_SCHEMA_VERSION,
+  opportunityAnalysisDigestBasis,
   populationContextKeyOf,
+  questionKindForClass,
   RATING_MAX,
   RATING_MIN,
   RATING_SCHEMA_VERSION,
@@ -387,6 +630,7 @@ export {
   SHADOW_SCHEMA_VERSION,
   SqlCompositionStore,
   SqlLearningStore,
+  SqlOpportunityStore,
   scorecardDigestBasis,
   scoreShadowSubjects,
   signalFromRecommendation,
@@ -401,11 +645,18 @@ export {
   UNCERTAINTY_LEVELS,
   validateCompositionRecommendation,
   validateCompositionRecommendationSet,
+  validateEvaluationPrompt,
+  validateEvaluationRating,
+  validateExecutionGraph,
   validateExecutionTelemetry,
+  validateFindingTransition,
+  validateFindingTransitionRecord,
   validateLearningSignal,
+  validateOpportunityFinding,
   validateRecommendationSetActivation,
   validateScorecard,
   validateShadowEvaluationRecord,
   validateToolFacts,
   validateUserRating,
+  validateVerifiedEquivalenceEvidence,
 };
