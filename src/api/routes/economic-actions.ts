@@ -61,10 +61,14 @@ export interface EconomicActionRoutesDeps {
 /** The request idempotency-key header (mandatory on the create route). */
 function requireIdempotencyKey(request: { readonly headers: Record<string, unknown> }): string {
   const value = request.headers["idempotency-key"];
-  if (typeof value !== "string" || value.length === 0 || value.length > 256) {
+  // 1..255: bounded to EXACTLY the durable CHECK the key also lives under
+  // (migration 0014 `economic_actions_idempotency_key_shape` and the 0001
+  // idempotency ledger's own key column) — a 256-char key would pass the
+  // route and die at the physical constraint; the route fails first.
+  if (typeof value !== "string" || value.length === 0 || value.length > 255) {
     throw new PublicValidationError(
       "CAPABILITY_UNAVAILABLE",
-      "POST routes require an Idempotency-Key header (1..256 chars)",
+      "POST routes require an Idempotency-Key header (1..255 chars)",
     );
   }
   return value;

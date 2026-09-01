@@ -14,9 +14,9 @@ import { ARCHITECTURE_MODULE_IDS } from "../../src/shared/module";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 describe("architecture module registry", () => {
-  test("contains 18 unique frozen module identities", () => {
-    expect(ARCHITECTURE_MODULE_IDS).toHaveLength(18);
-    expect(new Set(ARCHITECTURE_MODULE_IDS).size).toBe(18);
+  test("contains 19 unique frozen module identities (WORK-032 added economics)", () => {
+    expect(ARCHITECTURE_MODULE_IDS).toHaveLength(19);
+    expect(new Set(ARCHITECTURE_MODULE_IDS).size).toBe(19);
   });
 
   test("mirrors the spec/architecture.md §6 module table exactly", () => {
