@@ -76,6 +76,7 @@ interface SandboxRow {
   readonly failure_message: string | null;
   readonly retryable: boolean;
   readonly output_digest: string | null;
+  readonly output: Record<string, unknown> | null;
   readonly usage_micro_usd: string | null;
   readonly budget_operation_id: string | null;
   readonly ledger_admitted_sequence: number | null;
@@ -89,7 +90,7 @@ interface SandboxRow {
 const ENVIRONMENT_COLUMNS =
   "id, application_id, tenant_id, slug, name, description, kind, spec, spec_digest, status, created_at, updated_at";
 const SANDBOX_COLUMNS =
-  "id, application_id, tenant_id, execution_id, sandbox_key, request_fingerprint, environment_id, kind, status, runtime_metadata, denial_class, denial_code, denial_reason, outcome_class, failure_class, failure_message, retryable, output_digest, usage_micro_usd, budget_operation_id, ledger_admitted_sequence, ledger_completed_sequence, created_at, dispatched_at, completed_at, duration_ms";
+  "id, application_id, tenant_id, execution_id, sandbox_key, request_fingerprint, environment_id, kind, status, runtime_metadata, denial_class, denial_code, denial_reason, outcome_class, failure_class, failure_message, retryable, output_digest, output, usage_micro_usd, budget_operation_id, ledger_admitted_sequence, ledger_completed_sequence, created_at, dispatched_at, completed_at, duration_ms";
 
 function first<T>(rows: readonly T[]): T | undefined {
   return rows[0];
@@ -160,6 +161,7 @@ function toSandbox(row: SandboxRow): SandboxExecutionRecord {
     failureMessage: row.failure_message,
     retryable: row.retryable,
     outputDigest: row.output_digest,
+    output: row.output ?? null,
     usageMicroUsd: row.usage_micro_usd,
     budgetOperationId: row.budget_operation_id,
     ledgerAdmittedSequence: row.ledger_admitted_sequence,
@@ -395,9 +397,9 @@ RETURNING ${SANDBOX_COLUMNS}`,
     const updated = await this.db.execute<SandboxRow>({
       sql: `UPDATE sandbox.sandbox_executions
 SET status = $1, outcome_class = $2, failure_class = $3, failure_message = $4, retryable = $5,
-    output_digest = $6, usage_micro_usd = $7, ledger_completed_sequence = COALESCE($8, ledger_completed_sequence),
-    dispatched_at = $9, completed_at = $10, duration_ms = $11
-WHERE application_id = $12 AND sandbox_key = $13 AND status = 'dispatching'
+    output_digest = $6, output = $7, usage_micro_usd = $8, ledger_completed_sequence = COALESCE($9, ledger_completed_sequence),
+    dispatched_at = $10, completed_at = $11, duration_ms = $12
+WHERE application_id = $13 AND sandbox_key = $14 AND status = 'dispatching'
 RETURNING ${SANDBOX_COLUMNS}`,
       parameters: [
         input.status,
@@ -406,6 +408,7 @@ RETURNING ${SANDBOX_COLUMNS}`,
         input.failureMessage,
         input.retryable,
         input.outputDigest,
+        input.output,
         input.usageMicroUsd,
         input.completedLedgerSequence,
         input.dispatchedAt,

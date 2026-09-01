@@ -5,6 +5,14 @@
  * imports adapters or `src/platform/**` directly (`IMPLEMENTATION.md` §3).
  */
 
+export {
+  createSynthesisService,
+  type SubmitProgramOutcome,
+  SYNTHESIS_DEFAULT_TIMEOUT_MS,
+  type SynthesisActor,
+  type SynthesisService,
+  type SynthesisServiceDeps,
+} from "./synthesis-service";
 export { createToolRegistry } from "./tool-registry";
 export {
   createToolRuntime,

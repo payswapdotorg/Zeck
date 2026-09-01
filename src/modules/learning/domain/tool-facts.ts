@@ -56,6 +56,17 @@ export interface ToolVersionRef {
   readonly version: string;
 }
 
+/**
+ * Tool-fact origin vocabulary (WORK-018): platform tools and
+ * synthesized tools have DIFFERENT evidence bases (a synthesized tool's
+ * reliability is bounded by its runtime-test evidence and its
+ * ephemeral lifetime) — the analysis can segregate populations by
+ * origin instead of silently mixing incompatible bases. Absent means
+ * `platform` (the pre-WORK-018 closed shape stays valid).
+ */
+export const TOOL_FACT_ORIGINS = ["platform", "synthesized"] as const;
+export type ToolFactOrigin = (typeof TOOL_FACT_ORIGINS)[number];
+
 /** One neutral structural fact about a concrete tool version. */
 export interface ToolFact {
   readonly toolId: string;
@@ -66,6 +77,8 @@ export interface ToolFact {
   readonly inputFields: readonly ToolFactField[];
   /** Declared output fields (compatibility evidence for edges). */
   readonly outputFields: readonly ToolFactField[];
+  /** Where the tool version comes from (default platform; WORK-018). */
+  readonly origin?: ToolFactOrigin;
 }
 
 /** A closed, deduplicated catalog of tool facts (the analysis input). */
@@ -161,12 +174,21 @@ function parseFact(value: unknown): ToolFact {
       details: { toolId, field: "capabilityIds" },
     });
   }
+  const origin: unknown = value.origin === undefined ? "platform" : value.origin;
+  if (typeof origin !== "string" || !(TOOL_FACT_ORIGINS as readonly string[]).includes(origin)) {
+    throw new PlatformError({
+      code: "PROVIDER_ERROR",
+      message: "tool fact origin must be one of the frozen origin vocabulary when present",
+      details: { toolId, field: "origin", allowed: TOOL_FACT_ORIGINS },
+    });
+  }
   return {
     toolId,
     version,
     capabilityIds: [...capabilityIds],
     inputFields: parseFields(value, "inputFields", toolId),
     outputFields: parseFields(value, "outputFields", toolId),
+    origin: origin as ToolFactOrigin,
   };
 }
 
@@ -198,6 +220,7 @@ export function validateToolFacts(values: readonly unknown[]): ToolFactCatalog {
           capabilityIds: [...input.capabilityIds].sort(),
           inputFields: input.inputFields.map((field) => [field.name, field.type, field.required]),
           outputFields: input.outputFields.map((field) => [field.name, field.type, field.required]),
+          origin: input.origin ?? "platform",
         });
       if (canonical(existing) !== canonical(fact)) {
         throw new PlatformError({

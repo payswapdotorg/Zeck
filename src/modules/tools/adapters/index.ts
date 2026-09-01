@@ -15,5 +15,13 @@ export {
 } from "./builtins";
 export { createToolCapabilityGate } from "./capability-gate";
 export { createExecutionLedgerAdapter } from "./execution-ledger";
+export { InMemorySynthesisStore } from "./in-memory-synthesis-store";
 export { createPolicyToolAdmission } from "./policy-tool-admission";
+export { SqlSynthesisStore } from "./sql-synthesis-store";
 export { SqlToolInvocationStore } from "./sql-tool-store";
+export { createSynthesizedAdapterFactory } from "./synthesis-adapter-factory";
+export {
+  confinementCheck,
+  createSynthesisSandboxExecutor,
+  SYNTH_INPUT_ENV,
+} from "./synthesis-sandbox-executor";

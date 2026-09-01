@@ -300,6 +300,16 @@ export interface SandboxExecutionRecord {
   readonly failureMessage: string | null;
   readonly retryable: boolean;
   readonly outputDigest: string | null;
+  /**
+   * The bounded provider observation OUTPUT (WORK-018): the durable
+   * output evidence of the completed execution (e.g. the process
+   * runtime's `{exitCode, stdout, stderr, durationMs}`, bounded by the
+   * runtime's max-output bound). Null while the sandbox has not
+   * finalized (and for denial rows). Terminal rows are physically
+   * immutable, so the output evidence is write-once — exactly the
+   * durability synthesized-program tests and tool observations need.
+   */
+  readonly output: Readonly<Record<string, unknown>> | null;
   readonly usageMicroUsd: string | null;
   readonly budgetOperationId: string | null;
   readonly ledgerAdmittedSequence: number | null;

@@ -6,6 +6,9 @@
  */
 
 export * from "./execution-ledger";
+export * from "./synthesis-adapter-factory";
+export * from "./synthesis-sandbox";
+export * from "./synthesis-store";
 export * from "./tool-adapter";
 export * from "./tool-admission";
 export * from "./tool-capability-gate";

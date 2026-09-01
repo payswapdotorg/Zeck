@@ -860,6 +860,7 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
       failureMessage: observation.failure?.message ?? null,
       retryable: observation.failure?.retryable ?? false,
       outputDigest: observation.outputDigest,
+      output: observation.output,
       usageMicroUsd: observation.usageMicroUsd ?? null,
       dispatchedAt,
       completedAt,

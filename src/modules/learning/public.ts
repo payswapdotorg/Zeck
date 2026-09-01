@@ -193,11 +193,13 @@ import type {
   ToolFactCatalog,
   ToolFactField,
   ToolFactFieldType,
+  ToolFactOrigin,
   ToolVersionRef,
 } from "./domain/tool-facts";
 import {
   findToolFact,
   TOOL_FACT_FIELD_TYPES,
+  TOOL_FACT_ORIGINS,
   toolExistsInCatalog,
   validateToolFacts,
 } from "./domain/tool-facts";
@@ -334,6 +336,7 @@ export type {
   ToolFactCatalog,
   ToolFactField,
   ToolFactFieldType,
+  ToolFactOrigin,
   ToolVersionRef,
   UncertaintyLevel,
   UserRatingRecord,
@@ -391,6 +394,7 @@ export {
   TELEMETRY_OUTCOMES,
   TELEMETRY_SCHEMA_VERSION,
   TOOL_FACT_FIELD_TYPES,
+  TOOL_FACT_ORIGINS,
   telemetryFingerprintBasis,
   toolExistsInCatalog,
   toolSequenceOf,
