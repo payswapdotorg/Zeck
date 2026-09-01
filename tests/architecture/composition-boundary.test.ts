@@ -156,8 +156,10 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
       .sort((a, b) => a - b);
     const unique = new Set(migrations);
     expect(unique.size).toBe(migrations.length); // globally unique
-    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    // 0010 is the WORK-017 composition migration.
+    // 0010 is the WORK-017 composition migration. WORK-032 (this branch)
+    // adds 0014_economic_actions.sql; 0011-0013 arrive with their sibling
+    // work orders' merges, so the per-branch inventory is [1..10, 14].
+    expect(migrations).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14]);
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
       "utf8",

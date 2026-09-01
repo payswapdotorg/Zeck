@@ -31,6 +31,7 @@ import { createApiServer } from "../../src/api";
 import {
   fakeAgentRegistry,
   fakeAuthenticate,
+  fakeEconomicsService,
   fakeExecutionsService,
   fakeScopeResolver,
 } from "./lib/public-surface-fakes";
@@ -147,6 +148,10 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       "toWireAgentVersion",
       "toWirePromotion",
       "toWireAgentStatus",
+      "toWireEconomicAction",
+      "toWireEconomicActionReceipt",
+      "toWireEconomicActionEvent",
+      "toWireEconomicActionOutcome",
     ]) {
       const fnSource = new RegExp(`function ${fn}\\(`).exec(serialization);
       expect(fnSource, `${fn} must exist`).not.toBeNull();
@@ -165,6 +170,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
     const server = createApiServer({
       executions: fakeExecutionsService(),
       agents: fakeAgentRegistry(),
+      economics: fakeEconomicsService(),
       scopeResolver: fakeScopeResolver(),
       authenticate: fakeAuthenticate(),
       listAgentIdsOfApplication: async () => [],
@@ -176,10 +182,14 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /agents/:id",
         "GET /agents/:id/status",
         "GET /agents/:id/versions",
+        "GET /economic-actions/:id",
+        "GET /economic-actions/:id/events",
+        "GET /economic-actions/:id/outcome",
         "GET /executions/:id",
         "GET /executions/:id/events",
         "GET /executions/:id/results",
         "GET /executions/:id/verification",
+        "POST /economic-actions",
         "POST /executions",
         "POST /executions/:id/cancel",
       ].sort(),
