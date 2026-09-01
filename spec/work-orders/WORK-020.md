@@ -1,6 +1,6 @@
 # WORK-020 — Learned execution planning and automatic policy optimization
 
-Status: PENDING
+Status: IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -43,7 +43,7 @@ Forbidden:
 - rewriting frozen architecture/lock semantics
 - changing another Work Order's acceptance scope
 - creating a parallel authority/state machine
-- importing another module's `internal/` implementation
+- importing another module's internal implementation
 - importing provider SDKs outside provider adapters
 - bypassing policy, verification, budgeting or tenant authorities
 - merging the worker's own PR
@@ -89,7 +89,6 @@ Required assurance profile: **CRITICAL**.
 
 The applicable blocking contracts are enumerated in `spec/governance/checkpoint-contract.json`. Checkpoint results are evidence, not completion authority.
 
-
 # Evidence Contract
 
 The worker must update `docs/work-items/WORK-NNN.md` with exact revision, changed files, requirement IDs, test commands/results, checkpoint evidence, discrimination evidence where required, known limitations and PR binding. Claims without objective evidence do not satisfy completion.
@@ -106,3 +105,7 @@ The worker must update `docs/work-items/WORK-NNN.md` with exact revision, change
 # Completion
 
 A worker may open a PR but cannot merge it. The architect is the merge authority. `program-state.json` becomes `complete` only after post-merge finalization records the actual PR number and merge commit.
+
+# Activation
+
+Activated by the Architect as part of the current parallel wave with WORK-024. Implementation branch MUST start from the exact stable `main` SHA at activation and MUST NOT rebase onto a sibling implementation branch. Shared development-state artifacts are Architect-owned during the wave.
