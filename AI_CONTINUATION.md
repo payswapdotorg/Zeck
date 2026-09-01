@@ -18,8 +18,8 @@ As of 2026-09-01 the active implementation wave includes **WORK-022 — Codebase
 - Active PR: #40
 - Branch: `work/WORK-022-opportunity-analysis`
 - Active PR URL: https://github.com/pectoraux/Zeck/pull/40
-- `main` currently points to `18dadf91b2d6d27724a8cff6202c1363d7b6c09d` (WORK-019 merge)
-- WORK-022 has a later branch head; inspect the PR for the exact current SHA rather than copying stale values from old notes.
+- `main` currently points to `f15c2cc91ef2b5b36cdea7682f98b37a657db433`.
+- The active WORK-022 branch head is tracked in PR #40 and in the branch-local continuation contract; inspect GitHub for the exact latest SHA before acting.
 
 ## Recovery rule
 
