@@ -23,6 +23,8 @@ import type { CompositionConsultation } from "./composition-consultation";
 import { validateCompositionConsultation } from "./composition-consultation";
 import type { LearningConsultation } from "./learning-consultation";
 import { validateLearningConsultation } from "./learning-consultation";
+import type { OpportunityConsultation } from "./opportunity-consultation";
+import { validateOpportunityConsultation } from "./opportunity-consultation";
 import type { ExecutionPlan } from "./plan";
 import type { CandidateStrategy, RouteRationale } from "./strategy";
 import type { SubgraphObservation } from "./subgraph-evidence";
@@ -88,6 +90,15 @@ export interface PlanningDecisionRecord {
    * records what learning would prefer (M1/M5/M18).
    */
   readonly compositionConsultation?: CompositionConsultation;
+  /**
+   * OPTIONAL codebase-opportunity consultation capture (WORK-022 /
+   * DTR-005): the advisory opportunity findings consulted AFTER the
+   * governed selection, recorded as evidence with their full
+   * version/provenance anchors. Absent when no opportunity seam is
+   * wired. The consultation never alters `selectedStrategyId` — it
+   * records what the consulted findings imply (M11/M12/M13/M17/M28).
+   */
+  readonly opportunityConsultation?: OpportunityConsultation;
   /**
    * OPTIONAL substrate-selection capture (WORK-031 / CSX-003): the
    * provider-neutral computational substrate selected for the selected
@@ -231,6 +242,12 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // closed shape — validated (version anchors + provenance) whenever
     // present.
     validateCompositionConsultation(record.compositionConsultation);
+  }
+  if (record.opportunityConsultation !== undefined) {
+    // WORK-022: the codebase-opportunity consultation capture is part
+    // of the closed shape — validated (version + provenance anchors)
+    // whenever present.
+    validateOpportunityConsultation(record.opportunityConsultation);
   }
   if (record.substrateSelection !== undefined) {
     // WORK-031: the substrate-selection capture is part of the closed

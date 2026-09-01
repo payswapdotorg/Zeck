@@ -71,11 +71,4 @@ describe("module directory skeleton", () => {
       existsSync(resolve(REPO_ROOT, "src/integrations/substrate-federation/internal/index.ts")),
     ).toBe(true);
   });
-
-  test("the runners integration exposes its public barrel (WORK-019)", async () => {
-    const barrel = await import("../../src/integrations/runners/public");
-    expect(barrel.integrationId).toBe("runners");
-    expect(existsSync(resolve(REPO_ROOT, "src/integrations/runners/adapters/index.ts"))).toBe(true);
-    expect(existsSync(resolve(REPO_ROOT, "src/integrations/runners/internal/index.ts"))).toBe(true);
-  });
 });

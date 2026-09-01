@@ -38,6 +38,14 @@ import {
 } from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/application/execution-service";
 import type { ExecutionCreateInput } from "../../../src/modules/executions/domain/execution";
+import type { ExecutionAuthorizationPort } from "../../../src/modules/executions/ports/authorization";
+import {
+  createInMemoryOpportunityStore,
+  createNodeDigest,
+  createOpportunityAnalyzer,
+  type InMemoryOpportunityStore,
+  type OpportunityAnalyzer,
+} from "../../../src/modules/learning/public";
 import {
   createPolicyAuthority,
   InMemoryPolicyStore,
@@ -58,6 +66,11 @@ export interface ApiWorld {
   readonly executions: ExecutionService;
   readonly agentRegistry: FakeAgentRegistry;
   readonly economics: EconomicActionService;
+  readonly codebaseAnalyzer: OpportunityAnalyzer;
+  /** The analyzer's in-memory store (WORK-022 discrimination probes). */
+  readonly opportunityStore: InMemoryOpportunityStore;
+  /** The executions world's budget-authority fake call counts (M6 probes). */
+  readonly budgetReserveCalls: () => number;
   readonly bearerToken: string;
   readonly otherTenantToken: string;
   readonly authenticateCalls: () => number;
@@ -226,7 +239,12 @@ function fakeIdentityStore(
 
 let appCounter = 0;
 
-export async function seedApiWorld(): Promise<ApiWorld> {
+export interface SeedApiWorldOptions {
+  /** An executions admission seam override (WORK-022 discrimination: the deny-wiring for the policy-denial red records). */
+  readonly executionAuthorization?: ExecutionAuthorizationPort;
+}
+
+export async function seedApiWorld(options: SeedApiWorldOptions = {}): Promise<ApiWorld> {
   appCounter += 1;
   const tenantId = `00000000-0000-7000-8000-00000000a${String(appCounter).padStart(3, "0")}`;
   const applicationId = `00000000-0000-7000-8000-00000000b${String(appCounter).padStart(3, "0")}`;
@@ -268,7 +286,11 @@ export async function seedApiWorld(): Promise<ApiWorld> {
     return { actorId, authenticatedAt: new Date().toISOString() };
   };
 
-  const executionsWorld = createInMemoryExecutions();
+  const executionsWorld = createInMemoryExecutions({
+    ...(options.executionAuthorization === undefined
+      ? {}
+      : { authorization: options.executionAuthorization }),
+  });
   executionsWorld.store.seedApplication(applicationId, tenantId);
   executionsWorld.store.seedApplication(otherTenantApplicationId, otherTenantId);
   const executions = executionsWorld.service;
@@ -306,10 +328,23 @@ export async function seedApiWorld(): Promise<ApiWorld> {
 
   const agentRegistry = new FakeAgentRegistry();
 
+  // The codebase-opportunity ADVISORY analyzer (WORK-022): the REAL
+  // learning-module analyzer over the in-memory opportunity store
+  // (advisory evidence only — never an authority).
+  let analyzeCounter = 0;
+  const opportunityStore = createInMemoryOpportunityStore();
+  const codebaseAnalyzer = createOpportunityAnalyzer({
+    store: opportunityStore,
+    digest: createNodeDigest(),
+    generateId: () => `00000000-0000-7000-b000-${String(++analyzeCounter).padStart(12, "0")}`,
+    now: () => new Date(),
+  });
+
   const server = createApiServer({
     executions,
     agents: agentRegistry,
     economics,
+    codebaseAnalyzer,
     scopeResolver,
     authenticate,
     listAgentIdsOfApplication: async (appId) =>
@@ -327,6 +362,9 @@ export async function seedApiWorld(): Promise<ApiWorld> {
     executions,
     agentRegistry,
     economics,
+    codebaseAnalyzer,
+    opportunityStore,
+    budgetReserveCalls: () => executionsWorld.budgets.reserveCalls.length,
     bearerToken,
     otherTenantToken,
     authenticateCalls: () => authenticateCalls,

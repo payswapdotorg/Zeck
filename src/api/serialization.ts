@@ -43,6 +43,12 @@ import type {
   ExecutionRecord,
   VerificationResultRecord,
 } from "../modules/executions/public";
+import type {
+  EvaluationPrompt,
+  FindingTransitionRecord,
+  OpportunityAnalysis,
+  OpportunityFinding,
+} from "../modules/learning/public";
 /** The canonical public wire contract (shared by the transport and the SDK). */
 import type {
   AgentPromotionStatus,
@@ -54,6 +60,12 @@ import type {
   ExecutionStatus,
   PublicError,
   VerificationResult,
+  CodebaseAnalysis as WireCodebaseAnalysis,
+  CodebaseAnalysisReport as WireCodebaseAnalysisReport,
+  CodebaseFinding as WireCodebaseFinding,
+  CodebaseFindingTransitionReceipt as WireCodebaseFindingTransitionReceipt,
+  CodebasePrompt as WireCodebasePrompt,
+  CodebaseRatingReceipt as WireCodebaseRatingReceipt,
   EconomicAction as WireEconomicAction,
   EconomicActionEvent as WireEconomicActionEvent,
   EconomicActionOutcome as WireEconomicActionOutcome,
@@ -325,6 +337,126 @@ export function toPublicErrorBody(
     ...(details === undefined
       ? {}
       : { details: scrubSecretShapedKeys(details) as Record<string, unknown> }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Codebase opportunity analysis (WORK-022 — allowlist construction, the
+// same secret-safety discipline: every field is named explicitly).
+// ---------------------------------------------------------------------------
+
+export function toWireCodebaseAnalysis(
+  analysis: OpportunityAnalysis,
+  replayed: boolean,
+): WireCodebaseAnalysis {
+  return {
+    analysisId: analysis.analysisId,
+    applicationId: analysis.applicationId,
+    executionId: analysis.executionId,
+    repository: analysis.repository,
+    revision: analysis.revision,
+    analysisVersion: analysis.analysisVersion,
+    findingCount: analysis.findingCount,
+    promptCount: analysis.promptCount,
+    digest: analysis.digest,
+    recordedAt: analysis.recordedAt,
+    replayed,
+  };
+}
+
+export function toWireCodebaseFinding(finding: OpportunityFinding): WireCodebaseFinding {
+  return {
+    findingId: finding.findingId,
+    analysisId: finding.analysisId,
+    class: finding.class,
+    state: finding.state,
+    targetNodeIds: finding.targetNodeIds.map((id) => id),
+    reasonCodes: finding.reasonCodes.map((code) => code),
+    evidenceRefs: finding.evidenceRefs.map((ref) => ref),
+    provenance: {
+      repository: finding.provenance.repository,
+      revision: finding.provenance.revision,
+      targets: finding.provenance.targets.map((target) => ({
+        nodeId: target.nodeId,
+        file: target.file,
+        symbol: target.symbol,
+      })),
+    },
+    confidence: {
+      level: finding.confidence.level,
+      population: finding.confidence.population,
+      basis: finding.confidence.basis,
+    },
+    impact: {
+      currentMicroUsd: finding.costImpact.currentMicroUsd,
+      candidateMicroUsd: finding.costImpact.candidateMicroUsd,
+      expectedSavingsMicroUsd: finding.costImpact.expectedSavingsMicroUsd,
+      basis: finding.costImpact.basis,
+      currentMs: finding.latencyImpact.currentMs,
+      candidateMs: finding.latencyImpact.candidateMs,
+    },
+    deterministicEquivalence: {
+      potential: finding.deterministicEquivalence.potential,
+      basis: finding.deterministicEquivalence.basis.map((item) => item),
+    },
+    recommendation: {
+      strategy: finding.recommendation.strategy,
+      validationSteps: finding.recommendation.validationSteps.map((step) => step),
+    },
+    recordedAt: finding.recordedAt,
+  };
+}
+
+export function toWireCodebasePrompt(prompt: EvaluationPrompt): WireCodebasePrompt {
+  return {
+    promptId: prompt.promptId,
+    findingId: prompt.findingId,
+    questionKind: prompt.questionKind,
+    question: prompt.question,
+    expectedInformationGain: prompt.expectedInformationGain,
+    userFrictionThreshold: prompt.userFrictionThreshold,
+    basis: prompt.basis.map((item) => item),
+    emittedAt: prompt.emittedAt,
+  };
+}
+
+export function toWireCodebaseAnalysisReport(input: {
+  readonly analysis: OpportunityAnalysis;
+  readonly findings: readonly OpportunityFinding[];
+  readonly prompts: readonly EvaluationPrompt[];
+  readonly replayed: boolean;
+}): WireCodebaseAnalysisReport {
+  return {
+    analysis: toWireCodebaseAnalysis(input.analysis, input.replayed),
+    findings: input.findings.map(toWireCodebaseFinding),
+    prompts: input.prompts.map(toWireCodebasePrompt),
+  };
+}
+
+export function toWireCodebaseRatingReceipt(rating: {
+  readonly ratingId: string;
+  readonly findingId: string;
+  readonly replayed: boolean;
+  readonly answer: string;
+}): WireCodebaseRatingReceipt {
+  return {
+    ratingId: rating.ratingId,
+    findingId: rating.findingId,
+    replayed: rating.replayed,
+    answer: rating.answer,
+  };
+}
+
+export function toWireCodebaseFindingTransitionReceipt(
+  transition: FindingTransitionRecord,
+  replayed: boolean,
+): WireCodebaseFindingTransitionReceipt {
+  return {
+    transitionId: transition.transitionId,
+    findingId: transition.findingId,
+    fromState: transition.fromState,
+    toState: transition.toState,
+    replayed,
   };
 }
 

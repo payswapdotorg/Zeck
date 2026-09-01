@@ -5,6 +5,7 @@ import type { AgentRegistry } from "../../../src/modules/agents/public";
 import type { ScopeResolver } from "../../../src/modules/auth/public";
 import type { EconomicActionService } from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/public";
+import type { OpportunityAnalyzer } from "../../../src/modules/learning/public";
 
 export function fakeEconomicsService(): EconomicActionService {
   const reject = (name: string) => async () => {
@@ -74,4 +75,17 @@ export function fakeAuthenticate(): Authenticate {
     actorId: "00000000-0000-7000-8000-0000000000aa",
     authenticatedAt: "2026-09-15T12:00:00Z",
   });
+}
+
+export function fakeCodebaseAnalyzer(): OpportunityAnalyzer {
+  const reject = (name: string) => async () => {
+    throw new Error(`not exercised by the architecture gate: ${name}`);
+  };
+  return {
+    analyzeSubgraph: reject("analyzeSubgraph") as never,
+    getAnalysis: reject("getAnalysis") as never,
+    recordEvaluationRating: reject("recordEvaluationRating") as never,
+    advanceFinding: reject("advanceFinding") as never,
+    consultOpportunitySignals: (async () => []) as never,
+  };
 }
