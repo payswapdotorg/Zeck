@@ -69,10 +69,10 @@ export function createInProcessRealtimeRail(
   let failNext: string | null = null;
   const allocateRef =
     options.allocateRef ??
-    () => {
+    (() => {
       ordinal += 1;
       return `simrail-session-${ordinal}`;
-    };
+    });
 
   const fail = (reason: string): RealtimeRailDeliveryOutcome => {
     const injected = failNext;
