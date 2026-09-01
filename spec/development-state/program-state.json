@@ -6,19 +6,9 @@
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
-    "governingDocuments": [
-      "spec/architecture.md",
-      "spec/architecture-lock.md",
-      "spec/requirements.md",
-      "spec/work-items.md",
-      "spec/dependency-graph.md"
-    ]
+    "governingDocuments": ["spec/architecture.md","spec/architecture-lock.md","spec/requirements.md","spec/work-items.md","spec/dependency-graph.md"]
   },
-  "requirementCatalog": {
-    "version": 3,
-    "count": 102,
-    "source": "spec/requirements.md"
-  },
+  "requirementCatalog": {"version":3,"count":102,"source":"spec/requirements.md"},
   "workOrders": [
     {"id":"WORK-001","title":"Repository, modular-monolith and governance foundation","status":"complete","mergedAs":{"pr":3,"mergeCommit":"c81bed4bfae95832735b09d38b9f31640a1e7ff4","implementationHead":"681543109a2a8dadf1a518c9e1f5bc193b3c5b1c"},"dependencies":[],"surfaces":{"modules":["platform","governance"],"spec":["spec/architecture.md","spec/development-state/"]}},
     {"id":"WORK-002","title":"Identity, applications and tenant isolation","status":"complete","mergedAs":{"pr":4,"mergeCommit":"7b9cf363ff089da6b106ac35879263a6ace7e36e","implementationHead":"a0a17bfc89192e3e6b06b1c25e9452787f5d29df","finalBranchHead":"c79e86a097e58ce21a3234105e9d1b85e4154f75"},"dependencies":["WORK-001"],"surfaces":{"modules":["auth","applications"],"schema":true}},
@@ -32,7 +22,7 @@
     {"id":"WORK-010","title":"Governed tool runtime","status":"complete","mergedAs":{"pr":19,"mergeCommit":"0bc6b9434c222e92f9dbd7ceeb9577d1d0755f25","implementationHead":"de6f3bdd3d43d0af6fe41772120361f1a90af8b1","finalBranchHead":"354e13c186d72b48dc7010b868f134107b5b371e"},"dependencies":["WORK-006","WORK-007","WORK-008"],"surfaces":{"modules":["tools"],"externalSideEffects":true,"securityTenant":true}},
     {"id":"WORK-011","title":"Agent fabric, sessions and workspaces","status":"complete","mergedAs":{"pr":21,"mergeCommit":"d06f2a7f7806e1cf60907dbe4891b7a2892f0fa4","implementationHead":"7320e89cf93d1818455752887b85128c67063b00","finalBranchHead":"57e954cdfcf1e6e50bf75c5ae1c660701cc53b88"},"dependencies":["WORK-006","WORK-007","WORK-010"],"surfaces":{"modules":["agents"],"externalSideEffects":true,"publicContracts":true}},
     {"id":"WORK-012","title":"Compute environments and sandbox manager","status":"complete","mergedAs":{"pr":23,"mergeCommit":"378de44c1c2b25cfe6a747e474ae3137db051d80","implementationHead":"90feb13ecfc62688dfaa33260613055f96cff0d7","finalBranchHead":"e313c9fd58ecf486b432db80d924e741a9c06148"},"dependencies":["WORK-006","WORK-007","WORK-010","WORK-011"],"surfaces":{"modules":["sandbox"],"securityTenant":true,"externalSideEffects":true}},
-    {"id":"WORK-013","title":"Verification, evaluators and quality gates","status":"complete","mergedAs":{"pr":22,"mergeCommit":"cb3498735b4fd6f95ec27ad500bf06d0b93ebf","implementationHead":"db21c0bd2dd7b84185a0fd85ac36331307e9c14e","finalBranchHead":"5e1195b4d61d3bcab1f97c9005cb27036a1a37f2"},"dependencies":["WORK-006","WORK-009","WORK-010","WORK-011"],"surfaces":{"modules":["verification"],"publicContracts":true,"authorityBoundary":true}},
+    {"id":"WORK-013","title":"Verification, evaluators and quality gates","status":"complete","mergedAs":{"pr":22,"mergeCommit":"cb3498735b4fd6f3b95ec27ad500bf06d0b93ebf","implementationHead":"db21c0bd2dd7b84185a0fd85ac36331307e9c14e","finalBranchHead":"5e1195b4d61d3bcab1f97c9005cb27036a1a37f2"},"dependencies":["WORK-006","WORK-009","WORK-010","WORK-011"],"surfaces":{"modules":["verification"],"publicContracts":true,"authorityBoundary":true}},
     {"id":"WORK-014","title":"Learning telemetry, scorecards and shadow evaluation","status":"complete","mergedAs":{"pr":24,"mergeCommit":"c45fc978378140b7d3999f4b820292fd27b19b11","implementationHead":"f3ad9e1d2261cf6c3b13aa312b327ec6432ce086","finalBranchHead":"9c230185068c7f9d3574876a4d8530d428ef1da7"},"dependencies":["WORK-006","WORK-009","WORK-010","WORK-013"],"surfaces":{"modules":["learning"],"multiModule":true}},
     {"id":"WORK-015","title":"Public API, SDKs, CLI and developer dashboard","status":"complete","mergedAs":{"pr":25,"mergeCommit":"0d2a73ce0485194a0a2c5da39bf300915db3c210","implementationHead":"82f5843af147c34e4209c4b3b246c20fbe12d657","finalBranchHead":"a0795d36f99fe64f9fadd02905a33b48f5d4c1b0"},"dependencies":["WORK-002","WORK-003","WORK-004","WORK-006","WORK-009","WORK-013"],"surfaces":{"modules":["api","experience"],"publicContracts":true}},
     {"id":"WORK-016","title":"WorkflowOS integration adapter and benchmark harness","status":"complete","mergedAs":{"pr":26,"mergeCommit":"fdb16c22f576f8851cd0e737cb21e02ca8cc2aef","implementationHead":"8b741a7a391075a96103bbcb15441162cf79a8db","finalBranchHead":"9714e6a2169e66610c45edd8fcc1c6ac719fe6a0"},"dependencies":["WORK-006","WORK-007","WORK-009","WORK-010","WORK-011","WORK-013","WORK-015"],"surfaces":{"modules":["integrations"],"externalSideEffects":true,"publicContracts":true}},
@@ -53,27 +43,6 @@
     {"id":"WORK-031","title":"Computational substrate federation and workload classes","status":"pending","dependencies":["WORK-006","WORK-007","WORK-008","WORK-010","WORK-011","WORK-012","WORK-013","WORK-014","WORK-016"],"surfaces":{"modules":["capabilities","executions","planning","integrations"],"publicContracts":true}},
     {"id":"WORK-032","title":"Agentic economic actions and provider-neutral payment rails","status":"complete","mergedAs":{"pr":36,"mergeCommit":"778c42273f7ac35cc35591207b2a098a9158ca00","implementationHead":"6a18fe7b9edf1af26f983c9cd79f58138e4162f4","finalBranchHead":"b3ecc6ce954c459e9f83d5d307718f0e3633a7db"},"dependencies":["WORK-004","WORK-006","WORK-007","WORK-013","WORK-015","WORK-016","WORK-017"],"surfaces":{"modules":["economics","budgets","executions","verification","integrations","api"],"authorityBoundary":true,"securityTenant":true,"externalSideEffects":true,"publicContracts":true,"concurrency":true}}
   ],
-  "decisions": [
-    "docs/adr/ADR-0000-architecture-v1-freeze.md",
-    "docs/adr/ADR-0001-execution-as-primary-abstraction.md",
-    "docs/adr/ADR-0002-ai-platform-authority-boundary.md",
-    "docs/adr/ADR-0003-provider-federation-and-openrouter.md",
-    "docs/adr/ADR-0004-agent-compute-environment-isolation.md",
-    "docs/adr/ADR-0005-tool-and-plan-learning.md",
-    "docs/adr/ADR-0006-workflowos-reference-consumer.md",
-    "docs/adr/ADR-0007-deterministic-first-planning.md",
-    "docs/adr/ADR-0008-deterministicization-and-human-evaluation.md",
-    "docs/adr/ADR-0009-selective-human-evaluation.md",
-    "docs/adr/ADR-0010-codebase-opportunity-advisory.md",
-    "docs/adr/ADR-0011-deterministic-first-planner-implementation.md",
-    "docs/adr/ADR-0012-selective-human-evaluation-in-planning.md",
-    "docs/adr/ADR-0013-agent-control-plane-and-byoa.md",
-    "docs/adr/ADR-0014-multimodal-agent-deployment.md",
-    "docs/adr/ADR-0015-multimodal-deployment-product-surface.md",
-    "docs/adr/ADR-0016-computational-substrate-extensibility.md"
-  ],
-  "postMergeFinalization": {
-    "required": true,
-    "completionRule": "merge evidence must match actual PR number and merge commit before program-state status can become complete"
-  }
+  "decisions": ["docs/adr/ADR-0000-architecture-v1-freeze.md","docs/adr/ADR-0001-execution-as-primary-abstraction.md","docs/adr/ADR-0002-ai-platform-authority-boundary.md","docs/adr/ADR-0003-provider-federation-and-openrouter.md","docs/adr/ADR-0004-agent-compute-environment-isolation.md","docs/adr/ADR-0005-tool-and-plan-learning.md","docs/adr/ADR-0006-workflowos-reference-consumer.md","docs/adr/ADR-0007-deterministic-first-planning.md","docs/adr/ADR-0008-deterministicization-and-human-evaluation.md","docs/adr/ADR-0009-selective-human-evaluation.md","docs/adr/ADR-0010-codebase-opportunity-advisory.md","docs/adr/ADR-0011-deterministic-first-planner-implementation.md","docs/adr/ADR-0012-selective-human-evaluation-in-planning.md","docs/adr/ADR-0013-agent-control-plane-and-byoa.md","docs/adr/ADR-0014-multimodal-agent-deployment.md","docs/adr/ADR-0015-multimodal-deployment-product-surface.md","docs/adr/ADR-0016-computational-substrate-extensibility.md"],
+  "postMergeFinalization": {"required":true,"completionRule":"merge evidence must match actual PR number and merge commit before program-state status can become complete"}
 }
