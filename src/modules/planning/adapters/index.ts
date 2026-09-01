@@ -16,3 +16,4 @@ export { createNodeDigest } from "./node-digest";
 export { createPlanningSinkAdapter } from "./planning-sink-adapter";
 export { createPolicyInputsAdapter } from "./policy-inputs-adapter";
 export { createRouteTableExplorer } from "./route-table-explorer";
+export { createSubstrateCatalogAdapter } from "./substrate-catalog-adapter";

@@ -82,6 +82,17 @@ export {
   emitSubgraphEvidence,
 } from "./subgraph-evidence";
 export type {
+  SubstrateCandidate,
+  SubstrateInadmissibleReason,
+  SubstrateRejection,
+  SubstrateSelection,
+} from "./substrate-selection";
+export {
+  isSubstrateInadmissibleReason,
+  SUBSTRATE_INADMISSIBLE_REASONS,
+  validateSubstrateSelection,
+} from "./substrate-selection";
+export type {
   DeterministicSufficiencyDecision,
   RequirementCoverage,
   SufficiencyInput,
@@ -103,3 +114,9 @@ export {
   TASK_KINDS,
   TASK_RISK_LEVELS,
 } from "./task-profile";
+export type { WorkloadClassProfile } from "./workload-class";
+export {
+  validateWorkloadClassProfile,
+  WORKLOAD_CLASS_REQUIREMENTS,
+  workloadClassProfileOf,
+} from "./workload-class";

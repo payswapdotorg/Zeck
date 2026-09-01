@@ -23,3 +23,4 @@ export type {
   PlanningSinkOutcome,
 } from "./planning-sink";
 export type { PlanningPolicyInputs, ResolvedPolicyInputs } from "./policy-inputs";
+export type { SubstrateCatalog, SubstrateCatalogEntry } from "./substrate-catalog";

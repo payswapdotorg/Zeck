@@ -164,17 +164,19 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
     // wave numbers may be present (a sibling merged first) or absent
     // (this branch carries only its own claim). WORK-032 landed on main
-    // (PR #36) and contributes 0014_economic_actions.sql; 0011/0012
+    // (PR #36) and contributes 0014_economic_actions.sql; 0011/0012/0013
     // arrive with their sibling work orders' merges, so the reconciled
-    // inventory is [1..10, 11, 12, 14] with file gaps LEGAL pre-merge (the
-    // runner applies in ascending order and allows gaps) — uniqueness +
-    // the intact baseline + the present claims are the invariants.
+    // inventory is [1..10, 11, 12, 13, 14] with file gaps LEGAL pre-merge
+    // (the runner applies in ascending order and allows gaps) —
+    // uniqueness + the intact baseline + the present claims are the
+    // invariants.
     for (let version = 1; version <= 10; version += 1) {
       expect(migrations).toContain(version);
     }
     expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(migrations).toContain(11); // WORK-018's claim (asserted below via the file read)
     expect(migrations).toContain(12); // WORK-023's claim (asserted below via the file read)
+    expect(migrations).toContain(13); // WORK-031's claim (asserted below via the file read)
     expect(migrations).toContain(14); // WORK-032 economic actions (landed on main)
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
@@ -202,6 +204,13 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     );
     expect(fabricMigration.includes("deployments.deployment_profiles")).toBe(true);
     expect(fabricMigration.includes("deployments.deployment_events")).toBe(true);
+    // WORK-031's claim: 0013 is the substrate-federation migration (the
+    // sibling branches carry 0011/0012 respectively).
+    const substrateMigration = readFileSync(
+      join(REPO_ROOT, "src/platform/db/migrations/0013_substrate_federation.sql"),
+      "utf8",
+    );
+    expect(substrateMigration.includes("capabilities.substrates")).toBe(true);
   });
 
   test("the learning signal projection carries the set anchors (M13/M14)", () => {
