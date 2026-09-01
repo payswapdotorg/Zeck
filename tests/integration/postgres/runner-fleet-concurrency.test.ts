@@ -86,6 +86,18 @@ function expectCode(promise: Promise<unknown>, code: string): Promise<PlatformEr
   );
 }
 
+/**
+ * Sleep until the assignment's lease deadline has definitely passed (plus a
+ * margin). Deadline-aware instead of a fixed sleep so the expiry proofs
+ * stay deterministic under parallel-suite load stalls.
+ */
+async function sleepPastLease(leaseExpiresAt: string, marginMs = 250): Promise<void> {
+  const remaining = Date.parse(leaseExpiresAt) + marginMs - Date.now();
+  if (remaining > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remaining));
+  }
+}
+
 definePgSuite("runner fleet concurrency and crash safety (real PG)", (ctx) => {
   let world: RunnerFleetPgWorld;
 
@@ -199,7 +211,14 @@ definePgSuite("runner fleet concurrency and crash safety (real PG)", (ctx) => {
     );
     // Every caller received the SAME durable assignment — none errored.
     const fulfilled = outcomes.filter((o) => o.status === "fulfilled");
-    expect(fulfilled).toHaveLength(CALLERS);
+    const rejectedDetail = outcomes
+      .filter((o) => o.status === "rejected")
+      .map((o) => (o.status === "rejected" ? `${(o.reason as Error).message}` : ""))
+      .join(" | ");
+    expect(
+      fulfilled.length,
+      `every same-key claim must converge; rejected: ${rejectedDetail}`,
+    ).toBe(CALLERS);
     const records = fulfilled.map(
       (o) =>
         (o as PromiseFulfilledResult<Awaited<ReturnType<typeof world.fleet.assignRunner>>>).value,
@@ -578,7 +597,10 @@ definePgSuite("runner fleet concurrency and crash safety (real PG)", (ctx) => {
   });
 
   test("reconnect AFTER lease expiry: the runner re-attaches but the expired assignment stays terminal (no revival, no second execution)", async () => {
-    world = await seedRunnerFleetWorld(ctx.port, { leaseDurationMs: 200 });
+    // A 2s lease (10x the flake-prone minimum) keeps the assign → dispatch
+    // sequence safe under load; the sleep below waits for the ACTUAL
+    // deadline, so expiry semantics stay deterministic.
+    world = await seedRunnerFleetWorld(ctx.port, { leaseDurationMs: 2000 });
     const { environmentId, runnerId, ids } = await assignedWorld();
     const assignment = await world.fleet.assignRunner(
       {
@@ -596,7 +618,7 @@ definePgSuite("runner fleet concurrency and crash safety (real PG)", (ctx) => {
       { applicationId: world.applicationId, assignmentId: assignment.id },
       world.actor(),
     );
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await sleepPastLease(assignment.lease.leaseExpiresAt);
     const expired = await world.fleet.expireAssignment(
       { applicationId: world.applicationId, assignmentId: assignment.id },
       world.actor(),

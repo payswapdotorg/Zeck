@@ -51,6 +51,18 @@ import {
 
 const REQUIRED = ["customer-runner", "cpu", "memory"];
 
+/**
+ * Sleep until the assignment's lease deadline has definitely passed (plus a
+ * margin). Deadline-aware instead of a fixed sleep so the expiry proofs
+ * stay deterministic under parallel-suite load stalls.
+ */
+async function sleepPastLease(leaseExpiresAt: string, marginMs = 250): Promise<void> {
+  const remaining = Date.parse(leaseExpiresAt) + marginMs - Date.now();
+  if (remaining > 0) {
+    await new Promise((resolve) => setTimeout(resolve, remaining));
+  }
+}
+
 function expectCode(promise: Promise<unknown>, code: string): Promise<PlatformError> {
   return promise.then(
     () => {
@@ -814,7 +826,10 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, 'actor-1', 'runner-assignment', '{}'::jsonb,
   });
 
   test("lease expiry: late reports fail closed and expiry is terminal (fail-closed reconciliation)", async () => {
-    world = await seedRunnerFleetWorld(ctx.port, { leaseDurationMs: 200 });
+    // A 2s lease (10x the flake-prone minimum) keeps the assign → dispatch
+    // sequence safe under load; the sleep below waits for the ACTUAL
+    // deadline, so expiry semantics stay deterministic.
+    world = await seedRunnerFleetWorld(ctx.port, { leaseDurationMs: 2000 });
     const environmentId = await world.registerEnvironment();
     const runnerId = await world.registerRunner(environmentId);
     const ids = await world.seedSandbox(environmentId);
@@ -834,7 +849,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, 'actor-1', 'runner-assignment', '{}'::jsonb,
       { applicationId: world.applicationId, assignmentId: assignment.id },
       world.actor(),
     );
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await sleepPastLease(assignment.lease.leaseExpiresAt);
     await expectCode(
       world.fleet.reportResult(
         {
