@@ -110,4 +110,4 @@ Worker opens a PR but does not merge. Completion requires architect acceptance a
 
 # Activation
 
-Activated by the Architect as part of the current parallel wave with WORK-020. Implementation branch MUST start from the exact stable `main` SHA at activation and MUST NOT rebase onto a sibling implementation branch. Shared development-state artifacts are Architect-owned during the wave.
+Activated by the Architect as part of the current parallel wave with WORK-020. Implementation branch MUST start from the exact post-activation stable `main` SHA `abc08dbbb10dd1704d3ac89f38abe106cacee182` and MUST NOT rebase onto a sibling implementation branch. Shared development-state artifacts are Architect-owned during the wave.
