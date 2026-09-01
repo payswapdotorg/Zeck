@@ -146,4 +146,15 @@
 - ACC-002: GPU and specialized-accelerator selection uses provider-neutral capability/resource contracts and remains replaceable by adapter.
 - ACC-003: Training checkpoints, datasets, configurations and outputs preserve artifact lineage and verification status; compute success alone does not imply model-release verification.
 
-Total requirements: **86**.
+## Agentic economics
+
+- ECO-001: Economic Actions use provider-neutral contracts with execution, tenant/application, purpose, recipient/seller, bounded amount/currency, expiration, idempotency identity and required capabilities.
+- ECO-002: Economic authorization is bounded by deterministic constraints including recipient/seller, amount, currency, purpose/resource, expiration and execution/application/tenant scope where supported by the rail.
+- ECO-003: Economic authorization reuses the existing budget reservation/settlement authority and does not create a second Zeck financial ledger.
+- ECO-004: Payment rails are provider-neutral replaceable adapters and cannot become policy, budget, execution or verification authorities.
+- ECO-005: Machine-readable payment-required signals such as HTTP 402 can inform economic planning, but a 402 response is never authorization.
+- ECO-006: External settlement is correlated to the originating Economic Action and resource/service delivery remains independently verifiable.
+- ECO-007: Economic actions preserve idempotency, retry safety, concurrency safety and complete economic provenance.
+- ECO-008: Economic outcomes can feed Learning as evidence or recommendations but learning never authorizes spending.
+
+Total requirements: **102**.
