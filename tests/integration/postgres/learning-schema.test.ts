@@ -23,8 +23,8 @@ import { TELEMETRY_SCHEMA_VERSION } from "../../../src/modules/learning/public";
 import { definePgSuite } from "./harness";
 import { telemetryFor } from "./learning-world";
 
-definePgSuite("learning schema (migrations 0009 + 0010)", (ctx) => {
-  test("the learning schema exists with the six tables (0009's four + WORK-017's composition pair)", async () => {
+definePgSuite("learning schema (migrations 0009 + 0010 + 0016)", (ctx) => {
+  test("the learning schema exists with the eleven tables (0009's four + 0010's composition pair + 0016's opportunity five)", async () => {
     const result = await ctx.port.execute<{ table_name: string }>({
       sql: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'learning' ORDER BY table_name`,
     });
@@ -32,6 +32,11 @@ definePgSuite("learning schema (migrations 0009 + 0010)", (ctx) => {
       "composition_activation_log",
       "composition_recommendation_sets",
       "execution_telemetry",
+      "opportunity_analyses",
+      "opportunity_finding_transitions",
+      "opportunity_findings",
+      "opportunity_prompts",
+      "opportunity_ratings",
       "scorecards",
       "shadow_evaluations",
       "user_ratings",

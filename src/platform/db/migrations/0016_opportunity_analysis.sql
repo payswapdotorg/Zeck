@@ -333,11 +333,15 @@ CREATE TABLE learning.opportunity_finding_transitions (
     ),
     -- M15/M16/M28/M14 (physical): verified REQUIRES equivalence
     -- evidence with PASS status, a bound compared revision and
-    -- comparable populations.
+    -- comparable populations. NULL-SAFE: the IS NOT NULL pin comes
+    -- FIRST (SQL three-valued logic would otherwise treat an absent
+    -- evidence object as satisfying the CHECK — a verified journal row
+    -- without equivalence evidence is uninsertable).
     CONSTRAINT transitions_verified_requires_equivalence CHECK (
         to_state <> 'verified'
         OR (
             evidence_kind = 'verified-equivalence'
+            AND verified_equivalence IS NOT NULL
             AND jsonb_typeof(verified_equivalence) = 'object'
             AND verified_equivalence->>'comparisonStatus' = 'PASS'
             AND length(verified_equivalence->>'comparedRevision') >= 1

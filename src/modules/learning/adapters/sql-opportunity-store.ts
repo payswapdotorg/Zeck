@@ -506,10 +506,14 @@ export class SqlOpportunityStore implements OpportunityStore {
         throw error;
       }
       // The (finding, rater, question) identity exists: same
-      // fingerprint converges (replay); a conflicting re-rating fails
+      // fingerprint converges (replay — the DURABLE id is returned,
+      // never the freshly generated one); a conflicting re-rating fails
       // closed — evidence never rewrites itself.
-      const existing = await this.db.execute<{ readonly fingerprint: string }>({
-        sql: `SELECT fingerprint FROM learning.opportunity_ratings
+      const existing = await this.db.execute<{
+        readonly id: string;
+        readonly fingerprint: string;
+      }>({
+        sql: `SELECT id, fingerprint FROM learning.opportunity_ratings
               WHERE application_id = $1 AND tenant_id = $2
                 AND finding_id = $3 AND rater = $4 AND question_kind = $5`,
         parameters: [
@@ -522,7 +526,7 @@ export class SqlOpportunityStore implements OpportunityStore {
       });
       const row = existing.rows[0];
       if (row !== undefined && row.fingerprint === fingerprint) {
-        return { ratingId: rating.ratingId, replayed: true };
+        return { ratingId: row.id, replayed: true };
       }
       throw new PlatformError({
         code: "IDEMPOTENCY_KEY_REUSED",

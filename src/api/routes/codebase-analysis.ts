@@ -176,6 +176,18 @@ const TRANSITION_REQUEST_KEYS: readonly string[] = [
   "verifiedEquivalence",
 ];
 
+/** An optional nullable string field: absent or null -> null; present -> non-empty string. */
+function optionalNullableStringField(
+  container: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = container[key];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  return requireStringField(container, key);
+}
+
 function rejectUnknownKeys(record: Record<string, unknown>, allowed: readonly string[]): void {
   const unknownKeys = Object.keys(record).filter((key) => !allowed.includes(key));
   if (unknownKeys.length > 0) {
@@ -457,12 +469,9 @@ export function registerCodebaseAnalysisRoutes(
           tenantId: identity.scope.tenantId,
           analysisId,
           findingId,
-          counterpartFindingId:
-            body.counterpartFindingId === undefined
-              ? null
-              : requireStringField(body, "counterpartFindingId"),
+          counterpartFindingId: optionalNullableStringField(body, "counterpartFindingId"),
           executionId: report.analysis.executionId,
-          promptId: body.promptId === undefined ? null : requireStringField(body, "promptId"),
+          promptId: optionalNullableStringField(body, "promptId"),
           rater,
           questionKind: questionKind as never,
           answer: answer as never,

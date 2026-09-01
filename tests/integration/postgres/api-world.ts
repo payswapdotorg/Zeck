@@ -53,6 +53,7 @@ import {
   createPolicyAuthority,
   InMemoryPolicyStore,
   nodePolicyHasher,
+  type PolicyAuthority,
 } from "../../../src/modules/policies/public";
 import type { DatabasePort } from "../../../src/platform/db/port";
 import { createUuidv7Generator } from "../../../src/shared/ids";
@@ -70,6 +71,8 @@ export interface ApiPgWorld {
   readonly agents: AgentRegistry;
   readonly economics: EconomicActionService;
   readonly codebaseAnalyzer: OpportunityAnalyzer;
+  /** The REAL policy authority behind the executions authorize seam (WORK-022 denial probes). */
+  readonly policyAuthority: PolicyAuthority;
   readonly bearerToken: string;
   readonly otherBearerToken: string;
   readonly actorId: string;
@@ -296,6 +299,7 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
     agents,
     economics,
     codebaseAnalyzer,
+    policyAuthority,
     bearerToken,
     otherBearerToken,
     actorId,
