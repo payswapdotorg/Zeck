@@ -1016,6 +1016,46 @@
           ]
         }
       }
+    },
+    "WORK-022": {
+      "asOf": "2026-09-15T13:10:00Z",
+      "branch": "work/WORK-022-opportunity-analysis",
+      "baseRevision": "ae9c5f1a39ad4579f639917923d992cbe7b9b412",
+      "assuranceProfile": "HIGH_ASSURANCE",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-022.md",
+            "tests/unit/learning/opportunity-analysis-domain.test.ts",
+            "tests/unit/api/codebase-analysis-routes.test.ts",
+            "tests/unit/planning/planner-opportunity.test.ts",
+            "src/platform/db/migrations/0016_opportunity_analysis.sql"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/opportunity-analysis-boundary.test.ts",
+            "tests/discrimination/opportunity-analysis.discrimination.test.ts",
+            "tests/discrimination/lib/opportunity.ts",
+            "docs/work-items/WORK-022.md"
+          ]
+        },
+        "EXECUTION-PROVENANCE": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/learning-opportunities.test.ts",
+            "tests/integration/postgres/codebase-analysis.test.ts",
+            "src/api/routes/codebase-analysis.ts",
+            "src/modules/learning/domain/finding-transitions.ts",
+            "docs/work-items/WORK-022.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [
