@@ -945,6 +945,42 @@
           ]
         }
       }
+    },
+    "WORK-023": {
+      "asOf": "2026-08-31T20:40:00Z",
+      "branch": "work/WORK-023-deployment-fabric",
+      "baseRevision": "95159210bd056ffb034d27da1b31ac4d0aca2074",
+      "assuranceProfile": "HIGH_ASSURANCE",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-023.md",
+            "tests/unit/deployments/fabric-domain.test.ts",
+            "tests/unit/deployments/fabric-service.test.ts",
+            "tests/integration/postgres/deployments-fabric.test.ts"
+          ]
+        },
+        "EXECUTION-PROVENANCE": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/deployments-fabric.test.ts",
+            "src/platform/db/migrations/0012_deployment_fabric.sql",
+            "docs/work-items/WORK-023.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/deployment-fabric-boundary.test.ts",
+            "tests/discrimination/deployment-fabric.discrimination.test.ts",
+            "docs/work-items/WORK-023.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

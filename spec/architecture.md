@@ -156,6 +156,7 @@ The initial modular-monolith modules are:
 | `/models` | model/provider adapters and model metadata |
 | `/tools` | governed tool registry and tool execution |
 | `/agents` | agent providers and agent runtime contract |
+| `/deployments` | provider-neutral agent deployment fabric (profiles, plans, lifecycle) |
 | `/context` | retrieval/context compilation and artifact derivation |
 | `/sandbox` | process/container/microVM/VM/customer-runner environments |
 | `/verification` | verification strategies, evaluations and quality gates |
