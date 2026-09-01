@@ -32,6 +32,11 @@ Every requirement is traced to an owning Work Order in `spec/requirement-traceab
 
 Read `AGENTS.md`, then `docs/ARCHITECT-RUNBOOK.md`. The architect is the semantic and merge authority for the implementation program. Work Orders, ADRs, checkpoint verdicts and post-merge finalization are repository-resident authority artifacts.
 
+## Architecture and roadmap evolution
+
+- `docs/adr/ADR-0017-procedural-competence-and-runtime-interoperability.md` — additive evolution for reusable procedural competence, session/gateway interoperability and external runtime adapters.
+- `docs/ROADMAP.md` — forward roadmap for competence, progressive deterministicization, runtime interoperability and trusted reusable computational artifacts.
+
 ## Initial implementation target
 
 The first implementation wave is a modular-monolith control plane with:

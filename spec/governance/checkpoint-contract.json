@@ -14,6 +14,7 @@
     {"id":"SANDBOX-BOUNDARY","area":"compute isolation","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
     {"id":"LEARNING-NONAUTHORITY","area":"learning cannot weaken authority","severity":"blocking","proofClasses":["static","dynamic"]},
     {"id":"IMPLEMENTATION-COMPLETENESS","area":"work-order completeness","severity":"blocking","proofClasses":["static","dynamic"]},
-    {"id":"SELF-HOSTING-BOUNDARY","area":"repository development governance","severity":"blocking","proofClasses":["static","dynamic","discrimination"]}
+    {"id":"SELF-HOSTING-BOUNDARY","area":"repository development governance","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"ECONOMIC-AUTHORITY-BOUNDARY","area":"economic action authorization and payment rail authority","severity":"blocking","proofClasses":["static","dynamic","discrimination"]}
   ]
 }

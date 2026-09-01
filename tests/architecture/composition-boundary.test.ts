@@ -162,15 +162,18 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     // pre-assigned 0011/0012/0013 by dispatch order, documented in every
     // sibling evidence file; the assertion is MERGE-ORDER TOLERANT: the
     // wave numbers may be present (a sibling merged first) or absent
-    // (this branch carries only its own claim).
+    // (this branch carries only its own claim). WORK-032 landed on main
+    // (PR #36) and contributes 0014_economic_actions.sql; 0011-0013
+    // arrive with their sibling work orders' merges, so the reconciled
+    // inventory is [1..10, 12, 14] with file gaps LEGAL pre-merge (the
+    // runner applies in ascending order and allows gaps) — uniqueness +
+    // the intact baseline + the present claims are the invariants.
     for (let version = 1; version <= 10; version += 1) {
       expect(migrations).toContain(version);
     }
     expect(migrations.filter((version) => version <= 10)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-    // File-inventory gaps are LEGAL pre-merge (the runner applies in
-    // ascending order and allows gaps; each parallel branch carries only
-    // its own claim) — uniqueness + the intact baseline + this branch's
-    // own claim are the invariants under test.
+    expect(migrations).toContain(12); // this branch's claim (WORK-023, asserted below via the file read)
+    expect(migrations).toContain(14); // WORK-032 economic actions (landed on main)
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),

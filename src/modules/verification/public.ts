@@ -49,6 +49,11 @@ import {
   createReferenceEvaluator,
   createSchemaEvaluator,
 } from "./adapters/deterministic-evaluators";
+import type { EconomicDeliveryEvidenceSource } from "./adapters/economic-delivery";
+import {
+  createEconomicDeliveryResolver,
+  economicDeliveryFacts,
+} from "./adapters/economic-delivery";
 import {
   createExecutionLedgerAdapter,
   createExecutionTransitionAdapter,
@@ -187,6 +192,7 @@ export type {
   CompleteEvaluationInput,
   CriteriaDeclarationIssues,
   CriterionKind,
+  EconomicDeliveryEvidenceSource,
   EvaluationContext,
   EvaluationJournalRecord,
   EvaluationJournalStatus,
@@ -240,6 +246,7 @@ export {
   createArtifactTargetResolver,
   createDeterministicEvaluatorBank,
   createDigestEvaluator,
+  createEconomicDeliveryResolver,
   createExactMatchEvaluator,
   createExecutionLedgerAdapter,
   createExecutionTransitionAdapter,
@@ -253,6 +260,7 @@ export {
   DETERMINISTIC_CRITERION_KINDS,
   deriveConclusion,
   EVALUATOR_KINDS,
+  economicDeliveryFacts,
   HUMAN_DECISION_STATUSES,
   InMemoryVerificationStore,
   isCriterionKind,
