@@ -783,6 +783,25 @@ export function createEconomicActionService(
         );
 
         const terminalStatus = observation.status === "succeeded" ? "settled" : "failed";
+        // JOURNAL-THEN-MUTATE for the terminal transition: the executions
+        // ledger mirror rides the executions service's OWN transaction
+        // (its own idempotency arbitration), so it must run BEFORE the
+        // terminal row write — a SECOND in-transaction UPDATE of the
+        // action row makes the arbitration transaction hold a FOR KEY
+        // SHARE on the referenced executions row (PostgreSQL FK check),
+        // which would block the ledger write's row lock and deadlock the
+        // charge against itself on real PostgreSQL. The mirror is
+        // status-preserving evidence (the executions lifecycle is never
+        // moved by it), so journaling it first is exactly the
+        // journal-then-dispatch discipline the charge path already uses.
+        await journalToExecutionLedger(
+          command,
+          executingAction,
+          terminalStatus === "settled" ? "economic-action-settled" : "economic-action-failed",
+          "rail",
+          { settlementId: settlement.id, railId: settlement.railId },
+          idempotencyKey,
+        );
         const terminalAction = await tx.store.transitionEconomicAction(
           command.applicationId,
           action.id,
@@ -797,14 +816,6 @@ export function createEconomicActionService(
           "rail",
           { settlementId: settlement.id, finalStatus: terminalStatus },
           { finalStatus: terminalStatus },
-        );
-        await journalToExecutionLedger(
-          command,
-          terminalAction,
-          terminalStatus === "settled" ? "economic-action-settled" : "economic-action-failed",
-          "rail",
-          { settlementId: settlement.id, railId: settlement.railId },
-          idempotencyKey,
         );
         return { settlementId: settlement.id, authorizationId: authorization.id };
       };

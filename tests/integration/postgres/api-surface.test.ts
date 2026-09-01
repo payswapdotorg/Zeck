@@ -14,7 +14,10 @@
  *    state machine; terminal executions reject cancel with 409;
  *  - agent inventory projection over the real registry (M16/M22);
  *  - tenant isolation (M1): cross-tenant reads/cancels are 404;
- *  - version/lifecycle reads: events, verification, results.
+ *  - version/lifecycle reads: events, verification, results;
+ *  - economic actions (WORK-032): POST/GET/events/outcome routes over
+ *    the REAL economics SQL authority (migration 0014) with real
+ *    idempotency, the scrubbed serializers, and cross-tenant 404s.
  */
 
 import { expect, test } from "vitest";
@@ -309,5 +312,126 @@ definePgSuite("public API over real PostgreSQL (agents)", (ctx) => {
     expect(versions).toHaveLength(1);
     const selections = await world.agents.listSelections(world.applicationId, seeded.agentId);
     expect(selections).toHaveLength(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Economic actions (WORK-032): the public routes over the REAL economics
+  // SQL authority (migration 0014) — create, scope-checked reads, the
+  // append-only event ledger, the outcome axes, and real idempotency.
+  // -------------------------------------------------------------------------
+
+  test("POST /economic-actions creates intent through the real SQL authority; duplicate POST converges", async () => {
+    const world = await seedApiPgWorld(ctx.port);
+    const executionId = await world.seedExecution("econ-api-exec-1");
+    const payload = {
+      applicationId: world.applicationId,
+      executionId,
+      purpose: "purchase",
+      recipient: { kind: "merchant", id: "merchant-42" },
+      amount: { kind: "range", minMicroUsd: "100000", maxMicroUsd: "200000" },
+      currency: "usd",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      requiredCapabilities: [{ kind: "tool", name: "payment-processor" }],
+      metadata: { orderRef: "ord-1", apiToken: "should-be-scrubbed" },
+    };
+    const send = () =>
+      world.server.app.inject({
+        method: "POST",
+        url: "/economic-actions",
+        headers: { ...authHeaders(world), "idempotency-key": "econ-api-create-1" },
+        payload,
+      });
+    const first = await send();
+    expect(first.statusCode).toBe(201);
+    const receipt = first.json();
+    expect(receipt.economicActionId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(receipt.status).toBe("proposed");
+    expect(receipt.executionId).toBe(executionId);
+    expect(receipt.replayed).toBe(false);
+    // The same key + same fingerprint replays the SAME durable action.
+    const replay = await send();
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json().economicActionId).toBe(receipt.economicActionId);
+    expect(replay.json().replayed).toBe(true);
+    const rows = await ctx.port.execute<{ count: string }>({
+      sql: "SELECT count(*)::text AS count FROM economics.economic_actions WHERE id = $1",
+      parameters: [receipt.economicActionId],
+    });
+    expect(rows.rows[0]?.count).toBe("1");
+    // A mutated fingerprint under the same key fails closed with 409.
+    const conflict = await world.server.app.inject({
+      method: "POST",
+      url: "/economic-actions",
+      headers: { ...authHeaders(world), "idempotency-key": "econ-api-create-1" },
+      payload: { ...payload, amount: { kind: "exact", microUsd: "125000" } },
+    });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json().code).toBe("IDEMPOTENCY_KEY_REUSED");
+
+    // GET /economic-actions/:id: the durable record with SCRUBBED metadata
+    // (secret-shaped keys never cross the wire).
+    const read = await world.server.app.inject({
+      method: "GET",
+      url: `/economic-actions/${receipt.economicActionId}`,
+      headers: authHeaders(world),
+    });
+    expect(read.statusCode).toBe(200);
+    const action = read.json();
+    expect(action.id).toBe(receipt.economicActionId);
+    expect(action.status).toBe("proposed");
+    expect(action.metadata.orderRef).toBe("ord-1");
+    expect(action.metadata.apiToken).toBe("[redacted]");
+    expect(JSON.stringify(action)).not.toContain("should-be-scrubbed");
+
+    // GET /economic-actions/:id/events: the gapless per-action ledger.
+    const events = await world.server.app.inject({
+      method: "GET",
+      url: `/economic-actions/${receipt.economicActionId}/events`,
+      headers: authHeaders(world),
+    });
+    expect(events.statusCode).toBe(200);
+    const ledger = events.json();
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0].sequence).toBe(1);
+    expect(ledger[0].type).toBe("action.recorded");
+
+    // GET /economic-actions/:id/outcome: settlement and delivery as the
+    // SEPARATE axes (nothing settled, nothing delivered — intent only).
+    const outcome = await world.server.app.inject({
+      method: "GET",
+      url: `/economic-actions/${receipt.economicActionId}/outcome`,
+      headers: authHeaders(world),
+    });
+    expect(outcome.statusCode).toBe(200);
+    expect(outcome.json().settlement).toBeNull();
+    expect(outcome.json().deliveries).toEqual([]);
+    expect(outcome.json().status).toBe("proposed");
+  });
+
+  test("M1: cross-tenant economic-action reads are 404 (no tenant leak)", async () => {
+    const world = await seedApiPgWorld(ctx.port);
+    const executionId = await world.seedExecution("econ-api-exec-2");
+    const created = await world.economics.createEconomicAction(
+      {
+        actorId: world.actorId,
+        applicationId: world.applicationId,
+        tenantId: world.tenantId,
+        executionId,
+        purpose: "purchase",
+        recipient: { kind: "merchant", id: "merchant-42" },
+        amount: { kind: "exact", microUsd: "125000" },
+        currency: "usd",
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        requiredCapabilities: [],
+      },
+      "econ-api-cross-1",
+    );
+    const response = await world.server.app.inject({
+      method: "GET",
+      url: `/economic-actions/${created.action.id}`,
+      headers: otherTenantHeaders(world),
+    });
+    expect(response.statusCode).toBe(404);
+    expect(JSON.stringify(response.json())).not.toContain(world.tenantId);
   });
 });

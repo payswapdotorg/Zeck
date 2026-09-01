@@ -462,7 +462,7 @@ RETURNING ${AUTHORIZATION_COLUMNS}`,
   async insertSettlement(input: InsertSettlementInput): Promise<SettlementObservationRecord> {
     const result = await this.executor.execute<SettlementRow>({
       sql: `INSERT INTO economics.settlement_observations (${SETTLEMENT_COLUMNS})
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 ON CONFLICT (application_id, rail_id, rail_transaction_ref) DO NOTHING
 RETURNING ${SETTLEMENT_COLUMNS}`,
       parameters: [
@@ -478,6 +478,7 @@ RETURNING ${SETTLEMENT_COLUMNS}`,
         input.currency,
         input.observedAt,
         input.evidenceDigest,
+        input.recordedAt,
       ],
     });
     const inserted = first(result.rows);
