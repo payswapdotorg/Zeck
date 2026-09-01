@@ -16,7 +16,6 @@ This file exists so a fresh LLM/architect session can resume work without relyin
 10. `spec/development-state/checkpoint-state.json`
 11. `spec/requirement-traceability.md`
 12. Relevant `spec/work-orders/WORK-NNN.md`
-13. `docs/SESSION-HANDOFF.md` when present for the active work order
 
 Then run:
 
@@ -34,9 +33,8 @@ As of 2026-09-01, the active implementation is **WORK-022 — Codebase AI opport
 - Work branch: `work/WORK-022-opportunity-analysis`
 - PR: `#40`
 - PR URL: https://github.com/pectoraux/Zeck/pull/40
-- Current PR head: `35c6aa01666ec366aa09e29d6193cc1c08c4b8d1`
-- Current `main`: `f15c2cc91ef2b5b36cdea7682f98b37a657db433`
-- PR #40 is currently open and GitHub reports it as non-mergeable; do not assume the PR description reflects a reconciled merge state.
+- The exact current branch and `main` SHAs must always be read from GitHub immediately before acting; this document deliberately does not hard-code mutable SHAs.
+- PR #40 is currently open and has a non-mergeable state resulting from `main` moving forward after WORK-019 merged. Verify the live PR before changing anything.
 
 ## Current work product
 
@@ -48,41 +46,32 @@ The primary evidence document is:
 
 Its implementation/evidence history and requirement mapping should be treated as the canonical description of what WORK-022 actually contains.
 
-## Verified evidence recorded before the continuation commits
+## Historical verification evidence
 
-The Repository Governance workflow for `86093eac92f9e87c16142567c95e1d8a79fdb950` completed successfully.
+Before the latest continuation/handoff commits and before post-WORK-019 reconciliation, the repository recorded a green verification at an earlier exact WORK-022 head, including successful governance workflow, typecheck, lint, targeted suites, real PostgreSQL suites, and repeated full regression. Those historical numbers remain evidence of that earlier revision only.
 
-Recorded local evidence in the PR/work-item includes:
-
-- `bun run typecheck`: 0 errors
-- `bun run lint`: 0 errors, 0 warnings
-- `python3 scripts/governance-check.py`: exit 0 at the recorded implementation evidence point
-- targeted unit: 1236/1236
-- architecture + discrimination: 633/633
-- real PostgreSQL: 337/337
-- full regression: 2212/2212 twice consecutively at the recorded exact final head
-
-These are historical evidence claims. They do not certify the later continuation commits or a post-WORK-019 reconciliation. A fresh architect must re-run the required gate after any branch/base reconciliation or source/state change.
+A fresh architect must re-run the required verification after branch/base reconciliation or any source/state change and bind the final evidence to the resulting exact commit SHA.
 
 ## Immediate next action
 
 Do **not** start new feature implementation from chat memory.
 
-First reconcile WORK-022 with current `main` because WORK-019 has since merged into `main`. Preserve both Work Orders' governance records and migration claims. In particular:
+First reconcile WORK-022 with current `main` because WORK-019 has merged into `main`. Preserve both Work Orders' governance records and migration claims. In particular:
 
 - WORK-019 owns migration `0015`.
 - WORK-022 owns migration `0016`.
 - The migration runner must continue to apply migrations in ascending order and tolerate the parallel-wave gap semantics described by the Work Orders.
 - Do not delete or overwrite existing governance records merely to make JSON conflicts disappear.
+- Inspect the actual branch diff and development-state files before resolving anything.
 - After reconciliation, re-run governance, typecheck, lint, architecture/discrimination, integration, real-PG suites, and the full regression required by the Work Order.
 - Re-pin the final evidence to the actual post-reconciliation commit SHA.
 - Only the architect may approve/merge the PR.
 
 ## Known state issue at cutoff
 
-PR #40 is based on the older pre-WORK-019 `main` state and has a governance-state merge conflict/non-mergeable condition after WORK-019 merged. The previous session began reconciling this frontier/checkpoint state. Treat the current branch state as the starting point; inspect the actual files and git diff before making further edits.
+PR #40 was created from the pre-WORK-019 `main` state. The branch subsequently underwent state reconciliation, and GitHub currently reports the PR as non-mergeable. Treat the live branch contents as authoritative and inspect the exact diff before further edits.
 
-A previous attempted state reconciliation produced an unnecessarily large rewrite of `spec/development-state/checkpoint-state.json`. Do not preserve a wholesale rewrite if it is not semantically required. Prefer the smallest correct union of WORK-019 and WORK-022 records.
+A previous attempted reconciliation produced an unnecessarily large rewrite of `spec/development-state/checkpoint-state.json`. Do not preserve a wholesale rewrite if it is not semantically required. Prefer the smallest correct union of WORK-019 and WORK-022 records.
 
 ## Architectural non-negotiables
 
