@@ -422,6 +422,127 @@ export function webhookDedupeKey(event: WebhookEvent): string {
 }
 
 // ---------------------------------------------------------------------------
+// Codebase opportunity analysis (WORK-022 / DTR-005 — advisory, read-only)
+// ---------------------------------------------------------------------------
+
+/** The advisory finding states (never 'promoted' — that is not a public state). */
+export const CODEBASE_FINDING_STATES = ["advisory", "candidate", "verified"] as const;
+
+export type CodebaseFindingState = (typeof CODEBASE_FINDING_STATES)[number];
+
+/** The public opportunity-class vocabulary (mirrors the learning domain). */
+export const CODEBASE_OPPORTUNITY_CLASSES = [
+  "ai-addition",
+  "ai-removal",
+  "deterministic-replacement",
+  "tool-replacement",
+  "tool-composition",
+  "hybrid-decomposition",
+  "context-enhancement",
+  "verification-enhancement",
+  "human-evaluation",
+] as const;
+
+export type CodebaseOpportunityClass = (typeof CODEBASE_OPPORTUNITY_CLASSES)[number];
+
+/** Cost/latency impact with the honest basis (measured | estimated | unknown). */
+export interface CodebaseImpact {
+  readonly currentMicroUsd?: string | null;
+  readonly candidateMicroUsd?: string | null;
+  readonly expectedSavingsMicroUsd?: string | null;
+  readonly basis: "measured" | "estimated" | "unknown";
+  readonly currentMs?: number | null;
+  readonly candidateMs?: number | null;
+}
+
+/** One advisory finding of a codebase analysis (provenance-pinned). */
+export interface CodebaseFinding {
+  readonly findingId: string;
+  readonly analysisId: string;
+  readonly class: CodebaseOpportunityClass;
+  readonly state: CodebaseFindingState;
+  readonly targetNodeIds: readonly string[];
+  readonly reasonCodes: readonly string[];
+  readonly evidenceRefs: readonly string[];
+  readonly provenance: {
+    readonly repository: string;
+    readonly revision: string;
+    readonly targets: readonly {
+      readonly nodeId: string;
+      readonly file: string;
+      readonly symbol: string | null;
+    }[];
+  };
+  readonly confidence: {
+    readonly level: string;
+    readonly population: number;
+    readonly basis: string;
+  };
+  readonly impact: CodebaseImpact;
+  readonly deterministicEquivalence: {
+    readonly potential: string;
+    readonly basis: readonly string[];
+  };
+  readonly recommendation: {
+    readonly strategy: string;
+    readonly validationSteps: readonly string[];
+  };
+  readonly recordedAt: string;
+}
+
+/** A selective human-evaluation prompt (value-of-information gated). */
+export interface CodebasePrompt {
+  readonly promptId: string;
+  readonly findingId: string;
+  readonly questionKind: string;
+  readonly question: string;
+  readonly expectedInformationGain: number;
+  readonly userFrictionThreshold: number;
+  readonly basis: readonly string[];
+  readonly emittedAt: string;
+}
+
+/** The analysis-run record (bound to the governing analysis execution). */
+export interface CodebaseAnalysis {
+  readonly analysisId: string;
+  readonly applicationId: string;
+  readonly executionId: string;
+  readonly repository: string;
+  readonly revision: string;
+  readonly analysisVersion: number;
+  readonly findingCount: number;
+  readonly promptCount: number;
+  readonly digest: string;
+  readonly recordedAt: string;
+  readonly replayed: boolean;
+}
+
+/** GET /codebase-analysis/:id — the full advisory report. */
+export interface CodebaseAnalysisReport {
+  readonly analysis: CodebaseAnalysis;
+  readonly findings: readonly CodebaseFinding[];
+  readonly prompts: readonly CodebasePrompt[];
+}
+
+/** The immutable evaluation-rating receipt (preference-only answers). */
+export interface CodebaseRatingReceipt {
+  readonly ratingId: string;
+  readonly findingId: string;
+  readonly replayed: boolean;
+  /** The recorded answer (preference vocabulary — never a verification PASS). */
+  readonly answer: string;
+}
+
+/** The evidence-gated finding-transition receipt. */
+export interface CodebaseFindingTransitionReceipt {
+  readonly transitionId: string;
+  readonly findingId: string;
+  readonly fromState: CodebaseFindingState;
+  readonly toState: CodebaseFindingState;
+  readonly replayed: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // The public error model (the canonical taxonomy, stable codes)
 // ---------------------------------------------------------------------------
 

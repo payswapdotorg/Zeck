@@ -22,3 +22,11 @@ export type {
   TelemetryIngestionOutcome,
   TelemetryQuery,
 } from "./learning-store";
+export type {
+  AnalysisInsertOutcome,
+  FindingInsertOutcome,
+  OpportunityScope,
+  OpportunityStore,
+  RatingInsertOutcome,
+  TransitionAppendOutcome,
+} from "./opportunity-store";

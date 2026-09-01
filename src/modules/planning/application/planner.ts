@@ -37,6 +37,7 @@ import type {
   DeterministicSufficiencyDecision,
   ExecutionPlan,
   LearningConsultation,
+  OpportunityConsultation,
   PlanningDecisionRecord,
   RouteRationale,
   TaskConstraintInput,
@@ -45,6 +46,7 @@ import type {
 import {
   buildCompositionConsultation,
   buildLearningConsultation,
+  buildOpportunityConsultation,
   buildPlan,
   canonicalJson,
   decisionRecordDigest,
@@ -65,6 +67,7 @@ import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
 import type { DigestPort } from "../ports/digest";
 import type { LearningSignals } from "../ports/learning-signals";
 import type { ModelRouteCandidate, ModelRouteExplorer } from "../ports/model-routes";
+import type { OpportunitySignals } from "../ports/opportunity-signals";
 import type { PlanningDecisionSink } from "../ports/planning-sink";
 import type { PlanningPolicyInputs } from "../ports/policy-inputs";
 import type { SubstrateCatalog } from "../ports/substrate-catalog";
@@ -102,6 +105,19 @@ export interface PlannerServiceDeps {
    * interaction (planning works without recommendation history).
    */
   readonly compositionRecommendations?: CompositionRecommendations;
+  /**
+   * OPTIONAL codebase-opportunity READ seam (WORK-022 / DTR-005): when
+   * wired, the planner consults the application's advisory
+   * opportunity findings AFTER the governed selection and records the
+   * consultation as decision EVIDENCE — the live selection is never
+   * changed by it (the finding is advisory: RECOMMENDATION ≠ PLANNER
+   * DECISION ≠ AUTHORIZATION — M17). The consultation validates every
+   * finding's version/provenance basis at the seam (an unversioned or
+   * unprovenanced finding fails closed and never enters a decision
+   * record). Unwired ⇒ zero opportunity interaction (planning works
+   * without codebase-analysis history).
+   */
+  readonly opportunitySignals?: OpportunitySignals;
   /**
    * OPTIONAL substrate catalog READ seam (WORK-031 / CSX-003): when
    * wired AND the request declares a workload class, the planner
@@ -464,6 +480,32 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         }
       }
 
+      // 7.8 OPTIONAL codebase-opportunity consultation (WORK-022 /
+      //     DTR-005) — READ ONLY, AFTER the governed selection: the
+      //     consultation is captured as decision evidence; it cannot
+      //     change `selected` (already computed above), cannot revive
+      //     an inadmissible candidate and cannot revisit the
+      //     deterministic-sufficiency decision (M17: recommendation ≠
+      //     planner decision ≠ authorization — the implied preference
+      //     is recorded evidence, never applied). A consultation
+      //     failure fails the planning request closed — a
+      //     malformed/unversioned finding NEVER enters a decision
+      //     record (M11/M12/M13) and planning never silently degrades
+      //     on corrupt learning data.
+      let opportunityConsultation: OpportunityConsultation | undefined;
+      if (deps.opportunitySignals !== undefined) {
+        const consultedFindings = await deps.opportunitySignals.consult({
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+        });
+        opportunityConsultation = buildOpportunityConsultation({
+          candidates: admissibleCandidates,
+          findings: consultedFindings,
+          selectedStrategyId: selected.strategyId,
+          consultedAt: iso(),
+        });
+      }
+
       // 8. The durable decision record (validated closed shape, then the
       //    executions ledger appends it — single write path). The
       //    decisionId is CONTENT-DERIVED (digest over the request identity
@@ -517,6 +559,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         ...(learningConsultation === undefined ? {} : { learningConsultation }),
         ...(compositionConsultation === undefined ? {} : { compositionConsultation }),
         ...(substrateSelection === undefined ? {} : { substrateSelection }),
+        ...(opportunityConsultation === undefined ? {} : { opportunityConsultation }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

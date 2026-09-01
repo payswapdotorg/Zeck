@@ -1,5 +1,6 @@
 /**
- * Planning module domain barrel (WORK-009 + WORK-017 composition seam).
+ * Planning module domain barrel (WORK-009 + WORK-017 composition seam +
+ * WORK-022 opportunity-consultation seam).
  */
 
 export { canonicalJson, isCanonicalizable } from "./canonical";
@@ -41,6 +42,17 @@ export {
   validateConsultedSignal,
   validateLearningConsultation,
 } from "./learning-consultation";
+export type {
+  ConsultedOpportunitySignal,
+  OpportunityConsultation,
+} from "./opportunity-consultation";
+export {
+  buildOpportunityConsultation,
+  CONSULTED_OPPORTUNITY_CLASS,
+  opportunityPreferredCandidateId,
+  validateConsultedOpportunitySignal,
+  validateOpportunityConsultation,
+} from "./opportunity-consultation";
 export type {
   BuildPlanInput,
   ExecutionPlan,
