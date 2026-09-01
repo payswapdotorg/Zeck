@@ -91,3 +91,37 @@ Recorded in `spec/development-state/checkpoint-state.json` under `WORK-018` (all
 ## PR binding
 
 BOUND — the PR body of this branch's pull request records the exact final head, the complete-gate re-execution at that head, and the CI run identity (the two-phase SHA binding convention: the implementation gate is recorded above at `6cfb990`; the evidence head's gate is re-executed after this commit lands and recorded in the PR body before push).
+
+## Reconciliation onto main@286b3f8 (post WORK-032 landing)
+
+Historical provenance: the wave-verified implementation head `9fd6aaccf83bdf9190d6dbc438c36bd932775f7d` (PR #31, CI run 33433211211) remains an ancestor — reconciliation used a MERGE, not a rebase: merge commit `160b47603e6f877cb3c1807456057bc46c6b8029` with parents `(9fd6aac, 286b3f83118364cb31acd680ca56ad96448c3776)`. The final head is THIS evidence commit (bound exactly in the PR body after push). The push is a plain fast-forward of the branch.
+
+Conflicts (exactly the pretested surface) and their semantic-union resolutions:
+
+- `spec/development-state/checkpoint-state.json` — union: ALL of main's entries (WORK-001..WORK-017 byte-identical, plus WORK-032's three passed contracts exactly as main finalized them) + the WORK-018 entry byte-identical to `9fd6aac`. Zero deletions vs main (44 added lines = the WORK-018 entry + one list comma).
+- `tests/architecture/composition-boundary.test.ts` — union of test cases (10 tests both sides, none dropped): the migration-inventory gate is now MERGE-ORDER TOLERANT (the pattern proven on the sibling reconciliations) — baseline `0001..0010` asserted intact/contiguous, `toContain(11)` (this branch's own claim), `toContain(14)` (WORK-032, landed on main), the 0010 content assertions kept, and this branch's 0011 content assertions (`tools.synthesized_programs`, `ADD COLUMN output jsonb`) kept verbatim. Main's exact-list `toEqual([1..10, 14])` is strictly subsumed.
+- `spec/development-state/frontier-state.json` (auto-merged, semantically reviewed) — the required union: `eligible=['WORK-023','WORK-031']`, `inFlight=['WORK-018']` (byte-identical to `9fd6aac`; WORK-032 done and off the frontier).
+- `spec/development-state/program-state.json` (auto-merged, semantically reviewed) — main's file verbatim (catalog v3/102 requirements, 32 work orders, WORK-032 `complete`/`mergedAs` PR #36, 17 ADRs) + this branch's single semantic flip WORK-018 `pending`→`in-flight`. Proven equal to `json(main)` with exactly that one field changed.
+
+Byte-for-byte guarantees (proven by empty diffs): `src/platform/db/migrations/0011_tool_synthesis.sql` unchanged vs `9fd6aac`; `src/platform/db/migrations/0014_economic_actions.sql` unchanged vs `286b3f8`. Migration inventory on the reconciled branch: 0001–0010 + 0011 + 0014; 0012/0013 ABSENT by design (sibling claims, not created, never renumbered) — the runner tolerates the pre-merge file gaps (the WORK-032 and sibling-reconciliation precedent).
+
+Preservation proof (the wave change set 9515921→9fd6aac, 37 files): 34/37 files byte-identical on the reconciled tree (all 20 added files + 14 of 17 modified); the 3 that differ are the shared governance/union files above, each differing from `9fd6aac` ONLY by main-side additions or subsuming restructure (checkpoint-state: 0 deletions/44 additions; program-state: main's compact format with identical semantics + the preserved in-flight flip; composition-boundary: subsumed assertions, no case dropped). `git diff 286b3f8..HEAD`: 20 added + 17 modified files, ZERO file deletions; the only 14 deleted lines are (a) the two intentional governance-transition lines (frontier eligible/inFlight), (b) the one program-state status-flip line, (c) 4 lines of WORK-018's OWN pre-existing sandbox-column edit (file byte-identical to `9fd6aac`; main never touched it), (d) 7 lines of the subsumed main assertions/comments. WORK-032 code, tests, and state are all present.
+
+Complete gate re-executed at the reconciliation merge head `160b476` (Bun 1.3.14; real PostgreSQL 16.4 at `127.0.0.1:55432`; migrations 0001–0011 + 0014 on disposable databases):
+
+| Command | Result |
+|---|---|
+| `bun install --frozen-lockfile` | clean (116 installs / 165 packages, no changes) |
+| `bun run typecheck` | 0 errors |
+| `bun run lint` | 0 errors, 0 warnings (642 files) |
+| `bun run governance:check` | exit 0 — 32 Work Orders, 102 requirements, frontier `['WORK-023','WORK-031']` (WORK-018 the sole in-flight item) |
+| `bunx vitest run tests/architecture` | 114/114 (18 files) |
+| `bunx vitest run tests/discrimination` | 429/429 (31 files) |
+| `bun run test:integration` | 7 passed + 42 PG-gated skips, exit 0 |
+| `ZECK_PG_TEST_URL=… bun run test:integration` | 296/296 (42 files) |
+| `ZECK_PG_TEST_URL=… bun run test:pg` | 290/290 (40 files) — clean exit 0 on the first run |
+| `ZECK_PG_TEST_URL=… bun run test` (FULL suite) | **1925/1925 (178 files) in every run; ×2 consecutive clean exit-0** (runs 4 and 5). Two earlier runs fired the DOCUMENTED teardown transient (`permission denied to terminate process` at disposable-DB `dropDatabase` cleanup — all 1925 tests passing each time, exit 1 from cleanup accounting only; disclosed). |
+
+Test-count accounting against both parents: main `286b3f8` = 1848/1848 (172 files) + WORK-018's +77 tests/+6 files → 1925/178; old head `9fd6aac` = 1760/1760 (167 files) + WORK-032's +165/+11 → 1925/178. The reconciled inventory is exactly the semantic sum — nothing lost, nothing duplicated.
+
+The evidence-change rule applies once more: the complete gate is re-executed at THIS exact final head after this evidence commit lands; the fresh results and the fresh CI run identity are bound in the PR body before push (the two-phase SHA binding convention). CI on `9fd6aac` (run 33433211211) is historical provenance only.
