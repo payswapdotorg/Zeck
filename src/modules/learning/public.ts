@@ -67,12 +67,15 @@ import type {
   TelemetrySource,
 } from "./adapters/in-memory-composition-store";
 import { createInMemoryCompositionStore } from "./adapters/in-memory-composition-store";
+import type { InMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-policy-store";
+import { createInMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-policy-store";
 import type { InMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createInMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import type { InMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createInMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createNodeDigest } from "./adapters/node-digest";
 import { SqlCompositionStore } from "./adapters/sql-composition-store";
+import { SqlLearnedPolicyStore } from "./adapters/sql-learned-policy-store";
 import { SqlLearningStore } from "./adapters/sql-learning-store";
 import { SqlOpportunityStore } from "./adapters/sql-opportunity-store";
 import type {
@@ -83,6 +86,17 @@ import type {
   GenerateRecommendationSetRequest,
 } from "./application/composition-advisor";
 import { createCompositionAdvisor } from "./application/composition-advisor";
+import type {
+  ActiveLearnedPolicyView,
+  ConsultLearnedPolicyRequest,
+  EvaluateLearnedPolicyRequest,
+  GenerateLearnedPolicyRequest,
+  LearnedPolicyService,
+  LearnedPolicyServiceDeps,
+  PublishLearnedPolicyRequest,
+  RollbackLearnedPolicyRequest,
+} from "./application/learned-policy-service";
+import { createLearnedPolicyService } from "./application/learned-policy-service";
 import type {
   LearningService,
   LearningServiceDeps,
@@ -203,6 +217,47 @@ import {
   questionKindForClass,
   validateEvaluationPrompt,
 } from "./domain/human-evaluation";
+import type {
+  EvaluationScorecardLike,
+  LearnedPlanningPolicy,
+  LearnedPolicyCanaryBinding,
+  LearnedPolicyEvaluation,
+  LearnedPolicyEvaluationBasis,
+  LearnedPolicyEvaluationKind,
+  LearnedPolicyEvaluationMetrics,
+  LearnedPolicyEvaluationStatus,
+  LearnedPolicyPublication,
+  LearnedPolicyPublicationMode,
+  LearnedPolicyPublicationReason,
+  LearnedPolicyRollbackMetadata,
+  LearnedPolicyVerdict,
+  LearnedRouteMetric,
+  LearnedRoutePreference,
+  PublicationEvidenceReference,
+} from "./domain/learned-planning-policy";
+import {
+  evaluateLearnedPolicyAgainstScorecard,
+  isLearnedPolicyEvaluationKind,
+  isLearnedPolicyPublicationMode,
+  LEARNED_POLICY_ANALYSIS_VERSION,
+  LEARNED_POLICY_CLASS,
+  LEARNED_POLICY_EVALUATION_KINDS,
+  LEARNED_POLICY_EVALUATION_SCHEMA_VERSION,
+  LEARNED_POLICY_EVALUATION_STATUSES,
+  LEARNED_POLICY_PUBLICATION_MODES,
+  LEARNED_POLICY_PUBLICATION_REASONS,
+  LEARNED_POLICY_PUBLICATION_SCHEMA_VERSION,
+  LEARNED_POLICY_SCHEMA_VERSION,
+  LEARNED_POLICY_VERDICTS,
+  learnedPolicyDigestBasis,
+  learnedPolicyEvaluationDigestBasis,
+  learnedPolicyPublicationDigestBasis,
+  MINIMUM_PREFERENCE_POPULATION,
+  mineLearnedRoutePreferences,
+  validateLearnedPlanningPolicy,
+  validateLearnedPolicyEvaluation,
+  validateLearnedPolicyPublication,
+} from "./domain/learned-planning-policy";
 import type {
   CostImpact,
   DeterministicEquivalence,
@@ -330,6 +385,12 @@ import type {
 } from "./ports/composition-store";
 import type { DigestPort } from "./ports/digest";
 import type {
+  EvaluationAppendOutcome,
+  LearnedPolicyScope,
+  LearnedPolicyStore,
+  PublicationAppendOutcome,
+} from "./ports/learned-policy-store";
+import type {
   LearningStore,
   RatingIngestionOutcome,
   ScorecardScope,
@@ -431,6 +492,36 @@ export function createOpportunitySignalSource(
   };
 }
 
+/**
+ * The READ seam planning consumes for learned planning policies
+ * (WORK-020 / LRN-002; advisory evidence, never authority: a learned
+ * policy artifact is never a policy authority — the §10 invariant).
+ * The view carries the ACTIVE publication's policy projection with
+ * its full versioning and publication anchors; there is no method
+ * here that could change a plan, an authorization, a policy, a
+ * budget or any state (the same shape as the seams above).
+ */
+export interface LearnedPolicySource {
+  consult(request: {
+    readonly applicationId: string;
+    readonly tenantId: string;
+    readonly taskClass?: string;
+  }): Promise<ActiveLearnedPolicyView | null>;
+}
+
+/**
+ * Adapt the learned-policy service into the policy READ seam (a
+ * projection, never an authority: the ACTIVE publication's validated
+ * policy view with its full anchors leaves as evidence).
+ */
+export function createLearnedPolicySource(service: LearnedPolicyService): LearnedPolicySource {
+  return {
+    async consult(request) {
+      return service.consultLearnedPolicy(request);
+    },
+  };
+}
+
 // Application: the observational services.
 // Domain: the observation model (telemetry, scorecards, signals, shadow,
 // ratings) + the tool-composition learning model (facts, compositions,
@@ -441,6 +532,7 @@ export function createOpportunitySignalSource(
 export type {
   ActivateRecommendationSetRequest,
   ActivationAppendOutcome,
+  ActiveLearnedPolicyView,
   AdvanceFindingRequest,
   AggregationDefinition,
   AnalysisInsertOutcome,
@@ -456,16 +548,20 @@ export type {
   CompositionStep,
   CompositionStore,
   CompositionUnsupportedReason,
+  ConsultLearnedPolicyRequest,
   ConsultOpportunitySignalsRequest,
   ConsultRecommendationsRequest,
   CostImpact,
   DeterministicEquivalence,
   DeterministicEquivalencePotential,
   DigestPort,
+  EvaluateLearnedPolicyRequest,
   EvaluateShadowInput,
+  EvaluationAppendOutcome,
   EvaluationPrompt,
   EvaluationQuestionKind,
   EvaluationRatingRecord,
+  EvaluationScorecardLike,
   ExecutionGraph,
   ExecutionGraphEdge,
   ExecutionGraphNode,
@@ -476,12 +572,32 @@ export type {
   FindingState,
   FindingTransitionRecord,
   FrictionConfig,
+  GenerateLearnedPolicyRequest,
   GenerateRecommendationSetRequest,
   ImpactBasis,
   InMemoryCompositionStore,
+  InMemoryLearnedPolicyStore,
   InMemoryLearningStore,
   InMemoryOpportunityStore,
   LatencyImpact,
+  LearnedPlanningPolicy,
+  LearnedPolicyCanaryBinding,
+  LearnedPolicyEvaluation,
+  LearnedPolicyEvaluationBasis,
+  LearnedPolicyEvaluationKind,
+  LearnedPolicyEvaluationMetrics,
+  LearnedPolicyEvaluationStatus,
+  LearnedPolicyPublication,
+  LearnedPolicyPublicationMode,
+  LearnedPolicyPublicationReason,
+  LearnedPolicyRollbackMetadata,
+  LearnedPolicyScope,
+  LearnedPolicyService,
+  LearnedPolicyServiceDeps,
+  LearnedPolicyStore,
+  LearnedPolicyVerdict,
+  LearnedRouteMetric,
+  LearnedRoutePreference,
   LearningService,
   LearningServiceDeps,
   LearningSignal,
@@ -497,6 +613,9 @@ export type {
   OpportunityStore,
   OutcomeCount,
   PopulationContextKey,
+  PublicationAppendOutcome,
+  PublicationEvidenceReference,
+  PublishLearnedPolicyRequest,
   RatingIngestionOutcome,
   RatingInsertOutcome,
   RecommendationConfidence,
@@ -505,6 +624,7 @@ export type {
   RecordEvaluationRatingInput,
   RecordRatingInput,
   RecordTelemetryInput,
+  RollbackLearnedPolicyRequest,
   RouteObservation,
   Scorecard,
   ScorecardEntry,
@@ -565,8 +685,10 @@ export {
   compositionToolRefs,
   createCompositionAdvisor,
   createInMemoryCompositionStore,
+  createInMemoryLearnedPolicyStore,
   createInMemoryLearningStore,
   createInMemoryOpportunityStore,
+  createLearnedPolicyService,
   createLearningService,
   createNodeDigest,
   createOpportunityAnalyzer,
@@ -587,6 +709,7 @@ export {
   EXECUTION_GRAPH_SCHEMA_VERSION,
   EXPECTED_INFORMATION_GAIN,
   edgeCompatible,
+  evaluateLearnedPolicyAgainstScorecard,
   evaluationRatingFingerprintBasis,
   FINDING_CONFIDENCE_LEVELS,
   FINDING_STATES,
@@ -604,16 +727,33 @@ export {
   isFindingConfidenceLevel,
   isFindingState,
   isFindingTransitionEvidenceKind,
+  isLearnedPolicyEvaluationKind,
+  isLearnedPolicyPublicationMode,
   isOpportunityClass,
   isScorecardSubjectKind,
   isShadowEvaluationStatus,
   isTelemetryOutcome,
+  LEARNED_POLICY_ANALYSIS_VERSION,
+  LEARNED_POLICY_CLASS,
+  LEARNED_POLICY_EVALUATION_KINDS,
+  LEARNED_POLICY_EVALUATION_SCHEMA_VERSION,
+  LEARNED_POLICY_EVALUATION_STATUSES,
+  LEARNED_POLICY_PUBLICATION_MODES,
+  LEARNED_POLICY_PUBLICATION_REASONS,
+  LEARNED_POLICY_PUBLICATION_SCHEMA_VERSION,
+  LEARNED_POLICY_SCHEMA_VERSION,
+  LEARNED_POLICY_VERDICTS,
   LEARNING_SIGNAL_CLASS,
   LEARNING_SIGNAL_SCHEMA_VERSION,
   LOW_ERROR_RATE,
+  learnedPolicyDigestBasis,
+  learnedPolicyEvaluationDigestBasis,
+  learnedPolicyPublicationDigestBasis,
   linearCompositionOf,
   MINIMUM_DETERMINISTIC_POPULATION,
+  MINIMUM_PREFERENCE_POPULATION,
   MINIMUM_SEQUENCE_POPULATION,
+  mineLearnedRoutePreferences,
   OPPORTUNITY_ANALYSIS_SCHEMA_VERSION,
   OPPORTUNITY_ANALYSIS_VERSION,
   OPPORTUNITY_CLASSES,
@@ -633,6 +773,7 @@ export {
   SHADOW_RECORD_CLASSES,
   SHADOW_SCHEMA_VERSION,
   SqlCompositionStore,
+  SqlLearnedPolicyStore,
   SqlLearningStore,
   SqlOpportunityStore,
   scorecardDigestBasis,
@@ -655,6 +796,9 @@ export {
   validateExecutionTelemetry,
   validateFindingTransition,
   validateFindingTransitionRecord,
+  validateLearnedPlanningPolicy,
+  validateLearnedPolicyEvaluation,
+  validateLearnedPolicyPublication,
   validateLearningSignal,
   validateOpportunityFinding,
   validateRecommendationSetActivation,

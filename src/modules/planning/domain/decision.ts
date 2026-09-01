@@ -21,6 +21,8 @@ import type { RestrictionSet } from "../../policies/public";
 import { canonicalJson } from "./canonical";
 import type { CompositionConsultation } from "./composition-consultation";
 import { validateCompositionConsultation } from "./composition-consultation";
+import type { LearnedPolicyConsultation } from "./learned-policy-consultation";
+import { validateLearnedPolicyConsultation } from "./learned-policy-consultation";
 import type { LearningConsultation } from "./learning-consultation";
 import { validateLearningConsultation } from "./learning-consultation";
 import type { OpportunityConsultation } from "./opportunity-consultation";
@@ -99,6 +101,21 @@ export interface PlanningDecisionRecord {
    * records what the consulted findings imply (M11/M12/M13/M17/M28).
    */
   readonly opportunityConsultation?: OpportunityConsultation;
+  /**
+   * OPTIONAL learned-policy consultation capture (WORK-020 / LRN-002):
+   * the ACTIVE learned-planning-policy publication consulted for this
+   * decision, with its full versioning + publication anchors, the
+   * policy re-check verdicts, the learned preference among
+   * ADMISSIBLE candidates, the governed (learning-free) selection it
+   * is compared against, and whether a 'promoted' publication's
+   * ordering refined the live selection. Absent when no learned
+   * policy seam is wired or no publication exists (an unpublished
+   * learned optimization never influences a decision — AC-4). The
+   * consultation may refine the ORDERING among already-admissible
+   * candidates only; it never changes admissibility, sufficiency or
+   * the deterministic-first preference.
+   */
+  readonly learnedPolicyConsultation?: LearnedPolicyConsultation;
   /**
    * OPTIONAL substrate-selection capture (WORK-031 / CSX-003): the
    * provider-neutral computational substrate selected for the selected
@@ -248,6 +265,12 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // of the closed shape — validated (version + provenance anchors)
     // whenever present.
     validateOpportunityConsultation(record.opportunityConsultation);
+  }
+  if (record.learnedPolicyConsultation !== undefined) {
+    // WORK-020: the learned-policy consultation capture is part of the
+    // closed shape — validated (versioning + publication anchors,
+    // population floor, provenance) whenever present.
+    validateLearnedPolicyConsultation(record.learnedPolicyConsultation);
   }
   if (record.substrateSelection !== undefined) {
     // WORK-031: the substrate-selection capture is part of the closed

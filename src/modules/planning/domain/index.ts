@@ -1,6 +1,7 @@
 /**
  * Planning module domain barrel (WORK-009 + WORK-017 composition seam +
- * WORK-022 opportunity-consultation seam).
+ * WORK-020 learned-policy-consultation seam + WORK-022 opportunity-
+ * consultation seam).
  */
 
 export { canonicalJson, isCanonicalizable } from "./canonical";
@@ -30,6 +31,25 @@ export {
   PLANNER_VERSION,
   validatePlanningDecision,
 } from "./decision";
+export type {
+  ConsultedLearnedPolicy,
+  ConsultedLearnedPolicyMode,
+  ConsultedLearnedRouteMetric,
+  ConsultedLearnedRoutePreference,
+  LearnedPolicyConsultation,
+} from "./learned-policy-consultation";
+export {
+  buildLearnedPolicyConsultation,
+  CONSULTED_LEARNED_POLICY_CLASS,
+  CONSULTED_LEARNED_POLICY_MODES,
+  compareLearnedThenCheapFirst,
+  LEARNED_PREFERENCE_MINIMUM_POPULATION,
+  learnedOrderingSubjects,
+  learnedPreferredCandidateId,
+  splitRankedSubjectsByPolicy,
+  validateConsultedLearnedPolicy,
+  validateLearnedPolicyConsultation,
+} from "./learned-policy-consultation";
 export type {
   ConsultedLearningSignal,
   LearningConsultation,

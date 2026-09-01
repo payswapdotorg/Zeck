@@ -7,4 +7,5 @@ HTTP libraries (`IMPLEMENTATION.md` §3).
  */
 
 export * from "./admission";
+export * from "./learned-output-boundary";
 export * from "./policy";

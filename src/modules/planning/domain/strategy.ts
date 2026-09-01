@@ -24,6 +24,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { RestrictionSet } from "../../policies/public";
+import { compareLearnedThenCheapFirst } from "./learned-policy-consultation";
 import type { ExecutionPlan } from "./plan";
 import type { DeterministicSufficiencyDecision } from "./sufficiency";
 
@@ -182,6 +183,15 @@ export function selectStrategy(
   candidates: readonly CandidateStrategy[],
   sufficiency: DeterministicSufficiencyDecision,
   qualityTarget: number,
+  /**
+   * OPTIONAL learned ordering (WORK-020): the policy-rechecked ranked
+   * subject keys of a PUBLISHED learned policy (mode 'promoted').
+   * Refines ONLY the cheap-first cascade ordering among already-
+   * admissible candidates — never the deterministic-first branch,
+   * never admissibility itself. Absent/empty = the WORK-009 baseline
+   * ordering, byte-identical.
+   */
+  learnedOrder?: readonly string[],
 ): StrategySelection {
   const admissible = candidates.filter((candidate) => candidate.admissible);
   const satisfying = admissible.filter((candidate) => candidate.expectedQuality >= qualityTarget);
@@ -203,6 +213,26 @@ export function selectStrategy(
 
   if (satisfying.length === 0) {
     return { kind: "none", reason: "no-admissible-candidate" };
+  }
+
+  if (learnedOrder !== undefined && learnedOrder.length > 0) {
+    // WORK-020: a PUBLISHED learned policy may only REFINE the
+    // ordering of the already-admissible, quality-satisfying cascade
+    // pool. Ties and unranked candidates keep the cheap-first order,
+    // so the refinement is a stable re-ordering, never an admission.
+    const learnedOrdered = [...satisfying].sort((a, b) =>
+      compareLearnedThenCheapFirst(a, b, learnedOrder),
+    );
+    const learnedBest = learnedOrdered[0];
+    if (learnedBest === undefined) {
+      return { kind: "none", reason: "no-admissible-candidate" };
+    }
+    return {
+      kind: "selected",
+      selected: learnedBest,
+      deterministicFirstApplied: false,
+      rationale: `published learned-policy preference ordering applied over the cheap-first cascade among ${satisfying.length} admissible candidate(s) satisfying the quality target (WORK-020: a published learned policy may only refine the ordering among already-admissible choices)`,
+    };
   }
 
   const ordered = [...satisfying].sort(compareCheapFirst);
