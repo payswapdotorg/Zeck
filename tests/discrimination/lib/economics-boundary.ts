@@ -57,7 +57,18 @@
  *      physical guards (write-once identity, terminal-immutable
  *      lifecycle, append-only evidence, gapless events, bounded
  *      authorization expiry, unique convergence/reservation keys) and
- *      the closed cause vocabulary.
+ *      the closed cause vocabulary. These checks run when the caller
+ *      includes the `.sql` file in the scanned set (the discrimination
+ *      suite always does; a TypeScript-only collection skips them).
+ *  14. `economic-settlement-as-delivery-conflation` — the verification
+ *      module's economic-delivery facts projection derives delivery
+ *      facts ONLY from delivery observations (a settlement can never
+ *      satisfy a delivery criterion — M9).
+ *
+ * The M1 credential-exposure half over the AGENT/PUBLIC API boundary
+ * (routes + serializers + wire contracts) is a separate export,
+ * `economicsCredentialExposureViolations`, so callers that only collect
+ * the economics tree still get the module-side rules above.
  */
 
 import type { SourceFile } from "../../architecture/lib/dependency-rules";
@@ -95,6 +106,7 @@ const MACHINE_PAYMENT_PATH = "src/modules/economics/domain/machine-payment.ts";
 const SQL_STORE_PATH = "src/modules/economics/adapters/sql-economic-store.ts";
 const MIGRATION_PATH = "src/platform/db/migrations/0014_economic_actions.sql";
 const API_ROUTES_PATH = "src/api/routes/economic-actions.ts";
+const DELIVERY_ADAPTER_PATH = "src/modules/verification/adapters/economic-delivery.ts";
 
 export const ECONOMICS_CANONICAL_PATHS = [
   SERVICE_PATH,
@@ -106,6 +118,7 @@ export const ECONOMICS_CANONICAL_PATHS = [
   SQL_STORE_PATH,
   MIGRATION_PATH,
   API_ROUTES_PATH,
+  DELIVERY_ADAPTER_PATH,
 ] as const;
 
 export function economicsBoundaryViolations(files: readonly SourceFile[]): string[] {
@@ -252,7 +265,10 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     violations.push("economics-charge-window-missing");
   } else {
     const railGateAt = chargeWindow.indexOf("railCanExpressConstraints(rail.capabilities)");
-    const evaluatingAt = chargeWindow.indexOf('"executing"');
+    // The durable transition's TARGET ARGUMENT — `"executing",` — not the
+    // journal metadata's `status: "executing" }` (which is not a comma-
+    // terminated argument and must not shield a renamed transition).
+    const evaluatingAt = chargeWindow.indexOf('"executing",');
     const railChargeAt = chargeWindow.indexOf("await rail.charge(");
     if (railGateAt < 0) {
       violations.push("economic-rail-fail-open-gate-missing");
@@ -263,7 +279,10 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     if (railGateAt >= 0 && railChargeAt >= 0 && railGateAt > railChargeAt) {
       violations.push("economic-rail-gate-after-charge");
     }
-    if (evaluatingAt >= 0 && railChargeAt >= 0 && evaluatingAt > railChargeAt) {
+    // A charge with the durable executing transition ABSENT (renamed or
+    // removed) or ordered AFTER the rail charge is the same boundary
+    // breach: the side effect must follow the durable transition.
+    if (railChargeAt >= 0 && (evaluatingAt < 0 || evaluatingAt > railChargeAt)) {
       violations.push("economic-rail-charge-before-durable-transition");
     }
     // The substitution firewall is consulted on the charge path.
@@ -345,17 +364,22 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     }
   }
 
-  // (7) provider/vendor neutrality in the core contracts.
+  // (7) provider/vendor neutrality in the core contracts — CODE ONLY
+  // (the service header comment names `Stripe` exactly to forbid it in
+  // code; naming the prohibition is not a leak).
   for (const file of files) {
     if (!file.path.startsWith("src/modules/economics/") || file.path.includes("/adapters/")) {
       continue; // adapters may name neutral rail slugs in composition
     }
-    if (ECONOMIC_VENDOR_IDENTIFIER.test(file.content)) {
+    if (ECONOMIC_VENDOR_IDENTIFIER.test(stripComments(file.content))) {
       violations.push(`economic-provider-leak:${file.path}`);
     }
   }
   const apiRoutes = byPath.get(API_ROUTES_PATH);
-  if (apiRoutes !== undefined && ECONOMIC_VENDOR_IDENTIFIER.test(apiRoutes.content)) {
+  if (
+    apiRoutes !== undefined &&
+    ECONOMIC_VENDOR_IDENTIFIER.test(stripComments(apiRoutes.content))
+  ) {
     violations.push("economic-provider-leak:src/api/routes/economic-actions.ts");
   }
 
@@ -365,21 +389,16 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     violations.push("economics-machine-payment-missing");
   } else {
     // The 402 parser is a pure parser: it exposes no authorization
-    // surface (a 402 NEVER authorizes).
-    if (
-      /authorize|mint|approve/i.test(
-        machinePayment.content.replace(
-          /NEVER an authorization|authorizes NOTHING|authorization:|cannot mint|authorization\b/gi,
-          "",
-        ),
-      )
-    ) {
+    // surface (a 402 NEVER authorizes). Scanned over CODE ONLY (the
+    // header comment says "NEVER an authorization" — naming the
+    // prohibition is not a violation).
+    if (/authorize|authorization|mint|approve/i.test(stripComments(machinePayment.content))) {
       violations.push("economic-402-authorization-surface");
     }
-    for (const match of machinePayment.content.matchAll(
+    for (const match of stripComments(machinePayment.content).matchAll(
       /export\s+(?:async\s+)?function\s+(\w+)/g,
     )) {
-      if (/authorize|mint|approve|permit/i.test(match[1] ?? "")) {
+      if (/authorize|authorization|mint|approve|permit/i.test(match[1] ?? "")) {
         violations.push("economic-402-authorization-function");
       }
     }
@@ -416,17 +435,24 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
   }
 
   // (9) imports: public barrels only; no learning; no verification.
+  // A relative import is CROSS-MODULE only when it escapes
+  // src/modules/economics (intra-module ../domain, ../ports, ./… are
+  // the module's own layers); `src/shared` is legal everywhere and the
+  // ADAPTERS layer owns platform infrastructure.
   for (const file of files) {
     if (!file.path.startsWith("src/modules/economics/")) {
       continue;
     }
+    const layer = file.path.split("/").at(-2) ?? "";
     for (const match of file.content.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
       const specifier = match[1] ?? "";
-      const cross = /(?:\.\.\/)+([a-z0-9-]+)\//.exec(specifier);
-      if (cross === null || cross[1] === "shared") {
+      const target = crossModuleTarget(file.path, specifier);
+      if (target === null) {
+        continue; // intra-module relative import
+      }
+      if (target === "shared" || (target === "platform" && layer === "adapters")) {
         continue;
       }
-      const target = cross[1] ?? "";
       if (target === "learning" || target === "verification") {
         violations.push(`economics-forbidden-module-import:${file.path}:${target}`);
       } else if (["policies", "capabilities", "budgets", "executions"].includes(target)) {
@@ -437,7 +463,6 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
         violations.push(`economics-unexpected-module-import:${file.path}:${target}`);
       }
     }
-    const layer = file.path.split("/").at(-2) ?? "";
     if (["domain", "application", "ports"].includes(layer)) {
       if (/from\s+["']\.\.\/\.\.\/\.\.\/platform\//.test(file.content)) {
         violations.push(`economics-inner-layer-platform-import:${file.path}`);
@@ -462,11 +487,11 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     }
   }
 
-  // (13) migration 0014 physical invariants stay shipped.
+  // (13) migration 0014 physical invariants stay shipped (checked when
+  // the caller includes the .sql in the scanned set — the discrimination
+  // suite always does; a TypeScript-only collection skips them).
   const migration = byPath.get(MIGRATION_PATH);
-  if (migration === undefined) {
-    violations.push("economics-migration-missing");
-  } else {
+  if (migration !== undefined) {
     for (const table of [
       "economics.economic_actions",
       "economics.payment_authorizations",
@@ -507,7 +532,11 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
       "settlement_observations_convergence_key",
       "economic_action_events_sequence_key",
     ]) {
-      if (!migration.content.includes(unique)) {
+      // Word-boundary match: a RENAMED constraint (for example
+      // `..._reservation_key_retired`) must not satisfy the pin — the
+      // constraint must be present under its canonical name. A plain
+      // `includes` would be shielded by the renamed suffix.
+      if (!new RegExp(`${unique}(?![\\w])`).test(migration.content)) {
         violations.push(`economic-migration-unique-missing:${unique}`);
       }
     }
@@ -530,6 +559,22 @@ export function economicsBoundaryViolations(files: readonly SourceFile[]): strin
     }
   }
 
+  // (14) settlement is NEVER delivery (M9): the verification module's
+  // economic-delivery facts projection derives delivery facts ONLY from
+  // delivery observations — a settlement alone can never satisfy a
+  // delivery criterion.
+  const deliveryAdapter = byPath.get(DELIVERY_ADAPTER_PATH);
+  if (deliveryAdapter !== undefined) {
+    const factsWindow = sliceBetween(
+      deliveryAdapter.content,
+      "export function economicDeliveryFacts(",
+      "\n}",
+    );
+    if (!factsWindow.includes("deliveryCount: bundle.deliveries.length")) {
+      violations.push("economic-settlement-as-delivery-conflation");
+    }
+  }
+
   return violations;
 }
 
@@ -538,10 +583,82 @@ export function hasCanonicalEconomicsBoundary(files: readonly SourceFile[]): boo
   const byPath = new Map(files.map((file) => [file.path, file] as const));
   return (
     byPath.get(SERVICE_PATH) !== undefined &&
+    byPath.get(CONTRACTS_PATH) !== undefined &&
     byPath.get(AUTHORIZATION_PATH) !== undefined &&
+    byPath.get(ACTION_PATH) !== undefined &&
     byPath.get(RAIL_PATH) !== undefined &&
-    byPath.get(MIGRATION_PATH) !== undefined
+    byPath.get(MACHINE_PAYMENT_PATH) !== undefined &&
+    byPath.get(SQL_STORE_PATH) !== undefined &&
+    byPath.get(API_ROUTES_PATH) !== undefined
   );
+}
+
+/** The agent/public API boundary files (M1 credential-exposure). */
+export const ECONOMICS_API_SURFACE_PATHS = [
+  "src/api/routes/economic-actions.ts",
+  "src/api/serialization.ts",
+  "src/shared/wire.ts",
+] as const;
+
+/**
+ * M1 credential-exposure over the AGENT/PUBLIC API boundary:
+ *
+ *  - no credential-shaped FIELD exists on the wire contracts, the
+ *    serializers or the route request contract (code only — comments
+ *    may name the prohibition);
+ *  - the serializers SCRUB record metadata and event payloads (secret-
+ *    shaped keys are redacted before anything crosses the wire);
+ *  - the create route keeps its CLOSED request contract (unknown keys
+ *    are rejected — a credential injection key is unrepresentable);
+ *  - the create route derives the tenant scope SERVER-SIDE from the
+ *    authenticated identity, never from a client assertion.
+ */
+export function economicsCredentialExposureViolations(files: readonly SourceFile[]): string[] {
+  const violations: string[] = [];
+  const byPath = new Map(files.map((file) => [file.path, file] as const));
+
+  for (const path of ECONOMICS_API_SURFACE_PATHS) {
+    const file = byPath.get(path);
+    if (file === undefined) {
+      violations.push(`economic-api-surface-missing:${path}`);
+      continue;
+    }
+    if (CREDENTIAL_FIELD_DECLARATION.test(stripComments(file.content))) {
+      violations.push(`economic-api-credential-field:${path}`);
+    }
+  }
+
+  const serialization = byPath.get("src/api/serialization.ts");
+  if (serialization !== undefined) {
+    const actionWindow = sliceBetween(
+      serialization.content,
+      "export function toWireEconomicAction(",
+      "\n}",
+    );
+    if (!actionWindow.includes("scrubSecretShapedKeys(record.metadata)")) {
+      violations.push("economic-api-metadata-scrub-missing");
+    }
+    const eventWindow = sliceBetween(
+      serialization.content,
+      "export function toWireEconomicActionEvent(",
+      "\n}",
+    );
+    if (!eventWindow.includes("scrubSecretShapedKeys(event.payload)")) {
+      violations.push("economic-api-payload-scrub-missing");
+    }
+  }
+
+  const routes = byPath.get("src/api/routes/economic-actions.ts");
+  if (routes !== undefined) {
+    if (!routes.content.includes("CREATE_REQUEST_KEYS.includes(key)")) {
+      violations.push("economic-api-closed-contract-missing");
+    }
+    if (!routes.content.includes("tenantId: identity.scope.tenantId")) {
+      violations.push("economic-api-server-derived-scope-missing");
+    }
+  }
+
+  return violations;
 }
 
 function sliceBetween(source: string, startMarker: string, endMarker: string): string {
@@ -555,4 +672,39 @@ function sliceBetween(source: string, startMarker: string, endMarker: string): s
 
 function countOccurrences(source: string, needle: string): number {
   return source.split(needle).length - 1;
+}
+
+/** Strip // line comments and /* block comments (scans run over code). */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "");
+}
+
+/**
+ * Resolve a relative import's CROSS-MODULE target: the first path
+ * component outside `src/modules/economics` ("learning", "policies",
+ * "shared", "platform", …). Null when the import stays inside the
+ * economics module (its own domain/application/ports/adapters layers).
+ */
+function crossModuleTarget(filePath: string, specifier: string): string | null {
+  const stack = filePath.split("/").slice(0, -1);
+  for (const segment of specifier.split("/")) {
+    if (segment === "." || segment === "") {
+      continue;
+    }
+    if (segment === "..") {
+      stack.pop();
+      continue;
+    }
+    stack.push(segment);
+  }
+  if (stack.length >= 3 && stack[0] === "src" && stack[1] === "modules") {
+    if (stack[2] === "economics") {
+      return null; // intra-module
+    }
+    return stack[2] ?? ""; // a sibling module
+  }
+  if (stack.length >= 2 && stack[0] === "src") {
+    return stack[1] ?? ""; // shared | platform | api | integrations…
+  }
+  return stack[0] ?? "";
 }
