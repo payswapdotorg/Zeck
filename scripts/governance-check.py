@@ -135,10 +135,22 @@ for rid in required_ids:
     text = (wo_dir / f"{owner}.md").read_text(encoding="utf-8")
     assert f"`{rid}`" in text, f"owner {owner} does not declare requirement {rid}"
 
+def surface_tokens(record):
+    surfaces = record.get("surfaces", {})
+    tokens = set(surfaces.get("modules", []))
+    for key, value in surfaces.items():
+        if key != "modules" and value is True:
+            tokens.add(f"flag:{key}")
+    return tokens
+
 complete = {w["id"] for w in program["workOrders"] if w["status"] == "complete"}
+in_flight = [w for w in program["workOrders"] if w["status"] == "in-flight"]
+in_flight_tokens = set().union(*(surface_tokens(w) for w in in_flight)) if in_flight else set()
 eligible = [
     w["id"] for w in program["workOrders"]
-    if w["status"] == "pending" and all(parent in complete for parent in w["dependencies"])
+    if w["status"] == "pending"
+    and all(parent in complete for parent in w["dependencies"])
+    and not (surface_tokens(w) & in_flight_tokens)
 ]
 frontier = load("spec/development-state/frontier-state.json")["eligible"]
 assert set(frontier) == set(eligible), f"frontier mismatch: expected {eligible}, got {frontier}"
@@ -149,4 +161,4 @@ for record in program["workOrders"]:
 
 assert governance.get("engineeringControlLoop") or governance.get("authority")
 
-print(f"Governance OK: {len(orders)} Work Orders, {len(required_ids)} requirements, frontier={eligible}")
+print(f"Governance OK: {len(orders)} Work Orders, {len(required_ids)} requirements, inFlight={[w['id'] for w in in_flight]}, frontier={eligible}")

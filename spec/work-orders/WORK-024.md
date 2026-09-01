@@ -1,6 +1,6 @@
 # WORK-024 — Voice and Realtime Agent Deployment
 
-Status: PENDING
+Status: IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -107,3 +107,7 @@ Evidence must identify exact implementation/final revisions, map MOD-005..007 to
 # Completion
 
 Worker opens a PR but does not merge. Completion requires architect acceptance and post-merge finalization.
+
+# Activation
+
+Activated by the Architect as part of the current parallel wave with WORK-020. Implementation branch MUST start from the exact stable `main` SHA at activation and MUST NOT rebase onto a sibling implementation branch. Shared development-state artifacts are Architect-owned during the wave.
