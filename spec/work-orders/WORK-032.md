@@ -1,12 +1,14 @@
 # WORK-032 — Agentic economic actions and provider-neutral payment rails
 
-Status: PENDING
+Status: PROPOSED
 
 Owner: Architect-assigned implementation worker
 
 Architecture Version: v1.0
 
 Assurance Profile: CRITICAL
+
+> Governance note: this proposal is not yet registered in `spec/development-state/program-state.json`, `spec/requirements.md`, or `spec/requirement-traceability.md`, and therefore is not executable or eligible. Formal issuance should happen only when its requirements and dependency entry are added atomically.
 
 # Objective
 
@@ -18,9 +20,9 @@ Zeck already controls AI spending through budgets, reservations and an append-on
 
 # Dependencies
 
-Requires: WORK-004, WORK-006, WORK-007, WORK-013, WORK-015, WORK-016, WORK-017
+Proposed: WORK-004, WORK-006, WORK-007, WORK-013, WORK-015, WORK-016, WORK-017
 
-# Requirement IDs
+# Proposed Requirement IDs
 
 - `ECO-001`
 - `ECO-002`
@@ -31,7 +33,7 @@ Requires: WORK-004, WORK-006, WORK-007, WORK-013, WORK-015, WORK-016, WORK-017
 - `ECO-007`
 - `ECO-008`
 
-# Declared Change Surfaces
+# Proposed Change Surfaces
 
 - `src/modules/economics/`
 - `src/modules/budgets/` (directly-required economic authorization/ledger seams only)
@@ -133,4 +135,4 @@ Evidence must identify exact implementation and final branch heads, map every EC
 
 # Completion
 
-Worker opens a PR but does not merge. Completion requires architect acceptance and post-merge finalization.
+When formally issued, the worker opens a PR but does not merge. Completion requires architect acceptance and post-merge finalization.
