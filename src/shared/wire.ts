@@ -254,6 +254,126 @@ export interface AgentStatusView {
 }
 
 // ---------------------------------------------------------------------------
+// Economic actions (WORK-032 / ECO-001..008): the governed agentic
+// economic-intent projection. Provider-neutral and secret-safe: recipient
+// references are opaque external identifiers, rail preferences are opaque
+// neutral strings, and there is NO field where a raw payment credential
+// could even appear (bounded/tokenized authorization references only —
+// the authorization itself never crosses this wire).
+// ---------------------------------------------------------------------------
+
+/** The economic-action lifecycle (the domain vocabulary, projected 1:1). */
+export const ECONOMIC_ACTION_STATUSES = [
+  "proposed",
+  "denied",
+  "authorized",
+  "executing",
+  "settled",
+  "failed",
+  "expired",
+] as const;
+
+export type EconomicActionStatus = (typeof ECONOMIC_ACTION_STATUSES)[number];
+
+/** Bounded amount: exact or an explicit range (integer micro-USD strings). */
+export type EconomicAmount =
+  | { readonly kind: "exact"; readonly microUsd: MicroUsd }
+  | { readonly kind: "range"; readonly minMicroUsd: MicroUsd; readonly maxMicroUsd: MicroUsd };
+
+/** An opaque external recipient/seller reference (never a credential). */
+export interface EconomicRecipient {
+  readonly kind: string;
+  readonly id: string;
+}
+
+export interface EconomicCapabilityRef {
+  readonly kind: string;
+  readonly name: string;
+  readonly minVersion: string | null;
+}
+
+/** GET /economic-actions/:id — the durable economic-intent record. */
+export interface EconomicAction {
+  readonly id: string;
+  readonly applicationId: string;
+  /** The logical execution this economic action is provenance-bound to. */
+  readonly executionId: string;
+  /** The actor that PROPOSED the intent (provenance, never an approver). */
+  readonly proposedBy: string;
+  readonly purpose: string;
+  readonly recipient: EconomicRecipient;
+  readonly amount: EconomicAmount;
+  readonly currency: string;
+  readonly expiresAt: string;
+  readonly requiredCapabilities: readonly EconomicCapabilityRef[];
+  readonly railPreference: string | null;
+  readonly metadata: Readonly<Record<string, unknown>>;
+  readonly status: EconomicActionStatus;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** The durable create/refresh outcome of POST /economic-actions. */
+export interface EconomicActionReceipt {
+  readonly economicActionId: string;
+  readonly applicationId: string;
+  readonly executionId: string;
+  readonly status: EconomicActionStatus;
+  readonly createdAt: string;
+  /** True when the same idempotency key replayed a durable outcome. */
+  readonly replayed: boolean;
+}
+
+/** An economic-action provenance event (the per-action ledger). */
+export interface EconomicActionEvent {
+  readonly eventId: string;
+  readonly economicActionId: string;
+  readonly sequence: number;
+  readonly type: string;
+  readonly cause: string;
+  readonly occurredAt: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * A correlated EXTERNAL settlement observation (evidence only — never a
+ * Zeck money-movement truth source; the budgets authority owns that).
+ */
+export interface EconomicSettlement {
+  readonly id: string;
+  readonly railId: string;
+  readonly railTransactionRef: string;
+  readonly status: "observed" | "confirmed" | "failed";
+  readonly settledAmountMicroUsd: MicroUsd;
+  readonly currency: string;
+  readonly observedAt: string;
+  readonly evidenceDigest: string;
+}
+
+/** Delivery EVIDENCE (the verification authority alone decides delivery). */
+export interface EconomicDelivery {
+  readonly id: string;
+  readonly kind: string;
+  readonly digest: string;
+  readonly contentRef: string;
+  readonly observedAt: string;
+}
+
+/**
+ * GET /economic-actions/:id/outcome — settlement and delivery reported as
+ * SEPARATE axes (payment success != resource delivered != execution
+ * success; a settlement alone never proves delivery).
+ */
+export interface EconomicActionOutcome {
+  readonly economicActionId: string;
+  readonly executionId: string;
+  readonly applicationId: string;
+  readonly status: EconomicActionStatus;
+  readonly settlement: EconomicSettlement | null;
+  readonly deliveries: readonly EconomicDelivery[];
+}
+
+// ---------------------------------------------------------------------------
 // Webhooks (API-004): signed, versioned, idempotently receivable
 // ---------------------------------------------------------------------------
 

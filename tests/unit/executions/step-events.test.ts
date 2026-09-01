@@ -39,7 +39,8 @@ describe("execution step events", () => {
     // evidence commands, WORK-013 with the verification evidence commands,
     // and WORK-012 with the sandbox execution commands (all three modules
     // produce them through the same recordStepEvent seam; executions
-    // remains the sole vocabulary owner).
+    // remains the sole vocabulary owner). WORK-032 added the economic
+    // action evidence commands through the same additive discipline.
     expect(STEP_EVENT_COMMANDS).toEqual([
       "tool-requested",
       "tool-result",
@@ -56,10 +57,17 @@ describe("execution step events", () => {
       "sandbox-admitted",
       "sandbox-denied",
       "sandbox-completed",
+      // WORK-032 (economics) — additive vocabulary extension.
+      "economic-action-recorded",
+      "economic-action-denied",
+      "economic-action-authorized",
+      "economic-action-settled",
+      "economic-action-failed",
     ]);
     expect(isStepEventCommand("tool-requested")).toBe(true);
     expect(isStepEventCommand("agent-session-started")).toBe(true);
     expect(isStepEventCommand("sandbox-admitted")).toBe(true);
+    expect(isStepEventCommand("economic-action-recorded")).toBe(true);
     expect(isStepEventCommand("authorize")).toBe(false);
     expect(isStepEventCommand("tool-bogus")).toBe(false);
   });

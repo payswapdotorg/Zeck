@@ -169,7 +169,13 @@ export interface VerifyTargetInput {
   readonly executionId: string;
   readonly actor: VerificationActor;
   readonly target: {
-    readonly kind: "plan-revision" | "artifact" | "tool-output" | "model-output" | "record";
+    readonly kind:
+      | "plan-revision"
+      | "artifact"
+      | "tool-output"
+      | "model-output"
+      | "record"
+      | "economic-delivery";
     readonly ref: string;
     readonly revision?: string;
   };

@@ -32,6 +32,12 @@ import type {
   AgentVersionRecord,
 } from "../modules/agents/public";
 import type {
+  CreateEconomicActionOutcome,
+  EconomicActionEvent,
+  EconomicActionRecord,
+  EconomicDeliveryEvidenceBundle,
+} from "../modules/economics/public";
+import type {
   EventEnvelope,
   ExecutionReceipt,
   ExecutionRecord,
@@ -43,10 +49,17 @@ import type {
   AgentStatusView,
   AgentSummary,
   AgentVersion,
+  EconomicActionStatus,
   ExecutionEvent,
   ExecutionStatus,
   PublicError,
   VerificationResult,
+  EconomicAction as WireEconomicAction,
+  EconomicActionEvent as WireEconomicActionEvent,
+  EconomicActionOutcome as WireEconomicActionOutcome,
+  EconomicActionReceipt as WireEconomicActionReceipt,
+  EconomicDelivery as WireEconomicDelivery,
+  EconomicSettlement as WireEconomicSettlement,
   Execution as WireExecution,
   ExecutionReceipt as WireReceipt,
 } from "../shared/wire";
@@ -195,6 +208,103 @@ export function toWireAgentStatus(
     activeVersion: activeVersion === null ? null : toWireAgentVersion(activeVersion),
     latestSelection: currentSelection === null ? null : toWirePromotion(currentSelection),
     availableVersions: versions.map(toWireAgentVersion),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Economic actions (WORK-032 — allowlist construction, same secret-safety
+// discipline: NO raw payment credential can cross, recipient references
+// are opaque identifiers, and the bounded authorization itself never
+// appears on this wire)
+// ---------------------------------------------------------------------------
+
+export function toWireEconomicAction(record: EconomicActionRecord): WireEconomicAction {
+  return {
+    id: record.id,
+    applicationId: record.applicationId,
+    executionId: record.executionId,
+    proposedBy: record.proposedBy,
+    purpose: record.purpose,
+    recipient: { kind: record.recipient.kind, id: record.recipient.id },
+    amount:
+      record.amount.kind === "exact"
+        ? { kind: "exact", microUsd: record.amount.microUsd }
+        : {
+            kind: "range",
+            minMicroUsd: record.amount.minMicroUsd,
+            maxMicroUsd: record.amount.maxMicroUsd,
+          },
+    currency: record.currency,
+    expiresAt: record.expiresAt,
+    requiredCapabilities: record.requiredCapabilities.map((requirement) => ({
+      kind: requirement.kind,
+      name: requirement.name,
+      minVersion: requirement.minVersion ?? null,
+    })),
+    railPreference: record.railPreference,
+    metadata: scrubSecretShapedKeys(record.metadata) as Readonly<Record<string, unknown>>,
+    status: record.status as EconomicActionStatus,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+export function toWireEconomicActionReceipt(
+  outcome: CreateEconomicActionOutcome,
+): WireEconomicActionReceipt {
+  return {
+    economicActionId: outcome.action.id,
+    applicationId: outcome.action.applicationId,
+    executionId: outcome.action.executionId,
+    status: outcome.action.status as EconomicActionStatus,
+    createdAt: outcome.action.createdAt,
+    replayed: outcome.replayed,
+  };
+}
+
+export function toWireEconomicActionEvent(event: EconomicActionEvent): WireEconomicActionEvent {
+  return {
+    eventId: event.eventId,
+    economicActionId: event.economicActionId,
+    sequence: event.sequence,
+    type: event.type,
+    cause: event.cause,
+    occurredAt: event.occurredAt,
+    payload: scrubSecretShapedKeys(event.payload) as Readonly<Record<string, unknown>>,
+  };
+}
+
+/** Settlement and delivery are serialized as SEPARATE axes (never merged). */
+export function toWireEconomicActionOutcome(
+  bundle: EconomicDeliveryEvidenceBundle,
+): WireEconomicActionOutcome {
+  const settlement: WireEconomicSettlement | null =
+    bundle.settlement === null
+      ? null
+      : {
+          id: bundle.settlement.id,
+          railId: bundle.settlement.railId,
+          railTransactionRef: bundle.settlement.railTransactionRef,
+          status: bundle.settlement.status,
+          settledAmountMicroUsd: bundle.settlement.settledAmountMicroUsd,
+          currency: bundle.settlement.currency,
+          observedAt: bundle.settlement.observedAt,
+          evidenceDigest: bundle.settlement.evidenceDigest,
+        };
+  const deliveries: readonly WireEconomicDelivery[] = bundle.deliveries.map((delivery) => ({
+    id: delivery.id,
+    kind: delivery.kind,
+    digest: delivery.digest,
+    contentRef: delivery.contentRef,
+    observedAt: delivery.observedAt,
+  }));
+  return {
+    economicActionId: bundle.economicActionId,
+    executionId: bundle.executionId,
+    applicationId: bundle.applicationId,
+    status: bundle.status as EconomicActionStatus,
+    settlement,
+    deliveries,
   };
 }
 

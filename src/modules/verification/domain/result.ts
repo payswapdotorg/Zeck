@@ -66,6 +66,12 @@ export const VERIFICATION_TARGET_KINDS = [
   "model-output",
   "record",
   "candidate",
+  // WORK-032 (economics) — additive target kind: an economic action's
+  // RESOURCE/SERVICE DELIVERY is independently verifiable (ECO-006:
+  // settlement is correlated evidence, delivery is decided HERE). The
+  // target ref is the economic action id; the resolver consumes the
+  // economics module's delivery-evidence bundle seam.
+  "economic-delivery",
 ] as const;
 
 export type VerificationTargetKind = (typeof VERIFICATION_TARGET_KINDS)[number];
