@@ -5,14 +5,15 @@
   "eligible": [
     "WORK-019",
     "WORK-021",
-    "WORK-022",
     "WORK-024",
     "WORK-025",
     "WORK-026",
     "WORK-027",
     "WORK-028"
   ],
-  "inFlight": [],
+  "inFlight": [
+    "WORK-022"
+  ],
   "blocked": [
     "WORK-020",
     "WORK-029",
