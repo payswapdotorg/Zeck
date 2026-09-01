@@ -16,7 +16,7 @@
   },
   "requirementCatalog": {
     "version": 3,
-    "count": 94,
+    "count": 102,
     "source": "spec/requirements.md"
   },
   "workOrders": [
@@ -50,7 +50,8 @@
     {"id":"WORK-028","title":"Long-running and resumable execution","status":"pending","dependencies":["WORK-006","WORK-007","WORK-010","WORK-011","WORK-012","WORK-031"],"surfaces":{"modules":["executions","agents","sandbox"],"concurrency":true}},
     {"id":"WORK-029","title":"Edge, real-time and embodied execution integration","status":"pending","dependencies":["WORK-012","WORK-016","WORK-019","WORK-031"],"surfaces":{"modules":["sandbox","integrations","deployments"],"securityTenant":true,"externalSideEffects":true}},
     {"id":"WORK-030","title":"Training, batch GPU and specialized accelerator workloads","status":"pending","dependencies":["WORK-012","WORK-013","WORK-016","WORK-019","WORK-031"],"surfaces":{"modules":["sandbox","integrations","deployments"],"externalSideEffects":true}},
-    {"id":"WORK-031","title":"Computational substrate federation and workload classes","status":"pending","dependencies":["WORK-006","WORK-007","WORK-008","WORK-010","WORK-011","WORK-012","WORK-013","WORK-014","WORK-016"],"surfaces":{"modules":["capabilities","executions","planning","integrations"],"publicContracts":true}}
+    {"id":"WORK-031","title":"Computational substrate federation and workload classes","status":"pending","dependencies":["WORK-006","WORK-007","WORK-008","WORK-010","WORK-011","WORK-012","WORK-013","WORK-014","WORK-016"],"surfaces":{"modules":["capabilities","executions","planning","integrations"],"publicContracts":true}},
+    {"id":"WORK-032","title":"Agentic economic actions and provider-neutral payment rails","status":"pending","dependencies":["WORK-004","WORK-006","WORK-007","WORK-013","WORK-015","WORK-016","WORK-017"],"surfaces":{"modules":["economics","budgets","executions","verification","integrations","api"],"authorityBoundary":true,"securityTenant":true,"externalSideEffects":true,"publicContracts":true,"concurrency":true}}
   ],
   "decisions": [
     "docs/adr/ADR-0000-architecture-v1-freeze.md",

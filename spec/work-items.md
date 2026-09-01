@@ -33,5 +33,6 @@
 | WORK-029 | Edge, real-time and embodied execution integration | 012,016,019,031 | CRITICAL | no |
 | WORK-030 | Training, batch GPU and specialized accelerator workloads | 012,013,016,019,031 | HIGH_ASSURANCE | no |
 | WORK-031 | Computational substrate federation and workload classes | 006,007,008,010,011,012,013,014,016 | HIGH_ASSURANCE | no |
+| WORK-032 | Agentic economic actions and provider-neutral payment rails | 004,006,007,013,015,016,017 | CRITICAL | no |
 
 Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.

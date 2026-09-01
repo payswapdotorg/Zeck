@@ -99,5 +99,13 @@ Secondary implementations must not create a second authority for a requirement.
 | ACC-001 | WORK-030 | training, fine-tuning and large-batch workloads as governed Executions | training/batch integration test |
 | ACC-002 | WORK-030 | GPU/specialized accelerator selection via provider-neutral resource contracts | resource substitution test |
 | ACC-003 | WORK-030 | training checkpoints/datasets/config/output lineage and verification-before-release | lineage/release-gate test |
+| ECO-001 | WORK-032 | provider-neutral EconomicAction/payment-intent contract | EconomicAction contract test |
+| ECO-002 | WORK-032 | bounded deterministic payment authorization | constraint-boundary discrimination test |
+| ECO-003 | WORK-032 | existing budget authority reused without a second financial ledger | budget/economic authority integration test |
+| ECO-004 | WORK-032 | provider-neutral payment-rail adapters remain non-authoritative | rail substitution/authority-boundary test |
+| ECO-005 | WORK-032 | HTTP 402 machine-payment signals are advisory inputs, not authorization | 402 parsing/decision test |
+| ECO-006 | WORK-032 | settlement correlation is distinct from resource/service delivery verification | settlement/verification integration test |
+| ECO-007 | WORK-032 | economic actions are idempotent, retry-safe, concurrency-safe and fully evidenced | concurrency/provenance integration test |
+| ECO-008 | WORK-032 | economic outcomes feed Learning without authorizing spending | learning-authority discrimination test |
 
-Total requirements: **86**.
+Total requirements: **102**.
