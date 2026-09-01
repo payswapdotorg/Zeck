@@ -298,20 +298,30 @@ function validateObservation(value: unknown, nodeId: string): NodeObservation {
       details: { field: "evidenceRefs" },
     });
   }
-  return {
-    executionCount,
-    errorRate: observation.errorRate as number | undefined,
-    distinctInputCount: observation.distinctInputCount as number | undefined,
-    distinctOutputCount: observation.distinctOutputCount as number | undefined,
-    constantOutput: observation.constantOutput as boolean | undefined,
-    verificationPassCount: observation.verificationPassCount as number | undefined,
-    verificationFailCount: observation.verificationFailCount as number | undefined,
-    inputVariability: observation.inputVariability as NodeObservation["inputVariability"],
-    semanticComplexity: observation.semanticComplexity as NodeObservation["semanticComplexity"],
-    observedCostMicroUsd: observation.observedCostMicroUsd as string | undefined,
-    observedLatencyMs: observation.observedLatencyMs as number | undefined,
-    evidenceRefs: [...evidenceRefs] as readonly string[],
-  };
+  // NOTE: absent observation axes are OMITTED (never written as
+  // explicit `undefined`): the observation participates in the
+  // analysis digest basis, and the canonical JSON universe rejects
+  // undefined values — an observation must stay digest-stable.
+  const observationOut: Record<string, unknown> = { executionCount };
+  for (const key of [
+    "errorRate",
+    "distinctInputCount",
+    "distinctOutputCount",
+    "constantOutput",
+    "verificationPassCount",
+    "verificationFailCount",
+    "inputVariability",
+    "semanticComplexity",
+    "observedCostMicroUsd",
+    "observedLatencyMs",
+  ] as const) {
+    const value = observation[key];
+    if (value !== undefined) {
+      observationOut[key] = value;
+    }
+  }
+  observationOut.evidenceRefs = [...evidenceRefs];
+  return observationOut as unknown as NodeObservation;
 }
 
 /**

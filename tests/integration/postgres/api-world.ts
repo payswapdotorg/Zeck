@@ -43,6 +43,12 @@ import {
   type ExecutionService,
 } from "../../../src/modules/executions/application/execution-service";
 import {
+  createNodeDigest,
+  createOpportunityAnalyzer,
+  type OpportunityAnalyzer,
+  SqlOpportunityStore,
+} from "../../../src/modules/learning/public";
+import {
   createExecutionAuthorization,
   createPolicyAuthority,
   InMemoryPolicyStore,
@@ -63,6 +69,7 @@ export interface ApiPgWorld {
   readonly executions: ExecutionService;
   readonly agents: AgentRegistry;
   readonly economics: EconomicActionService;
+  readonly codebaseAnalyzer: OpportunityAnalyzer;
   readonly bearerToken: string;
   readonly otherBearerToken: string;
   readonly actorId: string;
@@ -251,10 +258,21 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
     return { actorId, authenticatedAt: new Date().toISOString() };
   };
 
+  // The codebase-opportunity ADVISORY analyzer over the REAL SQL
+  // opportunity store (migration 0016; WORK-022 — advisory evidence
+  // only, never an authority).
+  const codebaseAnalyzer = createOpportunityAnalyzer({
+    store: new SqlOpportunityStore(db),
+    digest: createNodeDigest(),
+    generateId,
+    now: () => new Date(),
+  });
+
   const server = createApiServer({
     executions,
     agents,
     economics,
+    codebaseAnalyzer,
     scopeResolver,
     authenticate,
     // The inventory enumeration seam over the real agents table.
@@ -277,6 +295,7 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
     executions,
     agents,
     economics,
+    codebaseAnalyzer,
     bearerToken,
     otherBearerToken,
     actorId,

@@ -30,9 +30,11 @@ import type { AgentRegistry } from "../modules/agents/public";
 import type { ScopeResolver } from "../modules/auth/public";
 import type { EconomicActionService } from "../modules/economics/public";
 import type { ExecutionService } from "../modules/executions/public";
+import type { OpportunityAnalyzer } from "../modules/learning/public";
 import { PlatformError } from "../shared/errors";
 import type { Authenticate } from "./request-identity";
 import { registerAgentRoutes } from "./routes/agents";
+import { registerCodebaseAnalysisRoutes } from "./routes/codebase-analysis";
 import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
 
@@ -48,6 +50,13 @@ export interface ApiServerDeps {
    * surface, wired by the composition — see routes/agents.ts).
    */
   readonly listAgentIdsOfApplication: (applicationId: string) => Promise<readonly string[]>;
+  /**
+   * The codebase-opportunity ADVISORY analyzer (the learning module's
+   * public surface, WORK-022 — advisory evidence, never an authority).
+   * The routes compose it WITH the executions authority ("Analysis is
+   * an Execution": policy admission before codebase access).
+   */
+  readonly codebaseAnalyzer: OpportunityAnalyzer;
 }
 
 export interface ApiServer {
@@ -85,6 +94,12 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
   });
   registerEconomicActionRoutes(app, {
     economics: deps.economics,
+    scopeResolver: deps.scopeResolver,
+    authenticate: deps.authenticate,
+  });
+  registerCodebaseAnalysisRoutes(app, {
+    executions: deps.executions,
+    analyzer: deps.codebaseAnalyzer,
     scopeResolver: deps.scopeResolver,
     authenticate: deps.authenticate,
   });

@@ -39,6 +39,12 @@ import {
 import type { ExecutionService } from "../../../src/modules/executions/application/execution-service";
 import type { ExecutionCreateInput } from "../../../src/modules/executions/domain/execution";
 import {
+  createInMemoryOpportunityStore,
+  createNodeDigest,
+  createOpportunityAnalyzer,
+  type OpportunityAnalyzer,
+} from "../../../src/modules/learning/public";
+import {
   createPolicyAuthority,
   InMemoryPolicyStore,
   nodePolicyHasher,
@@ -58,6 +64,7 @@ export interface ApiWorld {
   readonly executions: ExecutionService;
   readonly agentRegistry: FakeAgentRegistry;
   readonly economics: EconomicActionService;
+  readonly codebaseAnalyzer: OpportunityAnalyzer;
   readonly bearerToken: string;
   readonly otherTenantToken: string;
   readonly authenticateCalls: () => number;
@@ -306,10 +313,22 @@ export async function seedApiWorld(): Promise<ApiWorld> {
 
   const agentRegistry = new FakeAgentRegistry();
 
+  // The codebase-opportunity ADVISORY analyzer (WORK-022): the REAL
+  // learning-module analyzer over the in-memory opportunity store
+  // (advisory evidence only — never an authority).
+  let analyzeCounter = 0;
+  const codebaseAnalyzer = createOpportunityAnalyzer({
+    store: createInMemoryOpportunityStore(),
+    digest: createNodeDigest(),
+    generateId: () => `00000000-0000-7000-b000-${String(++analyzeCounter).padStart(12, "0")}`,
+    now: () => new Date(),
+  });
+
   const server = createApiServer({
     executions,
     agents: agentRegistry,
     economics,
+    codebaseAnalyzer,
     scopeResolver,
     authenticate,
     listAgentIdsOfApplication: async (appId) =>
@@ -327,6 +346,7 @@ export async function seedApiWorld(): Promise<ApiWorld> {
     executions,
     agentRegistry,
     economics,
+    codebaseAnalyzer,
     bearerToken,
     otherTenantToken,
     authenticateCalls: () => authenticateCalls,

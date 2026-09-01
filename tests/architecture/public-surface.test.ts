@@ -31,6 +31,7 @@ import { createApiServer } from "../../src/api";
 import {
   fakeAgentRegistry,
   fakeAuthenticate,
+  fakeCodebaseAnalyzer,
   fakeEconomicsService,
   fakeExecutionsService,
   fakeScopeResolver,
@@ -152,6 +153,12 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       "toWireEconomicActionReceipt",
       "toWireEconomicActionEvent",
       "toWireEconomicActionOutcome",
+      "toWireCodebaseAnalysis",
+      "toWireCodebaseAnalysisReport",
+      "toWireCodebaseFinding",
+      "toWireCodebasePrompt",
+      "toWireCodebaseRatingReceipt",
+      "toWireCodebaseFindingTransitionReceipt",
     ]) {
       const fnSource = new RegExp(`function ${fn}\\(`).exec(serialization);
       expect(fnSource, `${fn} must exist`).not.toBeNull();
@@ -174,6 +181,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       scopeResolver: fakeScopeResolver(),
       authenticate: fakeAuthenticate(),
       listAgentIdsOfApplication: async () => [],
+      codebaseAnalyzer: fakeCodebaseAnalyzer(),
     });
     const routes = server.routes.map((route) => `${route.method} ${route.url}`);
     expect(routes.sort()).toEqual(
@@ -182,6 +190,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /agents/:id",
         "GET /agents/:id/status",
         "GET /agents/:id/versions",
+        "GET /codebase-analysis/:id",
         "GET /economic-actions/:id",
         "GET /economic-actions/:id/events",
         "GET /economic-actions/:id/outcome",
@@ -189,6 +198,9 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /executions/:id/events",
         "GET /executions/:id/results",
         "GET /executions/:id/verification",
+        "POST /codebase-analysis",
+        "POST /codebase-analysis/:id/findings/:findingId/transition",
+        "POST /codebase-analysis/:id/ratings",
         "POST /economic-actions",
         "POST /executions",
         "POST /executions/:id/cancel",
@@ -208,6 +220,9 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       "POST /executions/:id/plan",
       "POST /executions/:id/queue",
       "POST /executions/:id/start",
+      "POST /codebase-analysis/:id/findings/:findingId/promote",
+      "POST /codebase-analysis/:id/mutate",
+      "POST /codebase-analysis/:id/deploy",
     ]) {
       expect(routes).not.toContain(forbidden);
     }

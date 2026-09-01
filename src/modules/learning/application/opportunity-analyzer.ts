@@ -182,7 +182,10 @@ export interface OpportunityAnalyzer {
     readonly fingerprint: string;
     readonly answer: EvaluationRatingRecord["answer"];
   }>;
-  advanceFinding(request: AdvanceFindingRequest): Promise<FindingTransitionRecord>;
+  advanceFinding(request: AdvanceFindingRequest): Promise<{
+    readonly transition: FindingTransitionRecord;
+    readonly replayed: boolean;
+  }>;
   consultOpportunitySignals(
     request: ConsultOpportunitySignalsRequest,
   ): Promise<readonly OpportunitySignal[]>;
@@ -464,6 +467,41 @@ export function createOpportunityAnalyzer(deps: OpportunityAnalyzerDeps): Opport
           details: { findingId: request.findingId },
         });
       }
+      // The content-derived transition identity (the activation-journal
+      // pattern): the same logical transition retries to the SAME id
+      // and converges — idempotent by construction. The retry check
+      // happens BEFORE the state legality validation because a replay
+      // observes the finding ALREADY advanced to the target state (the
+      // durable outcome the retry returns — exactly the executions
+      // "replays re-read the current row" discipline).
+      const transitionIdentity = (
+        toState: string,
+        evidenceKind: string,
+        evidenceRefs: readonly string[],
+        verifiedEquivalence: unknown,
+        requestedBy: string,
+      ): string =>
+        digestOf({
+          transitionSchema: FINDING_TRANSITION_SCHEMA_VERSION,
+          findingId: finding.findingId,
+          toState,
+          evidenceKind,
+          evidenceRefs: [...evidenceRefs],
+          verifiedEquivalence: verifiedEquivalence ?? null,
+          requestedBy,
+        });
+      const replayKey = transitionIdentity(
+        request.toState,
+        request.evidenceKind,
+        request.evidenceRefs,
+        request.verifiedEquivalence ?? null,
+        request.requestedBy,
+      );
+      const existingRows = await deps.store.listFindingTransitions(scope, finding.findingId);
+      const durable = existingRows.find((row) => row.transitionId === replayKey);
+      if (durable !== undefined) {
+        return { transition: durable, replayed: true };
+      }
       // Rating evidence must RESOLVE to stored ratings on THIS finding
       // (M9/M16: fabricated evidence refs are rejected — a transition
       // cites real recorded evidence only).
@@ -492,18 +530,13 @@ export function createOpportunityAnalyzer(deps: OpportunityAnalyzerDeps): Opport
         verifiedEquivalence: request.verifiedEquivalence,
         requestedBy: request.requestedBy,
       });
-      // Content-derived transition identity (the activation-journal
-      // pattern): the same logical transition retries to the SAME id
-      // and converges — idempotent by construction.
-      const transitionId = digestOf({
-        transitionSchema: FINDING_TRANSITION_SCHEMA_VERSION,
-        findingId: finding.findingId,
-        toState: validated.toState,
-        evidenceKind: validated.evidenceKind,
-        evidenceRefs: [...validated.evidenceRefs],
-        verifiedEquivalence: validated.verifiedEquivalence,
-        requestedBy: validated.requestedBy,
-      });
+      const transitionId = transitionIdentity(
+        validated.toState,
+        validated.evidenceKind,
+        validated.evidenceRefs,
+        validated.verifiedEquivalence,
+        validated.requestedBy,
+      );
       const transition: FindingTransitionRecord = {
         ...validated,
         transitionId,
@@ -513,13 +546,13 @@ export function createOpportunityAnalyzer(deps: OpportunityAnalyzerDeps): Opport
       validateFindingTransitionRecord(transition);
       const outcome = await deps.store.appendFindingTransition(transition);
       if (outcome.replayed) {
-        const history = await deps.store.listFindingTransitions(scope, finding.findingId);
-        const durable = history.find((row) => row.transitionId === transitionId);
-        if (durable !== undefined) {
-          return durable;
+        const rows = await deps.store.listFindingTransitions(scope, finding.findingId);
+        const row = rows.find((candidate) => candidate.transitionId === transitionId);
+        if (row !== undefined) {
+          return { transition: row, replayed: true };
         }
       }
-      return transition;
+      return { transition, replayed: false };
     },
 
     async consultOpportunitySignals(request) {
