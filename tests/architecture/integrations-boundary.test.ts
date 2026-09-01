@@ -81,7 +81,7 @@ function resolveSpecifier(fromFile: string, specifier: string): string {
 }
 
 describe("architecture: the WORK-016 integration boundary", () => {
-  test("src/integrations imports ONLY the executions/agents public barrels + src/shared (payment-rails may additionally import the economics barrel; substrate-federation the capabilities barrel)", () => {
+  test("src/integrations imports ONLY the executions/agents public barrels + src/shared (payment-rails may additionally import the economics barrel; substrate-federation the capabilities barrel; runners the sandbox barrel)", () => {
     const violations: string[] = [];
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
@@ -135,13 +135,27 @@ describe("architecture: the WORK-016 integration boundary", () => {
         const isSubstrateFederation = file
           .slice(REPO_ROOT.length + 1)
           .startsWith("src/integrations/substrate-federation");
+        // WORK-019 (ENV-003): the runners integration implements the
+        // sandbox module's REQUIRED RunnerChannel port and delegates the
+        // fleet lifecycle to the sandbox module's PUBLIC runner-fleet
+        // service — the one fleet authority (the payment-rails/substrate-
+        // federation precedent of consuming the owning module's public
+        // surface; allowed ONLY under src/integrations/runners/).
+        const isSandboxBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "sandbox" &&
+          segments[3] === "public";
+        const isRunnersNamespace = file.includes("src/integrations/runners/");
         if (
           !isExecutionBarrel &&
           !isAgentsBarrel &&
           !isShared &&
           !isIntraIntegration &&
           !(isSubstrateFederation && isCapabilitiesBarrel) &&
-          !(isPaymentRailsNamespace && isEconomicsBarrel)
+          !(isPaymentRailsNamespace && isEconomicsBarrel) &&
+          !(isRunnersNamespace && isSandboxBarrel)
         ) {
           violations.push(`${file}: ${specifier} -> ${resolved}`);
         }
@@ -159,6 +173,13 @@ describe("architecture: the WORK-016 integration boundary", () => {
     expect(existsSync(join(REPO_ROOT, "src/integrations/payment-rails/internal/index.ts"))).toBe(
       true,
     );
+  });
+
+  test("the runners integration exposes its public barrel (WORK-019)", async () => {
+    const barrel = await import("../../src/integrations/runners/public");
+    expect(barrel.integrationId).toBe("runners");
+    expect(existsSync(join(REPO_ROOT, "src/integrations/runners/adapters/index.ts"))).toBe(true);
+    expect(existsSync(join(REPO_ROOT, "src/integrations/runners/internal/index.ts"))).toBe(true);
   });
 
   test("the integration holds NO policy/budget/verification/learning/capability authority logic", () => {

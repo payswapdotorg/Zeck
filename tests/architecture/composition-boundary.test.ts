@@ -178,6 +178,7 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
     expect(migrations).toContain(12); // WORK-023's claim (asserted below via the file read)
     expect(migrations).toContain(13); // WORK-031's claim (asserted below via the file read)
     expect(migrations).toContain(14); // WORK-032 economic actions (landed on main)
+    expect(migrations).toContain(15); // WORK-019's claim (asserted below via the file read)
     // 0010 is the WORK-017 composition migration.
     const migration = readFileSync(
       join(REPO_ROOT, "src/platform/db/migrations/0010_learning_compositions.sql"),
@@ -211,6 +212,20 @@ describe("architecture: the tool-composition learning boundary (WORK-017)", () =
       "utf8",
     );
     expect(substrateMigration.includes("capabilities.substrates")).toBe(true);
+    // WORK-019's claim: 0015 is the runner-fleet migration (the sibling
+    // WORK-022 branch claims 0016 in the same parallel wave).
+    const runnerFleetMigration = readFileSync(
+      join(REPO_ROOT, "src/platform/db/migrations/0015_runner_fleet.sql"),
+      "utf8",
+    );
+    expect(runnerFleetMigration.includes("sandbox.runners")).toBe(true);
+    expect(runnerFleetMigration.includes("sandbox.runner_assignments")).toBe(true);
+    expect(runnerFleetMigration.includes("sandbox.runner_assignment_events")).toBe(true);
+    // Physical guards: the split-brain exclusivity partial index, the
+    // append-only evidence trail and the terminal immutability triggers.
+    expect(runnerFleetMigration.includes("runner_assignments_active_slot")).toBe(true);
+    expect(runnerFleetMigration.includes("runner_assignment_events_immutable")).toBe(true);
+    expect(runnerFleetMigration.includes("terminal-immutable")).toBe(true);
   });
 
   test("the learning signal projection carries the set anchors (M13/M14)", () => {

@@ -56,8 +56,21 @@ export const SANDBOX_ENVIRONMENT_KINDS = [
 
 export type SandboxEnvironmentKind = (typeof SANDBOX_ENVIRONMENT_KINDS)[number];
 
-/** The environment kinds with a shipped provider adapter in this Work Order. */
-export const IMPLEMENTED_SANDBOX_KINDS = ["no-execution", "process", "container"] as const;
+/**
+ * The environment kinds with a shipped provider adapter. WORK-019 extends
+ * the v1 set with the dedicated-kernel tiers (`microvm`/`vm` — the neutral
+ * `IsolatedImageRuntime` seam, fail-closed without a runtime client) and
+ * the customer-runner fleet (the governed runner fleet + the REQUIRED
+ * neutral runner channel).
+ */
+export const IMPLEMENTED_SANDBOX_KINDS = [
+  "no-execution",
+  "process",
+  "container",
+  "microvm",
+  "vm",
+  "customer-runner",
+] as const;
 
 export function isSandboxEnvironmentKind(value: string): value is SandboxEnvironmentKind {
   return (SANDBOX_ENVIRONMENT_KINDS as readonly string[]).includes(value);
