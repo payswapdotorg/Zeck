@@ -1016,6 +1016,53 @@
           ]
         }
       }
+    },
+    "WORK-019": {
+      "asOf": "2026-09-01T16:10:00Z",
+      "branch": "work/WORK-019-customer-runners",
+      "baseRevision": "ae9c5f1a39ad4579f639917923d992cbe7b9b412",
+      "assuranceProfile": "CRITICAL",
+      "outcomes": {
+        "IMPLEMENTATION-COMPLETENESS": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "docs/work-items/WORK-019.md",
+            "tests/unit/sandbox/runner-fleet-domain.test.ts",
+            "tests/unit/sandbox/runner-fleet-service.test.ts",
+            "tests/integration/postgres/runner-fleet.test.ts"
+          ]
+        },
+        "IDENTITY-IDEMPOTENCY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/runner-fleet.test.ts",
+            "tests/integration/postgres/runner-fleet-concurrency.test.ts",
+            "tests/discrimination/runner-fleet.discrimination.test.ts",
+            "src/platform/db/migrations/0015_runner_fleet.sql",
+            "docs/work-items/WORK-019.md"
+          ]
+        },
+        "CONCURRENCY-CRASH-SAFETY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/integration/postgres/runner-fleet-concurrency.test.ts",
+            "src/platform/db/migrations/0015_runner_fleet.sql",
+            "docs/work-items/WORK-019.md"
+          ]
+        },
+        "SELF-HOSTING-BOUNDARY": {
+          "status": "evidence-recorded",
+          "verdict": "passed",
+          "evidence": [
+            "tests/architecture/runner-fleet-boundary.test.ts",
+            "tests/discrimination/runner-fleet.discrimination.test.ts",
+            "docs/work-items/WORK-019.md"
+          ]
+        }
+      }
     }
   },
   "checkpointKinds": [

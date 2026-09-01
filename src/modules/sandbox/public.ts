@@ -44,11 +44,32 @@
  *    costed environments);
  *  - execution identity/lifecycle/evidence: `SandboxExecutionLedger`
  *    (REQUIRED — the executions public service behind it).
+ *
+ * WORK-019 (ENV-003) extends the ComputeEnvironment authority with the
+ * runner fleet and the dedicated-kernel tiers — a SUBSTRATE extension,
+ * never a second authority:
+ *  - `RunnerFleetService`: the governed customer-runner lifecycle
+ *    (registration → explicit authorization → health → idempotent
+ *    exclusive assignment → dispatch handoff → report → release/expiry →
+ *    revocation → reconnect re-binding the SAME assignment), with durable
+ *    runner identity, descriptive capability declarations and typed
+ *    pre-assignment rejections (tenant/application/environment mismatch,
+ *    unauthorized, capability mismatch, health);
+ *  - `RunnerChannel`: the REQUIRED neutral transport seam to external
+ *    runners (the customer-runner integration implements it behind
+ *    adapters; the handoff carries the sanitized admitted snapshot —
+ *    secret REFERENCES only);
+ *  - `IsolatedImageRuntime` + `MicroVmSandboxProvider`/`VmSandboxProvider`
+ *    (+ `CustomerRunnerSandboxProvider`): the provider-neutral
+ *    dedicated-kernel and customer-runner substrate adapters — fail-closed
+ *    without a wired runtime, VM-vendor-free by construction (M14).
  */
 
 import type { ModuleDescriptor } from "../../shared/module";
 import type { EnvironmentCatalog, EnvironmentCatalogDeps } from "./application/environment-catalog";
 import { createEnvironmentCatalog } from "./application/environment-catalog";
+import type { RunnerFleetDeps, RunnerFleetService } from "./application/runner-fleet";
+import { createRunnerFleetService } from "./application/runner-fleet";
 import type { SandboxService, SandboxServiceDeps } from "./application/sandbox-service";
 import { createSandboxService } from "./application/sandbox-service";
 import type {
@@ -84,6 +105,49 @@ import {
   validateEnvironmentRegistration,
 } from "./domain/environment";
 import type {
+  RunnerAssignmentProvenance,
+  RunnerAssignmentRecord,
+  RunnerAssignmentRequest,
+  RunnerAssignmentStatus,
+  RunnerAuthorizationStatus,
+  RunnerConnectionStatus,
+  RunnerHandoff,
+  RunnerHealthStatus,
+  RunnerProvenance,
+  RunnerRecord,
+  RunnerRegistrationInput,
+  RunnerResultReport,
+} from "./domain/runner";
+import {
+  canTransitionRunnerAssignment,
+  canTransitionRunnerAuthorization,
+  isRunnerAssignmentStatus,
+  isRunnerAuthorizationStatus,
+  isRunnerCapabilityId,
+  isRunnerConnectionStatus,
+  isRunnerHealthStatus,
+  isRunnerHealthyForAssignment,
+  isTerminalRunnerAssignmentStatus,
+  RUNNER_ASSIGNMENT_KEY_PATTERN,
+  RUNNER_ASSIGNMENT_STATUSES,
+  RUNNER_ASSIGNMENT_TRANSITIONS,
+  RUNNER_AUTHORIZATION_STATUSES,
+  RUNNER_AUTHORIZATION_TRANSITIONS,
+  RUNNER_CAPABILITY_IDS,
+  RUNNER_CONNECTION_STATUSES,
+  RUNNER_HEALTH_STATUSES,
+  RUNNER_TOKEN_PATTERN,
+  runnerAssignmentFingerprint,
+  runnerRegistrationFingerprint,
+  runnerSupportsRequirements,
+  TERMINAL_RUNNER_ASSIGNMENT_STATUSES,
+  validateRunnerCapabilities,
+  validateRunnerLease,
+  validateRunnerReference,
+  validateRunnerRegistration,
+  validateRunnerResultReport,
+} from "./domain/runner";
+import type {
   SandboxCreateInput,
   SandboxDenialClass,
   SandboxDenialCode,
@@ -110,6 +174,32 @@ import {
   TERMINAL_SANDBOX_STATUSES,
   validateSandboxTask,
 } from "./domain/sandbox";
+import type {
+  IsolatedImageReference,
+  IsolatedImageRuntime,
+  IsolatedImageTier,
+  IsolatedRuntimeRequest,
+  IsolatedRuntimeResult,
+} from "./ports/isolated-runtime";
+import { ISOLATED_IMAGE_TIERS } from "./ports/isolated-runtime";
+import type { RunnerChannel } from "./ports/runner-channel";
+import type {
+  AppendRunnerAssignmentEventInput,
+  AuthorizeRunnerInput,
+  ClaimRunnerDispatchInput,
+  ExpireRunnerAssignmentInput,
+  InsertRunnerAssignmentInput,
+  InsertRunnerInput,
+  ObserveRunnerConnectionInput,
+  ObserveRunnerHealthInput,
+  RecordRunnerReconnectInput,
+  RecordRunnerResultInput,
+  ReleaseRunnerAssignmentInput,
+  RevokeRunnerInput,
+  RunnerAssignmentEventName,
+  RunnerAssignmentEventRecord,
+  RunnerStore,
+} from "./ports/runner-store";
 import type {
   SandboxAdmission,
   SandboxAdmissionDecision,
@@ -143,30 +233,70 @@ export const moduleDescriptor: ModuleDescriptor = { id: "sandbox" };
 // provider SDK types never do).
 export {
   ContainerSandboxProvider,
+  CustomerRunnerSandboxProvider,
   createPolicySandboxAdmission,
   createSandboxCapabilityGate,
   createSandboxExecutionLedgerAdapter,
   DEFAULT_SANDBOX_IMAGE,
+  InMemoryRunnerStore,
   InMemorySandboxStore,
+  MicroVmSandboxProvider,
   ProcessSandboxProvider,
   SANDBOX_KIND_TO_ISOLATION,
+  SqlRunnerStore,
   SqlSandboxStore,
+  VmSandboxProvider,
 } from "./adapters";
 // Application services (the catalog + the governed sandbox lifecycle).
 // Domain: the provider-neutral environment contract + sandbox execution.
 // Ports: the required authority seams + the neutral substrate contract.
 export type {
+  AppendRunnerAssignmentEventInput,
+  AuthorizeRunnerInput,
   ClaimOutcome,
+  ClaimRunnerDispatchInput,
   ComputeEnvironmentRecord,
   ComputeEnvironmentRegistrationInput,
   ComputeEnvironmentSpec,
   EnvironmentCatalog,
   EnvironmentCatalogDeps,
   EnvironmentLifecycleStatus,
+  ExpireRunnerAssignmentInput,
   InsertEnvironmentInput,
+  InsertRunnerAssignmentInput,
+  InsertRunnerInput,
   InsertSandboxInput,
+  IsolatedImageReference,
+  IsolatedImageRuntime,
+  IsolatedImageTier,
+  IsolatedRuntimeRequest,
+  IsolatedRuntimeResult,
   LedgerStepEvent,
   LedgerStepEventOutcome,
+  ObserveRunnerConnectionInput,
+  ObserveRunnerHealthInput,
+  RecordRunnerReconnectInput,
+  RecordRunnerResultInput,
+  ReleaseRunnerAssignmentInput,
+  RevokeRunnerInput,
+  RunnerAssignmentEventName,
+  RunnerAssignmentEventRecord,
+  RunnerAssignmentProvenance,
+  RunnerAssignmentRecord,
+  RunnerAssignmentRequest,
+  RunnerAssignmentStatus,
+  RunnerAuthorizationStatus,
+  RunnerChannel,
+  RunnerConnectionStatus,
+  RunnerFleetDeps,
+  RunnerFleetService,
+  RunnerHandoff,
+  RunnerHealthStatus,
+  RunnerProvenance,
+  RunnerRecord,
+  RunnerRegistrationInput,
+  RunnerResultReport,
+  RunnerStore,
   SandboxAdmission,
   SandboxAdmissionDecision,
   SandboxAdmissionRequest,
@@ -203,21 +333,44 @@ export type {
 export {
   canonicalEnvironmentJson,
   canTransitionEnvironment,
+  canTransitionRunnerAssignment,
+  canTransitionRunnerAuthorization,
   canTransitionSandbox,
   containsRawSecretValue,
   createEnvironmentCatalog,
+  createRunnerFleetService,
   createSandboxProviderRegistry,
   createSandboxService,
   ENVIRONMENT_LIFECYCLE_STATUSES,
   ENVIRONMENT_TRANSITIONS,
   IMPLEMENTED_SANDBOX_KINDS,
+  ISOLATED_IMAGE_TIERS,
   isEnvironmentLifecycleStatus,
+  isRunnerAssignmentStatus,
+  isRunnerAuthorizationStatus,
+  isRunnerCapabilityId,
+  isRunnerConnectionStatus,
+  isRunnerHealthStatus,
+  isRunnerHealthyForAssignment,
   isSandboxEnvironmentKind,
   isSandboxExecutionStatus,
   isTerminalEnvironmentStatus,
+  isTerminalRunnerAssignmentStatus,
   isTerminalSandboxStatus,
   kindExecutes,
+  RUNNER_ASSIGNMENT_KEY_PATTERN,
+  RUNNER_ASSIGNMENT_STATUSES,
+  RUNNER_ASSIGNMENT_TRANSITIONS,
+  RUNNER_AUTHORIZATION_STATUSES,
+  RUNNER_AUTHORIZATION_TRANSITIONS,
+  RUNNER_CAPABILITY_IDS,
+  RUNNER_CONNECTION_STATUSES,
+  RUNNER_HEALTH_STATUSES,
+  RUNNER_TOKEN_PATTERN,
   refLooksLikeHostPath,
+  runnerAssignmentFingerprint,
+  runnerRegistrationFingerprint,
+  runnerSupportsRequirements,
   SANDBOX_DENIAL_CLASSES,
   SANDBOX_EGRESS_MODES,
   SANDBOX_ENVIRONMENT_KINDS,
@@ -228,8 +381,14 @@ export {
   SANDBOX_STATUS_TRANSITIONS,
   SANDBOX_WORKSPACE_MODES,
   sandboxRequestFingerprint,
+  TERMINAL_RUNNER_ASSIGNMENT_STATUSES,
   TERMINAL_SANDBOX_STATUSES,
   validateComputeEnvironmentSpec,
   validateEnvironmentRegistration,
+  validateRunnerCapabilities,
+  validateRunnerLease,
+  validateRunnerReference,
+  validateRunnerRegistration,
+  validateRunnerResultReport,
   validateSandboxTask,
 };
