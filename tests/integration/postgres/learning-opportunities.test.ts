@@ -205,15 +205,13 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
     expect(outcome.replayed).toBe(false);
 
     // The analysis row binds the REAL execution (the FK proves it exists).
-    const row = await ctx.port.execute<
-      {
-        readonly repository: string;
-        readonly revision: string;
-        readonly execution_id: string;
-        readonly execution_status: string;
-        readonly finding_count: number;
-      }
-    >({
+    const row = await ctx.port.execute<{
+      readonly repository: string;
+      readonly revision: string;
+      readonly execution_id: string;
+      readonly execution_status: string;
+      readonly finding_count: number;
+    }>({
       sql: `SELECT a.repository, a.revision, a.execution_id, e.status AS execution_status,
                    a.finding_count
             FROM learning.opportunity_analyses a
@@ -315,9 +313,7 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
       .catch((error: unknown) => error);
     expect(miss).toBeInstanceOf(PlatformError);
     const store = new SqlOpportunityStore(ctx.port);
-    expect(
-      await store.getAnalysis(foreignScope, outcome.analysis.analysisId),
-    ).toBeNull();
+    expect(await store.getAnalysis(foreignScope, outcome.analysis.analysisId)).toBeNull();
     expect(await store.listFindings(foreignScope, outcome.analysis.analysisId)).toEqual([]);
     expect(await store.listAnalyses(foreignScope)).toEqual([]);
     const transitionMiss = await analyzer
@@ -445,7 +441,12 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
           world.tenantId,
           executionId,
           REVISION,
-          JSON.stringify({ repository: REPOSITORY, targetNodeIds: ["llm-const"], findingClass: "ai-removal", population: 4 }),
+          JSON.stringify({
+            repository: REPOSITORY,
+            targetNodeIds: ["llm-const"],
+            findingClass: "ai-removal",
+            population: 4,
+          }),
         ],
       }),
     ).rejects.toThrow(/answer|vocabulary/i);
@@ -472,9 +473,7 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
       executionId,
       subgraph: sparseConstantSubgraph(),
     });
-    const finding = outcome.findings[0] as NonNullable<
-      (typeof outcome.findings)[number]
-    >;
+    const finding = outcome.findings[0] as NonNullable<(typeof outcome.findings)[number]>;
     const ratingBase = {
       applicationId: world.applicationId,
       tenantId: world.tenantId,
@@ -728,7 +727,9 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
         tenantId: world.tenantId,
         analysisId: outcome.analysis.analysisId,
       })
-      .then((report) => report.findings.find((candidate) => candidate.findingId === finding.findingId));
+      .then((report) =>
+        report.findings.find((candidate) => candidate.findingId === finding.findingId),
+      );
     expect(history?.state).toBe("verified");
     await expect(
       ctx.port.execute({
@@ -810,7 +811,12 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
                       '{"potential":"none","basis":["b"]}'::jsonb,
                       '{"strategy":"s","validationSteps":["v"]}'::jsonb,
                       NOW(), 1)`,
-        parameters: [generateId(), outcome.analysis.analysisId, world.applicationId, world.tenantId],
+        parameters: [
+          generateId(),
+          outcome.analysis.analysisId,
+          world.applicationId,
+          world.tenantId,
+        ],
       }),
     ).rejects.toThrow(/advisory/i);
 
@@ -831,7 +837,12 @@ definePgSuite("learning opportunities (real PostgreSQL, migration 0016)", (ctx) 
                       '{"potential":"none","basis":["b"]}'::jsonb,
                       '{"strategy":"s","validationSteps":["v"]}'::jsonb,
                       NOW(), 1)`,
-        parameters: [generateId(), outcome.analysis.analysisId, world.applicationId, world.tenantId],
+        parameters: [
+          generateId(),
+          outcome.analysis.analysisId,
+          world.applicationId,
+          world.tenantId,
+        ],
       }),
     ).rejects.toThrow(/state|vocabulary/i);
 
