@@ -25,6 +25,7 @@ import type {
   MessagingBudgetReserveCommand,
   MessagingCapabilityAdmissionRequest,
   MessagingConversationService,
+  MessagingConversationServiceDeps,
   MessagingEvidenceInput,
   MessagingExecutionLedger,
   MessagingExecutionOpenInput,
@@ -33,7 +34,6 @@ import type {
   MessagingPolicyAdmissionRequest,
   MessagingRouteClass,
   MessagingSecretMediationRequest,
-  MessagingConversationServiceDeps,
   MessagingTurnResponderRequest,
   MessagingTurnRouteRequest,
   StartMessagingConversationInput,
@@ -275,10 +275,8 @@ class FakeExecutionLedger implements MessagingExecutionLedger {
     }
     return { sequence: this.seq, type: "agent-action-recorded", replayed };
   }
-  async readExecution(applicationId: string, executionId: string) {
-    const existing = [...this.executions.values()].find(
-      (id) => id === executionId,
-    );
+  async readExecution(_applicationId: string, executionId: string) {
+    const existing = [...this.executions.values()].find((id) => id === executionId);
     return existing === undefined
       ? null
       : { id: existing, tenantId: ACTOR.tenantId, status: "running" };
@@ -527,13 +525,10 @@ describe("startConversation (the governed conversation birth)", () => {
       attempts: 1,
     });
     // The marker row exists with the ledger linkage.
-    const messages = await world.service.listMessages(
-      ACTOR.applicationId,
-      outcome.conversationId,
+    const messages = await world.service.listMessages(ACTOR.applicationId, outcome.conversationId);
+    expect(messages.some((message) => message.eventKey === "start-1:conversation-started")).toBe(
+      true,
     );
-    expect(
-      messages.some((message) => message.eventKey === "start-1:conversation-started"),
-    ).toBe(true);
   });
 
   test("the admission order: policy admission happens BEFORE the rail open and the execution identity", async () => {
@@ -601,7 +596,7 @@ describe("startConversation (the governed conversation birth)", () => {
 
   test("a non-active deployment rejects new conversations (INVALID_STATE_TRANSITION)", async () => {
     const world = await seededWorld();
-    const actor = { ...ACTOR };
+    const _actor = { ...ACTOR };
     await world.deploymentService.suspendDeployment({
       applicationId: ACTOR.applicationId,
       deploymentId: world.deploymentId,
@@ -627,10 +622,7 @@ describe("startConversation (the governed conversation birth)", () => {
     });
     const after = await startConversation(world, "start-pin-2");
     expect(after.pinnedPlanVersion).toBe(2);
-    const first = await world.store.findConversation(
-      ACTOR.applicationId,
-      before.conversationId,
-    );
+    const first = await world.store.findConversation(ACTOR.applicationId, before.conversationId);
     expect(first?.pinnedPlanVersion).toBe(1);
     expect(first?.executionId).toBe(before.executionId);
   });
@@ -718,12 +710,15 @@ describe("ingestInboundEvent (the governed turn: ordering evidence + admission +
     expect(reply?.attachments).toEqual(["artifact:attachments/1"]);
     // The turn evidence rode the canonical executions ledger.
     expect(
-      world.ledger.evidence.some((entry) => entry.key === `messaging:message:${started.conversationId}:evt-1`),
+      world.ledger.evidence.some(
+        (entry) => entry.key === `messaging:message:${started.conversationId}:evt-1`,
+      ),
     ).toBe(true);
     // The durable operation completed.
-    expect(
-      await operation(world, "turn-reply", `${started.conversationId}:evt-1`),
-    ).toMatchObject({ status: "completed", attempts: 1 });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-1`)).toMatchObject({
+      status: "completed",
+      attempts: 1,
+    });
     // The budget settled after the send.
     expect(world.budget.settles).toHaveLength(1);
   });
@@ -829,7 +824,10 @@ describe("ingestInboundEvent (the governed turn: ordering evidence + admission +
     const world = await seededWorld();
     const started = await startedConversation(world);
     await expect(
-      world.service.ingestInboundEvent(userEvent(started.conversationId, "evt-tenant"), OTHER_TENANT_ACTOR),
+      world.service.ingestInboundEvent(
+        userEvent(started.conversationId, "evt-tenant"),
+        OTHER_TENANT_ACTOR,
+      ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
     expect(railRecords(world, "send")).toHaveLength(0);
   });
@@ -882,7 +880,9 @@ describe("ingestInboundEvent (the governed turn: ordering evidence + admission +
     expect(world.responder.calls).toHaveLength(0);
     const messages = await world.service.listMessages(ACTOR.applicationId, started.conversationId);
     expect(
-      messages.some((message) => message.eventKey === `denial:${started.conversationId}:evt-budget`),
+      messages.some(
+        (message) => message.eventKey === `denial:${started.conversationId}:evt-budget`,
+      ),
     ).toBe(true);
   });
 
@@ -977,7 +977,11 @@ describe("ingestInboundEvent (the governed turn: ordering evidence + admission +
     const world = await seededWorld();
     const started = await startConversation(world, "start-close");
     await world.service.ingestInboundEvent(userEvent(started.conversationId, "evt-before"), ACTOR);
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-1", ACTOR);
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-1",
+      ACTOR,
+    );
     await expect(
       world.service.ingestInboundEvent(userEvent(started.conversationId, "evt-after"), ACTOR),
     ).rejects.toMatchObject({ code: "INVALID_STATE_TRANSITION" });
@@ -1000,14 +1004,20 @@ describe("ingestInboundEvent (the governed turn: ordering evidence + admission +
       ACTOR,
     );
     const request = world.responder.calls[0];
-    expect(request?.turnAttachments).toEqual(["artifact:inbound/attach-1", "artifact:inbound/attach-2"]);
+    expect(request?.turnAttachments).toEqual([
+      "artifact:inbound/attach-1",
+      "artifact:inbound/attach-2",
+    ]);
     expect(request?.turnPayloadRef).toBe("artifact:inbound/1");
     const inbound = await world.store.findMessage(
       ACTOR.applicationId,
       started.conversationId,
       "evt-attach",
     );
-    expect(inbound?.attachments).toEqual(["artifact:inbound/attach-1", "artifact:inbound/attach-2"]);
+    expect(inbound?.attachments).toEqual([
+      "artifact:inbound/attach-1",
+      "artifact:inbound/attach-2",
+    ]);
   });
 });
 
@@ -1056,7 +1066,9 @@ describe("applyDeliveryStatus (correlation-guarded, idempotent delivery evidence
     // The delivery provenance rode the executions ledger.
     expect(
       world.ledger.evidence.some(
-        (entry) => entry.key === `messaging:delivery:${started.conversationId}:dlv-${started.conversationId}-evt-del:reply-delivered`,
+        (entry) =>
+          entry.key ===
+          `messaging:delivery:${started.conversationId}:dlv-${started.conversationId}-evt-del:reply-delivered`,
       ),
     ).toBe(true);
     // The delivery-apply operation completed.
@@ -1091,7 +1103,7 @@ describe("applyDeliveryStatus (correlation-guarded, idempotent delivery evidence
 
   test("a callback cannot mutate ANOTHER conversation's message (cross-conversation correlation fails closed)", async () => {
     const world = await seededWorld();
-    const { started } = await conversationWithReply(world);
+    await conversationWithReply(world);
     const other = await startConversation(world, "start-del-other");
     await expect(
       world.service.applyDeliveryStatus(
@@ -1159,7 +1171,11 @@ describe("applyDeliveryStatus (correlation-guarded, idempotent delivery evidence
     const { started } = await conversationWithReply(world);
     await expect(
       world.service.applyDeliveryStatus(
-        { conversationId: started.conversationId, messageKey: "evt-del:reply", status: "delivered" },
+        {
+          conversationId: started.conversationId,
+          messageKey: "evt-del:reply",
+          status: "delivered",
+        },
         OTHER_TENANT_ACTOR,
       ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
@@ -1171,7 +1187,11 @@ describe("escalateToHuman (the governed escalation step)", () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-esc");
     const escalated = await world.service.escalateToHuman(
-      { conversationId: started.conversationId, destination: "human-operator", cause: "customer frustrated" },
+      {
+        conversationId: started.conversationId,
+        destination: "human-operator",
+        cause: "customer frustrated",
+      },
       "esc-1",
       ACTOR,
     );
@@ -1182,9 +1202,7 @@ describe("escalateToHuman (the governed escalation step)", () => {
     expect(railRecords(world, "escalate")).toHaveLength(1);
     // The governed execution step: the wait-human transition on the ledger.
     expect(world.ledger.humanWaits).toHaveLength(1);
-    expect(String(struct(world.ledger.humanWaits[0]?.input).executionId)).toBe(
-      started.executionId,
-    );
+    expect(String(struct(world.ledger.humanWaits[0]?.input).executionId)).toBe(started.executionId);
     // The durable escalation record is bound to the conversation + execution.
     const record = await world.store.findEscalation(ACTOR.applicationId, "esc-1");
     expect(record?.conversationId).toBe(started.conversationId);
@@ -1219,8 +1237,16 @@ describe("escalateToHuman (the governed escalation step)", () => {
   test("idempotent replay: the same key converges on the SAME escalation record", async () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-esc-replay");
-    const first = await world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-3", ACTOR);
-    const second = await world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-3", ACTOR);
+    const first = await world.service.escalateToHuman(
+      { conversationId: started.conversationId },
+      "esc-3",
+      ACTOR,
+    );
+    const second = await world.service.escalateToHuman(
+      { conversationId: started.conversationId },
+      "esc-3",
+      ACTOR,
+    );
     expect(second.replayed).toBe(true);
     expect(railRecords(world, "escalate")).toHaveLength(1);
     expect(world.ledger.humanWaits).toHaveLength(1);
@@ -1243,7 +1269,11 @@ describe("escalateToHuman (the governed escalation step)", () => {
   test("a closed conversation cannot escalate (terminal guard)", async () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-esc-closed");
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-esc", ACTOR);
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-esc",
+      ACTOR,
+    );
     await expect(
       world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-5", ACTOR),
     ).rejects.toMatchObject({ code: "INVALID_STATE_TRANSITION" });
@@ -1253,7 +1283,11 @@ describe("escalateToHuman (the governed escalation step)", () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-esc-tenant");
     await expect(
-      world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-6", OTHER_TENANT_ACTOR),
+      world.service.escalateToHuman(
+        { conversationId: started.conversationId },
+        "esc-6",
+        OTHER_TENANT_ACTOR,
+      ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
     expect(railRecords(world, "escalate")).toHaveLength(0);
   });
@@ -1265,9 +1299,7 @@ describe("escalateToHuman (the governed escalation step)", () => {
     await expect(
       world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-7", ACTOR),
     ).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
-    expect(
-      await operation(world, "human-escalation", "esc-7"),
-    ).toMatchObject({ status: "failed" });
+    expect(await operation(world, "human-escalation", "esc-7")).toMatchObject({ status: "failed" });
     // The retry replays the recorded failure (no second notice attempt).
     await expect(
       world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-7", ACTOR),
@@ -1309,7 +1341,11 @@ describe("closeConversation (the terminal move)", () => {
   test("idempotent replay: a second close under the same key converges; the conversation is terminal-immutable", async () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-close-2");
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-b", ACTOR);
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-b",
+      ACTOR,
+    );
     const replay = await world.service.closeConversation(
       { conversationId: started.conversationId },
       "close-b",
@@ -1322,7 +1358,11 @@ describe("closeConversation (the terminal move)", () => {
   test("closing an ALREADY-closed conversation replays (terminal state is the durable proof)", async () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-close-3");
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-c", ACTOR);
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-c",
+      ACTOR,
+    );
     const replay = await world.service.closeConversation(
       { conversationId: started.conversationId },
       "close-d",
@@ -1335,7 +1375,11 @@ describe("closeConversation (the terminal move)", () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-close-4");
     await expect(
-      world.service.closeConversation({ conversationId: started.conversationId }, "close-e", OTHER_TENANT_ACTOR),
+      world.service.closeConversation(
+        { conversationId: started.conversationId },
+        "close-e",
+        OTHER_TENANT_ACTOR,
+      ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
     const conversation = await world.store.findConversation(
       ACTOR.applicationId,
@@ -1390,13 +1434,15 @@ describe("the provenance chain inbound → execution → reply (AC6)", () => {
   test("getConversation reads the conversation with its execution facts (application-scoped)", async () => {
     const world = await seededWorld();
     const started = await startConversation(world, "start-read");
-    const read = await world.service.getConversation(
-      ACTOR.applicationId,
-      started.conversationId,
-    );
+    const read = await world.service.getConversation(ACTOR.applicationId, started.conversationId);
     expect(read?.conversation.id).toBe(started.conversationId);
     expect(read?.execution?.id).toBe(started.executionId);
-    expect(await world.service.getConversation("00000000-0000-7000-8000-0000000000ee", started.conversationId)).toBeNull();
+    expect(
+      await world.service.getConversation(
+        "00000000-0000-7000-8000-0000000000ee",
+        started.conversationId,
+      ),
+    ).toBeNull();
   });
 });
 
@@ -1408,10 +1454,7 @@ describe("the durable operation discipline (the WORK-024 crash-safety standard)"
     expect(world.log.index("rail-openConversation")).toBeGreaterThan(-1);
     // turn-reply: the claim precedes the responder and the rail send.
     world.log.entries.length = 0;
-    await world.service.ingestInboundEvent(
-      userEvent(started.conversationId, "evt-ops"),
-      ACTOR,
-    );
+    await world.service.ingestInboundEvent(userEvent(started.conversationId, "evt-ops"), ACTOR);
     const responderIndex = world.log.index("responder");
     const sendIndex = world.log.index("rail-sendMessage");
     expect(responderIndex).toBeGreaterThan(-1);
@@ -1421,8 +1464,16 @@ describe("the durable operation discipline (the WORK-024 crash-safety standard)"
       { conversationId: started.conversationId, messageKey: "evt-ops:reply", status: "delivered" },
       ACTOR,
     );
-    await world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-ops", ACTOR);
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-ops", ACTOR);
+    await world.service.escalateToHuman(
+      { conversationId: started.conversationId },
+      "esc-ops",
+      ACTOR,
+    );
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-ops",
+      ACTOR,
+    );
     for (const [kind, discriminator] of [
       ["conversation-start", "start-ops"],
       ["turn-reply", `${started.conversationId}:evt-ops`],
