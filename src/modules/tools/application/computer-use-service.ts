@@ -523,6 +523,52 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
           details: { sessionId: existing.id },
         });
       }
+      if (existing.status !== "denied") {
+        // Crash-window convergence (the evidence): a process that died
+        // between the session insert and the admitted-event append
+        // leaves the durable row without its ledger evidence. The
+        // KEYED append converges the admission evidence exactly once
+        // (the frozen ledger dedups by the stable event key).
+        await appendEvent(
+          existing.applicationId,
+          existing.executionId,
+          existing.id,
+          existing.tenantId,
+          "tool-requested",
+          "computer-use-session",
+          {
+            sessionId: existing.id,
+            mode: existing.initialMode,
+            capabilityId: existing.modeContext.capabilityId,
+            routeStages: existing.routeEvidence.route.map(
+              (stage) => `${stage.mode}:${stage.capabilityId}`,
+            ),
+            deterministicFirst: existing.routeEvidence.deterministicFirst,
+            ...(existing.admission.budgetOperationId === null
+              ? {}
+              : { budgetOperationId: existing.admission.budgetOperationId }),
+          },
+          {
+            sessionId: existing.id,
+            phase: "session-admitted",
+            mode: existing.initialMode,
+            deterministicFirst: existing.routeEvidence.deterministicFirst,
+            routeStageCount: existing.routeEvidence.route.length,
+          },
+          ledgerKey(existing.id, "session-admitted"),
+        );
+        // Crash-window convergence (the operation ledger): a process
+        // that died between the session insert and the operation
+        // completion leaves an honest PENDING create claim; the ACTIVE
+        // row is the committed-effect proof (the pre-terminal-stage
+        // discipline, active-session side) — converge it here, never a
+        // dangling PENDING claim on a converged session.
+        const createKey = computerUseSessionCreateKey(idempotencyKey);
+        const createOperation = await store.findOperation(request.applicationId, createKey);
+        if (createOperation !== null && createOperation.status === "pending") {
+          await store.completeOperation(request.applicationId, createKey, iso());
+        }
+      }
       if (isTerminalComputerUseSessionStatus(existing.status)) {
         // Converge the session-create operation onto the committed
         // outcome: a crash between the durable session row and the
@@ -1476,6 +1522,14 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     // ----- 9. Observations (append-only, digest-protected, retention). -----
     const observationSequences: number[] = [];
     const recordedObservations: ComputerUseObservationRecord[] = [];
+    // Crash-window convergence (the observation axis): a prior process
+    // may have already recorded THIS action's frames before dying (the
+    // action row is still `dispatching`); the retry converges onto the
+    // SAME observation rows by (action, observation type, content
+    // digest) — never a duplicate append.
+    const priorObservations = (await store.listObservations(applicationId, sessionId)).filter(
+      (observation) => observation.actionId === durableActionId,
+    );
     const frames = (
       outcome.kind === "env"
         ? outcome.result.observations
@@ -1525,6 +1579,17 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       }
       const expectedTypes = ACTION_OBSERVATION_TYPES[request.actionType];
       if (!expectedTypes.includes(frame.observationType)) {
+        continue;
+      }
+      const prior = priorObservations.find(
+        (observation) =>
+          observation.observationType === frame.observationType &&
+          observation.contentDigest === bodyDigest,
+      );
+      if (prior !== undefined) {
+        // The prior process's row for this frame: converge onto it.
+        observationSequences.push(prior.sequence);
+        recordedObservations.push(prior);
         continue;
       }
       const observationSequence =
@@ -1806,6 +1871,35 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
             `${COMPUTER_USE_KEY_PREFIXES.envOpenExternal}:${sessionId}:${converged.currentMode}`,
           );
         }
+        // Crash-window convergence (the evidence): a process that died
+        // between the escalation insert and the admitted-event append
+        // leaves the committed row without its ledger evidence; the
+        // KEYED append converges it exactly once.
+        await appendEvent(
+          applicationId,
+          session.executionId,
+          committedEscalation.id,
+          session.tenantId,
+          "tool-requested",
+          "computer-use-escalation",
+          {
+            sessionId,
+            escalationId: committedEscalation.id,
+            fromMode: committedEscalation.fromMode,
+            toMode: committedEscalation.toMode,
+            reasonCode: committedEscalation.reasonCode,
+            insufficiencyDigest: committedEscalation.insufficiencyDigest,
+            capabilityId: committedEscalation.capabilityId,
+          },
+          {
+            sessionId,
+            phase: "escalation-admitted",
+            fromMode: committedEscalation.fromMode,
+            toMode: committedEscalation.toMode,
+            reasonCode: committedEscalation.reasonCode,
+          },
+          ledgerKey(committedEscalation.id, "escalation-admitted"),
+        );
         // Converge the operation row onto the committed outcome.
         const operation = await store.findOperation(
           applicationId,
@@ -2035,6 +2129,75 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       });
     }
     if (isTerminalComputerUseSessionStatus(session.status)) {
+      if (session.terminalCause !== null && session.terminalCause !== cause) {
+        // The session already terminated with a DIFFERENT cause: the
+        // guarded mutation would reject the displacement; the replay
+        // fast path must not silently converge past it.
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message: `computer-use session already terminated with cause ${session.terminalCause}; the ${cause} termination is refused`,
+          details: { sessionId, status: session.status, terminalCause: session.terminalCause },
+        });
+      }
+      // Crash-window convergence: a process that died between the
+      // guarded terminal move and the settlement leaves the wallet
+      // reservation dangling; the KEYED settle/release converges
+      // exactly once (the terminal row is the committed-effect proof).
+      if (
+        budgetAuthority !== undefined &&
+        session.terminalCause !== null &&
+        session.admission.budgetOperationId !== null
+      ) {
+        const settlementScope = {
+          actorId: sessionId,
+          applicationId,
+          tenantId: session.tenantId,
+          operationId: session.admission.budgetOperationId,
+        };
+        try {
+          if (session.terminalCause === "completed") {
+            await budgetAuthority.settle(
+              { ...settlementScope, actualAmountMicroUsd: session.usageMicroUsd },
+              computerUseBudgetSettleKey(sessionId),
+            );
+          } else {
+            await budgetAuthority.release(settlementScope, computerUseBudgetReleaseKey(sessionId));
+          }
+        } catch {
+          // Settle/release are idempotent per key; a failure here must
+          // not mask the replayed terminal outcome (reconciliation by
+          // key).
+        }
+      }
+      // Crash-window convergence (the evidence): a process that died
+      // between the terminal move and the terminal-event append leaves
+      // the durable terminal row without its ledger evidence. The
+      // KEYED append converges it exactly once.
+      if (session.terminalCause !== null) {
+        await appendEvent(
+          applicationId,
+          session.executionId,
+          sessionId,
+          session.tenantId,
+          "tool-result",
+          "computer-use-session",
+          {
+            sessionId,
+            mode: session.currentMode,
+            status: session.status,
+            usageMicroUsd: session.usageMicroUsd,
+            escalations: session.escalationCount,
+          },
+          {
+            sessionId,
+            phase: "session-terminal",
+            status: session.status,
+            cause: session.terminalCause,
+            usageMicroUsd: session.usageMicroUsd,
+          },
+          ledgerKey(sessionId, `terminal:${session.terminalCause}`),
+        );
+      }
       return receiptOf(session, true);
     }
     const operationKey = computerUseTerminationKey(sessionId, cause);

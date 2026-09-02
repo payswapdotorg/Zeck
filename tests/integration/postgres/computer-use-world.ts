@@ -227,7 +227,7 @@ export interface ComputerUsePgWorld {
   readonly connectionId: string;
   /** The default booted process's service (the house default helpers use it). */
   readonly service: ComputerUseService;
-  /** The default booted process's simulated environment (the journal proofs). */
+  /** The world-level shared simulated environment (the journal proofs — durable across process death). */
   readonly environment: SimulatedComputerUseEnvironment;
   /** Boot (or re-boot) the computer-use service over the SURVIVING world. */
   readonly boot: (point?: ComputerUseCrashPoint | null) => {
@@ -518,6 +518,9 @@ export async function seedComputerUseWorld(db: DatabasePort): Promise<ComputerUs
   await register(desktopDeclaration());
 
   const store = new SqlComputerUseStore(db);
+  // The world-level simulated environment (shared by every boot — the
+  // durable external substrate; see boot()).
+  const environment = createSimulatedComputerUseEnvironment();
 
   const boot = (point: ComputerUseCrashPoint | null = null) => {
     // A NEW executions service over the SURVIVING SQL store + key
@@ -554,14 +557,16 @@ export async function seedComputerUseWorld(db: DatabasePort): Promise<ComputerUs
       point,
     );
     const budgetsProcess = crashableSeam(budgets, "budgets", point);
-    // The simulated isolated environment for THIS process (a process
-    // death loses the in-flight environment state; the durable
-    // env-open keys converge the re-open).
-    const environmentProcess = crashableSeam(
-      createSimulatedComputerUseEnvironment(),
-      "environment",
-      point,
-    );
+    // The simulated isolated environment models the DURABLE external
+    // computer-use substrate: a real isolated browser/desktop
+    // environment OUTLIVES the controller process, so ONE world-level
+    // instance is shared by every booted process. The keyed external
+    // effects journal (env-open / action external keys) converges
+    // re-dispatches across process death — exactly one external effect
+    // per stable key — which is the semantics the service's external
+    // key discipline presumes (and the real adapter's idempotent
+    // provider endpoints would deliver).
+    const environmentProcess = crashableSeam(environment, "environment", point);
     const storeProcess = crashableSeam(new SqlComputerUseStore(db), "store", point);
     const terminal = createSandboxComputerUseTerminal({
       service: sandboxProcess.proxy as ReturnType<typeof createSandboxService>,
