@@ -230,6 +230,79 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     }
   };
 
+  /**
+   * THE FINALIZATION-TAIL RECONCILIATION (the crash-recovery discipline):
+   * complete the allocation operation, release the run lease, release
+   * the substrate allocation and settle (completed) or release
+   * (failed/cancelled) the budget reservation — every step idempotent
+   * per its stable key, so a process that died between the terminal row
+   * transition and the tail is reconciled by the NEXT replay of the
+   * terminal outcome (a review-found gap: the early returns previously
+   * replayed the row WITHOUT re-driving the tail, leaking the paid
+   * reservation).
+   */
+  const reconcileFinalizedTails = async (
+    record: TrainingWorkloadRecord,
+    mode: "completed" | "failed" | "cancelled",
+  ): Promise<void> => {
+    const allocationKey = trainingOperationKey(
+      "allocate",
+      `${record.workloadKey}:attempt:${record.attempts}`,
+    );
+    // 1. The allocation operation row (pending -> terminal; skipped
+    //    when absent — a lease-less pre-allocation path).
+    const operation = await store.findTrainingOperation(record.applicationId, allocationKey);
+    if (operation !== null && operation.status === "pending") {
+      await store.completeTrainingOperation({
+        applicationId: record.applicationId,
+        operationKey: allocationKey,
+        ...(mode === "completed" ? {} : { failureReason: `workload ${mode}` }),
+        now: iso(),
+      });
+    }
+    // 2. The run lease (one-way release; only when a live row exists).
+    await releaseLeaseIfPresent(
+      record.applicationId,
+      record.id,
+      mode === "completed" ? "run-completed" : mode === "failed" ? "run-failed" : "cancelled",
+    );
+    // 3. The substrate allocation (keyed, exactly-once release).
+    await runtimeOf(record)?.release(allocationKey);
+    // 4. The budget tail (settle on completion; release otherwise) —
+    //    idempotent per operation id.
+    const budgetOperationId = record.budgetOperationId;
+    if (budgetOperationId !== null) {
+      try {
+        if (mode === "completed" && record.status === "completed") {
+          await budgetAuthority.settle(
+            {
+              actorId: record.id,
+              applicationId: record.applicationId,
+              tenantId: record.tenantId,
+              operationId: budgetOperationId,
+              actualAmountMicroUsd: record.usageMicroUsd ?? "0",
+            },
+            `training-settle:${budgetOperationId}`,
+          );
+        } else {
+          await budgetAuthority.release(
+            {
+              actorId: record.id,
+              applicationId: record.applicationId,
+              tenantId: record.tenantId,
+              operationId: budgetOperationId,
+            },
+            `training-release:${budgetOperationId}`,
+          );
+        }
+      } catch {
+        // Settle/release is idempotent per operationId; a failure here
+        // must not erase the durable outcome (replayed on the next
+        // terminal replay).
+      }
+    }
+  };
+
   /** The budget operation id of one workload attempt (stable per attempt). */
   const budgetOperationIdFor = (workloadKey: string, attempt: number): string =>
     attempt === 1
@@ -717,7 +790,17 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     if (isTerminalTrainingStatus(found.status) || found.status === "failed") {
       // completed/failed/cancelled: the FIRST dispatch's outcome IS the
       // durable outcome — every later dispatch replays it (no
-      // re-execution of paid compute).
+      // re-execution of paid compute) AND reconciles the finalization
+      // tail (idempotent per stable key — a process that died between
+      // the terminal transition and the tail is recovered here).
+      await reconcileFinalizedTails(
+        found,
+        found.status === "completed"
+          ? "completed"
+          : found.status === "failed"
+            ? "failed"
+            : "cancelled",
+      );
       return found;
     }
     if (found.status === "running") {
@@ -786,7 +869,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     const runtime = runtimes.runtimeFor(metadata.substrate.adapterRef);
     if (runtime === null) {
       // Unwired substrate: fail closed — the reservation must not leak.
-      return finalizeFailure(record, allocationKey, {
+      return finalizeFailure(record, {
         failureClass: "substrate-unavailable",
         message: `no accelerator runtime is wired for adapter ref "${metadata.substrate.adapterRef}"; the workload fails closed rather than allocating ungoverned compute`,
       });
@@ -836,7 +919,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     const runtime =
       metadata.substrate === null ? null : runtimes.runtimeFor(metadata.substrate.adapterRef);
     if (runtime === null) {
-      return finalizeFailure(record, allocationKey, {
+      return finalizeFailure(record, {
         failureClass: "substrate-unavailable",
         message: "the accelerator runtime is not wired for the admitted substrate",
       });
@@ -903,9 +986,9 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     }
 
     if (observation.outcome === "workload-completed") {
-      return finalizeSuccess(record, allocationKey, observation);
+      return finalizeSuccess(record, observation);
     }
-    return finalizeFailure(record, allocationKey, {
+    return finalizeFailure(record, {
       failureClass: observation.failure?.failureClass ?? "workload-failure",
       message: observation.failure?.message ?? "the substrate reported a failed run",
     });
@@ -999,7 +1082,6 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
   /** The success tail: output adoption + completion + settle + evidence. */
   const finalizeSuccess = async (
     record: TrainingWorkloadRecord,
-    allocationOperationKey: string,
     observation: TrainingRunObservation,
   ): Promise<TrainingWorkloadRecord> => {
     // Ledger completion evidence FIRST (deterministic payload; idempotent
@@ -1053,42 +1135,16 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     });
     const final = finalized.record;
 
-    // Complete the allocation operation + release the run lease + settle
-    // the budget exactly once per stable operation id (idempotent; a
-    // crash after finalization re-drives these on the replay path).
-    await store.completeTrainingOperation({
-      applicationId: record.applicationId,
-      operationKey: allocationOperationKey,
-      now: iso(),
-    });
-    await releaseLeaseIfPresent(record.applicationId, record.id, "run-completed");
-    await runtimeOf(record)?.release(
-      trainingOperationKey("allocate", `${record.workloadKey}:attempt:${record.attempts}`),
-    );
-    if (final.budgetOperationId !== null) {
-      try {
-        await budgetAuthority.settle(
-          {
-            actorId: record.id,
-            applicationId: record.applicationId,
-            tenantId: final.tenantId,
-            operationId: final.budgetOperationId,
-            actualAmountMicroUsd: final.usageMicroUsd ?? "0",
-          },
-          `training-settle:${final.budgetOperationId}`,
-        );
-      } catch {
-        // Settlement is idempotent per operationId; a failure here must
-        // not erase the durable workload outcome (replayed on retry).
-      }
-    }
+    // The finalization tail: the allocation operation completion + run
+    // lease release + substrate release + budget settlement — every
+    // step idempotent per stable key (reconciled by terminal replays).
+    await reconcileFinalizedTails(final, "completed");
     return final;
   };
 
   /** The failure tail: durable failure + release the reservation + lease. */
   const finalizeFailure = async (
     record: TrainingWorkloadRecord,
-    allocationOperationKey: string,
     failure: { readonly failureClass: TrainingFailureClass; readonly message: string },
   ): Promise<TrainingWorkloadRecord> => {
     const current =
@@ -1118,31 +1174,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       },
     });
     const final = finalized.record;
-    await store.completeTrainingOperation({
-      applicationId: record.applicationId,
-      operationKey: allocationOperationKey,
-      failureReason: failure.message,
-      now: iso(),
-    });
-    await releaseLeaseIfPresent(record.applicationId, record.id, "run-failed");
-    await runtimeOf(record)?.release(
-      trainingOperationKey("allocate", `${record.workloadKey}:attempt:${record.attempts}`),
-    );
-    if (final.budgetOperationId !== null) {
-      try {
-        await budgetAuthority.release(
-          {
-            actorId: record.id,
-            applicationId: record.applicationId,
-            tenantId: final.tenantId,
-            operationId: final.budgetOperationId,
-          },
-          `training-release:${final.budgetOperationId}`,
-        );
-      } catch {
-        // Release is idempotent per operationId; replayed on retry.
-      }
-    }
+    await reconcileFinalizedTails(final, "failed");
     return final;
   };
 
@@ -1264,28 +1296,15 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       now: iso(),
     });
     const final = cancelled.record;
-    await releaseLeaseIfPresent(found.applicationId, found.id, "cancelled");
+    // The cancellation tail: allocation release + lease release + the
+    // unspent-reservation refund — all idempotent per stable key
+    // (reconciled by terminal replays after a crash).
+    await reconcileFinalizedTails(final, "cancelled");
     await store.completeTrainingOperation({
       applicationId: found.applicationId,
       operationKey: cancelKey,
       now: iso(),
     });
-    // The unspent reservation is refunded (exactly once per operation id).
-    if (final.budgetOperationId !== null) {
-      try {
-        await budgetAuthority.release(
-          {
-            actorId: found.id,
-            applicationId: found.applicationId,
-            tenantId: final.tenantId,
-            operationId: final.budgetOperationId,
-          },
-          `training-release:${final.budgetOperationId}`,
-        );
-      } catch {
-        // Release is idempotent per operationId; replayed on retry.
-      }
-    }
     return final;
   };
 
@@ -1312,7 +1331,17 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       });
     }
     if (isTerminalTrainingStatus(found.status) || found.status === "failed") {
-      return found; // terminal outcomes replay (resume never resurrects)
+      // Terminal outcomes replay (resume never resurrects) — and the
+      // replay reconciles the finalization tail (crash recovery).
+      await reconcileFinalizedTails(
+        found,
+        found.status === "completed"
+          ? "completed"
+          : found.status === "failed"
+            ? "failed"
+            : "cancelled",
+      );
+      return found;
     }
     if (found.status !== "allocating" && found.status !== "running") {
       throw new PlatformError({
