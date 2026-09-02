@@ -565,7 +565,9 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     );
     // The rail performed the upstream side effect; the conversation row does NOT exist.
     expect(railRecords(world, "open")).toHaveLength(1);
-    expect(await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c2")).toBeNull();
+    expect(
+      await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c2"),
+    ).toBeNull();
     // RESTART: the retry runs the full pipeline; the rail open converges
     // on the SAME channel coordinates under the same stable key.
     const restarted = world.boot(null);
@@ -602,7 +604,9 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     const pending = await operation(world, "conversation-start", "start-c3");
     expect(pending?.status).toBe("pending");
     expect(pending?.checkpoint?.stage).toBe("conversation-opened");
-    expect(await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c3")).toBeNull();
+    expect(
+      await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c3"),
+    ).toBeNull();
     // RESTART: the durable tail completes from the checkpoint facts.
     const restarted = world.boot(null);
     const outcome = await restarted.service.startConversation(
@@ -719,7 +723,9 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     );
     // Two crashes later: the rail opened exactly once, nothing durable past it.
     expect(railRecords(world, "open")).toHaveLength(1);
-    expect(await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c6")).toBeNull();
+    expect(
+      await world.store.findConversationByStartKey(ACTOR.applicationId, "start-c6"),
+    ).toBeNull();
     const third = world.boot(null);
     const outcome = await third.service.startConversation(
       startInput(world, "c6"),
@@ -740,11 +746,7 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
 
   async function liveConversation(world: World, suffix: string) {
     const booted = world.boot(null);
-    return booted.service.startConversation(
-      startInput(world, suffix),
-      `start-${suffix}`,
-      ACTOR,
-    );
+    return booted.service.startConversation(startInput(world, suffix), `start-${suffix}`, ACTOR);
   }
 
   test("C7 TURN: crash AFTER the inbound claim — the restart resumes the reply pipeline; exactly one send", async () => {
@@ -864,10 +866,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
       () => dying.service.ingestInboundEvent(userEvent(started.conversationId, "evt-c10"), ACTOR),
       dying.crashed,
     );
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c10`)).toMatchObject({
-      status: "pending",
-      checkpoint: null,
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c10`)).toMatchObject(
+      {
+        status: "pending",
+        checkpoint: null,
+      },
+    );
     expect(world.responder.calls).toHaveLength(1);
     // RESTART: the full pipeline re-runs (the decision had not passed
     // no-return) — and the rail STILL performs exactly one send.
@@ -884,9 +888,11 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     expect(world.responder.calls).toHaveLength(2);
     const messages = await world.store.listMessages(ACTOR.applicationId, started.conversationId);
     expect(messages.filter((message) => message.eventKey === "evt-c10:reply")).toHaveLength(1);
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c10`)).toMatchObject({
-      status: "completed",
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c10`)).toMatchObject(
+      {
+        status: "completed",
+      },
+    );
   });
 
   test("C11 TURN: crash AFTER the rail send — the upstream send happened; the restart converges (replay), never double-sends", async () => {
@@ -908,7 +914,9 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
       userEvent(started.conversationId, "evt-c11"),
       ACTOR,
     );
-    expect(outcome.reply?.channelMessageRef).toBe(railRecords(world, "send")[0]?.messageKey === null ? null : outcome.reply?.channelMessageRef);
+    expect(outcome.reply?.channelMessageRef).toBe(
+      railRecords(world, "send")[0]?.messageKey === null ? null : outcome.reply?.channelMessageRef,
+    );
     expect(railRecords(world, "send")).toHaveLength(1);
     expect(world.rail.acceptedSends).toBe(1);
     expect(world.rail.replays.filter((replay) => replay.kind === "send")).toHaveLength(1);
@@ -916,10 +924,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     expect(world.responder.calls).toHaveLength(1);
     const final = await world.store.listMessages(ACTOR.applicationId, started.conversationId);
     expect(final.filter((message) => message.eventKey === "evt-c11:reply")).toHaveLength(1);
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c11`)).toMatchObject({
-      status: "completed",
-      attempts: 2,
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c11`)).toMatchObject(
+      {
+        status: "completed",
+        attempts: 2,
+      },
+    );
   });
 
   test("C12 TURN: crash AFTER the turn evidence — the reply row and the completion converge on restart", async () => {
@@ -953,10 +963,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     expect(world.rail.replays.filter((replay) => replay.kind === "send")).toHaveLength(1);
     const final = await world.store.listMessages(ACTOR.applicationId, started.conversationId);
     expect(final.filter((message) => message.eventKey === "evt-c12:reply")).toHaveLength(1);
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c12`)).toMatchObject({
-      status: "completed",
-      attempts: 2,
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c12`)).toMatchObject(
+      {
+        status: "completed",
+        attempts: 2,
+      },
+    );
   });
 
   test("C13 TURN: crash AFTER the reply row — only the operation completion is missing; the restart completes and replays", async () => {
@@ -976,9 +988,11 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     );
     const messages = await world.store.listMessages(ACTOR.applicationId, started.conversationId);
     expect(messages.filter((message) => message.eventKey === "evt-c13:reply")).toHaveLength(1);
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c13`)).toMatchObject({
-      status: "pending",
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c13`)).toMatchObject(
+      {
+        status: "pending",
+      },
+    );
     // RESTART: the completed-tail convergence.
     const restarted = world.boot(null);
     const outcome = await restarted.service.ingestInboundEvent(
@@ -987,10 +1001,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     );
     expect(outcome.replayed).toBe(true);
     expect(railRecords(world, "send")).toHaveLength(1);
-    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c13`)).toMatchObject({
-      status: "completed",
-      attempts: 2,
-    });
+    expect(await operation(world, "turn-reply", `${started.conversationId}:evt-c13`)).toMatchObject(
+      {
+        status: "completed",
+        attempts: 2,
+      },
+    );
   });
 
   // ---- DELIVERY STATUS APPLICATION ------------------------------------------
@@ -1013,7 +1029,11 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     await diesDuring(
       () =>
         dying.service.applyDeliveryStatus(
-          { conversationId: started.conversationId, messageKey: "evt-c14:reply", status: "delivered" },
+          {
+            conversationId: started.conversationId,
+            messageKey: "evt-c14:reply",
+            status: "delivered",
+          },
           ACTOR,
         ),
       dying.crashed,
@@ -1053,7 +1073,11 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     await diesDuring(
       () =>
         dying.service.applyDeliveryStatus(
-          { conversationId: started.conversationId, messageKey: "evt-c15:reply", status: "delivered" },
+          {
+            conversationId: started.conversationId,
+            messageKey: "evt-c15:reply",
+            status: "delivered",
+          },
           ACTOR,
         ),
       dying.crashed,
@@ -1102,7 +1126,11 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     await diesDuring(
       () =>
         dying.service.applyDeliveryStatus(
-          { conversationId: started.conversationId, messageKey: "evt-c16:reply", status: "delivered" },
+          {
+            conversationId: started.conversationId,
+            messageKey: "evt-c16:reply",
+            status: "delivered",
+          },
           ACTOR,
         ),
       dying.crashed,
@@ -1284,7 +1312,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
     const started = await liveConversation(world, "t21");
     const dying = world.boot({ target: "ledger", method: "recordEvidence", when: "after" });
     await diesDuring(
-      () => dying.service.closeConversation({ conversationId: started.conversationId }, "close-c21", ACTOR),
+      () =>
+        dying.service.closeConversation(
+          { conversationId: started.conversationId },
+          "close-c21",
+          ACTOR,
+        ),
       dying.crashed,
     );
     expect(
@@ -1323,7 +1356,12 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
       when: "after",
     });
     await diesDuring(
-      () => dying.service.closeConversation({ conversationId: started.conversationId }, "close-c22", ACTOR),
+      () =>
+        dying.service.closeConversation(
+          { conversationId: started.conversationId },
+          "close-c22",
+          ACTOR,
+        ),
       dying.crashed,
     );
     // The terminal move committed; the operation row is PENDING.
@@ -1362,7 +1400,8 @@ describe("crash-injection proofs: durable operation state + stable rail keys (WO
       when: "after",
     });
     await diesDuring(
-      () => dyingA.service.ingestInboundEvent(userEvent(startedA.conversationId, "evt-same"), ACTOR),
+      () =>
+        dyingA.service.ingestInboundEvent(userEvent(startedA.conversationId, "evt-same"), ACTOR),
       dyingA.crashed,
     );
     // Process B (a fresh boot) completes its turn with the SAME event key.
