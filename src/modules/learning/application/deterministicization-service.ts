@@ -1088,11 +1088,7 @@ export function createDeterministicizationService(
       // re-request of the same logical promotion never re-runs the
       // gate, never appends a second decision and never touches state.
       if (candidate.status === "promoted") {
-        const existing = await replayRecordedDecision(
-          scope,
-          candidate.candidateId,
-          "promotion",
-        );
+        const existing = await replayRecordedDecision(scope, candidate.candidateId, "promotion");
         return { decision: existing, replayed: true };
       }
       const config = resolveGateConfig(request.gateConfig);
@@ -1248,11 +1244,7 @@ export function createDeterministicizationService(
       // decision — the incumbent restoration stays durable and a
       // re-request never appends a second decision.
       if (candidate.status === "rolled-back") {
-        const existing = await replayRecordedDecision(
-          scope,
-          candidate.candidateId,
-          "rollback",
-        );
+        const existing = await replayRecordedDecision(scope, candidate.candidateId, "rollback");
         return { decision: existing, replayed: true };
       }
       if (candidate.status !== "promoted") {
