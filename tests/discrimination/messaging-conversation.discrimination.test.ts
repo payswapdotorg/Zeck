@@ -62,6 +62,7 @@ import type {
   MessagingActor,
   MessagingBudgetReserveCommand,
   MessagingCapabilityAdmissionRequest,
+  MessagingConversationServiceDeps,
   MessagingEvidenceInput,
   MessagingExecutionLedger,
   MessagingExecutionOpenInput,
@@ -69,7 +70,6 @@ import type {
   MessagingPolicyAdmissionRequest,
   MessagingRouteClass,
   MessagingSecretMediationRequest,
-  MessagingConversationServiceDeps,
   MessagingTurnResponderRequest,
   MessagingTurnRouteRequest,
   StartMessagingConversationInput,
@@ -216,7 +216,7 @@ function violationsOf(rules: MessagingRules): string[] {
 
   // S7 — the conversation-scoped key discipline: every event-derived key
   // is scoped by the conversation identity.
-  if (!rules.ingestBody.includes("const scopedKey = `${conversation.id}:${eventKey}`")) {
+  if (!rules.ingestBody.includes(`const scopedKey = \`${conversation.id}:${eventKey}\``)) {
     violations.push("scoping-removed");
   }
 
@@ -297,7 +297,10 @@ function violationsOf(rules: MessagingRules): string[] {
       violations.push(`execution-authority-inversion:${forbidden}`);
     }
   }
-  if (!rules.storePort.includes("recordStepEvent") && !rules.service.includes("ledger.recordEvidence(")) {
+  if (
+    !rules.storePort.includes("recordStepEvent") &&
+    !rules.service.includes("ledger.recordEvidence(")
+  ) {
     violations.push("provenance-path-removed");
   }
 
@@ -339,7 +342,11 @@ function mutateService(mutation: (content: string) => string): MessagingRules {
     startBody: methodBody(service, "async startConversation("),
     deliveryBody: methodBody(service, "async applyDeliveryStatus("),
     escalationBody: methodBody(service, "async escalateToHuman("),
-    resolveConversationBody: sectionOf(service, "const resolveConversation = async (", "const appendMessage = async ("),
+    resolveConversationBody: sectionOf(
+      service,
+      "const resolveConversation = async (",
+      "const appendMessage = async (",
+    ),
     domain: DOMAIN_SOURCE,
     storePort: STORE_PORT_SOURCE,
     migration: MIGRATION_SOURCE,
@@ -700,7 +707,11 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
       ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
     await expect(
-      world.service.escalateToHuman({ conversationId: started.conversationId }, "s1-x", OTHER_TENANT_ACTOR),
+      world.service.escalateToHuman(
+        { conversationId: started.conversationId },
+        "s1-x",
+        OTHER_TENANT_ACTOR,
+      ),
     ).rejects.toMatchObject({ code: "TENANT_SCOPE_VIOLATION" });
     expect(world.rail.sends.filter((record) => record.kind === "send")).toHaveLength(0);
     expect(world.rail.sends.filter((record) => record.kind === "escalate")).toHaveLength(0);
@@ -832,16 +843,14 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
     expect(world.admissions.responderCalls).toHaveLength(1);
     expect(world.admissions.reserves).toHaveLength(1);
     // Exactly ONE turn evidence record on the ledger (idempotency key).
-    const turnEvidence = world.ledger.evidence.filter(
-      (entry) => entry.evidenceClass === "message",
-    );
+    const turnEvidence = world.ledger.evidence.filter((entry) => entry.evidenceClass === "message");
     expect(turnEvidence).toHaveLength(1);
   });
 
   test("S7 STATIC: removing the conversation-scoped key discipline is flagged", () => {
     const mutated = mutateService((content) =>
       content.replace(
-        "const scopedKey = `${conversation.id}:${eventKey}`",
+        `const scopedKey = \`${conversation.id}:${eventKey}\``,
         "const scopedKey = eventKey",
       ),
     );
@@ -868,9 +877,7 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
   });
 
   test("S8 STATIC: removing the ordering resolution is flagged", () => {
-    const mutated = mutateService((content) =>
-      content.replace("resolveMessagingOrdering({", "({"),
-    );
+    const mutated = mutateService((content) => content.replace("resolveMessagingOrdering({", "({"));
     expect(violationsOf(mutated)).toContain("ordering-resolution-removed");
   });
 
@@ -907,15 +914,12 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
     const mutated = mutateService((content) =>
       content.replace(
         'if (message === null || message.kind !== "agent-reply" || message.direction !== "outbound") {',
-        'if (message === null) {',
+        "if (message === null) {",
       ),
     );
     expect(violationsOf(mutated)).toContain("correlation-kind-guard-removed");
     const mutatedRef = mutateService((content) =>
-      content.replace(
-        "message.channelMessageRef !== input.channelMessageRef",
-        "false",
-      ),
+      content.replace("message.channelMessageRef !== input.channelMessageRef", "false"),
     );
     expect(violationsOf(mutatedRef)).toContain("correlation-ref-guard-removed");
   });
@@ -945,7 +949,10 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
       ),
     ).rejects.toMatchObject({ code: "INVALID_STATE_TRANSITION" });
     // Zero delivery evidence, the projection never moved.
-    const deliveries = await world.store.listDeliveries(ACTOR.applicationId, started.conversationId);
+    const deliveries = await world.store.listDeliveries(
+      ACTOR.applicationId,
+      started.conversationId,
+    );
     expect(deliveries).toHaveLength(0);
     const reply = await world.store.findMessage(
       ACTOR.applicationId,
@@ -995,14 +1002,14 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
 
   test("S11 STATIC: removing the migration core guards is flagged", () => {
     const mutated = mutateMigration((content) =>
-      content.replace("CREATE TRIGGER msg_conversations_core_guard", "CREATE TRIGGER removed_guard"),
+      content.replace(
+        "CREATE TRIGGER msg_conversations_core_guard",
+        "CREATE TRIGGER removed_guard",
+      ),
     );
     expect(violationsOf(mutated)).toContain("migration-core-guard-removed");
     const mutatedPin = mutateMigration((content) =>
-      content.replace(
-        "OR NEW.pinned_plan_version <> OLD.pinned_plan_version",
-        "OR FALSE",
-      ),
+      content.replace("OR NEW.pinned_plan_version <> OLD.pinned_plan_version", "OR FALSE"),
     );
     expect(violationsOf(mutatedPin)).toContain("migration-pin-immutability-removed");
     const mutatedUnique = mutateMigration((content) =>
@@ -1093,7 +1100,10 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
 
   test("S14 STATIC: removing the escalation wait step or reordering the notice before it is flagged", () => {
     const mutatedWait = mutateService((content) =>
-      content.replace("const wait = await ledger.awaitHuman(", "const wait = await Promise.resolve(null ?? {"),
+      content.replace(
+        "const wait = await ledger.awaitHuman(",
+        "const wait = await Promise.resolve(null ?? {",
+      ),
     );
     expect(violationsOf(mutatedWait)).toContain("escalation-wait-removed");
     // Reorder: the rail notice moved above the wait step.
@@ -1110,7 +1120,10 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
     // (The reorder mutant needs a semantic move; the wait-removal mutant
     // above carries the proof. The order assertion in the probe pins
     // wait < notice on the clean tree.)
-    const order = [ESCALATION_BODY.indexOf("ledger.awaitHuman("), ESCALATION_BODY.indexOf("rail.escalate(")];
+    const order = [
+      ESCALATION_BODY.indexOf("ledger.awaitHuman("),
+      ESCALATION_BODY.indexOf("rail.escalate("),
+    ];
     expect(order[0]).toBeGreaterThan(-1);
     expect(order[0]).toBeLessThan(order[1] ?? Number.POSITIVE_INFINITY);
     expect(violationsOf(mutatedOrder)).toEqual(violationsOf(cleanRules()));
@@ -1157,8 +1170,16 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
       { conversationId: started.conversationId, messageKey: "evt-s15:reply", status: "delivered" },
       ACTOR,
     );
-    await world.service.escalateToHuman({ conversationId: started.conversationId }, "esc-s15", ACTOR);
-    await world.service.closeConversation({ conversationId: started.conversationId }, "close-s15", ACTOR);
+    await world.service.escalateToHuman(
+      { conversationId: started.conversationId },
+      "esc-s15",
+      ACTOR,
+    );
+    await world.service.closeConversation(
+      { conversationId: started.conversationId },
+      "close-s15",
+      ACTOR,
+    );
     // The canonical provenance classes all rode ONE ledger with ONE
     // execution identity: conversation-started, message, delivery,
     // escalation, conversation-completed.
@@ -1180,7 +1201,10 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
 
   test("S16 STATIC: removing the attachment validation/bounding is flagged", () => {
     const mutated = mutateDomain((content) =>
-      content.replace("function validateAttachmentRefs(", "function removed_validateAttachmentRefs("),
+      content.replace(
+        "function validateAttachmentRefs(",
+        "function removed_validateAttachmentRefs(",
+      ),
     );
     expect(violationsOf(mutated)).toContain("attachment-validation-removed");
     const mutatedGuard = mutateMigration((content) =>
