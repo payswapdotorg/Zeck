@@ -635,7 +635,10 @@ describe("media generation service: submission and the paid dispatch", () => {
     world.deploymentId = created.deploymentId;
     await expect(
       world.service.submitJob(submitInput(world, "a message"), "submit-mod", ACTOR),
-    ).rejects.toMatchObject({ code: "PROVIDER_ERROR", message: /modality/ });
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: expect.stringMatching(/modality/),
+    });
     expect(world.rail.sends).toHaveLength(0);
   });
 
@@ -710,7 +713,10 @@ describe("media generation service: the admission denials before the paid dispat
     world.budget.failReserve = false;
     await expect(
       world.service.submitJob(submitInput(world, "an expensive render"), "submit-budget", ACTOR),
-    ).rejects.toMatchObject({ code: "PROVIDER_ERROR", message: /durably failed/ });
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: expect.stringMatching(/durably failed/),
+    });
     // A fresh key after funding proceeds normally.
     const funded = await world.service.submitJob(
       submitInput(world, "an expensive render"),
@@ -897,7 +903,7 @@ describe("media generation service: the async lifecycle (polls, callbacks, compl
     };
     await expect(world.service.applyCallback(foreignFrame, ACTOR)).rejects.toMatchObject({
       code: "PROVIDER_ERROR",
-      message: /correlation rejected/,
+      message: expect.stringMatching(/correlation rejected/),
     });
     const job = await world.store.findJob(ACTOR.applicationId, submitted.jobId);
     expect(job?.status).toBe("generating");
@@ -1159,7 +1165,7 @@ describe("media generation service: cancellation and retry", () => {
     await expect(world.service.cancelJob(submitted.jobId, "too late", ACTOR)).rejects.toMatchObject(
       {
         code: "INVALID_STATE_TRANSITION",
-        message: /terminal jobs cannot be cancelled/,
+        message: expect.stringMatching(/terminal jobs cannot be cancelled/),
       },
     );
   });
@@ -1254,7 +1260,10 @@ describe("media generation service: cancellation and retry", () => {
     // A retry with a DIVERGENT intent fails closed.
     await expect(
       service.retryJob(failed.jobId, { prompt: "a different prompt" }, "retry-2", actor),
-    ).rejects.toMatchObject({ code: "PROVIDER_ERROR", message: /diverges/ });
+    ).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+      message: expect.stringMatching(/diverges/),
+    });
     // Only failed jobs can be retried.
     await expect(service.retryJob(retry.jobId, { prompt }, "retry-3", actor)).rejects.toMatchObject(
       {
