@@ -35,8 +35,8 @@ import type {
   MediaGenerationServiceDeps,
   MediaPolicyAdmissionRequest,
   MediaSecretMediationRequest,
+  MediaVerificationRequest,
   SubmitMediaJobInput,
-  SubmitMediaJobOutcome,
 } from "../../../src/modules/deployments/public";
 import {
   createDeploymentService,
@@ -206,11 +206,11 @@ class FakeSecretMediation {
 
 /** The verification-gate model (idempotent by key, verdict configurable). */
 class FakeVerificationGate {
-  readonly calls: Array<Record<string, unknown>> = [];
+  readonly calls: Array<MediaVerificationRequest> = [];
   criteriaMet = true;
   private seq = 0;
   private readonly byKey = new Map<string, { criteriaMet: boolean; evaluationId: string }>();
-  async verify(request: Record<string, unknown>, idempotencyKey: string) {
+  async verify(request: MediaVerificationRequest, idempotencyKey: string) {
     this.calls.push(request);
     const existing = this.byKey.get(idempotencyKey);
     if (existing !== undefined) {
@@ -232,7 +232,6 @@ class FakeArtifactAuthority {
   readonly adoptions: Array<Record<string, unknown>> = [];
   private readonly digests = new Set<string>();
   private readonly tenants = new Map<string, Set<string>>();
-  private seq = 0;
   async adoptArtifact(input: {
     readonly tenantId: string;
     readonly descriptor: Readonly<Record<string, unknown>>;
@@ -249,7 +248,6 @@ class FakeArtifactAuthority {
       ]),
     );
     this.seed(input.tenantId, identity);
-    this.seq += 1;
     if (this.digests.has(identity)) {
       return { digest: identity, converged: true };
     }
@@ -610,7 +608,9 @@ describe("media generation service: submission and the paid dispatch", () => {
     expect(executionIds.size).toBe(1);
     expect(world.rail.sends.filter((record) => record.kind === "dispatch")).toHaveLength(1);
     expect(world.rail.acceptedJobs).toBe(1);
-    const job = await world.store.findJob(ACTOR.applicationId, results[0].jobId);
+    const first = results[0];
+    expect(first).toBeDefined();
+    const job = await world.store.findJob(ACTOR.applicationId, first?.jobId ?? "");
     expect(job?.status).toBe("generating");
   });
 
@@ -807,8 +807,10 @@ describe("media generation service: the async lifecycle (polls, callbacks, compl
     expect(commands).toContain("verify");
     expect(commands).toContain("pass");
     expect(world.ledger.passVerifications).toHaveLength(1);
+    const firstPass = world.ledger.passVerifications[0];
+    expect(firstPass).toBeDefined();
     expect(
-      (world.ledger.passVerifications[0]?.verificationResults as unknown[]).some(
+      ((firstPass?.verificationResults ?? []) as unknown[]).some(
         (result) => struct(result).status === "PASS",
       ),
     ).toBe(true);
@@ -1163,7 +1165,6 @@ describe("media generation service: cancellation and retry", () => {
   });
 
   test("retrying a FAILED job creates ONE new job with ONE new paid dispatch; a repeated retry converges", async () => {
-    const world = buildWorld();
     const rail = createInProcessMediaRail(["video", "image", "audio", "multimodal"], {
       now: () => new Date("2026-01-01T00:00:00Z"),
       failJobs: "simulated provider failure",
@@ -1372,5 +1373,3 @@ describe("media generation service: tenant isolation and provenance reads", () =
     expect(read.artifacts.length).toBe(1);
   });
 });
-
-export type { SubmitMediaJobOutcome };

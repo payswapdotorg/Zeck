@@ -149,7 +149,9 @@ describe("media domain: fail-closed input validation", () => {
   });
 
   test("invalid generation kinds, prompts, digests and parameters fail closed", () => {
-    expect(validateSubmitMediaJobInput({ ...valid, generationKind: "openai-video" }).valid).toBe(false);
+    expect(validateSubmitMediaJobInput({ ...valid, generationKind: "openai-video" }).valid).toBe(
+      false,
+    );
     expect(validateSubmitMediaJobInput({ ...valid, generationKind: 7 }).valid).toBe(false);
     expect(validateSubmitMediaJobInput({ ...valid, prompt: "" }).valid).toBe(false);
     expect(validateSubmitMediaJobInput({ ...valid, prompt: "x".repeat(4001) }).valid).toBe(false);
@@ -173,14 +175,14 @@ describe("media domain: fail-closed input validation", () => {
       validateSubmitMediaJobInput({ ...valid, prompt: "use key sk-abcdefghijklmnopqrstuvw" }).valid,
     ).toBe(false);
     expect(mediaContainsRawSecretValue("-----BEGIN RSA PRIVATE KEY-----")).toBe(true);
-    expect(mediaContainsRawSecretValue("ghp_" + "a".repeat(24))).toBe(true);
+    expect(mediaContainsRawSecretValue(`ghp_${"a".repeat(24)}`)).toBe(true);
     expect(mediaContainsRawSecretValue("just an innocent prompt")).toBe(false);
   });
 
   test("verification criteria declarations are bounded and 1..8 when the mode is required", () => {
-    expect(
-      validateSubmitMediaJobInput({ ...valid, verification: { criteria: [] } }).valid,
-    ).toBe(false);
+    expect(validateSubmitMediaJobInput({ ...valid, verification: { criteria: [] } }).valid).toBe(
+      false,
+    );
     expect(
       validateSubmitMediaJobInput({
         ...valid,
@@ -219,9 +221,9 @@ describe("media domain: fail-closed input validation", () => {
     expect(validateMediaCallbackInput({ ...frame, observation: "RUNNING" }).valid).toBe(false);
     expect(validateMediaCallbackInput({ ...frame, jobId: "not-a-uuid" }).valid).toBe(false);
     expect(validateMediaCallbackInput({ ...frame, providerJobRef: "" }).valid).toBe(false);
-    expect(
-      validateMediaCallbackInput({ ...frame, providerJobRef: "has whitespace" }).valid,
-    ).toBe(false);
+    expect(validateMediaCallbackInput({ ...frame, providerJobRef: "has whitespace" }).valid).toBe(
+      false,
+    );
     expect(validateMediaCallbackInput({ ...frame, progress: 101 }).valid).toBe(false);
     expect(
       validateMediaCallbackInput({ ...frame, callbackKey: "sk-abcdefghijklmnopqrst" }).valid,
