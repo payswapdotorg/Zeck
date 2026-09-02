@@ -612,6 +612,121 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     }
   };
 
+  /**
+   * RECOVERY of the executions-ledger + budget tails (the other half of
+   * the crash windows between a GUARDED job move and its keyed
+   * best-effort tail calls): a terminal job row whose execution never
+   * received the matching `pass`/`fail`/`cancel` transition (or whose
+   * cancelled budget reservation was never released) is re-driven HERE
+   * — every command is IDEMPOTENT BY STABLE KEY (the executions
+   * transition arbitration and the budgets operationId), so a re-drive
+   * converges on the original receipt when it exists and applies it
+   * exactly once when it does not. Reconstructed deterministically
+   * from the job row's durable facts (status, criteria, digests).
+   */
+  const reconcileExecutionOutcome = async (job: MediaJobRecord, actor: MediaActor): Promise<void> => {
+    if (!isTerminalMediaJobStatus(job.status)) {
+      return;
+    }
+    if (job.status === "completed") {
+      const outputDigest = job.outputArtifactDigest;
+      if (outputDigest === null) {
+        return; // unrepresentable on a completed row (the migration guard)
+      }
+      const verificationResults: MediaVerificationResult[] =
+        job.verificationMode === "required"
+          ? job.verificationCriteria.map((ref) => ({
+              criterionId: ref.criterionId,
+              strategy: "verification-authority",
+              status: "PASS" as const,
+              evidence: [`artifact:${outputDigest}`],
+              recordedBy: "verification-authority",
+            }))
+          : [
+              postprocessingResult("PASS", [
+                `postprocessing:${job.postprocessingDigest ?? job.id}`,
+                `artifact:${outputDigest}`,
+              ]),
+            ];
+      await ledger
+        .completeExecution(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            executionId: job.executionId,
+            reason: "media generation job completed through the verification boundary",
+            verificationResults,
+          },
+          mediaEvidenceKey(job.id, "job-completed"),
+        )
+        .catch(() => undefined);
+      await ledger
+        .recordEvidence(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            executionId: job.executionId,
+            evidenceClass: "job-completed",
+            cause: "media generation job completed",
+            reference: {
+              jobId: job.id,
+              deploymentId: job.deploymentId,
+              outputArtifactDigest: outputDigest,
+              verificationMode: job.verificationMode,
+            },
+            payload: {
+              generationKind: job.generationKind,
+              postprocessingDigest: job.postprocessingDigest,
+              verifiedByAuthority: job.verificationMode === "required",
+            },
+          },
+          mediaEvidenceKey(job.id, "job-completed"),
+        )
+        .catch(() => undefined);
+    }
+    if (job.status === "failed") {
+      const cause = job.failureCause ?? "recovered: the job row reached failed";
+      await ledger
+        .failExecution(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            executionId: job.executionId,
+            reason: cause,
+          },
+          mediaEvidenceKey(job.id, "failure"),
+        )
+        .catch(() => undefined);
+    }
+    if (job.status === "cancelled") {
+      if (job.reservationId !== null) {
+        await budget
+          .release({
+            actorId: actor.actorId,
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            operationId: mediaBudgetOperationId(job.id),
+          })
+          .catch(() => undefined);
+      }
+      await ledger
+        .cancelExecution(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            executionId: job.executionId,
+            reason: job.failureCause ?? "media job cancelled",
+          },
+          mediaEvidenceKey(job.id, "cancellation"),
+        )
+        .catch(() => undefined);
+    }
+  };
+
   /** The deterministic PREPROCESSING digest over the normalized spec. */
   const preprocessingDigestOf = (input: {
     readonly generationKind: SubmitMediaJobInput["generationKind"];
@@ -1389,6 +1504,7 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       }
       if (convergedJob !== null && isTerminalMediaJobStatus(convergedJob.status)) {
         await reconcileOperations(convergedJob, actor);
+        await reconcileExecutionOutcome(convergedJob, actor);
       }
       return {
         jobId: job.id,
@@ -1456,8 +1572,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     const current = afterAppend ?? job;
     if (isTerminalMediaJobStatus(current.status)) {
       // Recover any operation rows a crash left PENDING after the job
-      // row already reached its terminal outcome.
+      // row already reached its terminal outcome, and re-drive the
+      // keyed executions/budget tails a crash may have cut short.
       await reconcileOperations(current, actor);
+      await reconcileExecutionOutcome(current, actor);
       return {
         jobId: job.id,
         observationKey: frame.observationKey,
@@ -1645,8 +1763,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         job = await completeJob(job, actor);
       }
       // Recover any operation rows a crash left PENDING after their
-      // guarded job move already proved the outcome.
+      // guarded job move already proved the outcome, and re-drive the
+      // keyed executions tails.
       await reconcileOperations(job, actor);
+      await reconcileExecutionOutcome(job, actor);
       const op = await store.findMediaOperation(actor.applicationId, operationKey);
       if (op !== null && op.status === "pending") {
         // The submission operation itself was left pending (a crash
@@ -2189,9 +2309,11 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       const job = await resolveJob(actor, jobId);
       if (job.status === "cancelled") {
         // Idempotent convergence: the cancellation already happened —
-        // the repeated call replays the terminal outcome (and
-        // reconciles any operation row a crash left pending).
+        // the repeated call replays the terminal outcome (reconciles
+        // any operation row a crash left pending + re-drives the keyed
+        // executions/budget tails the crash may have cut short).
         await reconcileOperations(job, actor);
+        await reconcileExecutionOutcome(job, actor);
         return {
           jobId: job.id,
           status: job.status,
