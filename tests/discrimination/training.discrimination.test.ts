@@ -259,6 +259,7 @@ const SPEC: TrainingWorkloadSpec = {
 };
 
 interface WiringWorld {
+  readonly store: InMemoryTrainingStore;
   readonly fleet: SimulatedAcceleratorFleet;
   readonly ledger: FakeTrainingLedger;
   readonly budget: FakeTrainingBudget;
@@ -306,7 +307,7 @@ function wiringWorld(fabricId = "f1"): WiringWorld {
       leaseDurationMs: 60_000,
     });
   };
-  return { fleet, ledger, budget, verification, service };
+  return { store, fleet, ledger, budget, verification, service };
 }
 
 describe("discrimination: runtime red records", () => {
@@ -349,11 +350,12 @@ describe("discrimination: runtime red records", () => {
     expect(production.budget.reserves.length).toBe(0);
     expect(production.fleet.listAllocations()).toEqual([]); // ZERO paid activity
     expect(production.fleet.runCount()).toBe(0);
-    const row = denied
-      ? // the durable denied row exists
-        await new InMemoryTrainingStore().findWorkloadByKey("", "")
-      : null;
-    expect(row).toBeNull(); // (the row itself is asserted in the unit tier)
+    // The durable DENIED row exists (journal-then-fail: the denial is
+    // inspectable state, not a lost request).
+    const deniedRow = await production.store.findWorkloadByKey(TR_APPLICATION_ID, "red-budget-2");
+    expect(deniedRow?.status).toBe("denied");
+    expect(deniedRow?.denialClass).toBe("budget");
+    expect(deniedRow?.denialCode).toBe("BUDGET_EXCEEDED");
   });
 
   test("R2: an always-pass gate releases a completed workload WITHOUT verification (the violation); the fail-closed gate leaves the release null", async () => {

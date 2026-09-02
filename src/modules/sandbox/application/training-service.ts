@@ -921,14 +921,11 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       });
       record = running.record;
     }
-    return driveRun(record, allocationKey);
+    return driveRun(record);
   };
 
   /** The long-running execution: the keyed substrate run → checkpoints → finalize. */
-  const driveRun = async (
-    record: TrainingWorkloadRecord,
-    allocationKey: string,
-  ): Promise<TrainingWorkloadRecord> => {
+  const driveRun = async (record: TrainingWorkloadRecord): Promise<TrainingWorkloadRecord> => {
     const metadata = record.runtimeMetadata;
     const runtime =
       metadata.substrate === null ? null : runtimes.runtimeFor(metadata.substrate.adapterRef);
@@ -1567,7 +1564,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     if (found.status === "allocating") {
       return allocateAndRun(found, allocationKey);
     }
-    return driveRun(found, allocationKey);
+    return driveRun(found);
   };
 
   // =========================================================================
@@ -1726,10 +1723,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     // store's missing fingerprint arbitration hid it in the unit tier).
     // The workload-level release binding stays write-once — exactly one
     // release ever lands regardless of how many requests attempt it.
-    const releaseKey = trainingOperationKey(
-      "release",
-      `${found.workloadKey}:${idempotencyKey}`,
-    );
+    const releaseKey = trainingOperationKey("release", `${found.workloadKey}:${idempotencyKey}`);
     await store.insertTrainingOperation({
       id: deps.generateId(),
       applicationId: found.applicationId,

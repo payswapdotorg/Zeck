@@ -108,9 +108,6 @@ export function trainingFabricViolations(
   const sqlStore = byPath.get("src/modules/sandbox/adapters/sql-training-store.ts");
   const inMemoryStore = byPath.get("src/modules/sandbox/adapters/in-memory-training-store.ts");
   const ledgerAdapter = byPath.get("src/modules/sandbox/adapters/training-execution-ledger.ts");
-  const verificationAdapter = byPath.get(
-    "src/modules/sandbox/adapters/verification-training-gate.ts",
-  );
   const runtimeAdapter = byPath.get(
     "src/integrations/accelerators/adapters/accelerator-substrate-runtime.ts",
   );

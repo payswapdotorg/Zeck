@@ -415,9 +415,7 @@ describe("training dispatch (the paid boundary after the reservation)", () => {
     // burned on the FIRST checkpoint silently dropped every later
     // envelope (only 1 of 3 reached the canonical ledger).
     expect(checkpointEvents.length).toBe(3);
-    const identities = checkpointEvents.map(
-      (entry) => entry.event.payload.checkpointIdentity,
-    );
+    const identities = checkpointEvents.map((entry) => entry.event.payload.checkpointIdentity);
     expect(new Set(identities).size).toBe(3);
     for (const checkpoint of checkpoints) {
       expect(identities).toContain(checkpoint.contentDigest);
