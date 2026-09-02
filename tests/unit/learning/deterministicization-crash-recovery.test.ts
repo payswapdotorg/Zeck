@@ -62,10 +62,15 @@ function clock(): () => Date {
 
 function telemetryPopulation(count: number): ExecutionOutcomeTelemetry[] {
   return Array.from({ length: count }, (_, index) => ({
+    telemetryId: `tel-${index}`,
+    executionId: `exec-${index}`,
     applicationId: APP_ID,
     tenantId: TENANT_ID,
-    executionId: `exec-${index}`,
     taskClass: "summarize",
+    capabilities: ["text-generation"],
+    planId: `plan-${index}`,
+    planRevision: 1,
+    strategyClass: "generative-route",
     routes: [{ provider: "rail-a", model: "model-x" }],
     tools: [],
     environments: [],
