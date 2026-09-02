@@ -5,6 +5,7 @@
  * Adapters (in `adapters/`) implement them (`IMPLEMENTATION.md` §2–§3).
  */
 
+export * from "./deterministic-replacement-executor";
 export * from "./execution-ledger";
 export * from "./synthesis-adapter-factory";
 export * from "./synthesis-sandbox";

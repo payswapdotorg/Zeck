@@ -32,6 +32,22 @@ export {
   validatePlanningDecision,
 } from "./decision";
 export type {
+  ConsultedDeterministicizationClass,
+  ConsultedDeterministicizationSignal,
+  ConsultedDeterministicizationStatus,
+  ConsultedRolloutDelta,
+  DeterministicizationConsultation,
+} from "./deterministicization-consultation";
+export {
+  buildDeterministicizationConsultation,
+  CONSULTED_DETERMINISTICIZATION_CLASS,
+  CONSULTED_DETERMINISTICIZATION_CLASSES,
+  CONSULTED_DETERMINISTICIZATION_STATUSES,
+  deterministicizationPreferredCandidateId,
+  validateConsultedDeterministicizationSignal,
+  validateDeterministicizationConsultation,
+} from "./deterministicization-consultation";
+export type {
   ConsultedLearnedPolicy,
   ConsultedLearnedPolicyMode,
   ConsultedLearnedRouteMetric,

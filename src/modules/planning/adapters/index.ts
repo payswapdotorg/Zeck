@@ -7,6 +7,7 @@
 export { createCapabilityAuthorityAdapter } from "./capability-authority-adapter";
 export { createCompositionRecommendationsAdapter } from "./composition-recommendations-adapter";
 export { publishDeterministicCapabilityFacts } from "./deterministic-capability-publisher";
+export { createDeterministicizationSignalsAdapter } from "./deterministicization-signals-adapter";
 export {
   createInMemoryDeterministicCatalog,
   DETERMINISTIC_CATALOG_SEED,

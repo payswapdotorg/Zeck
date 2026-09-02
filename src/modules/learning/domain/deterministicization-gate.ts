@@ -86,7 +86,12 @@ export const DEFAULT_PROMOTION_GATE_CONFIG: PromotionGateConfig = {
 /** Validate a gate configuration (fail closed on nonsense thresholds). */
 export function validatePromotionGateConfig(value: PromotionGateConfig): void {
   const ratio = (name: string, input: number, minimum: number, maximum: number): void => {
-    if (typeof input !== "number" || !Number.isFinite(input) || input < minimum || input > maximum) {
+    if (
+      typeof input !== "number" ||
+      !Number.isFinite(input) ||
+      input < minimum ||
+      input > maximum
+    ) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
         message: `promotion gate config ${name} must be a number in [${minimum}, ${maximum}]`,
@@ -200,7 +205,10 @@ export function evaluatePromotionGate(input: {
         `insufficient-evidence: ${stage} population ${record.metrics.population} is below the configured floor ${floor}`,
       );
     }
-    if (stage === "differential-evaluation" && record.metrics.acceptanceRate < config.minimumAcceptanceRate) {
+    if (
+      stage === "differential-evaluation" &&
+      record.metrics.acceptanceRate < config.minimumAcceptanceRate
+    ) {
       reasons.push(
         `differential-acceptance: rate ${record.metrics.acceptanceRate.toFixed(3)} is below the configured minimum ${config.minimumAcceptanceRate}`,
       );

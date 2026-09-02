@@ -96,7 +96,10 @@ export function validateDiscoveryConfig(config: DiscoveryConfig): void {
       details: { got: config.minimumRecurrence },
     });
   }
-  if (config.taskClass !== undefined && (typeof config.taskClass !== "string" || config.taskClass.length === 0)) {
+  if (
+    config.taskClass !== undefined &&
+    (typeof config.taskClass !== "string" || config.taskClass.length === 0)
+  ) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
       message: "discovery config taskClass must be a non-empty string when present",
@@ -141,10 +144,15 @@ export function discoverDeterminizationCandidates(
 
   const groups = new Map<string, Accumulator>();
   for (const datum of population) {
-    if (!isRecord(datum) || typeof datum.subgraphs !== "object" || !Array.isArray(datum.subgraphs)) {
+    if (
+      !isRecord(datum) ||
+      typeof datum.subgraphs !== "object" ||
+      !Array.isArray(datum.subgraphs)
+    ) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
-        message: "discovery requires validated telemetry records (closed-shape subgraph observations)",
+        message:
+          "discovery requires validated telemetry records (closed-shape subgraph observations)",
       });
     }
     if (config.taskClass !== undefined && datum.taskClass !== config.taskClass) {

@@ -61,7 +61,6 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
   private readonly telemetry: readonly ExecutionOutcomeTelemetry[];
   /** Per-key serialization (stands in for the unique-index arbitration). */
   private readonly queues = new Map<string, Promise<unknown>>();
-  private decisionSeq = 0;
 
   constructor(telemetry: readonly ExecutionOutcomeTelemetry[] = []) {
     this.telemetry = [...telemetry];
@@ -185,7 +184,11 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
           throw new PlatformError({
             code: "INVALID_STATE_TRANSITION",
             message: `deterministicization candidate cannot move from '${existing.status}' to '${input.toStatus}' (single-step forward only)`,
-            details: { candidateId: existing.candidateId, from: existing.status, to: input.toStatus },
+            details: {
+              candidateId: existing.candidateId,
+              from: existing.status,
+              to: input.toStatus,
+            },
           });
         }
         const updated = { ...existing, status: input.toStatus };
@@ -197,7 +200,10 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
 
   insertStageEvidence(evidence: StageEvidenceRecord): Promise<StageEvidenceInsertOutcome> {
     return this.queue(
-      this.scopeKey(evidence.applicationId, `evidence:${evidence.candidateId}:${evidence.stageKind}`),
+      this.scopeKey(
+        evidence.applicationId,
+        `evidence:${evidence.candidateId}:${evidence.stageKind}`,
+      ),
       async () => {
         const existing = this.stageEvidence.get(evidence.evidenceId);
         if (existing !== undefined) {
@@ -272,7 +278,10 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
     );
   }
 
-  async getRollout(scope: DeterministicizationScope, rolloutId: string): Promise<RolloutRecord | null> {
+  async getRollout(
+    scope: DeterministicizationScope,
+    rolloutId: string,
+  ): Promise<RolloutRecord | null> {
     const rollout = this.rollouts.get(rolloutId);
     return rollout !== undefined && rollout.applicationId === scope.applicationId ? rollout : null;
   }
@@ -341,7 +350,6 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
       if (existing !== undefined) {
         return { decisionId: existing.decisionId, replayed: true };
       }
-      this.decisionSeq += 1;
       this.decisions.set(decision.decisionId, decision);
       return { decisionId: decision.decisionId, replayed: false };
     });
@@ -356,7 +364,15 @@ export class InMemoryDeterministicizationStore implements DeterministicizationSt
         (record) =>
           record.applicationId === scope.applicationId && record.candidateId === candidateId,
       )
-      .sort((left, right) => (left.decidedAt < right.decidedAt ? -1 : 1));
+      .sort((left, right) =>
+        left.decidedAt < right.decidedAt
+          ? -1
+          : left.decidedAt > right.decidedAt
+            ? 1
+            : left.decisionId < right.decisionId
+              ? -1
+              : 1,
+      );
   }
 
   // -- the durable, recoverable operation state --------------------------

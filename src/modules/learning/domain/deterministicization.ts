@@ -119,13 +119,7 @@ export const CANDIDATE_STATUS_TRANSITIONS: Readonly<
 };
 
 /** The closed field-type vocabulary of a replacement contract. */
-export const REPLACEMENT_FIELD_TYPES = [
-  "string",
-  "number",
-  "boolean",
-  "object",
-  "array",
-] as const;
+export const REPLACEMENT_FIELD_TYPES = ["string", "number", "boolean", "object", "array"] as const;
 
 export type ReplacementFieldType = (typeof REPLACEMENT_FIELD_TYPES)[number];
 
@@ -508,29 +502,6 @@ function requireNonEmptyStringList(
   return [...list];
 }
 
-function optionalNonEmptyStringList(
-  container: Record<string, unknown>,
-  key: string,
-  what: string,
-): readonly string[] | undefined {
-  const value = container[key];
-  if (value === undefined) {
-    return undefined;
-  }
-  if (
-    !Array.isArray(value) ||
-    value.length === 0 ||
-    value.some((item) => typeof item !== "string" || item.length === 0 || item.length > 256)
-  ) {
-    throw new PlatformError({
-      code: "PROVIDER_ERROR",
-      message: `deterministicization ${what} must be a non-empty array of strings when present`,
-      details: { field: key },
-    });
-  }
-  return [...value];
-}
-
 function validateRouteList(value: readonly unknown[], what: string): void {
   for (const entry of value) {
     if (!isRecord(entry)) {
@@ -544,7 +515,11 @@ function validateRouteList(value: readonly unknown[], what: string): void {
   }
 }
 
-function requirePositiveInteger(container: Record<string, unknown>, key: string, what: string): number {
+function requirePositiveInteger(
+  container: Record<string, unknown>,
+  key: string,
+  what: string,
+): number {
   const value = container[key];
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     throw new PlatformError({
@@ -624,7 +599,8 @@ export function validateReplacementContract(value: unknown): asserts value is Re
     ) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
-        message: "deterministicization acceptanceCriterion toleratedFields must be string array when present",
+        message:
+          "deterministicization acceptanceCriterion toleratedFields must be string array when present",
       });
     }
   }
@@ -764,7 +740,8 @@ export function validateDeterministicizationCandidate(
   if (typeof totalCost !== "string" || !MICRO_USD.test(totalCost)) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
-      message: "deterministicization recurrence totalCostMicroUsd must be an integer micro-USD string",
+      message:
+        "deterministicization recurrence totalCostMicroUsd must be an integer micro-USD string",
     });
   }
   const errorRate = recurrence.errorRate;
@@ -778,7 +755,8 @@ export function validateDeterministicizationCandidate(
   if (!isRecord(incumbent)) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
-      message: "deterministicization candidate incumbent binding is MANDATORY (the differential baseline)",
+      message:
+        "deterministicization candidate incumbent binding is MANDATORY (the differential baseline)",
     });
   }
   requireString(incumbent, "strategyClass", "incumbent strategyClass");
@@ -829,9 +807,7 @@ export function validateDeterministicizationCandidate(
 }
 
 /** Validate a stage evidence record (fail closed, closed shape). */
-export function validateStageEvidenceRecord(
-  value: unknown,
-): asserts value is StageEvidenceRecord {
+export function validateStageEvidenceRecord(value: unknown): asserts value is StageEvidenceRecord {
   if (!isRecord(value)) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
@@ -922,12 +898,17 @@ export function validateStageEvidenceRecord(
       if (typeof run.costMicroUsd !== "string" || !MICRO_USD.test(run.costMicroUsd)) {
         throw new PlatformError({
           code: "PROVIDER_ERROR",
-          message: "deterministicization run costMicroUsd must be an integer micro-USD string or null",
+          message:
+            "deterministicization run costMicroUsd must be an integer micro-USD string or null",
         });
       }
     }
     if (run.latencyMs !== null && run.latencyMs !== undefined) {
-      if (typeof run.latencyMs !== "number" || !Number.isInteger(run.latencyMs) || run.latencyMs < 0) {
+      if (
+        typeof run.latencyMs !== "number" ||
+        !Number.isInteger(run.latencyMs) ||
+        run.latencyMs < 0
+      ) {
         throw new PlatformError({
           code: "PROVIDER_ERROR",
           message: "deterministicization run latencyMs must be a non-negative integer or null",
@@ -953,7 +934,8 @@ export function validateStageEvidenceRecord(
   } else if (pairs.length > 0) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
-      message: "deterministicization pairs are only representable on differential evaluation evidence",
+      message:
+        "deterministicization pairs are only representable on differential evaluation evidence",
     });
   }
   for (const pair of pairs) {
@@ -969,7 +951,8 @@ export function validateStageEvidenceRecord(
     if (typeof pair.accepted !== "boolean") {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
-        message: "deterministicization pair accepted must be a boolean (the explicit criterion verdict)",
+        message:
+          "deterministicization pair accepted must be a boolean (the explicit criterion verdict)",
       });
     }
   }
@@ -981,19 +964,31 @@ export function validateStageEvidenceRecord(
     });
   }
   requirePositiveInteger(metrics, "population", "metrics population");
-  if (typeof metrics.acceptedCount !== "number" || !Number.isInteger(metrics.acceptedCount) || metrics.acceptedCount < 0) {
+  if (
+    typeof metrics.acceptedCount !== "number" ||
+    !Number.isInteger(metrics.acceptedCount) ||
+    metrics.acceptedCount < 0
+  ) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
       message: "deterministicization metrics acceptedCount must be a non-negative integer",
     });
   }
-  if (typeof metrics.rejectedCount !== "number" || !Number.isInteger(metrics.rejectedCount) || metrics.rejectedCount < 0) {
+  if (
+    typeof metrics.rejectedCount !== "number" ||
+    !Number.isInteger(metrics.rejectedCount) ||
+    metrics.rejectedCount < 0
+  ) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
       message: "deterministicization metrics rejectedCount must be a non-negative integer",
     });
   }
-  if (typeof metrics.acceptanceRate !== "number" || metrics.acceptanceRate < 0 || metrics.acceptanceRate > 1) {
+  if (
+    typeof metrics.acceptanceRate !== "number" ||
+    metrics.acceptanceRate < 0 ||
+    metrics.acceptanceRate > 1
+  ) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
       message: "deterministicization metrics acceptanceRate must be in [0,1]",
@@ -1075,7 +1070,12 @@ export function validateRolloutRecord(value: unknown): asserts value is RolloutR
     });
   }
   const matched = rollout.matchedCount;
-  if (typeof matched !== "number" || !Number.isInteger(matched) || matched < 0 || matched > population) {
+  if (
+    typeof matched !== "number" ||
+    !Number.isInteger(matched) ||
+    matched < 0 ||
+    matched > population
+  ) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
       message: "deterministicization rollout matchedCount must be in [0, population]",
@@ -1085,7 +1085,8 @@ export function validateRolloutRecord(value: unknown): asserts value is RolloutR
   if (typeof costDelta !== "string" || !MICRO_USD.test(costDelta)) {
     throw new PlatformError({
       code: "PROVIDER_ERROR",
-      message: "deterministicization rollout costDeltaMicroUsd must be an integer micro-USD string (measurable deltas are mandatory)",
+      message:
+        "deterministicization rollout costDeltaMicroUsd must be an integer micro-USD string (measurable deltas are mandatory)",
     });
   }
   const quality = rollout.qualityDelta;

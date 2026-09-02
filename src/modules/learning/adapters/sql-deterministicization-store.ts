@@ -335,9 +335,7 @@ export class SqlDeterministicizationStore implements DeterministicizationStore {
     return result.rows.map(toTelemetry);
   }
 
-  async insertCandidate(
-    candidate: DeterministicizationCandidate,
-  ): Promise<CandidateInsertOutcome> {
+  async insertCandidate(candidate: DeterministicizationCandidate): Promise<CandidateInsertOutcome> {
     try {
       const inserted = await this.db.execute<{ readonly id: string }>({
         sql: `INSERT INTO learning.deterministicization_candidates
@@ -463,9 +461,7 @@ export class SqlDeterministicizationStore implements DeterministicizationStore {
     });
   }
 
-  async insertStageEvidence(
-    evidence: StageEvidenceRecord,
-  ): Promise<StageEvidenceInsertOutcome> {
+  async insertStageEvidence(evidence: StageEvidenceRecord): Promise<StageEvidenceInsertOutcome> {
     try {
       const inserted = await this.db.execute<{ readonly evidence_id: string }>({
         sql: `INSERT INTO learning.deterministicization_stage_evidence
@@ -657,9 +653,7 @@ export class SqlDeterministicizationStore implements DeterministicizationStore {
     return existing;
   }
 
-  async appendDecision(
-    decision: PromotionDecisionRecord,
-  ): Promise<DecisionAppendOutcome> {
+  async appendDecision(decision: PromotionDecisionRecord): Promise<DecisionAppendOutcome> {
     try {
       const inserted = await this.db.execute<{ readonly decision_id: string }>({
         sql: `INSERT INTO learning.deterministicization_decisions

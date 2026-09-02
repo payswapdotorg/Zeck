@@ -52,8 +52,8 @@ import type {
   DeterministicizationCandidateStatus,
   DifferentialPair,
   PromotionDecisionRecord,
-  RolloutRecord,
   RolloutMode,
+  RolloutRecord,
   StageEvidenceRecord,
   StageEvidenceStatus,
   ValidationRunObservation,
@@ -193,7 +193,9 @@ export interface DeterministicizationStore {
     scope: DeterministicizationScope,
     candidateId: string,
   ): Promise<DeterministicizationCandidate | null>;
-  listCandidates(scope: DeterministicizationScope): Promise<readonly DeterministicizationCandidate[]>;
+  listCandidates(
+    scope: DeterministicizationScope,
+  ): Promise<readonly DeterministicizationCandidate[]>;
   /**
    * The guarded status move (single-step forward only; duplicates
    * converge on the committed row). A status regression or illegal
@@ -267,8 +269,8 @@ export type {
   DeterministicizationCandidateStatus,
   DifferentialPair,
   PromotionDecisionRecord,
-  RolloutRecord,
   RolloutMode,
+  RolloutRecord,
   StageEvidenceRecord,
   StageEvidenceStatus,
   ValidationRunObservation,

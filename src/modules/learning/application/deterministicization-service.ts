@@ -94,11 +94,11 @@ import {
   candidateIdentityBasis,
   DETERMINISTICIZATION_SCHEMA_VERSION,
   stageEvidenceIdentityBasis,
+  VALIDATION_STAGE_KINDS,
   validateDeterministicizationCandidate,
   validatePromotionDecisionRecord,
   validateRolloutRecord,
   validateStageEvidenceRecord,
-  VALIDATION_STAGE_KINDS,
 } from "../domain/deterministicization";
 import type { DiscoveredSubgraph } from "../domain/deterministicization-discovery";
 import { discoverDeterminizationCandidates } from "../domain/deterministicization-discovery";
@@ -109,13 +109,13 @@ import {
   promotionGateConfigBasis,
   validatePromotionGateConfig,
 } from "../domain/deterministicization-gate";
-import type { DigestPort } from "../ports/digest";
 import type {
   DeterministicizationOperationKind,
   DeterministicizationOperationRecord,
   DeterministicizationStore,
 } from "../ports/deterministicization-store";
 import { deterministicizationOperationKey } from "../ports/deterministicization-store";
+import type { DigestPort } from "../ports/digest";
 
 export interface DeterministicizationServiceDeps {
   readonly store: DeterministicizationStore;

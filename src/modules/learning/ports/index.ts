@@ -14,7 +14,6 @@ export type {
   CompositionStore,
   RecommendationSetScope,
 } from "./composition-store";
-export { deterministicizationOperationKey, DETERMINISTICIZATION_OPERATION_KINDS } from "./deterministicization-store";
 export type {
   CandidateInsertOutcome,
   CandidateTransitionOutcome,
@@ -28,6 +27,10 @@ export type {
   RolloutConclusionInput,
   RolloutInsertOutcome,
   StageEvidenceInsertOutcome,
+} from "./deterministicization-store";
+export {
+  DETERMINISTICIZATION_OPERATION_KINDS,
+  deterministicizationOperationKey,
 } from "./deterministicization-store";
 export type { DigestPort } from "./digest";
 export type {

@@ -67,11 +67,11 @@ import type {
   TelemetrySource,
 } from "./adapters/in-memory-composition-store";
 import { createInMemoryCompositionStore } from "./adapters/in-memory-composition-store";
+import { InMemoryDeterministicizationStore } from "./adapters/in-memory-deterministicization-store";
 import type { InMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-policy-store";
 import { createInMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-policy-store";
 import type { InMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createInMemoryLearningStore } from "./adapters/in-memory-learning-store";
-import { InMemoryDeterministicizationStore } from "./adapters/in-memory-deterministicization-store";
 import type { InMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createInMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createNodeDigest } from "./adapters/node-digest";
@@ -89,17 +89,6 @@ import type {
 } from "./application/composition-advisor";
 import { createCompositionAdvisor } from "./application/composition-advisor";
 import type {
-  ActiveLearnedPolicyView,
-  ConsultLearnedPolicyRequest,
-  EvaluateLearnedPolicyRequest,
-  GenerateLearnedPolicyRequest,
-  LearnedPolicyService,
-  LearnedPolicyServiceDeps,
-  PublishLearnedPolicyRequest,
-  RollbackLearnedPolicyRequest,
-} from "./application/learned-policy-service";
-import { createLearnedPolicyService } from "./application/learned-policy-service";
-import type {
   ApplyPromotionRequest,
   BeginRolloutRequest,
   ConcludeRolloutRequest,
@@ -114,6 +103,17 @@ import type {
   RolloutDeltaProjection,
 } from "./application/deterministicization-service";
 import { createDeterministicizationService } from "./application/deterministicization-service";
+import type {
+  ActiveLearnedPolicyView,
+  ConsultLearnedPolicyRequest,
+  EvaluateLearnedPolicyRequest,
+  GenerateLearnedPolicyRequest,
+  LearnedPolicyService,
+  LearnedPolicyServiceDeps,
+  PublishLearnedPolicyRequest,
+  RollbackLearnedPolicyRequest,
+} from "./application/learned-policy-service";
+import { createLearnedPolicyService } from "./application/learned-policy-service";
 import type {
   LearningService,
   LearningServiceDeps,
@@ -180,31 +180,6 @@ import {
   validateCompositionRecommendationSet,
   validateRecommendationSetActivation,
 } from "./domain/composition-analysis";
-import type { EvaluationRatingRecord } from "./domain/evaluation-rating";
-import {
-  EVALUATION_RATING_ANSWERS,
-  EVALUATION_RATING_SCHEMA_VERSION,
-  evaluationRatingFingerprintBasis,
-  isEvaluationRatingAnswer,
-  validateEvaluationRating,
-} from "./domain/evaluation-rating";
-import type {
-  ExecutionGraph,
-  ExecutionGraphEdge,
-  ExecutionGraphNode,
-  ExecutionGraphNodeKind,
-  NodeObservation,
-  SelectedSubgraph,
-  SourceProvenance,
-} from "./domain/execution-graph";
-import {
-  buildExecutionGraph,
-  EXECUTION_GRAPH_EDGE_RELATIONS,
-  EXECUTION_GRAPH_NODE_KINDS,
-  EXECUTION_GRAPH_SCHEMA_VERSION,
-  isExecutionGraphNodeKind,
-  validateExecutionGraph,
-} from "./domain/execution-graph";
 import type {
   CandidateProvenance,
   CandidateRecurrence,
@@ -237,20 +212,51 @@ import {
   STAGE_EVIDENCE_STATUSES,
   VALIDATION_STAGE_KINDS,
 } from "./domain/deterministicization";
-import type { AiComputationType, DiscoveredSubgraph } from "./domain/deterministicization-discovery";
+import type {
+  AiComputationType,
+  DiscoveredSubgraph,
+} from "./domain/deterministicization-discovery";
 import {
   AI_COMPUTATION_TYPES,
   DEFAULT_DISCOVERY_CONFIG,
+  DISCOVERY_MINIMUM_RECURRENCE,
   discoverDeterminizationCandidates,
   discoveryCorpusBasis,
-  DISCOVERY_MINIMUM_RECURRENCE,
 } from "./domain/deterministicization-discovery";
-import type { PromotionGateConfig, PromotionGateEvaluation } from "./domain/deterministicization-gate";
+import type {
+  PromotionGateConfig,
+  PromotionGateEvaluation,
+} from "./domain/deterministicization-gate";
 import {
   DEFAULT_PROMOTION_GATE_CONFIG,
   evaluatePromotionGate,
   promotionGateConfigBasis,
 } from "./domain/deterministicization-gate";
+import type { EvaluationRatingRecord } from "./domain/evaluation-rating";
+import {
+  EVALUATION_RATING_ANSWERS,
+  EVALUATION_RATING_SCHEMA_VERSION,
+  evaluationRatingFingerprintBasis,
+  isEvaluationRatingAnswer,
+  validateEvaluationRating,
+} from "./domain/evaluation-rating";
+import type {
+  ExecutionGraph,
+  ExecutionGraphEdge,
+  ExecutionGraphNode,
+  ExecutionGraphNodeKind,
+  NodeObservation,
+  SelectedSubgraph,
+  SourceProvenance,
+} from "./domain/execution-graph";
+import {
+  buildExecutionGraph,
+  EXECUTION_GRAPH_EDGE_RELATIONS,
+  EXECUTION_GRAPH_NODE_KINDS,
+  EXECUTION_GRAPH_SCHEMA_VERSION,
+  isExecutionGraphNodeKind,
+  validateExecutionGraph,
+} from "./domain/execution-graph";
 import type { FindingTransitionRecord } from "./domain/finding-transitions";
 import {
   FINDING_TRANSITION_EVIDENCE_KINDS,
@@ -446,20 +452,6 @@ import type {
   CompositionStore,
   RecommendationSetScope,
 } from "./ports/composition-store";
-import type { DigestPort } from "./ports/digest";
-import type {
-  EvaluationAppendOutcome,
-  LearnedPolicyScope,
-  LearnedPolicyStore,
-  PublicationAppendOutcome,
-} from "./ports/learned-policy-store";
-import type {
-  LearningStore,
-  RatingIngestionOutcome,
-  ScorecardScope,
-  TelemetryIngestionOutcome,
-  TelemetryQuery,
-} from "./ports/learning-store";
 import type {
   CandidateInsertOutcome,
   CandidateTransitionOutcome,
@@ -475,6 +467,20 @@ import type {
   StageEvidenceInsertOutcome,
 } from "./ports/deterministicization-store";
 import { deterministicizationOperationKey } from "./ports/deterministicization-store";
+import type { DigestPort } from "./ports/digest";
+import type {
+  EvaluationAppendOutcome,
+  LearnedPolicyScope,
+  LearnedPolicyStore,
+  PublicationAppendOutcome,
+} from "./ports/learned-policy-store";
+import type {
+  LearningStore,
+  RatingIngestionOutcome,
+  ScorecardScope,
+  TelemetryIngestionOutcome,
+  TelemetryQuery,
+} from "./ports/learning-store";
 import type {
   AnalysisInsertOutcome,
   FindingInsertOutcome,
@@ -647,6 +653,7 @@ export type {
   ActiveLearnedPolicyView,
   AdvanceFindingRequest,
   AggregationDefinition,
+  AiComputationType,
   AnalysisInsertOutcome,
   AnalyzeSubgraphRequest,
   ApplyPromotionRequest,
@@ -656,21 +663,6 @@ export type {
   CandidateRecurrence,
   CandidateSubgraphAnchor,
   CandidateTransitionOutcome,
-  ConcludeRolloutRequest,
-  ConsultDeterministicizationRequest,
-  DecisionAppendOutcome,
-  DecisionRequest,
-  DeterministicizationCandidate,
-  DeterministicizationCandidateClass,
-  DeterministicizationCandidateStatus,
-  DeterministicizationOperationKind,
-  DeterministicizationOperationRecord,
-  DeterministicizationScope,
-  DeterministicizationService,
-  DeterministicizationServiceDeps,
-  DeterministicizationSignal,
-  DeterministicizationStore,
-  AiComputationType,
   CompositionAdvisor,
   CompositionAdvisorDeps,
   CompositionCheck,
@@ -682,16 +674,30 @@ export type {
   CompositionStep,
   CompositionStore,
   CompositionUnsupportedReason,
+  ConcludeRolloutRequest,
+  ConsultDeterministicizationRequest,
   ConsultLearnedPolicyRequest,
   ConsultOpportunitySignalsRequest,
   ConsultRecommendationsRequest,
   CostImpact,
+  DecisionAppendOutcome,
+  DecisionRequest,
   DeterministicEquivalence,
   DeterministicEquivalencePotential,
+  DeterministicizationCandidate,
+  DeterministicizationCandidateClass,
+  DeterministicizationCandidateStatus,
+  DeterministicizationOperationKind,
+  DeterministicizationOperationRecord,
+  DeterministicizationScope,
+  DeterministicizationService,
+  DeterministicizationServiceDeps,
+  DeterministicizationSignal,
+  DeterministicizationStore,
   DifferentialPair,
   DigestPort,
-  DiscoveredSubgraph,
   DiscoverCandidatesRequest,
+  DiscoveredSubgraph,
   EvaluateLearnedPolicyRequest,
   EvaluateShadowInput,
   EvaluationAppendOutcome,
@@ -709,9 +715,11 @@ export type {
   FindingState,
   FindingTransitionRecord,
   FrictionConfig,
+  GateEvaluation,
   GenerateLearnedPolicyRequest,
   GenerateRecommendationSetRequest,
   ImpactBasis,
+  IncumbentBinding,
   InMemoryCompositionStore,
   InMemoryLearnedPolicyStore,
   InMemoryLearningStore,
@@ -740,6 +748,8 @@ export type {
   LearningSignal,
   LearningStore,
   NodeObservation,
+  OperationBeginInput,
+  OperationBeginOutcome,
   OpportunityAnalysis,
   OpportunityAnalyzer,
   OpportunityAnalyzerDeps,
@@ -750,6 +760,10 @@ export type {
   OpportunityStore,
   OutcomeCount,
   PopulationContextKey,
+  PromotionDecisionRecord,
+  PromotionGateConfig,
+  PromotionGateEvaluation,
+  ProposeCandidateRequest,
   PublicationAppendOutcome,
   PublicationEvidenceReference,
   PublishLearnedPolicyRequest,
@@ -760,8 +774,17 @@ export type {
   RecommendationSetScope,
   RecordEvaluationRatingInput,
   RecordRatingInput,
+  RecordStageEvidenceRequest,
   RecordTelemetryInput,
+  ReplacementAcceptanceCriterion,
+  ReplacementContract,
+  ReplacementFieldSchema,
+  ReplacementProgram,
   RollbackLearnedPolicyRequest,
+  RolloutConclusionInput,
+  RolloutDeltaProjection,
+  RolloutInsertOutcome,
+  RolloutRecord,
   RouteObservation,
   Scorecard,
   ScorecardEntry,
@@ -779,6 +802,9 @@ export type {
   ShadowStrategyDescription,
   ShadowSubjectScore,
   SourceProvenance,
+  StageEvidenceInsertOutcome,
+  StageEvidenceRecord,
+  StageEvidenceStatus,
   SubgraphTelemetryObservation,
   TelemetryIngestionOutcome,
   TelemetryOutcome,
@@ -794,6 +820,7 @@ export type {
   TransitionAppendOutcome,
   UncertaintyLevel,
   UserRatingRecord,
+  ValidationRunObservation,
   VerificationObservation,
   VerifiedEquivalenceEvidence,
 };
@@ -805,6 +832,7 @@ export {
   buildFindings,
   buildScorecard,
   CACHEABLE_INPUT_RATIO,
+  CANDIDATE_STATUS_TRANSITIONS,
   COMPOSITION_ANALYSIS_VERSION,
   COMPOSITION_RECOMMENDATION_CLASS,
   COMPOSITION_RECOMMENDATION_SCHEMA_VERSION,
@@ -816,7 +844,6 @@ export {
   CONFIDENCE_MEDIUM_POPULATION,
   CONSTANT_OUTPUT_CEILING,
   canonicalContextKey,
-  CANDIDATE_STATUS_TRANSITIONS,
   checkToolComposition,
   classifyFindingConfidence,
   classifyRecommendationConfidence,
@@ -833,18 +860,22 @@ export {
   createNodeDigest,
   createOpportunityAnalyzer,
   createShadowEvaluator,
+  DECISION_KINDS,
   DEFAULT_DISCOVERY_CONFIG,
   DEFAULT_FRICTION_CONFIG,
   DEFAULT_MAX_PROMPTS,
   DEFAULT_PROMOTION_GATE_CONFIG,
   DEFAULT_USER_FRICTION_THRESHOLD,
+  DETERMINISTIC_EQUIVALENCE_POTENTIALS,
   DETERMINISTICIZATION_CANDIDATE_CLASSES,
   DETERMINISTICIZATION_CANDIDATE_STATUSES,
   DETERMINISTICIZATION_SCHEMA_VERSION,
-  DETERMINISTIC_EQUIVALENCE_POTENTIALS,
+  DISCOVERY_MINIMUM_RECURRENCE,
   decideEvaluationPrompts,
-  DECISION_KINDS,
   detectOpportunities,
+  deterministicizationOperationKey,
+  discoverDeterminizationCandidates,
+  discoveryCorpusBasis,
   EVALUATION_PROMPT_SCHEMA_VERSION,
   EVALUATION_QUESTION_KINDS,
   EVALUATION_QUESTIONS,
@@ -856,25 +887,21 @@ export {
   EXPECTED_INFORMATION_GAIN,
   edgeCompatible,
   evaluateLearnedPolicyAgainstScorecard,
+  evaluatePromotionGate,
   evaluationRatingFingerprintBasis,
   FINDING_CONFIDENCE_LEVELS,
   FINDING_STATES,
   FINDING_TRANSITION_EVIDENCE_KINDS,
   FINDING_TRANSITION_SCHEMA_VERSION,
   FINDING_TRANSITION_TABLE,
-  discoverDeterminizationCandidates,
-  DISCOVERY_MINIMUM_RECURRENCE,
-  discoveryCorpusBasis,
-  deterministicizationOperationKey,
-  evaluatePromotionGate,
   findAggregationDefinition,
   findToolFact,
   HIGH_ERROR_RATE,
   IMPACT_BASES,
   INSERTABLE_FINDING_STATES,
+  InMemoryDeterministicizationStore,
   isEvaluationQuestionKind,
   isEvaluationRatingAnswer,
-  InMemoryDeterministicizationStore,
   isExecutionGraphNodeKind,
   isFindingConfidenceLevel,
   isFindingState,
@@ -912,28 +939,28 @@ export {
   OPPORTUNITY_FINDING_SCHEMA_VERSION,
   opportunityAnalysisDigestBasis,
   populationContextKeyOf,
-  questionKindForClass,
   promotionGateConfigBasis,
+  questionKindForClass,
   RATING_MAX,
   RATING_MIN,
   RATING_SCHEMA_VERSION,
   RATING_SOURCES,
   RECOMMENDATION_ACTIVATION_REASONS,
-  ratingFingerprintBasis,
   REPLACEMENT_FIELD_TYPES,
   ROLLOUT_MODES,
   ROLLOUT_STATUSES,
+  ratingFingerprintBasis,
   recommendationSetDigestBasis,
   SCORECARD_SUBJECT_KINDS,
   SHADOW_EVALUATION_STATUSES,
-  SqlDeterministicizationStore,
-  STAGE_EVIDENCE_STATUSES,
   SHADOW_RECORD_CLASSES,
   SHADOW_SCHEMA_VERSION,
   SqlCompositionStore,
+  SqlDeterministicizationStore,
   SqlLearnedPolicyStore,
   SqlLearningStore,
   SqlOpportunityStore,
+  STAGE_EVIDENCE_STATUSES,
   scorecardDigestBasis,
   scoreShadowSubjects,
   signalFromRecommendation,
