@@ -1161,6 +1161,12 @@ export function validateEdgeSensorObservation(
       };
     }
   }
+  if (request.retention === "retained" && (request.content === null || request.content === undefined)) {
+    return {
+      valid: false,
+      reason: "retained observations carry their content (ephemeral is the digest-only class)",
+    };
+  }
   if (typeof request.observedAt !== "string" || Number.isNaN(Date.parse(request.observedAt))) {
     return { valid: false, reason: "observedAt must be an ISO-8601 timestamp" };
   }
