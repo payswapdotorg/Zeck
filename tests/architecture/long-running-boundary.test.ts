@@ -57,8 +57,10 @@ import { collectSourceFiles } from "./lib/collect";
 import { scanDependencyRules } from "./lib/dependency-rules";
 
 const REPO_ROOT = join(process.cwd());
-const EXECUTIONS_DIR = join(REPO_ROOT, "src/modules/executions");
-const MIGRATION_PATH = join(REPO_ROOT, "src/platform/db/migrations/0022_long_running_execution_state.sql");
+const MIGRATION_PATH = join(
+  REPO_ROOT,
+  "src/platform/db/migrations/0022_long_running_execution_state.sql",
+);
 
 const read = (relative: string): string => readFileSync(join(REPO_ROOT, relative), "utf8");
 
@@ -78,13 +80,16 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
     }
     // Authority type handles never appear as annotations (word-boundary:
     // the port's own LongRunningExecutionStore name is not a violation).
-    expect(/\bExecutionService\b|\bExecutionStore\b|\bExecutionAuthorizationPort\b|\bDatabasePort\b/.test(port)).toBe(
-      false,
-    );
-    const interfaceBody = /export interface LongRunningExecutionStore \{([\s\S]*?)\n\}/.exec(port)?.[1] ?? "";
-    const methodNames = [...interfaceBody.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_]\w*)\s*\(/gm)].map(
-      (m) => m[1] ?? "",
-    );
+    expect(
+      /\bExecutionService\b|\bExecutionStore\b|\bExecutionAuthorizationPort\b|\bDatabasePort\b/.test(
+        port,
+      ),
+    ).toBe(false);
+    const interfaceBody =
+      /export interface LongRunningExecutionStore \{([\s\S]*?)\n\}/.exec(port)?.[1] ?? "";
+    const methodNames = [
+      ...interfaceBody.matchAll(/^\s*(?:readonly\s+)?([A-Za-z_]\w*)\s*\(/gm),
+    ].map((m) => m[1] ?? "");
     expect([...new Set(methodNames)].sort()).toEqual([
       "acquireLease",
       "beginOperation",
@@ -113,7 +118,9 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
 
   test("LG2: the long-running service deps are pinned (REQUIRED re-admission seams, no extras)", () => {
     const service = read("src/modules/executions/application/long-running-service.ts");
-    const depsMatch = /export interface LongRunningExecutionServiceDeps \{([\s\S]*?)\n\}/.exec(service);
+    const depsMatch = /export interface LongRunningExecutionServiceDeps \{([\s\S]*?)\n\}/.exec(
+      service,
+    );
     expect(depsMatch).not.toBeNull();
     const depNames = [...(depsMatch?.[1] ?? "").matchAll(/readonly (\w+)(\?)?:/g)]
       .map((m) => m[1] ?? "")
@@ -129,7 +136,9 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
       "store",
     ]);
     // The re-admission seams are REQUIRED (no default-allow exists).
-    expect(service.includes("readonly resumePolicyReadmission: ResumePolicyReAdmission;")).toBe(true);
+    expect(service.includes("readonly resumePolicyReadmission: ResumePolicyReAdmission;")).toBe(
+      true,
+    );
     expect(service.includes("readonly resourceReadmission: ResourceReAdmission;")).toBe(true);
     expect(service.includes("readonly budgetAuthority?: BudgetAuthority;")).toBe(true);
   });
@@ -138,13 +147,13 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
     const service = read("src/modules/executions/application/long-running-service.ts");
     // Status moves ONLY through the frozen transition commands: the
     // pause's wait-kind ternary (wait-tool | wait-user) + the literals.
-    const commands = [...service.matchAll(/command: "(wait-tool|wait-user|wait-human|resume|cancel)"/g)].map(
-      (m) => m[1] ?? "",
-    );
+    const commands = [
+      ...service.matchAll(/command: "(wait-tool|wait-user|wait-human|resume|cancel)"/g),
+    ].map((m) => m[1] ?? "");
     expect([...new Set(commands)].sort()).toEqual(["cancel", "resume", "wait-human"]);
-    expect(
-      service.includes('command: input.waitKind === "tool" ? "wait-tool" : "wait-user"'),
-    ).toBe(true);
+    expect(service.includes('command: input.waitKind === "tool" ? "wait-tool" : "wait-user"')).toBe(
+      true,
+    );
     for (const forbidden of [
       "createExecution(",
       "INSERT INTO",
@@ -185,7 +194,10 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
       '"cancel"',
       '"expire"',
     ]) {
-      expect(stateMachine.includes(frozenCommand), `${frozenCommand} must stay in the frozen table`).toBe(true);
+      expect(
+        stateMachine.includes(frozenCommand),
+        `${frozenCommand} must stay in the frozen table`,
+      ).toBe(true);
     }
     // No long-running term leaked into the frozen machine.
     for (const leaked of [
@@ -196,7 +208,9 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
       "longrunning",
       "LONG_RUNNING",
     ]) {
-      expect(stateMachine.includes(leaked), `the frozen machine must not carry "${leaked}"`).toBe(false);
+      expect(stateMachine.includes(leaked), `the frozen machine must not carry "${leaked}"`).toBe(
+        false,
+      );
     }
     // The additive vocabulary is exactly six observation commands.
     const event = read("src/modules/executions/domain/event.ts");
@@ -241,7 +255,9 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
     }
     // The convergence-aware gate (same digest converges, different digest
     // fails closed) and the crash-safety discipline markers.
-    expect(migration.includes("IF existing_digest = NEW.content_digest THEN RETURN NEW;")).toBe(true);
+    expect(migration.includes("IF existing_digest = NEW.content_digest THEN RETURN NEW;")).toBe(
+      true,
+    );
     expect(migration.includes("terminal rows fully")).toBe(true);
     // The parallel-wave collision discipline is pinned in the file
     // (comment line breaks are respected — each claim phrase pinned).
@@ -309,15 +325,20 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
     expect(sandboxAdapter.includes("admission.admit(")).toBe(true);
     expect(/INSERT|UPDATE |DELETE FROM/i.test(sandboxAdapter)).toBe(false);
     // The sandbox barrel exports the seam.
-    expect(read("src/modules/sandbox/public.ts").includes("createExecutionResumeReadmission")).toBe(true);
-    expect(read("src/modules/sandbox/adapters/index.ts").includes("execution-resume-readmission")).toBe(true);
+    expect(read("src/modules/sandbox/public.ts").includes("createExecutionResumeReadmission")).toBe(
+      true,
+    );
+    expect(
+      read("src/modules/sandbox/adapters/index.ts").includes("execution-resume-readmission"),
+    ).toBe(true);
   });
 
   test("LG9: no rule violations over the executions + sandbox trees (the shared engine)", () => {
     const files = collectSourceFiles(REPO_ROOT);
     const violations = scanDependencyRules(files, { allowedPackages: ["fastify"] });
     const relevant = violations.filter(
-      (v) => v.path.startsWith("src/modules/executions") || v.path.startsWith("src/modules/sandbox"),
+      (v) =>
+        v.path.startsWith("src/modules/executions") || v.path.startsWith("src/modules/sandbox"),
     );
     expect(relevant.map((v) => `${v.rule} @ ${v.path}`)).toEqual([]);
   });
@@ -361,9 +382,8 @@ describe("architecture: the long-running execution boundary (WORK-028)", () => {
     ]) {
       expect(sqlStore.includes(table), `the store must own ${table}`).toBe(true);
     }
-    const writesExecutions = /UPDATE\s+executions\.executions|DELETE\s+FROM\s+executions\.executions/i.test(
-      sqlStore,
-    );
+    const writesExecutions =
+      /UPDATE\s+executions\.executions|DELETE\s+FROM\s+executions\.executions/i.test(sqlStore);
     expect(writesExecutions).toBe(false);
   });
 });

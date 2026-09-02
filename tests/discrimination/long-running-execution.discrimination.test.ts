@@ -142,10 +142,18 @@ function violationsOf(rules: LongRunningRules): string[] {
 
   // D1 — the lease-validity guard protects the checkpoint commit (the
   // side effect), and the worker transition.
-  if (!rules.commitCheckpointBody.includes("await guardLease(input.applicationId, input.executionId, input.worker)")) {
+  if (
+    !rules.commitCheckpointBody.includes(
+      "await guardLease(input.applicationId, input.executionId, input.worker)",
+    )
+  ) {
     violations.push("lease-guard-removed");
   }
-  if (!rules.service.includes("await guardLease(input.applicationId, input.command.executionId, input.worker)")) {
+  if (
+    !rules.service.includes(
+      "await guardLease(input.applicationId, input.command.executionId, input.worker)",
+    )
+  ) {
     violations.push("worker-transition-guard-removed");
   }
 
@@ -182,7 +190,9 @@ function violationsOf(rules: LongRunningRules): string[] {
   }
 
   // D5 — the plan-revision COMPATIBILITY check exists.
-  if (!rules.resumeBody.includes("checkpointIncompatibility(checkpoint.contents, input.resumeFacts)")) {
+  if (
+    !rules.resumeBody.includes("checkpointIncompatibility(checkpoint.contents, input.resumeFacts)")
+  ) {
     violations.push("compatibility-check-removed");
   }
 
@@ -356,7 +366,11 @@ class AdmissionFakes {
     readmit: async (request: ResumeReAdmissionRequest) => {
       this.policyCalls.push(request);
       return this.denyPolicy
-        ? { allowed: false as const, reason: "fixture policy denial", denialCode: "POLICY_DENIED" as const }
+        ? {
+            allowed: false as const,
+            reason: "fixture policy denial",
+            denialCode: "POLICY_DENIED" as const,
+          }
         : { allowed: true as const };
     },
   };
@@ -592,7 +606,7 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
         const evidenceStart = body.indexOf('command: "interruption-requested"');
         expect(evidenceStart).toBeGreaterThan(-1);
         const callStart = body.lastIndexOf("await recordEvidence(", evidenceStart);
-        const requestedKey = body.indexOf("`${operationKey}:requested`", evidenceStart);
+        const requestedKey = body.indexOf(`\`\${operationKey}:requested\``, evidenceStart);
         expect(requestedKey).toBeGreaterThan(-1);
         const callEnd = body.indexOf(");", requestedKey) + 2;
         const block = body.slice(callStart, callEnd);
@@ -616,8 +630,8 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
   test("D8: the identity-creation mutant is flagged (a second identity is unrepresentable)", () => {
     const mutant = mutateService((source) =>
       source.replace(
-        "const record = await beginOperation(\n      \"resume\",",
-        "const rerun = await executions.createExecution({}, `re-${input.executionId}`, { actorId: input.actor.actorId, tenantId: input.actor.tenantId });\n    void rerun;\n    const record = await beginOperation(\n      \"resume\",",
+        'const record = await beginOperation(\n      "resume",',
+        `const rerun = await executions.createExecution({}, \`re-\${input.executionId}\`, { actorId: input.actor.actorId, tenantId: input.actor.tenantId });\n    void rerun;\n    const record = await beginOperation(\n      "resume",`,
       ),
     );
     expect(violationsOf(mutant)).toContain("identity-creation-added");
@@ -637,7 +651,7 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
     const mutant = mutateService((source) =>
       mutateBodyOf(source, "const resumeExecution = async (", (body) =>
         body.replace(
-          "await store.failOperation(\n          input.applicationId,\n          operationKey,\n          `resume re-admission denied: ${policy.reason ?? \"policy authority denial\"}`,",
+          `await store.failOperation(\n          input.applicationId,\n          operationKey,\n          \`resume re-admission denied: \${policy.reason ?? "policy authority denial"}\`,`,
           "void operationKey;",
         ),
       ),
@@ -654,7 +668,8 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
         const probeEnd = body.indexOf(");", probeStart) + 2;
         const probeBlock = body.slice(probeStart, probeEnd);
         const without = body.slice(0, probeStart) + body.slice(probeEnd);
-        const guardAnchor = "await guardLease(input.applicationId, input.executionId, input.worker);";
+        const guardAnchor =
+          "await guardLease(input.applicationId, input.executionId, input.worker);";
         const guardAt = without.indexOf(guardAnchor);
         expect(guardAt).toBeGreaterThan(-1);
         // Insert the probe AFTER the guard (the inverted order).
@@ -671,10 +686,15 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
     );
     expect(violationsOf(noGate)).toContain("migration-sequence-gate-removed");
     const noConvergence = mutateMigration((sql) =>
-      sql.replace("IF existing_digest = NEW.content_digest THEN RETURN NEW;", "IF FALSE THEN RETURN NEW;"),
+      sql.replace(
+        "IF existing_digest = NEW.content_digest THEN RETURN NEW;",
+        "IF FALSE THEN RETURN NEW;",
+      ),
     );
     expect(violationsOf(noConvergence)).toContain("migration-convergence-branch-removed");
-    const noLeaseGuards = mutateMigration((sql) => sql.replace("CREATE TRIGGER lr_lease_guards\n", ""));
+    const noLeaseGuards = mutateMigration((sql) =>
+      sql.replace("CREATE TRIGGER lr_lease_guards\n", ""),
+    );
     expect(violationsOf(noLeaseGuards)).toContain("migration-lease-guards-removed");
     const noEpochGuard = mutateMigration((sql) =>
       sql.replace("lease epoch must not regress", "lease epoch may regress"),
@@ -686,7 +706,9 @@ describe("discrimination: long-running execution boundaries (WORK-028) — stati
       sql.replace("CREATE TRIGGER lr_ops_lifecycle_guard\n", ""),
     );
     expect(violationsOf(noOpsLifecycle)).toContain("migration-ops-lifecycle-removed");
-    const noStableKey = mutateMigration((sql) => sql.replace("lr_ops_key_unique", "lr_ops_key_not_unique"));
+    const noStableKey = mutateMigration((sql) =>
+      sql.replace("lr_ops_key_unique", "lr_ops_key_not_unique"),
+    );
     expect(violationsOf(noStableKey)).toContain("migration-ops-stable-key-removed");
     const noIdentityBinding = mutateMigration((sql) =>
       sql.replace("lr_lease_execution_fk", "lr_lease_execution_not_fk"),
@@ -785,7 +807,11 @@ describe("discrimination: long-running execution boundaries (WORK-028) — runti
             },
             `race-${i}`,
           )
-          .then((outcome) => ({ ok: true as const, status: outcome.status, replayed: outcome.replayed }))
+          .then((outcome) => ({
+            ok: true as const,
+            status: outcome.status,
+            replayed: outcome.replayed,
+          }))
           .catch((error: PlatformError) => ({ ok: false as const, code: error.code })),
       ),
     );
@@ -817,7 +843,12 @@ describe("discrimination: long-running execution boundaries (WORK-028) — runti
     await expectTyped(
       () =>
         world.service.resumeExecution(
-          { applicationId: APPLICATION_ID, executionId, actor, resumeFacts: factsOf(checkpointOf(executionId)) },
+          {
+            applicationId: APPLICATION_ID,
+            executionId,
+            actor,
+            resumeFacts: factsOf(checkpointOf(executionId)),
+          },
           `resume-${executionId}`,
         ),
       "INVALID_STATE_TRANSITION",
@@ -856,14 +887,21 @@ describe("discrimination: long-running execution boundaries (WORK-028) — runti
     await pause(world, executionId);
     // UNCHANGED resume: zero authority consultations.
     const unchanged = await world.service.resumeExecution(
-      { applicationId: APPLICATION_ID, executionId, actor, resumeFacts: factsOf(checkpointOf(executionId)) },
+      {
+        applicationId: APPLICATION_ID,
+        executionId,
+        actor,
+        resumeFacts: factsOf(checkpointOf(executionId)),
+      },
       `resume-unchanged`,
     );
     expect(unchanged.readmitted).toBe(false);
     expect(world.admissions.policyCalls).toHaveLength(0);
     expect(world.admissions.resourceCalls).toHaveLength(0);
     // MATERIALLY CHANGED (resource class + cost bound): both axes consulted.
-    const changedFacts = factsOf(checkpointOf(executionId, { resourceClass: "premium", maxCostMicroUsd: "500000" }));
+    const changedFacts = factsOf(
+      checkpointOf(executionId, { resourceClass: "premium", maxCostMicroUsd: "500000" }),
+    );
     const changed = await world.service.resumeExecution(
       { applicationId: APPLICATION_ID, executionId, actor, resumeFacts: changedFacts },
       `resume-changed`,
@@ -913,7 +951,9 @@ describe("discrimination: long-running execution boundaries (WORK-028) — runti
       `interrupt-${executionId}`,
     );
     expect(superseded.wakeUpsSuperseded).toBe(1);
-    expect(world.store.wakeUps.get(`${APPLICATION_ID}|${executionId}|tool-return`)?.status).toBe("superseded");
+    expect(world.store.wakeUps.get(`${APPLICATION_ID}|${executionId}|tool-return`)?.status).toBe(
+      "superseded",
+    );
     // The superseded wake never fires.
     world.advance(60_000);
     const applied = await world.service.applyWakeUps({ applicationId: APPLICATION_ID, actor });
@@ -927,7 +967,12 @@ describe("discrimination: long-running execution boundaries (WORK-028) — runti
     const paused = await pause(world, executionId);
     expect(paused.executionId).toBe(executionId);
     const resumed = await world.service.resumeExecution(
-      { applicationId: APPLICATION_ID, executionId, actor, resumeFacts: factsOf(checkpointOf(executionId)) },
+      {
+        applicationId: APPLICATION_ID,
+        executionId,
+        actor,
+        resumeFacts: factsOf(checkpointOf(executionId)),
+      },
       `resume-${executionId}`,
     );
     expect(resumed.executionId).toBe(executionId);
