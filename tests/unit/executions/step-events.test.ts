@@ -40,7 +40,9 @@ describe("execution step events", () => {
     // and WORK-012 with the sandbox execution commands (all three modules
     // produce them through the same recordStepEvent seam; executions
     // remains the sole vocabulary owner). WORK-032 added the economic
-    // action evidence commands through the same additive discipline.
+    // action evidence commands and WORK-028 the long-running checkpoint /
+    // lease / wake-up / resume evidence commands through the same additive
+    // discipline.
     expect(STEP_EVENT_COMMANDS).toEqual([
       "tool-requested",
       "tool-result",
@@ -63,11 +65,20 @@ describe("execution step events", () => {
       "economic-action-authorized",
       "economic-action-settled",
       "economic-action-failed",
+      // WORK-028 (long-running executions) — additive vocabulary extension.
+      "checkpoint-recorded",
+      "interruption-requested",
+      "wake-up-scheduled",
+      "wake-up-applied",
+      "resume-recorded",
+      "resume-denied",
     ]);
     expect(isStepEventCommand("tool-requested")).toBe(true);
     expect(isStepEventCommand("agent-session-started")).toBe(true);
     expect(isStepEventCommand("sandbox-admitted")).toBe(true);
     expect(isStepEventCommand("economic-action-recorded")).toBe(true);
+    expect(isStepEventCommand("checkpoint-recorded")).toBe(true);
+    expect(isStepEventCommand("resume-denied")).toBe(true);
     expect(isStepEventCommand("authorize")).toBe(false);
     expect(isStepEventCommand("tool-bogus")).toBe(false);
   });
