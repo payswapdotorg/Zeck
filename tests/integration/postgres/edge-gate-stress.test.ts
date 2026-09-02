@@ -105,8 +105,8 @@ definePgSuite("edge sequence-gate stress regression (WORK-030 inherited fix)", (
         actor: w.actor(),
         executionId,
         deviceId,
-        observationType: "telemetry",
-        retention: "retained",
+        observationType: "telemetry" as const,
+        retention: "retained" as const,
         content: `{"stress": ${iteration}, "battery": 0.82}`,
         observedAt: new Date().toISOString(),
       };
