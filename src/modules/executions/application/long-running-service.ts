@@ -40,10 +40,7 @@
  */
 
 import { PlatformError } from "../../../shared/errors";
-import { isUuid } from "../../../shared/ids";
 import type { BudgetAuthority } from "../../budgets/public";
-import type { ExecutionService, ExecutionTransitionCommand, TransitionOutcome } from "./execution-service";
-import type { EventEnvelope } from "../domain/event";
 import type {
   CheckpointContents,
   CheckpointRecord,
@@ -59,19 +56,22 @@ import {
   validateCheckpointContents,
   validateResumeFacts,
 } from "../domain/checkpoint";
+import type { EventEnvelope } from "../domain/event";
+import type { ExecutionRecord } from "../domain/execution";
 import type { LeaseRecord, LeaseReleaseCause } from "../domain/lease";
-import { classifyLease, leaseGuardRejection, throwLeaseRejection } from "../domain/lease";
+import { leaseGuardRejection, throwLeaseRejection } from "../domain/lease";
 import type { LongRunningOperationKind, LongRunningOperationRecord } from "../domain/longrunning";
 import { executionScopedDiscriminator, longRunningOperationKey } from "../domain/longrunning";
+import { isTerminal } from "../domain/state-machine";
 import type { WakeUpRecord } from "../domain/wakeup";
-import type {
-  ResourceReAdmission,
-  ResumePolicyReAdmission,
-} from "../ports/resume-admission";
 import { canonicalFingerprint } from "../ports/execution-idempotency";
 import type { LongRunningExecutionStore } from "../ports/long-running-store";
-import type { ExecutionRecord } from "../domain/execution";
-import { isTerminal } from "../domain/state-machine";
+import type { ResourceReAdmission, ResumePolicyReAdmission } from "../ports/resume-admission";
+import type {
+  ExecutionService,
+  ExecutionTransitionCommand,
+  TransitionOutcome,
+} from "./execution-service";
 
 // ---------------------------------------------------------------------------
 // Commands and outcomes
@@ -259,7 +259,12 @@ export interface ApplyWakeUpsCommand {
 export type WakeUpApplicationAction =
   | { readonly action: "resumed"; readonly wakeKey: string; readonly executionId: string }
   | { readonly action: "already-running"; readonly wakeKey: string; readonly executionId: string }
-  | { readonly action: "superseded"; readonly wakeKey: string; readonly executionId: string; readonly reason: string }
+  | {
+      readonly action: "superseded";
+      readonly wakeKey: string;
+      readonly executionId: string;
+      readonly reason: string;
+    }
   | { readonly action: "replayed"; readonly wakeKey: string; readonly executionId: string };
 
 export interface ApplyWakeUpsOutcome {
@@ -298,10 +303,7 @@ export interface LongRunningExecutionService {
   ): Promise<TransitionOutcome>;
   getLease(applicationId: string, executionId: string): Promise<LeaseRecord | null>;
   getLatestCheckpoint(applicationId: string, executionId: string): Promise<CheckpointRecord | null>;
-  listCheckpoints(
-    applicationId: string,
-    executionId: string,
-  ): Promise<readonly CheckpointRecord[]>;
+  listCheckpoints(applicationId: string, executionId: string): Promise<readonly CheckpointRecord[]>;
   listWakeUps(applicationId: string, executionId: string): Promise<readonly WakeUpRecord[]>;
 }
 
@@ -320,8 +322,6 @@ export interface LongRunningExecutionServiceDeps {
   readonly generateId: () => string;
   readonly now: () => Date;
 }
-
-const STAGE = "stage";
 
 interface StagePayload {
   readonly stage: string;
@@ -936,10 +936,7 @@ export function createLongRunningExecutionService(
       command: input.waitKind === "tool" ? "wait-tool" : "wait-user",
       reason: `paused by worker ${input.worker.ownerId} (checkpoint ${checkpoint.checkpointSequence})`,
     } as ExecutionTransitionCommand;
-    const transitioned = await executions.transition(
-      command,
-      `${operationKey}:wait`,
-    );
+    const transitioned = await executions.transition(command, `${operationKey}:wait`);
     await checkpointOperationStage(input.applicationId, operationKey, {
       stage: "paused",
       checkpointId: checkpoint.id,
@@ -1072,11 +1069,7 @@ export function createLongRunningExecutionService(
     const checkpoint =
       input.checkpointId === undefined
         ? await store.latestCheckpoint(input.applicationId, input.executionId)
-        : await store.getCheckpoint(
-            input.applicationId,
-            input.executionId,
-            input.checkpointId,
-          );
+        : await store.getCheckpoint(input.applicationId, input.executionId, input.checkpointId);
     if (checkpoint === null) {
       throw new PlatformError({
         code: "INVALID_STATE_TRANSITION",
@@ -1549,11 +1542,7 @@ export function createLongRunningExecutionService(
       fingerprint,
     );
     if (record.status === "completed") {
-      const wakeUp = await store.getWakeUp(
-        input.applicationId,
-        input.executionId,
-        input.wakeKey,
-      );
+      const wakeUp = await store.getWakeUp(input.applicationId, input.executionId, input.wakeKey);
       return {
         executionId: input.executionId,
         wakeKey: input.wakeKey,
@@ -1606,9 +1595,7 @@ export function createLongRunningExecutionService(
     };
   };
 
-  const applyWakeUps = async (
-    input: ApplyWakeUpsCommand,
-  ): Promise<ApplyWakeUpsOutcome> => {
+  const applyWakeUps = async (input: ApplyWakeUpsCommand): Promise<ApplyWakeUpsOutcome> => {
     const due = await store.dueWakeUps(input.applicationId, iso());
     const applications: WakeUpApplicationAction[] = [];
     for (const wakeUp of due) {
@@ -1635,10 +1622,7 @@ export function createLongRunningExecutionService(
         });
         continue;
       }
-      const execution = await executions.getExecution(
-        input.applicationId,
-        wakeUp.executionId,
-      );
+      const execution = await executions.getExecution(input.applicationId, wakeUp.executionId);
       if (execution === null || execution.tenantId !== input.actor.tenantId) {
         applications.push({
           action: "superseded",

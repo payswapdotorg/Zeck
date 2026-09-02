@@ -61,9 +61,7 @@ export interface LongRunningOperationRecord {
   readonly completedAt: string | null;
 }
 
-export function isLongRunningOperationKind(
-  value: string,
-): value is LongRunningOperationKind {
+export function isLongRunningOperationKind(value: string): value is LongRunningOperationKind {
   return (LONG_RUNNING_OPERATION_KINDS as readonly string[]).includes(value);
 }
 

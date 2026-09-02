@@ -126,7 +126,10 @@ export function validateCheckpointContents(contents: CheckpointContents): void {
       message: "checkpoint contents require a valid environmentId or null",
     });
   }
-  if (contents.environmentSpecDigest !== null && !/^[0-9a-f]{64}$/.test(contents.environmentSpecDigest)) {
+  if (
+    contents.environmentSpecDigest !== null &&
+    !/^[0-9a-f]{64}$/.test(contents.environmentSpecDigest)
+  ) {
     throw new PlatformError({
       code: "POLICY_DENIED",
       message: "checkpoint contents require a 64-hex environmentSpecDigest or null",

@@ -34,9 +34,8 @@
  * authority fails closed).
  */
 
+import type { MaterialChangeDimension, ResumeFacts } from "../domain/checkpoint";
 import type { ExecutionRecord } from "../domain/execution";
-import type { MaterialChangeDimension } from "../domain/checkpoint";
-import type { ResumeFacts } from "../domain/checkpoint";
 
 /** The neutral denial code the authority selects (frozen taxonomy). */
 export type ResumeReAdmissionDenialCode = "POLICY_DENIED" | "CAPABILITY_UNAVAILABLE";

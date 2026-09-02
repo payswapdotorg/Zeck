@@ -4,6 +4,7 @@
 export * from "./capability-gate";
 export * from "./container-provider";
 export * from "./execution-ledger";
+export * from "./execution-resume-readmission";
 export * from "./in-memory-sandbox-store";
 export * from "./policy-sandbox-admission";
 export * from "./process-provider";

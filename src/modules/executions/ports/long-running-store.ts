@@ -32,10 +32,7 @@
 
 import type { CheckpointContents, CheckpointRecord } from "../domain/checkpoint";
 import type { LeaseRecord, LeaseReleaseCause } from "../domain/lease";
-import type {
-  LongRunningOperationKind,
-  LongRunningOperationRecord,
-} from "../domain/longrunning";
+import type { LongRunningOperationKind, LongRunningOperationRecord } from "../domain/longrunning";
 import type { WakeUpRecord } from "../domain/wakeup";
 
 // ---------------------------------------------------------------------------
@@ -178,10 +175,7 @@ export interface LongRunningExecutionStore {
     checkpointId: string,
   ): Promise<CheckpointRecord | null>;
   latestCheckpoint(applicationId: string, executionId: string): Promise<CheckpointRecord | null>;
-  listCheckpoints(
-    applicationId: string,
-    executionId: string,
-  ): Promise<readonly CheckpointRecord[]>;
+  listCheckpoints(applicationId: string, executionId: string): Promise<readonly CheckpointRecord[]>;
 
   // -- the execution lease (single live row, guarded owner/epoch moves) --
 
@@ -196,9 +190,7 @@ export interface LongRunningExecutionStore {
   insertWakeUp(input: InsertWakeUpInput): Promise<WakeUpInsertOutcome>;
   dueWakeUps(applicationId: string, at: string): Promise<readonly WakeUpRecord[]>;
   markWakeUpApplied(input: MarkWakeUpAppliedInput): Promise<WakeUpRecord>;
-  markWakeUpsSuperseded(
-    input: MarkWakeUpsSupersededInput,
-  ): Promise<readonly WakeUpRecord[]>;
+  markWakeUpsSuperseded(input: MarkWakeUpsSupersededInput): Promise<readonly WakeUpRecord[]>;
   getWakeUp(
     applicationId: string,
     executionId: string,

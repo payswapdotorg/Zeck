@@ -45,6 +45,7 @@ import type {
   ForceReleaseLeaseInput,
   InsertCheckpointInput,
   InsertWakeUpInput,
+  LeaseAcquireOutcome,
   LongRunningExecutionStore,
   MarkWakeUpAppliedInput,
   MarkWakeUpsSupersededInput,
@@ -52,7 +53,6 @@ import type {
   ReleaseLeaseInput,
   RenewLeaseInput,
   WakeUpInsertOutcome,
-  LeaseAcquireOutcome,
 } from "../ports/long-running-store";
 
 type Executor = Pick<DatabasePort, "execute">;
@@ -405,7 +405,11 @@ RETURNING ${CHECKPOINT_COLUMNS}`,
     }
     // Conflict: the sequence is already taken — same digest converges,
     // a different digest is key reuse (fail closed).
-    const existing = await this.requireCheckpoint(input.applicationId, input.executionId, input.checkpointSequence);
+    const existing = await this.requireCheckpoint(
+      input.applicationId,
+      input.executionId,
+      input.checkpointSequence,
+    );
     if (existing.contentDigest !== input.contentDigest) {
       throw new PlatformError({
         code: "IDEMPOTENCY_KEY_REUSED",
@@ -434,7 +438,10 @@ WHERE application_id = $1 AND execution_id = $2 AND id = $3`,
     return row === undefined ? null : toCheckpoint(row);
   }
 
-  async latestCheckpoint(applicationId: string, executionId: string): Promise<CheckpointRecord | null> {
+  async latestCheckpoint(
+    applicationId: string,
+    executionId: string,
+  ): Promise<CheckpointRecord | null> {
     const result = await this.db.execute<CheckpointRow>({
       sql: `SELECT ${CHECKPOINT_COLUMNS} FROM executions.execution_checkpoints
 WHERE application_id = $1 AND execution_id = $2 ORDER BY checkpoint_sequence DESC LIMIT 1`,
@@ -444,7 +451,10 @@ WHERE application_id = $1 AND execution_id = $2 ORDER BY checkpoint_sequence DES
     return row === undefined ? null : toCheckpoint(row);
   }
 
-  async listCheckpoints(applicationId: string, executionId: string): Promise<readonly CheckpointRecord[]> {
+  async listCheckpoints(
+    applicationId: string,
+    executionId: string,
+  ): Promise<readonly CheckpointRecord[]> {
     const result = await this.db.execute<CheckpointRow>({
       sql: `SELECT ${CHECKPOINT_COLUMNS} FROM executions.execution_checkpoints
 WHERE application_id = $1 AND execution_id = $2 ORDER BY checkpoint_sequence`,
@@ -775,9 +785,7 @@ RETURNING ${WAKEUP_COLUMNS}`,
     return existing;
   }
 
-  async markWakeUpsSuperseded(
-    input: MarkWakeUpsSupersededInput,
-  ): Promise<readonly WakeUpRecord[]> {
+  async markWakeUpsSuperseded(input: MarkWakeUpsSupersededInput): Promise<readonly WakeUpRecord[]> {
     try {
       const result = await this.db.execute<WakeUpRow>({
         sql: `UPDATE executions.execution_wakeups

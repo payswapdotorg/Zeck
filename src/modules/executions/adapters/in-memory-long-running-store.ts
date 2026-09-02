@@ -23,10 +23,7 @@
 import { PlatformError } from "../../../shared/errors";
 import type { CheckpointContents, CheckpointRecord } from "../domain/checkpoint";
 import type { LeaseRecord, LeaseReleaseCause } from "../domain/lease";
-import type {
-  LongRunningOperationKind,
-  LongRunningOperationRecord,
-} from "../domain/longrunning";
+import type { LongRunningOperationKind, LongRunningOperationRecord } from "../domain/longrunning";
 import type { WakeUpRecord, WakeUpStatus } from "../domain/wakeup";
 import type {
   AcquireLeaseInput,
@@ -36,6 +33,7 @@ import type {
   ForceReleaseLeaseInput,
   InsertCheckpointInput,
   InsertWakeUpInput,
+  LeaseAcquireOutcome,
   LongRunningExecutionStore,
   MarkWakeUpAppliedInput,
   MarkWakeUpsSupersededInput,
@@ -43,7 +41,6 @@ import type {
   ReleaseLeaseInput,
   RenewLeaseInput,
   WakeUpInsertOutcome,
-  LeaseAcquireOutcome,
 } from "../ports/long-running-store";
 
 function expiryOf(now: string, ttlMs: number): string {
@@ -130,7 +127,7 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
     executionId: string,
   ): Promise<CheckpointRecord | null> {
     const all = this.listByExecution(applicationId, executionId);
-    return all.length === 0 ? null : all[all.length - 1] ?? null;
+    return all.length === 0 ? null : (all[all.length - 1] ?? null);
   }
 
   async listCheckpoints(
@@ -143,16 +140,14 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
   private listByExecution(applicationId: string, executionId: string): CheckpointRecord[] {
     return [...this.checkpoints.values()]
       .filter(
-        (record) =>
-          record.applicationId === applicationId && record.executionId === executionId,
+        (record) => record.applicationId === applicationId && record.executionId === executionId,
       )
       .sort((a, b) => a.checkpointSequence - b.checkpointSequence);
   }
 
   private checkpointCount(executionId: string): number {
-    return [...this.checkpoints.values()].filter(
-      (record) => record.executionId === executionId,
-    ).length;
+    return [...this.checkpoints.values()].filter((record) => record.executionId === executionId)
+      .length;
   }
 
   /** Test seam: tamper with a stored checkpoint's digest (corruption proof). */
@@ -165,10 +160,7 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
   }
 
   /** Test seam: tamper with a stored checkpoint's contents (corruption proof). */
-  tamperCheckpointContents(
-    checkpointId: string,
-    contents: Partial<CheckpointContents>,
-  ): void {
+  tamperCheckpointContents(checkpointId: string, contents: Partial<CheckpointContents>): void {
     const record = this.checkpoints.get(checkpointId);
     if (record === undefined) {
       throw new Error(`unknown checkpoint ${checkpointId}`);
@@ -388,9 +380,7 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
     return applied;
   }
 
-  async markWakeUpsSuperseded(
-    input: MarkWakeUpsSupersededInput,
-  ): Promise<readonly WakeUpRecord[]> {
+  async markWakeUpsSuperseded(input: MarkWakeUpsSupersededInput): Promise<readonly WakeUpRecord[]> {
     const superseded: WakeUpRecord[] = [];
     for (const [key, record] of this.wakeUps) {
       if (
@@ -422,8 +412,7 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
   async listWakeUps(applicationId: string, executionId: string): Promise<readonly WakeUpRecord[]> {
     return [...this.wakeUps.values()]
       .filter(
-        (record) =>
-          record.applicationId === applicationId && record.executionId === executionId,
+        (record) => record.applicationId === applicationId && record.executionId === executionId,
       )
       .sort((a, b) => {
         if (a.earliestWakeAt !== b.earliestWakeAt) {
@@ -580,4 +569,4 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
   }
 }
 
-export type { LeaseReleaseCause, WakeUpStatus, LongRunningOperationKind };
+export type { LeaseReleaseCause, LongRunningOperationKind, WakeUpStatus };
