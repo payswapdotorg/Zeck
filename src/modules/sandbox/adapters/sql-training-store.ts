@@ -599,10 +599,11 @@ RETURNING ${WORKLOAD_COLUMNS}`,
     try {
       const result = await this.db.execute<WorkloadRow>({
         sql: `UPDATE sandbox.training_workloads
-SET attempts = attempts + 1
+SET attempts = attempts + 1,
+    budget_operation_id = COALESCE($3, budget_operation_id)
 WHERE application_id = $1 AND workload_key = $2
 RETURNING ${WORKLOAD_COLUMNS}`,
-        parameters: [input.applicationId, input.workloadKey],
+        parameters: [input.applicationId, input.workloadKey, input.budgetOperationId ?? null],
       });
       const row = first(result.rows);
       if (row === undefined) {

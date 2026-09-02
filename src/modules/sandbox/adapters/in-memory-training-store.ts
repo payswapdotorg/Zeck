@@ -285,6 +285,9 @@ export class InMemoryTrainingStore implements TrainingStore {
     const record: TrainingWorkloadRecord = {
       ...row.record,
       attempts: row.record.attempts + 1,
+      ...(input.budgetOperationId === undefined
+        ? {}
+        : { budgetOperationId: input.budgetOperationId }),
     };
     row.record = record;
     return record;

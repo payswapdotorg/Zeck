@@ -213,6 +213,23 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
   /** The deterministic run-worker identity of one workload. */
   const workerIdOf = (workloadKey: string): string => `training-worker:${workloadKey}`;
 
+  /**
+   * Release the run lease ONLY when a lease row exists (a workload
+   * cancelled before allocation, or failed before lease acquisition,
+   * has no lease — a review-found defect made those paths crash on a
+   * lease-less release; the tails now release conditionally).
+   */
+  const releaseLeaseIfPresent = async (
+    applicationId: string,
+    workloadId: string,
+    cause: string,
+  ): Promise<void> => {
+    const lease = await store.findTrainingRunLease(applicationId, workloadId);
+    if (lease !== null) {
+      await store.releaseTrainingRunLease({ applicationId, workloadId, cause, now: iso() });
+    }
+  };
+
   /** The budget operation id of one workload attempt (stable per attempt). */
   const budgetOperationIdFor = (workloadKey: string, attempt: number): string =>
     attempt === 1
@@ -1044,12 +1061,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       operationKey: allocationOperationKey,
       now: iso(),
     });
-    await store.releaseTrainingRunLease({
-      applicationId: record.applicationId,
-      workloadId: record.id,
-      cause: "run-completed",
-      now: iso(),
-    });
+    await releaseLeaseIfPresent(record.applicationId, record.id, "run-completed");
     await runtimeOf(record)?.release(
       trainingOperationKey("allocate", `${record.workloadKey}:attempt:${record.attempts}`),
     );
@@ -1112,12 +1124,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       failureReason: failure.message,
       now: iso(),
     });
-    await store.releaseTrainingRunLease({
-      applicationId: record.applicationId,
-      workloadId: record.id,
-      cause: "run-failed",
-      now: iso(),
-    });
+    await releaseLeaseIfPresent(record.applicationId, record.id, "run-failed");
     await runtimeOf(record)?.release(
       trainingOperationKey("allocate", `${record.workloadKey}:attempt:${record.attempts}`),
     );
@@ -1257,12 +1264,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       now: iso(),
     });
     const final = cancelled.record;
-    await store.releaseTrainingRunLease({
-      applicationId: found.applicationId,
-      workloadId: found.id,
-      cause: "cancelled",
-      now: iso(),
-    });
+    await releaseLeaseIfPresent(found.applicationId, found.id, "cancelled");
     await store.completeTrainingOperation({
       applicationId: found.applicationId,
       operationKey: cancelKey,
@@ -1519,11 +1521,13 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       `training-reserve:${budgetOperationId}`,
     );
 
-    // The guarded re-arm: attempts+1 (the retry ledger), failed ->
+    // The guarded re-arm: attempts+1 (the retry ledger) + the budget
+    // discriminator rebind to the NEW attempt's reservation, failed ->
     // allocating through the same stable identity.
     await store.bumpWorkloadAttempts({
       applicationId: found.applicationId,
       workloadKey: found.workloadKey,
+      budgetOperationId,
     });
     await store.completeTrainingOperation({
       applicationId: found.applicationId,

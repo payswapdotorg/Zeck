@@ -897,40 +897,41 @@ export interface TrainingResumeFacts {
   readonly requiredCapabilities: readonly string[];
 }
 
-/** The material-change dimensions (explicit vocabulary). */
-export const TRAINING_MATERIAL_CHANGE_DIMENSIONS = [
-  "workloadKind",
-  "substrateId",
-  "resourceClass",
-  "estimatedCostMicroUsd",
-  "requiredCapabilities",
-] as const;
+/**
+ * The material-change dimensions. Only the dimensions the CHECKPOINT
+ * CONTENTS can witness are comparable (the checkpoint is the durable
+ * admitted-fact snapshot the rule reads): the neutral substrate identity
+ * and the neutral resource class. `workloadKind`/`estimatedCostMicroUsd`
+ * and the capability identity ride the immutable runtime metadata + the
+ * substrate selection digest — a changed substrate selection ALWAYS
+ * changes `substrateId`, so the rule still catches it; a capability
+ * change without a substrate change is not observable from the
+ * checkpoint and is NOT claimed as a dimension (over-claiming dead
+ * dimensions was a review-found defect — the exported vocabulary now
+ * states exactly what the rule compares).
+ */
+export const TRAINING_MATERIAL_CHANGE_DIMENSIONS = ["substrateId", "resourceClass"] as const;
 
 export type TrainingMaterialChangeDimension = (typeof TRAINING_MATERIAL_CHANGE_DIMENSIONS)[number];
 
 /**
  * THE MATERIALITY RULE: a resume is MATERIALLY CHANGED when any
- * admission-relevant fact differs from the checkpointed fact — a
- * materially changed resume re-enters the CURRENT policy/budget/
- * capability controls; an UNCHANGED resume (a crash-recovery retry)
- * skips re-admission and resumes from the checkpoint with the SAME
- * execution identity.
+ * admission-relevant fact the checkpoint can witness differs from the
+ * checkpointed fact — a materially changed resume re-enters the CURRENT
+ * policy controls; an UNCHANGED resume (a crash-recovery retry of the
+ * same admitted substrate/resource facts) skips re-admission and resumes
+ * from the checkpoint with the SAME execution identity.
  */
 export function trainingMaterialChangeBetween(
   checkpoint: TrainingCheckpointContents,
   facts: TrainingResumeFacts,
 ): readonly TrainingMaterialChangeDimension[] {
   const changed: TrainingMaterialChangeDimension[] = [];
-  if (checkpoint.resourceClass !== facts.resourceClass) {
-    changed.push("resourceClass");
-  }
   if (checkpoint.substrateId !== facts.substrateId) {
     changed.push("substrateId");
   }
-  const checkpointCaps = [...(checkpoint.lineage.configRefs ?? [])].sort().join("\u0000");
-  const factsCaps = [...facts.requiredCapabilities].sort().join("\u0000");
-  if (checkpointCaps !== factsCaps) {
-    changed.push("requiredCapabilities");
+  if (checkpoint.resourceClass !== facts.resourceClass) {
+    changed.push("resourceClass");
   }
   return changed;
 }

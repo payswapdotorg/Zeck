@@ -128,6 +128,14 @@ export interface BindWorkloadReleaseInput {
 export interface BumpWorkloadAttemptsInput {
   readonly applicationId: string;
   readonly workloadKey: string;
+  /**
+   * The NEW attempt's budget operation id (the retry path rebinds the
+   * row's current-reservation discriminator to the fresh attempt's
+   * reservation so the settle/release tails target the LIVE reservation
+   * — a review-found defect kept the exhausted attempt-1 id and settled
+   * a released reservation while the new one leaked).
+   */
+  readonly budgetOperationId?: string;
 }
 
 export interface InsertTrainingCheckpointInput {
