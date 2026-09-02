@@ -63,6 +63,12 @@ export class FakeEdgePolicyAdmission {
     this.reason = reason;
   }
 
+  /** Reset to the allow state (for multi-scenario denial ordering tests). */
+  allow(): void {
+    this.deny = false;
+    this.denyWhen = null;
+  }
+
   denyFactsMatching(
     predicate: (fact: { toolFact: string; controllerRef?: string }) => boolean,
   ): void {
