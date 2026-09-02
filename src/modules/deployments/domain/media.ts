@@ -748,6 +748,31 @@ export function mediaJobCreationFingerprint(
   ]);
 }
 
+/**
+ * Canonical JSON (recursively key-sorted): the digest-stable form of a
+ * body. PostgreSQL `jsonb` does NOT preserve object key order (it
+ * stores its own canonical order), so a body digest computed over the
+ * CALLER's insertion-ordered serialization would disagree with the
+ * same logical body re-read from a jsonb column — the crash-resume
+ * convergence check would fail-closed on a byte-identical replay. The
+ * canonical form makes the digest invariant to key order (a
+ * same-key/different-BODY replay still fails closed: different values
+ * digest differently).
+ */
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalJson);
+  }
+  if (typeof value === "object" && value !== null) {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value).sort()) {
+      sorted[key] = canonicalJson((value as Record<string, unknown>)[key]);
+    }
+    return sorted;
+  }
+  return value;
+}
+
 /** Bounded observation-body digest base (the dedupe discriminator). */
 export function mediaObservationBodyDigestBase(input: {
   readonly jobId: string;
@@ -755,13 +780,15 @@ export function mediaObservationBodyDigestBase(input: {
   readonly observation: MediaProviderObservation;
   readonly outputDescriptor: Readonly<Record<string, unknown>> | null;
 }): string {
-  return JSON.stringify([
-    "deployments.media.observation",
-    input.jobId,
-    input.observationKey,
-    input.observation,
-    input.outputDescriptor,
-  ]);
+  return JSON.stringify(
+    canonicalJson([
+      "deployments.media.observation",
+      input.jobId,
+      input.observationKey,
+      input.observation,
+      input.outputDescriptor,
+    ]),
+  );
 }
 
 // ---------------------------------------------------------------------------

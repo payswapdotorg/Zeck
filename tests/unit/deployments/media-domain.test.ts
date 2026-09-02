@@ -398,4 +398,108 @@ describe("media domain: the stable idempotency-key scheme (crash-safety)", () =>
       ),
     ).toBe(first);
   });
+
+  test("the observation body digest is INVARIANT to descriptor key order (the jsonb round-trip property the P6 crash proof found)", () => {
+    // PostgreSQL jsonb does NOT preserve object key order — a body
+    // re-read from an `output_descriptor jsonb` column comes back in
+    // PostgreSQL's canonical key order, not the caller's insertion
+    // order. A legitimate same-body replay must therefore digest
+    // EQUAL under key permutation (the crash-resume convergence in
+    // the SQL store's conflict path), while a different body under
+    // the same key still fails closed.
+    const insertionOrder = {
+      contentDigest: "b".repeat(64),
+      generationKind: "image",
+      width: 1024,
+      height: 768,
+      durationMs: null,
+    };
+    const jsonbOrder = {
+      width: 1024,
+      height: 768,
+      durationMs: null,
+      contentDigest: "b".repeat(64),
+      generationKind: "image",
+    };
+    expect(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: insertionOrder,
+        }),
+      ),
+    ).toBe(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: jsonbOrder,
+        }),
+      ),
+    );
+    // Nested objects are canonicalized too.
+    expect(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: { meta: { zeta: 1, alpha: 2 } },
+        }),
+      ),
+    ).toBe(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: { meta: { alpha: 2, zeta: 1 } },
+        }),
+      ),
+    );
+    // A DIFFERENT body still digests differently under the same key.
+    expect(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: insertionOrder,
+        }),
+      ),
+    ).not.toBe(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: { ...jsonbOrder, width: 512 },
+        }),
+      ),
+    );
+    // Array ORDER is preserved (JSON arrays are ordered — only object
+    // keys are canonicalized).
+    expect(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: { frames: [1, 2, 3] },
+        }),
+      ),
+    ).not.toBe(
+      digest(
+        mediaObservationBodyDigestBase({
+          jobId: UUID,
+          observationKey: "obs-1",
+          observation: "provider-completed",
+          outputDescriptor: { frames: [3, 2, 1] },
+        }),
+      ),
+    );
+  });
 });
