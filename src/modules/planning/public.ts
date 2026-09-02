@@ -297,6 +297,7 @@ export {
   CONSULTED_OPPORTUNITY_CLASS,
   CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
+  buildDeterministicizationConsultation,
   canonicalPlanForm,
   compareCheapFirst,
   compositionAllowedByPolicy,
