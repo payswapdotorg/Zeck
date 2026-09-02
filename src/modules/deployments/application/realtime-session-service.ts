@@ -426,9 +426,25 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         throw new PlatformError({ code: "PROVIDER_ERROR", message: check.reason });
       }
       // Idempotent replay fast path (a reconnect/retry converges on the
-      // SAME session + execution identity — never a second one).
+      // SAME session + execution identity — never a second one), WITH
+      // creation-fingerprint arbitration (the WORK-023 createDeployment
+      // discipline): the same key with a DIFFERENT body is key reuse and
+      // fails closed instead of silently converging.
       const replayed = await store.findSessionByStartKey(actor.applicationId, idempotencyKey);
       if (replayed !== null) {
+        const expectedFingerprint = realtimeSessionCreationFingerprint(
+          actor.applicationId,
+          input,
+          replayed.executionId,
+        );
+        if (replayed.creationFingerprint !== expectedFingerprint) {
+          throw new PlatformError({
+            code: "IDEMPOTENCY_KEY_REUSED",
+            message:
+              "realtime session idempotency key already exists with a different creation fingerprint",
+            details: { sessionId: replayed.id },
+          });
+        }
         return {
           sessionId: replayed.id,
           executionId: replayed.executionId,

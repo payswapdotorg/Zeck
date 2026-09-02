@@ -134,6 +134,7 @@ function toSession(row: SessionRow): RealtimeSessionRecord {
     channelEpoch: row.channel_epoch,
     callerRef: row.caller_ref,
     status: row.status as RealtimeSessionStatus,
+    creationFingerprint: row.creation_fingerprint,
     createdAt:
       row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
     updatedAt:

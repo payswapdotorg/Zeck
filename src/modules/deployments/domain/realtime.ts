@@ -156,6 +156,8 @@ export interface RealtimeSessionRecord {
   /** Neutral caller identity supplied by the rail (bounded, never a secret). */
   readonly callerRef: string | null;
   readonly status: RealtimeSessionStatus;
+  /** The creation-fingerprint arbitration discriminator (idempotent replay vs key reuse). */
+  readonly creationFingerprint: string;
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly closedAt: string | null;

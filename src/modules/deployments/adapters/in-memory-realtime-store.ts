@@ -175,9 +175,30 @@ export class InMemoryRealtimeStore implements RealtimeStore {
         message: "the session's current channel coordinates changed concurrently (reattach guard)",
       });
     }
-    if (input.toChannelRef !== null && input.toChannelEpoch !== null) {
-      session.channelSessionRef = input.toChannelRef;
-      session.channelEpoch = input.toChannelEpoch;
+    // The migration trigger's twins: the channel epoch is MONOTONIC and a
+    // channel reference cannot change without advancing the epoch
+    // (COALESCE semantics — a null target keeps the current value, exactly
+    // like the SQL guarded UPDATE).
+    const effectiveChannelRef = input.toChannelRef ?? session.channelSessionRef;
+    const effectiveChannelEpoch = input.toChannelEpoch ?? session.channelEpoch;
+    if (effectiveChannelEpoch < session.channelEpoch) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `realtime session ${input.sessionId} channel epoch must not regress (${session.channelEpoch} -> ${effectiveChannelEpoch})`,
+      });
+    }
+    if (
+      effectiveChannelEpoch === session.channelEpoch &&
+      effectiveChannelRef !== session.channelSessionRef
+    ) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `realtime session ${input.sessionId} cannot change channel reference without advancing the epoch`,
+      });
+    }
+    if (input.toChannelRef !== null || input.toChannelEpoch !== null) {
+      session.channelSessionRef = effectiveChannelRef;
+      session.channelEpoch = effectiveChannelEpoch;
     }
     session.status = input.toStatus;
     session.updatedAt = input.closedAt ?? session.updatedAt;
@@ -275,7 +296,11 @@ export class InMemoryRealtimeStore implements RealtimeStore {
   }
 
   private toRecord(session: MemoryRealtimeSession): RealtimeSessionRecord {
-    return { ...session, channelKind: session.channelKind as RealtimeChannelKind };
+    return {
+      ...session,
+      channelKind: session.channelKind as RealtimeChannelKind,
+      creationFingerprint: session.creationFingerprint,
+    };
   }
 }
 
