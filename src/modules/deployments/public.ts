@@ -70,6 +70,7 @@ import { createPolicyRealtimeAdmission } from "./adapters/policy-realtime-admiss
 import { createRealtimeExecutionLedgerAdapter } from "./adapters/realtime-execution-ledger";
 import { createRealtimeModalityAdapter } from "./adapters/realtime-modality-adapter";
 import { SqlDeploymentStore } from "./adapters/sql-deployment-store";
+import { SqlMediaStore } from "./adapters/sql-media-store";
 import { SqlMessagingStore } from "./adapters/sql-messaging-store";
 import { SqlRealtimeStore } from "./adapters/sql-realtime-store";
 import type {
@@ -940,6 +941,7 @@ export {
   realtimeSessionCreationFingerprint,
   resolveMessagingOrdering,
   SqlDeploymentStore,
+  SqlMediaStore,
   SqlMessagingStore,
   SqlRealtimeStore,
   validateCause,

@@ -40,6 +40,7 @@ export { createPolicyRealtimeAdmission } from "./policy-realtime-admission";
 export { createRealtimeExecutionLedgerAdapter } from "./realtime-execution-ledger";
 export { createRealtimeModalityAdapter } from "./realtime-modality-adapter";
 export { SqlDeploymentStore } from "./sql-deployment-store";
+export { SqlMediaStore } from "./sql-media-store";
 export { SqlMessagingStore } from "./sql-messaging-store";
 export { SqlRealtimeStore } from "./sql-realtime-store";
 export { createVerificationMediaGate } from "./verification-media-gate";
