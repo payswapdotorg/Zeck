@@ -18,7 +18,6 @@ import {
   isRealtimeEventKind,
   isRealtimeInboundKind,
   isRealtimeRouteClass,
-  isRealtimeSessionStatus,
   isTerminalRealtimeSessionStatus,
   REALTIME_CHANNEL_KINDS,
   REALTIME_EVENT_KINDS,

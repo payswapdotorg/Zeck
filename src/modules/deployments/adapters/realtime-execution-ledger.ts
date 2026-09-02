@@ -50,6 +50,83 @@ const CLASS_TO_COMMAND: Readonly<Record<RealtimeEvidenceClass, StepEventCommand>
   "session-completed": "agent-session-completed",
 };
 
+/**
+ * The public transition chain a realtime session's execution walks to
+ * RUNNING (a realtime session IS an actively running governed run: its
+ * turns dispatch from the RUNNING state and its human-escalation wait
+ * (`wait-human`) is legal only from RUNNING). Everything goes through
+ * the executions PUBLIC transition-command surface — the deployments
+ * module owns none of the lifecycle vocabulary, and each edge is
+ * idempotent under a stable per-edge key (concurrent/retried session
+ * starts converge on the same durable walk; a replay skips ahead).
+ */
+const PRE_RUNNING_WALK: ReadonlyArray<{
+  readonly from: string;
+  readonly command: "authorize" | "plan" | "queue" | "start";
+}> = [
+  { from: "CREATED", command: "authorize" },
+  { from: "AUTHORIZED", command: "plan" },
+  { from: "PLANNING", command: "queue" },
+  { from: "QUEUED", command: "start" },
+];
+
+const WALK_REASON =
+  "realtime session mapped execution enters the running lifecycle (executions public transition surface)";
+
+async function ensureRunningExecution(
+  service: ExecutionService,
+  scope: {
+    readonly applicationId: string;
+    readonly tenantId: string;
+    readonly actorId: string;
+    readonly executionId: string;
+  },
+  idempotencyKey: string,
+): Promise<string> {
+  // Bounded walk: each iteration applies at most one missing pre-running
+  // edge (idempotent by `${idempotencyKey}:${command}`); the loop
+  // re-reads the durable status, so concurrent walkers converge instead
+  // of double-stepping.
+  for (let step = 0; step <= PRE_RUNNING_WALK.length * 2; step += 1) {
+    const record = await service.getExecution(scope.applicationId, scope.executionId);
+    if (record === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: "execution row disappeared after create (rows are never deleted)",
+      });
+    }
+    if (record.tenantId !== scope.tenantId) {
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: "execution belongs to a different tenant",
+        details: { executionId: scope.executionId },
+      });
+    }
+    const edge = PRE_RUNNING_WALK.find((candidate) => candidate.from === record.status);
+    if (edge === undefined) {
+      // RUNNING or beyond (a human-escalation wait, or terminal): the
+      // walk is complete — the execution is live.
+      return record.status;
+    }
+    await service.transition(
+      {
+        command: edge.command,
+        actorId: scope.actorId,
+        applicationId: scope.applicationId,
+        tenantId: scope.tenantId,
+        executionId: scope.executionId,
+        reason: WALK_REASON,
+      },
+      `${idempotencyKey}:${edge.command}`,
+    );
+  }
+  throw new PlatformError({
+    code: "PROVIDER_ERROR",
+    message: "the mapped execution did not converge on the running lifecycle",
+    details: { executionId: scope.executionId },
+  });
+}
+
 export function createRealtimeExecutionLedgerAdapter(
   service: ExecutionService,
 ): RealtimeExecutionLedger {
@@ -72,10 +149,22 @@ export function createRealtimeExecutionLedgerAdapter(
         idempotencyKey,
         { actorId: input.actorId, tenantId: input.tenantId },
       );
+      // A realtime session IS a running governed run: walk the public
+      // lifecycle to RUNNING (idempotent; converges on replays).
+      const status = await ensureRunningExecution(
+        service,
+        {
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+          actorId: input.actorId,
+          executionId: receipt.executionId,
+        },
+        idempotencyKey,
+      );
       return {
         executionId: receipt.executionId,
         replayed: receipt.replayed,
-        status: receipt.status,
+        status,
       };
     },
 

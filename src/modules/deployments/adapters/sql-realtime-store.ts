@@ -212,8 +212,8 @@ export class SqlRealtimeStore implements RealtimeStore {
     try {
       const result = await this.db.execute<SessionRow>({
         sql: `INSERT INTO deployments.realtime_sessions (
-    ${SESSION_COLUMNS}, idempotency_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'live', $12, $13, $13, NULL, $14)
+    ${SESSION_COLUMNS}, created_by, idempotency_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'live', $12, $13, $13, NULL, $15, $14)
 RETURNING ${SESSION_COLUMNS}`,
         parameters: [
           input.sessionId,
@@ -230,6 +230,7 @@ RETURNING ${SESSION_COLUMNS}`,
           input.creationFingerprint,
           input.createdAt,
           input.idempotencyKey,
+          input.createdBy,
         ],
       });
       const row = result.rows[0];
