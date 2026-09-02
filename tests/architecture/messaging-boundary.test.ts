@@ -67,9 +67,7 @@ function collectFiles(dir: string): string[] {
 }
 
 const FILES = collectFiles(DEPLOYMENTS_DIR);
-const MESSAGING_FILES = FILES.filter((file) =>
-  /messaging|in-process-messaging/.test(file),
-);
+const MESSAGING_FILES = FILES.filter((file) => /messaging|in-process-messaging/.test(file));
 
 /** Authority-shaped method/type vocabulary that must never appear on a rail port. */
 const AUTHORITY_VOCABULARY = [
@@ -113,14 +111,12 @@ describe("architecture: the provider-neutral messaging boundary (WORK-025)", () 
     // The descriptor is the transport-class declaration only.
     expect(port.includes('transportClass: "messaging"')).toBe(true);
     // The callback frames carry coordinates + bounded payload only.
-    const messageCallback = /export interface MessagingRailMessageCallback \{([\s\S]*?)\n\}/.exec(
-      port,
-    )?.[1] ?? "";
+    const messageCallback =
+      /export interface MessagingRailMessageCallback \{([\s\S]*?)\n\}/.exec(port)?.[1] ?? "";
     expect(messageCallback.includes("channelConversationRef")).toBe(true);
     expect(messageCallback.includes("eventKey")).toBe(true);
-    const deliveryCallback = /export interface MessagingRailDeliveryCallback \{([\s\S]*?)\n\}/.exec(
-      port,
-    )?.[1] ?? "";
+    const deliveryCallback =
+      /export interface MessagingRailDeliveryCallback \{([\s\S]*?)\n\}/.exec(port)?.[1] ?? "";
     expect(deliveryCallback.includes("messageKey")).toBe(true);
     expect(deliveryCallback.includes("callbackKey")).toBe(true);
   });
@@ -148,13 +144,14 @@ describe("architecture: the provider-neutral messaging boundary (WORK-025)", () 
       "MessagingRailSendRequest",
       "MessagingRailEscalationRequest",
     ]) {
-      const body = new RegExp(`export interface ${shape} \\{([\\s\\S]*?)\\n\\}`).exec(port)?.[1] ?? "";
+      const body =
+        new RegExp(`export interface ${shape} \\{([\\s\\S]*?)\\n\\}`).exec(port)?.[1] ?? "";
       expect(body, `${shape} must exist`).not.toBe("");
       expect(body.includes("idempotencyKey"), `${shape} must carry idempotencyKey`).toBe(true);
     }
-    expect(
-      /closeConversation\(reference: \{([\s\S]*?)\n *\}\)/.exec(port)?.[1] ?? "",
-    ).toContain("idempotencyKey");
+    expect(/closeConversation\(reference: \{([\s\S]*?)\n *\}\)/.exec(port)?.[1] ?? "").toContain(
+      "idempotencyKey",
+    );
   });
 
   test("MG3: the REQUIRED admission seams exist with the frozen method vocabulary", () => {

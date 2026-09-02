@@ -1525,9 +1525,14 @@ describe("the durable operation discipline (the WORK-024 crash-safety standard)"
     const started = await startConversation(world, "start-terminal");
     const key = messagingOperationKey("conversation-start", "start-terminal");
     await expect(
-      world.store.recordMessagingOperationCheckpoint(ACTOR.applicationId, key, {
-        stage: "conversation-opened",
-      }),
+      world.store.recordMessagingOperationCheckpoint(
+        ACTOR.applicationId,
+        key,
+        {
+          stage: "conversation-opened",
+        },
+        new Date().toISOString(),
+      ),
     ).rejects.toMatchObject({ code: "INVALID_STATE_TRANSITION" });
     await expect(
       world.store.failMessagingOperation(

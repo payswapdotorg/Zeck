@@ -216,7 +216,7 @@ function violationsOf(rules: MessagingRules): string[] {
 
   // S7 — the conversation-scoped key discipline: every event-derived key
   // is scoped by the conversation identity.
-  if (!rules.ingestBody.includes(`const scopedKey = \`${conversation.id}:${eventKey}\``)) {
+  if (!rules.ingestBody.includes(`const scopedKey = \`\${conversation.id}:\${eventKey}\``)) {
     violations.push("scoping-removed");
   }
 
@@ -850,7 +850,7 @@ describe("discrimination: provider-neutral conversational messaging (WORK-025)",
   test("S7 STATIC: removing the conversation-scoped key discipline is flagged", () => {
     const mutated = mutateService((content) =>
       content.replace(
-        `const scopedKey = \`${conversation.id}:${eventKey}\``,
+        `const scopedKey = \`\${conversation.id}:\${eventKey}\``,
         "const scopedKey = eventKey",
       ),
     );
