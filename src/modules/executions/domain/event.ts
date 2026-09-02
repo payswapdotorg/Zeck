@@ -128,6 +128,24 @@ export const STEP_EVENT_COMMANDS = [
   "economic-action-authorized",
   "economic-action-settled",
   "economic-action-failed",
+  // WORK-028 (long-running executions) — checkpoint/lease/wake-up
+  // evidence commands. Additive vocabulary extension, same discipline:
+  // the long-running surface's durable observations (a committed
+  // checkpoint with its digest + position, a HUMAN interruption request,
+  // a scheduled wake-up, an applied wake-up, a recovery resume of an
+  // already-RUNNING execution, and a resume re-admission DENIAL —
+  // journal-then-fail evidence) ride the SAME ledger through the SAME
+  // recordStepEvent seam. Status-preserving observations, never
+  // transitions: pause/resume/termination move the execution ONLY
+  // through the frozen lifecycle commands (wait-tool / wait-user /
+  // wait-human / resume / cancel), whose envelopes carry the
+  // checkpoint/lease references in `reference`.
+  "checkpoint-recorded",
+  "interruption-requested",
+  "wake-up-scheduled",
+  "wake-up-applied",
+  "resume-recorded",
+  "resume-denied",
 ] as const;
 export type StepEventCommand = (typeof STEP_EVENT_COMMANDS)[number];
 
