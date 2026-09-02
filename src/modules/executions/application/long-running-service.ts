@@ -1609,13 +1609,72 @@ export function createLongRunningExecutionService(
   };
 
   const applyWakeUps = async (input: ApplyWakeUpsCommand): Promise<ApplyWakeUpsOutcome> => {
-    const due = await store.dueWakeUps(input.applicationId, iso());
     const applications: WakeUpApplicationAction[] = [];
-    for (const wakeUp of due) {
-      const operationKey = longRunningOperationKey(
-        "wakeup-apply",
-        executionScopedDiscriminator(wakeUp.executionId, `wake:${wakeUp.wakeKey}`),
+
+    // 0. The RECOVERY scan: wakeup-apply operations left PENDING by a
+    //    crashed process. Their durable stage ("claimed", written before
+    //    every side effect below) carries the wake identity; the retry
+    //    converges them instead of orphaning a PENDING claim — the crash
+    //    window between the wake application marker and the operation
+    //    completion is closed by this scan.
+    const recovered = await store.pendingWakeUpApplies(input.applicationId);
+    const recoveredTargets: {
+      readonly wakeUp: WakeUpRecord;
+      readonly operationKey: string;
+    }[] = [];
+    const handled = new Set<string>();
+    for (const operation of recovered) {
+      const stage = stageOf(operation);
+      if (typeof stage?.wakeKey !== "string") {
+        // Claimed but never staged: the wake stays scheduled and will be
+        // re-claimed by the due scan under the SAME stable key.
+        continue;
+      }
+      const wakeUp = await store.getWakeUp(
+        input.applicationId,
+        operation.executionId,
+        stage.wakeKey,
       );
+      if (wakeUp === null) {
+        continue;
+      }
+      const mapKey = `${wakeUp.executionId}:${wakeUp.wakeKey}`;
+      handled.add(mapKey);
+      if (wakeUp.status === "scheduled" && wakeUp.earliestWakeAt <= iso()) {
+        // The crash happened BEFORE the wake application: process it now.
+        recoveredTargets.push({ wakeUp, operationKey: operation.operationKey });
+      } else if (wakeUp.status === "applied") {
+        // The crash happened AFTER the marker: converge the operation row.
+        await store.completeOperation(input.applicationId, operation.operationKey, iso());
+        applications.push({
+          action: "replayed",
+          wakeKey: wakeUp.wakeKey,
+          executionId: wakeUp.executionId,
+        });
+      } else if (wakeUp.status === "superseded") {
+        // The supersede (interruption/termination) IS the durable outcome.
+        await store.completeOperation(input.applicationId, operation.operationKey, iso());
+      }
+      // scheduled-but-not-yet-due stays PENDING (honestly retryable at
+      // its wake time — the scan converges it then).
+    }
+
+    // 1. The due scan (deterministic (earliestWakeAt, id) ordering),
+    //    skipping the recovered targets (processed once below).
+    const due = await store.dueWakeUps(input.applicationId, iso());
+    const targets: readonly { readonly wakeUp: WakeUpRecord; readonly operationKey: string }[] = [
+      ...recoveredTargets,
+      ...due
+        .filter((wakeUp) => !handled.has(`${wakeUp.executionId}:${wakeUp.wakeKey}`))
+        .map((wakeUp) => ({
+          wakeUp,
+          operationKey: longRunningOperationKey(
+            "wakeup-apply",
+            executionScopedDiscriminator(wakeUp.executionId, `wake:${wakeUp.wakeKey}`),
+          ),
+        })),
+    ];
+    for (const { wakeUp, operationKey } of targets) {
       const record = await beginOperation(
         "wakeup-apply",
         { applicationId: input.applicationId, executionId: wakeUp.executionId },
@@ -1635,6 +1694,14 @@ export function createLongRunningExecutionService(
         });
         continue;
       }
+      // The durable stage BEFORE any side effect: the recovery scan's
+      // source of the wake identity (a crash past this point converges
+      // here under the SAME stable operation key).
+      await checkpointOperationStage(input.applicationId, operationKey, {
+        stage: "claimed",
+        wakeKey: wakeUp.wakeKey,
+        executionId: wakeUp.executionId,
+      });
       const execution = await executions.getExecution(input.applicationId, wakeUp.executionId);
       if (execution === null || execution.tenantId !== input.actor.tenantId) {
         applications.push({

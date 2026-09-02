@@ -1019,6 +1019,18 @@ WHERE application_id = $1 AND operation_key = $2`,
     return row === undefined ? null : toOperation(row);
   }
 
+  async pendingWakeUpApplies(
+    applicationId: string,
+  ): Promise<readonly LongRunningOperationRecord[]> {
+    // The lr_ops_pending_scan partial index backs this recovery scan.
+    const result = await this.db.execute<OperationRow>({
+      sql: `SELECT ${OPERATION_COLUMNS} FROM executions.execution_operations
+WHERE application_id = $1 AND operation_kind = 'wakeup-apply' AND status = 'pending'`,
+      parameters: [applicationId],
+    });
+    return result.rows.map(toOperation);
+  }
+
   private async requireOperation(
     applicationId: string,
     operationKey: string,

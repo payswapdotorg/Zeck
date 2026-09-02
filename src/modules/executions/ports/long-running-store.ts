@@ -230,4 +230,12 @@ export interface LongRunningExecutionStore {
     applicationId: string,
     operationKey: string,
   ): Promise<LongRunningOperationRecord | null>;
+  /**
+   * The RECOVERY scan: wakeup-apply operations left PENDING by a crashed
+   * process (backed by the physical pending partial index). Their durable
+   * stage carries the wake identity — the retry converges them instead of
+   * orphaning a PENDING claim (the crash window between the wake
+   * application marker and the operation completion).
+   */
+  pendingWakeUpApplies(applicationId: string): Promise<readonly LongRunningOperationRecord[]>;
 }

@@ -581,6 +581,17 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
   ): Promise<LongRunningOperationRecord | null> {
     return this.operations.get(this.opKey(applicationId, operationKey)) ?? null;
   }
+
+  async pendingWakeUpApplies(
+    applicationId: string,
+  ): Promise<readonly LongRunningOperationRecord[]> {
+    return [...this.operations.values()].filter(
+      (record) =>
+        record.applicationId === applicationId &&
+        record.operationKind === "wakeup-apply" &&
+        record.status === "pending",
+    );
+  }
 }
 
 export type { LeaseReleaseCause, LongRunningOperationKind, WakeUpStatus };
