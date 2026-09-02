@@ -555,11 +555,11 @@ export type {
   DeploymentStatus,
   DeploymentStore,
   DeploymentValidation,
+  // ---- WORK-026: provider-neutral media generation (MOD-011/012/013) ----
+  DeriveMediaVariantInput,
   EnvironmentRef,
   GuardedMutation,
   JournalAppendInput,
-  // ---- WORK-026: provider-neutral media generation (MOD-011/012/013) ----
-  DeriveMediaVariantInput,
   MediaActor,
   MediaAdmissionEvidence,
   MediaArtifactAdoptionInput,
