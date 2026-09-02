@@ -48,7 +48,11 @@
 --     vocabulary; a CANARY evaluation must carry a canary binding and
 --     cannot be 'insufficient-evidence' (the ran-in-canary proof);
 --     the basis jsonb must record a versioned scorecard basis or the
---     honest 'none' basis (revision-bound evidence);
+--     honest 'none' basis (revision-bound evidence). NOTE: every
+--     jsonb-probing CHECK is written NULL-SAFE (COALESCE / IS NOT NULL
+--     guards) — a bare `x <> 'y'` / `jsonb_typeof(x) = ...` probe
+--     evaluates to NULL (satisfied) when x IS NULL, which would
+--     silently admit a canary evaluation without its binding;
 --   * the publication journal is APPEND-ONLY: publication_id text
 --     PRIMARY KEY converges retried requests; publication_seq
 --     (identity column) orders the journal — the LATEST entry per
@@ -178,33 +182,38 @@ CREATE TABLE learning.learned_policy_evaluations (
     CONSTRAINT learned_evaluations_version_positive CHECK (policy_version >= 1),
     CONSTRAINT learned_evaluations_basis_shape CHECK (jsonb_typeof(basis) = 'object'),
     CONSTRAINT learned_evaluations_basis_kind_vocabulary CHECK (
-        basis->>'kind' IN ('scorecard', 'none')
+        COALESCE(basis->>'kind', '') IN ('scorecard', 'none')
     ),
     -- A scorecard basis must carry the full POSITIVE version anchors
     -- (revision-bound evidence — an unversioned basis is unrepresentable).
+    -- NULL-SAFE: COALESCE forces missing keys to '' (a missing anchor
+    -- must FAIL, never evaluate to NULL-satisfied).
     CONSTRAINT learned_evaluations_scorecard_basis_versioned CHECK (
-        basis->>'kind' = 'none'
+        COALESCE(basis->>'kind', '') = 'none'
         OR (
-            (basis->>'scorecardVersion') ~ '^[1-9][0-9]*$'
-            AND (basis->>'definitionVersion') ~ '^[1-9][0-9]*$'
-            AND (basis->>'telemetrySchemaVersion') ~ '^[1-9][0-9]*$'
-            AND length(basis->>'scorecardId') >= 1
-            AND length(basis->>'definitionId') >= 1
-            AND length(basis->>'populationWindowTo') >= 1
+            COALESCE(basis->>'scorecardVersion', '') ~ '^[1-9][0-9]*$'
+            AND COALESCE(basis->>'definitionVersion', '') ~ '^[1-9][0-9]*$'
+            AND COALESCE(basis->>'telemetrySchemaVersion', '') ~ '^[1-9][0-9]*$'
+            AND length(COALESCE(basis->>'scorecardId', '')) >= 1
+            AND length(COALESCE(basis->>'definitionId', '')) >= 1
+            AND length(COALESCE(basis->>'populationWindowTo', '')) >= 1
         )
     ),
     CONSTRAINT learned_evaluations_none_basis_honest CHECK (
-        basis->>'kind' <> 'none' OR status = 'insufficient-evidence'
+        COALESCE(basis->>'kind', '') <> 'none' OR status = 'insufficient-evidence'
     ),
     -- A CANARY evaluation MUST bind the exact canary publication it
     -- observed, and it cannot be 'insufficient-evidence' (the
     -- ran-in-canary proof — a canary evaluation observes outcomes).
+    -- NULL-SAFE: `canary_binding IS NOT NULL` guards the jsonb probes
+    -- (a NULL binding must FAIL, never evaluate to NULL-satisfied).
     CONSTRAINT learned_evaluations_canary_binding_required CHECK (
         evaluation_class <> 'canary'
         OR (
-            jsonb_typeof(canary_binding) = 'object'
-            AND length(canary_binding->>'publicationId') >= 1
-            AND length(canary_binding->>'publishedAt') >= 1
+            canary_binding IS NOT NULL
+            AND jsonb_typeof(canary_binding) = 'object'
+            AND length(COALESCE(canary_binding->>'publicationId', '')) >= 1
+            AND length(COALESCE(canary_binding->>'publishedAt', '')) >= 1
             AND status <> 'insufficient-evidence'
         )
     ),
