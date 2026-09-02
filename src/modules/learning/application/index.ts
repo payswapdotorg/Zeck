@@ -15,6 +15,21 @@ export type {
 } from "./composition-advisor";
 export { createCompositionAdvisor } from "./composition-advisor";
 export type {
+  ApplyPromotionRequest,
+  BeginRolloutRequest,
+  ConcludeRolloutRequest,
+  ConsultDeterministicizationRequest,
+  DecisionRequest,
+  DeterministicizationService,
+  DeterministicizationServiceDeps,
+  DeterministicizationSignal,
+  DiscoverCandidatesRequest,
+  ProposeCandidateRequest,
+  RecordStageEvidenceRequest,
+  RolloutDeltaProjection,
+} from "./deterministicization-service";
+export { createDeterministicizationService } from "./deterministicization-service";
+export type {
   ActiveLearnedPolicyView,
   ConsultLearnedPolicyRequest,
   EvaluateLearnedPolicyRequest,

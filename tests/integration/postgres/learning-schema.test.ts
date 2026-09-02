@@ -23,14 +23,19 @@ import { TELEMETRY_SCHEMA_VERSION } from "../../../src/modules/learning/public";
 import { definePgSuite } from "./harness";
 import { telemetryFor } from "./learning-world";
 
-definePgSuite("learning schema (migrations 0009 + 0010 + 0016 + 0017)", (ctx) => {
-  test("the learning schema exists with the fourteen tables (0009's four + 0010's composition pair + 0016's opportunity five + 0017's learned-policy three)", async () => {
+definePgSuite("learning schema (migrations 0009 + 0010 + 0016 + 0017 + 0019)", (ctx) => {
+  test("the learning schema exists with the nineteen tables (0009's four + 0010's composition pair + 0016's opportunity five + 0017's learned-policy three + 0019's deterministicization five)", async () => {
     const result = await ctx.port.execute<{ table_name: string }>({
       sql: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'learning' ORDER BY table_name`,
     });
     expect(result.rows.map((row) => row.table_name)).toEqual([
       "composition_activation_log",
       "composition_recommendation_sets",
+      "deterministicization_candidates",
+      "deterministicization_decisions",
+      "deterministicization_operations",
+      "deterministicization_rollouts",
+      "deterministicization_stage_evidence",
       "execution_telemetry",
       "learned_planning_policies",
       "learned_policy_evaluations",

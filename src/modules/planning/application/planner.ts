@@ -35,6 +35,7 @@ import type {
   CandidateStrategy,
   CompositionConsultation,
   ConsultedLearnedPolicy,
+  DeterministicizationConsultation,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
   LearnedPolicyConsultation,
@@ -47,6 +48,7 @@ import type {
 } from "../domain";
 import {
   buildCompositionConsultation,
+  buildDeterministicizationConsultation,
   buildLearnedPolicyConsultation,
   buildLearningConsultation,
   buildOpportunityConsultation,
@@ -68,6 +70,7 @@ import { isWorkloadClass } from "../domain/workload-class";
 import type { PlanningCapabilityAuthority } from "../ports/capability-authority";
 import type { CompositionRecommendations } from "../ports/composition-recommendations";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
+import type { DeterministicizationSignals } from "../ports/deterministicization-signals";
 import type { DigestPort } from "../ports/digest";
 import type { LearnedPolicySource } from "../ports/learned-policy";
 import type { LearningSignals } from "../ports/learning-signals";
@@ -140,6 +143,22 @@ export interface PlannerServiceDeps {
    * without codebase-analysis history).
    */
   readonly opportunitySignals?: OpportunitySignals;
+  /**
+   * OPTIONAL deterministicization READ seam (WORK-021 / DTR-001..004):
+   * when wired, the planner consults the application's
+   * deterministicization lifecycle candidates AFTER the governed
+   * selection and records the consultation as decision EVIDENCE — the
+   * live selection is never changed by it (a promoted replacement is
+   * an input to FUTURE plan composition, never a live-route rewrite —
+   * DTR-003's "without changing execution identity"; M-canary:
+   * shadow/canary candidates are divergence evidence only). The
+   * consultation validates every candidate's provenance/contract
+   * anchors at the seam (an unprovenanced candidate fails closed and
+   * never enters a decision record). Unwired ⇒ zero
+   * deterministicization interaction (planning works without
+   * deterministicization history).
+   */
+  readonly deterministicizationSignals?: DeterministicizationSignals;
   /**
    * OPTIONAL substrate catalog READ seam (WORK-031 / CSX-003): when
    * wired AND the request declares a workload class, the planner
@@ -612,6 +631,32 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         });
       }
 
+      // 7.9 OPTIONAL deterministicization consultation (WORK-021 /
+      //     DTR-001..004) — READ ONLY, AFTER the governed selection: the
+      //     consultation is captured as decision evidence; it cannot
+      //     change `selected` (already computed above), cannot revive
+      //     an inadmissible candidate and cannot revisit the
+      //     deterministic-sufficiency decision (M17: a promoted
+      //     replacement is an input to FUTURE plan composition, never a
+      //     live-route rewrite — DTR-003's "without changing execution
+      //     identity"). A consultation failure fails the planning
+      //     request closed — an unprovenanced candidate NEVER enters a
+      //     decision record and planning never silently degrades on
+      //     corrupt learning data.
+      let deterministicizationConsultation: DeterministicizationConsultation | undefined;
+      if (deps.deterministicizationSignals !== undefined) {
+        const consultedCandidates = await deps.deterministicizationSignals.consult({
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+        });
+        deterministicizationConsultation = buildDeterministicizationConsultation({
+          candidates: admissibleCandidates,
+          signals: consultedCandidates,
+          selectedStrategyId: selected.strategyId,
+          consultedAt: iso(),
+        });
+      }
+
       // 8. The durable decision record (validated closed shape, then the
       //    executions ledger appends it — single write path). The
       //    decisionId is CONTENT-DERIVED (digest over the request identity
@@ -667,6 +712,9 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         ...(learnedPolicyConsultation === undefined ? {} : { learnedPolicyConsultation }),
         ...(substrateSelection === undefined ? {} : { substrateSelection }),
         ...(opportunityConsultation === undefined ? {} : { opportunityConsultation }),
+        ...(deterministicizationConsultation === undefined
+          ? {}
+          : { deterministicizationConsultation }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

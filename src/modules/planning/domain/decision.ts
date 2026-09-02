@@ -21,6 +21,8 @@ import type { RestrictionSet } from "../../policies/public";
 import { canonicalJson } from "./canonical";
 import type { CompositionConsultation } from "./composition-consultation";
 import { validateCompositionConsultation } from "./composition-consultation";
+import type { DeterministicizationConsultation } from "./deterministicization-consultation";
+import { validateDeterministicizationConsultation } from "./deterministicization-consultation";
 import type { LearnedPolicyConsultation } from "./learned-policy-consultation";
 import { validateLearnedPolicyConsultation } from "./learned-policy-consultation";
 import type { LearningConsultation } from "./learning-consultation";
@@ -116,6 +118,19 @@ export interface PlanningDecisionRecord {
    * the deterministic-first preference.
    */
   readonly learnedPolicyConsultation?: LearnedPolicyConsultation;
+  /**
+   * OPTIONAL deterministicization consultation capture (WORK-021 /
+   * DTR-001..004): the deterministicization lifecycle candidates
+   * consulted AFTER the governed selection, recorded as evidence with
+   * their full provenance/contract/rollout anchors. Absent when no
+   * deterministicization seam is wired. The consultation never alters
+   * `selectedStrategyId` — it records what the PROMOTED replacements
+   * imply (M17/M-canary: shadow/canary candidates are divergence
+   * evidence only; a promoted replacement is an input to future plan
+   * composition, never a live-route rewrite — DTR-003's "without
+   * changing execution identity").
+   */
+  readonly deterministicizationConsultation?: DeterministicizationConsultation;
   /**
    * OPTIONAL substrate-selection capture (WORK-031 / CSX-003): the
    * provider-neutral computational substrate selected for the selected
@@ -271,6 +286,12 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // closed shape — validated (versioning + publication anchors,
     // population floor, provenance) whenever present.
     validateLearnedPolicyConsultation(record.learnedPolicyConsultation);
+  }
+  if (record.deterministicizationConsultation !== undefined) {
+    // WORK-021: the deterministicization consultation capture is part
+    // of the closed shape — validated (provenance/contract/rollout
+    // anchors) whenever present.
+    validateDeterministicizationConsultation(record.deterministicizationConsultation);
   }
   if (record.substrateSelection !== undefined) {
     // WORK-031: the substrate-selection capture is part of the closed

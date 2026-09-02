@@ -14,6 +14,11 @@ export {
   schemaValidatorAdapter,
 } from "./builtins";
 export { createToolCapabilityGate } from "./capability-gate";
+export {
+  createDeterministicReplacementExecutor,
+  DETERMINISTIC_INPUT_ENV,
+  replacementConfinementCheck,
+} from "./deterministic-replacement-sandbox-executor";
 export { createExecutionLedgerAdapter } from "./execution-ledger";
 export { InMemorySynthesisStore } from "./in-memory-synthesis-store";
 export { createPolicyToolAdmission } from "./policy-tool-admission";

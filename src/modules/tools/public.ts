@@ -29,6 +29,15 @@
  * classes; tools cannot mutate customer-domain workflow state or platform
  * authority state (the adapter port hands them no such surface).
  *
+ * WORK-021 adds the deterministic-replacement EXECUTION seam for the
+ * deterministicization lifecycle (DTR-001..004): the
+ * `DeterministicReplacementExecutor` port — its only implementation
+ * wraps the sandbox module's public service exactly like the
+ * synthesis executor (every replacement run is a fully admitted,
+ * dispatched and journaled sandbox execution; substrate confinement
+ * before dispatch; the pure-compute static scan as defense in depth).
+ * Learning records and gates; tools executes; the sandbox admits.
+ *
  * WORK-018 adds governed program synthesis INSIDE the tool abstraction
  * (TOL-004): synthesized tools are ephemeral, content-addressed
  * artifacts with explicit schemas/capabilities; compilation and
@@ -128,6 +137,11 @@ import {
   validateToolContract,
 } from "./domain/tool";
 import type {
+  DeterministicReplacementDispatch,
+  DeterministicReplacementExecutor,
+  DeterministicReplacementRun,
+} from "./ports/deterministic-replacement-executor";
+import type {
   ExecutionLedger,
   LedgerStepEvent,
   LedgerStepEventOutcome,
@@ -176,12 +190,15 @@ export {
   CALCULATOR_CONTRACT,
   calculatorAdapter,
   confinementCheck,
+  createDeterministicReplacementExecutor,
   createExecutionLedgerAdapter,
   createPolicyToolAdmission,
   createSynthesisSandboxExecutor,
   createSynthesizedAdapterFactory,
   createToolCapabilityGate,
+  DETERMINISTIC_INPUT_ENV,
   InMemorySynthesisStore,
+  replacementConfinementCheck,
   SCHEMA_VALIDATOR_CONTRACT,
   SEED_BUILT_IN_TOOL_FACTS,
   SqlSynthesisStore,
@@ -199,6 +216,9 @@ export type {
   BindLedgerSequenceInput,
   ClaimDispatchingInput,
   ClaimOutcome,
+  DeterministicReplacementDispatch,
+  DeterministicReplacementExecutor,
+  DeterministicReplacementRun,
   ExecutionLedger,
   LedgerStepEvent,
   LedgerStepEventOutcome,

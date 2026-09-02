@@ -15,6 +15,10 @@ export type {
   DeterministicCatalogEntry,
   QualityConfidence,
 } from "./deterministic-catalog";
+export type {
+  DeterministicizationSignalQuery,
+  DeterministicizationSignals,
+} from "./deterministicization-signals";
 export type { DigestPort } from "./digest";
 export type {
   LearnedPolicyQuery,
