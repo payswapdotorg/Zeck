@@ -530,6 +530,88 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     }
   };
 
+  /**
+   * RECOVERY-COMPLETENESS RECONCILIATION (the WORK-024 crash-safety
+   * standard): a crash after a GUARDED job move but before the
+   * operation row's completion leaves the row PENDING while the job
+   * row already PROVES the outcome (the moves are guarded and record
+   * their facts). This reconciles such rows — the job row's status +
+   * the recorded rail reference are the durable proof:
+   *
+   *   - paid-dispatch: a job at generating or beyond (or terminal with
+   *     a recorded provider reference — the generating move records
+   *     the rail's reference EXACTLY ONCE, guarded) proves the paid
+   *     dispatch durably happened → COMPLETED; a job that left
+   *     dispatching without a provider reference (rail refusal, early
+   *     cancellation) → FAILED with the recorded cause;
+   *   - job-completion: a completed job → COMPLETED; a failed job →
+   *     FAILED with the job's cause;
+   *   - job-cancellation: a cancelled job → COMPLETED.
+   *
+   * Reconciliation is idempotent (terminal operation rows raise and
+   * are swallowed) and never touches non-pending rows. It runs on the
+   * recovery paths: the submission replay, the terminal observation
+   * early-return, and the cancelled-cancellation replay.
+   */
+  const reconcileOperations = async (job: MediaJobRecord, actor: MediaActor): Promise<void> => {
+    if (job.status === "submitted" || job.status === "dispatching") {
+      return;
+    }
+    const dispatchKey = mediaOperationKey("paid-dispatch", job.id);
+    const dispatchOp = await store
+      .findMediaOperation(actor.applicationId, dispatchKey)
+      .catch(() => null);
+    if (dispatchOp !== null && dispatchOp.status === "pending") {
+      if (job.providerJobRef !== null) {
+        await store
+          .completeMediaOperation(actor.applicationId, dispatchKey, iso())
+          .catch(() => undefined);
+      } else {
+        await store
+          .failMediaOperation(
+            actor.applicationId,
+            dispatchKey,
+            job.failureCause ?? "recovered: the job left dispatching without a rail reference",
+            iso(),
+          )
+          .catch(() => undefined);
+      }
+    }
+    if (job.status === "completed" || job.status === "failed") {
+      const completionKey = mediaOperationKey("job-completion", job.id);
+      const completionOp = await store
+        .findMediaOperation(actor.applicationId, completionKey)
+        .catch(() => null);
+      if (completionOp !== null && completionOp.status === "pending") {
+        if (job.status === "completed") {
+          await store
+            .completeMediaOperation(actor.applicationId, completionKey, iso())
+            .catch(() => undefined);
+        } else {
+          await store
+            .failMediaOperation(
+              actor.applicationId,
+              completionKey,
+              job.failureCause ?? "recovered: the job row reached failed",
+              iso(),
+            )
+            .catch(() => undefined);
+        }
+      }
+    }
+    if (job.status === "cancelled") {
+      const cancelKey = mediaOperationKey("job-cancellation", job.id);
+      const cancelOp = await store
+        .findMediaOperation(actor.applicationId, cancelKey)
+        .catch(() => null);
+      if (cancelOp !== null && cancelOp.status === "pending") {
+        await store
+          .completeMediaOperation(actor.applicationId, cancelKey, iso())
+          .catch(() => undefined);
+      }
+    }
+  };
+
   /** The deterministic PREPROCESSING digest over the normalized spec. */
   const preprocessingDigestOf = (input: {
     readonly generationKind: SubmitMediaJobInput["generationKind"];
@@ -1279,8 +1361,35 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       executionId: job.executionId,
     });
     if (begun.status === "existing" && begun.record.status === "completed") {
-      // A completed application: the observation row + projection exist.
+      // A completed application: the observation row + evidence exist.
+      // CRASH RECOVERY of the projection tail: a crash after the
+      // observation-apply completion but before the completion
+      // boundary's terminal move leaves the job at `generating` or
+      // `verifying` with a durable provider-completed observation —
+      // the completion tail (its OWN durable operation) resumes HERE
+      // (the observation row is the durable fact; no second admission
+      // is possible). A TERMINAL converged job instead reconciles any
+      // operation row a crash left PENDING after the guarded terminal
+      // move (the job row already proves the outcome).
       const convergedJob = await store.findJob(actor.applicationId, job.id);
+      if (
+        convergedJob !== null &&
+        (convergedJob.status === "generating" || convergedJob.status === "verifying") &&
+        frame.observation === "provider-completed"
+      ) {
+        const completed = await completeJob(convergedJob, actor);
+        return {
+          jobId: job.id,
+          observationKey: frame.observationKey,
+          observation: frame.observation,
+          status: completed.status,
+          outputArtifactDigest: completed.outputArtifactDigest,
+          replayed: true,
+        };
+      }
+      if (convergedJob !== null && isTerminalMediaJobStatus(convergedJob.status)) {
+        await reconcileOperations(convergedJob, actor);
+      }
       return {
         jobId: job.id,
         observationKey: frame.observationKey,
@@ -1346,6 +1455,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     const afterAppend = await store.findJob(actor.applicationId, job.id);
     const current = afterAppend ?? job;
     if (isTerminalMediaJobStatus(current.status)) {
+      // Recover any operation rows a crash left PENDING after the job
+      // row already reached its terminal outcome.
+      await reconcileOperations(current, actor);
       return {
         jobId: job.id,
         observationKey: frame.observationKey,
@@ -1398,6 +1510,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
           mediaEvidenceKey(job.id, "failure"),
         )
         .catch(() => undefined);
+      // Recover any operation rows a crash left PENDING (the job row's
+      // terminal outcome is the durable proof).
+      await reconcileOperations(failed.job, actor);
       return {
         jobId: job.id,
         observationKey: frame.observationKey,
@@ -1430,6 +1545,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
           mediaEvidenceKey(job.id, "cancellation"),
         )
         .catch(() => undefined);
+      // Recover any operation rows a crash left PENDING (the job row's
+      // terminal outcome is the durable proof).
+      await reconcileOperations(cancelled.job, actor);
       return {
         jobId: job.id,
         observationKey: frame.observationKey,
@@ -1451,6 +1569,12 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       };
     }
     // accepted / progressed: evidence only (the job stays generating).
+    // Recover any operation row a crash left PENDING after its guarded
+    // job move already proved the outcome (e.g. the paid-dispatch row
+    // after a crash between the guarded generating move and the
+    // operation completion — the job row at generating with its rail
+    // reference is the durable proof).
+    await reconcileOperations(current, actor);
     return {
       jobId: job.id,
       observationKey: frame.observationKey,
@@ -1520,6 +1644,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       if (job.status === "verifying") {
         job = await completeJob(job, actor);
       }
+      // Recover any operation rows a crash left PENDING after their
+      // guarded job move already proved the outcome.
+      await reconcileOperations(job, actor);
       const op = await store.findMediaOperation(actor.applicationId, operationKey);
       if (op !== null && op.status === "pending") {
         // The submission operation itself was left pending (a crash
@@ -2062,7 +2189,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       const job = await resolveJob(actor, jobId);
       if (job.status === "cancelled") {
         // Idempotent convergence: the cancellation already happened —
-        // the repeated call replays the terminal outcome.
+        // the repeated call replays the terminal outcome (and
+        // reconciles any operation row a crash left pending).
+        await reconcileOperations(job, actor);
         return {
           jobId: job.id,
           status: job.status,
