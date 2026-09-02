@@ -26,7 +26,6 @@
  */
 
 import { expect, test } from "vitest";
-import { PlatformError } from "../../../src/shared/errors";
 import {
   type DeterministicizationPgWorld,
   driveTo,
