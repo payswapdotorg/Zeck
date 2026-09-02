@@ -624,7 +624,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
    * exactly once when it does not. Reconstructed deterministically
    * from the job row's durable facts (status, criteria, digests).
    */
-  const reconcileExecutionOutcome = async (job: MediaJobRecord, actor: MediaActor): Promise<void> => {
+  const reconcileExecutionOutcome = async (
+    job: MediaJobRecord,
+    actor: MediaActor,
+  ): Promise<void> => {
     if (!isTerminalMediaJobStatus(job.status)) {
       return;
     }

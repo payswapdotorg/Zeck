@@ -65,8 +65,8 @@ import type {
   DeploymentProfileInput,
   MediaActor,
   MediaBudgetReserveCommand,
-  MediaCapabilityAdmissionRequest,
   MediaCallbackInput,
+  MediaCapabilityAdmissionRequest,
   MediaEvidenceInput,
   MediaExecutionLedger,
   MediaExecutionOpenInput,
@@ -472,9 +472,7 @@ interface World {
   };
 }
 
-async function buildWorld(
-  options: { readonly failJobs?: string } = {},
-): Promise<World> {
+async function buildWorld(options: { readonly failJobs?: string } = {}): Promise<World> {
   const deploymentStore = new InMemoryDeploymentStore();
   const registry = createModalityAdapterRegistry();
   const rail = createInProcessMediaRail(["video", "image", "audio", "multimodal"], {
@@ -962,13 +960,9 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     );
     // The execution identity was created; the job row does NOT exist.
     expect(world.ledger.opened).toHaveLength(1);
-    const executionId = world.ledger.opened[0]?.input
-      ? null
-      : null; // (identity held by the ledger's keyed model)
+    const executionId = world.ledger.opened[0]?.input ? null : null; // (identity held by the ledger's keyed model)
     expect(executionId).toBeNull();
-    expect(
-      await world.store.findJobBySubmissionKey(ACTOR.applicationId, "submit-c9"),
-    ).toBeNull();
+    expect(await world.store.findJobBySubmissionKey(ACTOR.applicationId, "submit-c9")).toBeNull();
     // RESTART: the full admission re-runs (no past-no-return marker
     // existed); the execution open converges by key → SAME identity.
     const restarted = world.boot(null);
@@ -1287,9 +1281,7 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     // The re-consult converged on the RECORDED verdict: same key, same
     // conclusion (never a second evaluation).
     expect(world.verification.conclusions).toHaveLength(2);
-    expect(world.verification.conclusions[0]?.key).toBe(
-      world.verification.conclusions[1]?.key,
-    );
+    expect(world.verification.conclusions[0]?.key).toBe(world.verification.conclusions[1]?.key);
     expect(world.verification.conclusions[0]?.criteriaMet).toBe(true);
     expect(world.verification.conclusions[1]?.criteriaMet).toBe(true);
     expect(world.verification.conclusions[0]?.evaluationId).toBe(
@@ -1318,7 +1310,11 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     expect(railCancels(world)).toHaveLength(0);
     // RESTART: the retry completes the cancellation.
     const restarted = world.boot(null);
-    const outcome = await restarted.service.cancelJob(submitted.jobId, "fixture cancellation", ACTOR);
+    const outcome = await restarted.service.cancelJob(
+      submitted.jobId,
+      "fixture cancellation",
+      ACTOR,
+    );
     expect(outcome.status).toBe("cancelled");
     // The resumed claim IS a replay (the honest marker: the operation
     // was claimed by the process that died).
@@ -1352,7 +1348,11 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     expect(job?.status).toBe("generating");
     // RESTART: the retry re-issues the rail cancel under the same key.
     const restarted = world.boot(null);
-    const outcome = await restarted.service.cancelJob(submitted.jobId, "fixture cancellation", ACTOR);
+    const outcome = await restarted.service.cancelJob(
+      submitted.jobId,
+      "fixture cancellation",
+      ACTOR,
+    );
     expect(outcome.status).toBe("cancelled");
     expect(railCancels(world)).toHaveLength(1);
     expect(world.rail.replays.filter((r) => r.kind === "cancel")).toHaveLength(1);
@@ -1387,7 +1387,11 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     // RESTART: the rail cancel re-issues under the same key (converges);
     // the guarded terminal move completes the cancellation.
     const restarted = world.boot(null);
-    const outcome = await restarted.service.cancelJob(submitted.jobId, "fixture cancellation", ACTOR);
+    const outcome = await restarted.service.cancelJob(
+      submitted.jobId,
+      "fixture cancellation",
+      ACTOR,
+    );
     expect(outcome.status).toBe("cancelled");
     expect(railCancels(world)).toHaveLength(1);
     expect(world.rail.replays.filter((r) => r.kind === "cancel")).toHaveLength(1);
@@ -1431,7 +1435,11 @@ describe("crash-injection proofs: durable media operation state + stable rail ke
     // outcome and RECONCILES: the operation row completes and the keyed
     // execution `cancel` + budget `release` tails re-drive exactly once.
     const restarted = world.boot(null);
-    const outcome = await restarted.service.cancelJob(submitted.jobId, "fixture cancellation", ACTOR);
+    const outcome = await restarted.service.cancelJob(
+      submitted.jobId,
+      "fixture cancellation",
+      ACTOR,
+    );
     expect(outcome.replayed).toBe(true);
     expect(outcome.status).toBe("cancelled");
     const completed = await world.store.findMediaOperation(
