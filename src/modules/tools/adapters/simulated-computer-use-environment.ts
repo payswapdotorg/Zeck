@@ -10,10 +10,10 @@
  * governance properties (admission ordering, isolation, keyed
  * crash-safety convergence, egress confinement, evidence discipline) are
  * exercised against the same contracts a real provider rail would
- * implement. A real provider adapter (Playwright-class browser, VNC-class
- * desktop) plugs into the same port with the same keyed-convergence
- * contract — that integration is future provider work, explicitly
- * UNVERIFIED here.
+ * implement. A real provider adapter (a real browser-automation rail, a
+ * real desktop-interaction rail) plugs into the same port with the same
+ * keyed-convergence contract — that integration is future provider work,
+ * explicitly UNVERIFIED here.
  *
  * The simulation implements the isolation contract EXACTLY:
  *
@@ -452,7 +452,10 @@ export class SimulatedComputerUseEnvironment implements ComputerUseEnvironment {
   // -- internals ---------------------------------------------------------------
 
   private hostOfTarget(target: string): string | null {
-    const urlMatch = /^https?:\/\/([^/:]+)/.exec(target);
+    // String#match (not RegExp#exec): the tools module carries no direct
+    // process-execution surface by construction (the sandbox boundary
+    // owns every process spawn).
+    const urlMatch = target.match(/^https?:\/\/([^/:]+)/);
     if (urlMatch !== null) {
       return urlMatch[1] ?? null;
     }

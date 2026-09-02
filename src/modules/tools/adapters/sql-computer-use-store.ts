@@ -6,11 +6,11 @@
  * here — `pg` is owned by the platform DB layer.
  *
  * The tools SINGLE-WRITE-PATH discipline is preserved structurally: this
- * adapter never touches `executions.executions` or
- * `executions.execution_events` — lifecycle movement and ledger evidence
- * stay on the frozen path (the executions transition service +
- * recordStepEvent through the tools module's `ExecutionLedger` port).
- * Only the WORK-027 computer-use tables are written here.
+ * adapter never touches the executions module's physical tables —
+ * lifecycle movement and ledger evidence stay on the frozen path (the
+ * executions transition service + recordStepEvent through the tools
+ * module's `ExecutionLedger` port). Only the WORK-027 computer-use
+ * tables are written here.
  *
  * Convergence mechanics (the physical discipline of migration 0023):
  *   * session inserts converge on the (application, session_key) UNIQUE
