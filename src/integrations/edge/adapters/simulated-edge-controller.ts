@@ -118,6 +118,8 @@ export interface SimulatedEdgeController extends EdgeControllerAdapter {
   autonomousTick(deviceId: string, channel: EdgeActuatorChannel, magnitude: number): void;
   /** The local journal length (proof introspection). */
   journalLength(deviceId: string): number;
+  /** The envelope the device currently holds as ACTIVE (proof introspection). */
+  activeEnvelopeId(deviceId: string): string | null;
   /** The local refusal list (proof introspection). */
   refusedEntries(deviceId: string): readonly SimulatedRefusedEntry[];
   /** The controller's call journal (the zero-side-effect witness). */
@@ -397,6 +399,10 @@ export function createSimulatedEdgeController(
 
     journalLength(deviceId: string): number {
       return stateOf(deviceId).journal.length;
+    },
+
+    activeEnvelopeId(deviceId: string): string | null {
+      return stateOf(deviceId).activeEnvelopeId;
     },
 
     refusedEntries(deviceId: string): readonly SimulatedRefusedEntry[] {

@@ -802,10 +802,29 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     if (found.status === "revoked") {
       // Converged replay (or the crash window between the device
       // revocation and the envelope fail-safe): withdraw any still-active
-      // envelope — keyed, idempotent — and complete the operation.
+      // envelope — keyed, idempotent — and converge the device-side
+      // withdrawal projections for envelopes a dying process revoked
+      // without ever notifying the local controller.
       const active = await store.findActiveEnvelopeForDevice(input.applicationId, found.id);
       if (active !== null) {
         await failSafeEnvelopeOfRevokedDevice(input, active);
+      }
+      const terminalEnvelopes = await store.listEnvelopesByDevice(input.applicationId, found.id);
+      for (const envelope of terminalEnvelopes) {
+        if (envelope.status !== "admitted") {
+          await controller.applyEnvelope(
+            {
+              applicationId: envelope.applicationId,
+              tenantId: envelope.tenantId,
+              deviceId: envelope.deviceId,
+              envelopeId: envelope.id,
+              status: envelope.status,
+              contentDigest: envelope.contentDigest,
+              content: envelope.content,
+            },
+            edgeEnvelopeProjectExternalKey(envelope.id, envelope.status),
+          );
+        }
       }
       await store.beginEdgeOperation({
         operationId: deps.generateId(),
@@ -1539,7 +1558,25 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       });
     }
     if (envelope.status !== "admitted") {
-      // Terminal envelope: the revocation is converged evidence already.
+      // Terminal envelope: the revocation is converged evidence
+      // already — and the local controller's WITHDRAWAL projection is
+      // keyed exactly-once, so replaying it converges a notification a
+      // dying process lost between the durable revocation and the
+      // device-side withdrawal (fail-safe convergence).
+      if (envelope.status === "revoked") {
+        await controller.applyEnvelope(
+          {
+            applicationId: envelope.applicationId,
+            tenantId: envelope.tenantId,
+            deviceId: envelope.deviceId,
+            envelopeId: envelope.id,
+            status: "revoked",
+            contentDigest: envelope.contentDigest,
+            content: envelope.content,
+          },
+          edgeEnvelopeProjectExternalKey(envelope.id, "revoked"),
+        );
+      }
       return envelopeReceiptOf(envelope, true);
     }
     const device = await store.findDevice(input.applicationId, envelope.deviceId);
@@ -1684,7 +1721,45 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       }
       if (existing.status === "authorized") {
         // Crash window between the durable insert and the dispatch: the
-        // retry converges the ONE-SHOT dispatch under the SAME key.
+        // retry converges the ONE-SHOT dispatch under the SAME key —
+        // and the requested-phase ledger binding too when the prior
+        // process died between the keyed ledger commit and the binding
+        // write (the append is keyed/idempotent: the replay returns the
+        // SAME sequence; the binding itself is write-once).
+        if (existing.ledgerRequestedSequence === null) {
+          const requestedSequence = await appendEvent(
+            existing.applicationId,
+            existing.executionId,
+            request.actor.actorId,
+            existing.tenantId,
+            "tool-requested",
+            "edge-command",
+            {
+              commandId: existing.id,
+              deviceId: existing.deviceId,
+              envelopeId: existing.envelopeId,
+              commandKind: existing.commandKind,
+              effectClass: existing.effectClass,
+              channel: existing.channel,
+              sequence: existing.sequence,
+            },
+            {
+              commandId: existing.id,
+              phase: "command-requested",
+              sequence: existing.sequence,
+              effectClass: existing.effectClass,
+              magnitude: existing.magnitude,
+              estimatedMicroUsd: existing.estimatedMicroUsd,
+            },
+            edgeLedgerEventKey(existing.id, "command-requested"),
+          );
+          await store.bindCommandLedgerSequence({
+            applicationId: existing.applicationId,
+            commandId: existing.id,
+            phase: "requested",
+            sequence: requestedSequence,
+          });
+        }
         return dispatchCommand(existing, request.actor.actorId);
       }
       return commandReceiptOf(existing, true);
@@ -2379,14 +2454,14 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       },
       edgeLedgerEventKey(record.id, "sensor-observed"),
     );
-    await store.bindSensorObservationLedgerSequence(
+    const bound = await store.bindSensorObservationLedgerSequence(
       record.applicationId,
       record.id,
       ledgerSequence,
     );
 
     await completeClaim(input.applicationId, operationKey);
-    return record;
+    return bound;
   };
 
   // -----------------------------------------------------------------------
@@ -2569,8 +2644,19 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         }
         if (command.status === "settled") {
           // Already reconciled exactly once: converged duplicate report
-          // entry (the journal re-report), NOT a new settlement.
+          // entry (the journal re-report), NOT a new settlement. The
+          // actuation evidence converges by digest — a prior process
+          // that died between the settlement and the evidence insert
+          // gets its row here (idempotent keyed convergence).
           confirmedCount += 1;
+          await insertActuationEvidence(device, entry, {
+            actuationClass: "commanded",
+            commandId: command.id,
+            commandKey: command.commandKey,
+            sequence: command.sequence,
+            violationKind: null,
+            executionId: command.executionId,
+          });
           continue;
         }
         if (command.status === "denied" || command.status === "invalidated") {
