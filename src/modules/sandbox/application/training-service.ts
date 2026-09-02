@@ -984,7 +984,9 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       };
     }
 
-    // The emitted checkpoints (write-once, identity-addressed).
+    // The emitted checkpoints (write-once, identity-addressed; the
+    // durable sequence is ALLOCATED per workload — the journal continues
+    // across attempts and re-drives converge on the material identity).
     for (const emitted of observation.checkpoints) {
       await recordCheckpointInternal(
         record,
@@ -1001,6 +1003,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
           },
         },
         workerIdOf(record.workloadKey),
+        { allocateSequence: true },
       );
     }
 
@@ -1026,12 +1029,27 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     record: TrainingWorkloadRecord,
     emitted: EmittedCheckpointFacts,
     recordedBy: string,
+    options: {
+      /**
+       * The RUN-emission path allocates the durable ledger position per
+       * workload (the re-review defect fix: a retried attempt's
+       * run-local sequence restarts at 1, so the DURABLE sequence must
+       * continue the workload's journal — count+1 when the material
+       * identity is new, the EXISTING position when it already
+       * recorded); the worker-driven public protocol keeps the
+       * caller-supplied sequence (the migration's gate arbitrates it).
+       */
+      readonly allocateSequence?: boolean;
+    } = {},
   ): Promise<TrainingCheckpointRecord> => {
-    const contents: TrainingCheckpointContents = {
+    // The identity is the MATERIAL digest (the ledger position is not
+    // content — see canonicalTrainingCheckpointJson), so it can be
+    // computed BEFORE the position is resolved.
+    const materialDraft: TrainingCheckpointContents = {
       executionId: record.executionId,
       workloadId: record.id,
       workloadKey: record.workloadKey,
-      checkpointSequence: emitted.checkpointSequence,
+      checkpointSequence: 1,
       stepPosition: emitted.stepPosition,
       lineage: emitted.lineage,
       metricsDigest: emitted.metricsDigest,
@@ -1039,9 +1057,30 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       resourceClass: resourceClassOf(record),
       recordedBy,
     };
+    const identity = trainingCheckpointIdentity(materialDraft, digest);
+    const recordedIdentity = await store.findTrainingCheckpointByIdentity(
+      record.applicationId,
+      identity,
+    );
+    let durableSequence: number;
+    if (options.allocateSequence === true) {
+      // Run-emitted: the material checkpoint's existing position when it
+      // already recorded (perfect re-drive convergence), else the next
+      // gapless per-workload position (the journal CONTINUES across
+      // attempts — a retry's checkpoints append, never re-collide).
+      durableSequence =
+        recordedIdentity?.checkpointSequence ??
+        (await store.listTrainingCheckpointsByWorkload(record.applicationId, record.workloadKey))
+          .length + 1;
+    } else {
+      durableSequence = emitted.checkpointSequence;
+    }
+    const contents: TrainingCheckpointContents = {
+      ...materialDraft,
+      checkpointSequence: durableSequence,
+    };
     validateTrainingCheckpointContents(contents);
-    const identity = trainingCheckpointIdentity(contents, digest);
-    // The checkpoint operation key is ATTEMPT-SCOPED (the re-review
+    // The checkpoint operation key is attempt-scoped (the re-review
     // defect: a workload-scoped `seq` key combined with the
     // identity-bearing fingerprint made attempt 2's seq-1 checkpoint a
     // key-reuse failure on the SQL store — the retry path broke
@@ -1071,6 +1110,20 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       contents,
       contentDigest: identity,
       createdAt: iso(),
+    });
+    // The checkpoint operation reaches its terminal state with the
+    // durable facts (PENDING rows are re-drivable; a durable operation
+    // left forever-PENDING was a re-review gap — the migration's
+    // operation discipline is pending -> completed|failed, always).
+    await store.completeTrainingOperation({
+      applicationId: record.applicationId,
+      operationKey,
+      stage: {
+        checkpointIdentity: identity,
+        checkpointSequence: contents.checkpointSequence,
+        converged: !claim.claimed,
+      },
+      now: iso(),
     });
     if (claim.claimed) {
       // One ledger envelope PER CHECKPOINT IDENTITY (the re-review

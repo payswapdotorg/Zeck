@@ -478,13 +478,17 @@ describe("training crash recovery — completion", () => {
     const admitted = await world
       .boot(null)
       .service.submitWorkload(submitInput, "crash-key-8", ACTOR);
-    // Crash at the FIRST post-transition durable call of the
-    // finalization tail (the allocation operation completion).
+    // Crash AFTER the completed row's terminal transition (occurrence 3
+    // within the dispatch process: allocating -> running -> completed),
+    // BEFORE the finalization tail — the checkpoint operations now also
+    // completeTrainingOperation BEFORE the transition (the re-review
+    // operation-discipline fix), so the tail boundary is pinned on the
+    // transition itself, not on the first post-transition store call.
     const dispatching = world.boot({
       target: "store",
-      method: "completeTrainingOperation",
-      when: "before",
-      occurrence: 1,
+      method: "transitionWorkload",
+      when: "after",
+      occurrence: 3,
     });
     const crash = await dies(() =>
       dispatching.service.dispatchWorkload(

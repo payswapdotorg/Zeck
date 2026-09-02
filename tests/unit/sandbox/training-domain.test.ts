@@ -279,6 +279,26 @@ describe("training checkpoint identity (immutable, content/lineage-addressable)"
     ).not.toBe(a);
   });
 
+  test("the ledger POSITION is not the material identity (cross-attempt continuation)", () => {
+    // A re-driven run or a later attempt re-emitting the SAME material
+    // checkpoint converges on the SAME identity wherever the journal
+    // places it (the retry-sequence-continuation defect regression:
+    // v1 digests covered the sequence, so attempt 2's re-emitted
+    // checkpoint could never converge and collided on the per-workload
+    // sequence unique constraint instead of continuing the journal).
+    const a = trainingCheckpointIdentity(contents(), sha256Hex);
+    expect(trainingCheckpointIdentity({ ...contents(), checkpointSequence: 7 }, sha256Hex)).toBe(a);
+    // The canonical form is position-free...
+    expect(canonicalTrainingCheckpointJson({ ...contents(), checkpointSequence: 7 })).toBe(
+      canonicalTrainingCheckpointJson(contents()),
+    );
+    // ...while the record still carries its ledger position (the journal
+    // order remains gapless per workload — the migration's gate).
+    expect(trainingCheckpointDigestInput({ ...contents(), checkpointSequence: 7 })).toBe(
+      trainingCheckpointDigestInput(contents()),
+    );
+  });
+
   test("lineage-addressable: the digest covers the full lineage reference set", () => {
     const a = trainingCheckpointIdentity(contents(), sha256Hex);
     const withParent = trainingCheckpointIdentity(

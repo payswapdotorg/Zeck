@@ -711,6 +711,50 @@ describe("training retry (fresh admission per attempt)", () => {
     expect(w.budget.releases[0]?.operationId).toBe(first.budgetOperationId);
   });
 
+  test("a retried workload's checkpoints CONTINUE the durable journal (sequence allocation per workload)", async () => {
+    // The re-review defect regression (its PG twin failed TR8): attempt 1
+    // fails after recording checkpoint seq 1 (step 4); the retry's
+    // run-local sequence restarts at 1, so the DURABLE sequence must be
+    // allocated per workload — the journal continues (2, 3), never
+    // re-colliding on the per-workload sequence unique constraint, and
+    // the checkpoint operations all reach their terminal state.
+    const w = world({ failRunsOf: (_id, attempt) => attempt === 1 });
+    const admitted = await submit(w, "retry-journal");
+    const first = await w.service.dispatchWorkload(
+      { applicationId: TR_APPLICATION_ID, workloadId: admitted.id },
+      ACTOR,
+    );
+    expect(first.status).toBe("failed");
+    const retry = await w.service.retryWorkload(
+      { applicationId: TR_APPLICATION_ID, workloadId: admitted.id },
+      ACTOR,
+    );
+    expect(retry.status).toBe("completed");
+    const journal = await w.store.listTrainingCheckpointsByWorkload(
+      TR_APPLICATION_ID,
+      "retry-journal",
+    );
+    // Attempt 1 recorded seq 1 (step 4, its own metrics identity); the
+    // retry's steps 8 and 12 continue the journal at 2 and 3.
+    expect(journal.map((c) => c.checkpointSequence)).toEqual([1, 2, 3]);
+    expect(journal.map((c) => c.contents.stepPosition)).toEqual([4, 8, 12]);
+    // Every checkpoint operation the two attempts produced is terminal
+    // (completed, carrying its durable facts) — the forever-PENDING
+    // operation gap the re-review found.
+    for (const [attempt, sequence] of [
+      [1, 1],
+      [2, 2],
+      [2, 3],
+    ] as const) {
+      const op = await w.store.findTrainingOperation(
+        TR_APPLICATION_ID,
+        `trop:checkpoint:retry-journal:attempt:${attempt}:seq:${sequence}`,
+      );
+      expect(op?.status).toBe("completed");
+      expect(op?.stage).toMatchObject({ checkpointSequence: sequence });
+    }
+  });
+
   test("the retry ladder is bounded", async () => {
     const w = world({ failRunsOf: () => true });
     const admitted = await submit(w);

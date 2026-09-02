@@ -836,21 +836,46 @@ function canonicalJsonSorted(value: unknown): string {
   return JSON.stringify(canonical(value));
 }
 
-/** The canonical serialization of the checkpoint contents (digest base). */
+/**
+ * The canonical serialization of the checkpoint MATERIAL contents (digest
+ * base). The ledger POSITION (`checkpointSequence`) is deliberately NOT
+ * part of the canonical form: the identity is the address of "this
+ * workload at this step with these facts", not of "position N in the
+ * journal" — a re-driven run (crash recovery) or a later attempt
+ * re-emitting the same material checkpoint converges on the SAME
+ * identity wherever it lands, while the per-workload gapless sequence
+ * (the migration's gate) keeps the journal ordered. (v2: v1 covered the
+ * sequence too, which made a retried attempt's re-emitted checkpoints
+ * collide on the sequence unique constraint instead of continuing the
+ * journal — a defect this wave's real-PG tier found.)
+ */
 export function canonicalTrainingCheckpointJson(contents: TrainingCheckpointContents): string {
-  return canonicalJsonSorted(contents);
+  return canonicalJsonSorted({
+    executionId: contents.executionId,
+    workloadId: contents.workloadId,
+    workloadKey: contents.workloadKey,
+    stepPosition: contents.stepPosition,
+    lineage: contents.lineage,
+    metricsDigest: contents.metricsDigest,
+    substrateId: contents.substrateId,
+    resourceClass: contents.resourceClass,
+    recordedBy: contents.recordedBy,
+  });
 }
 
 /** The digest input handed to the injected digest function. */
 export function trainingCheckpointDigestInput(contents: TrainingCheckpointContents): string {
-  return `zeck:training-checkpoint:v1:${canonicalTrainingCheckpointJson(contents)}`;
+  return `zeck:training-checkpoint:v2:${canonicalTrainingCheckpointJson(contents)}`;
 }
 
 /**
  * The CHECKPOINT IDENTITY: the sha256 content digest — immutable,
  * content-addressable (find by digest) and lineage-addressable (the
  * digest covers the full lineage refs, so a checkpoint is the unique
- * address of "this lineage at this step").
+ * address of "this workload at this step over this lineage"). The ledger
+ * position (checkpointSequence) is NOT part of the identity — identical
+ * material facts are ONE durable checkpoint wherever the journal places
+ * them (the crash/retry convergence contract).
  */
 export function trainingCheckpointIdentity(
   contents: TrainingCheckpointContents,

@@ -128,7 +128,21 @@ export function trainingFabricViolations(
     if (!code.includes("training-reserve:")) {
       violations.push("training-budget-before-allocation");
     }
-    if (!code.includes('error.code === "BUDGET_EXCEEDED"') || !code.includes('"budget"')) {
+    // T2 (semantic, not substring): the catch around the reservation must
+    // ROUTE the typed budget-admission denials (BUDGET_EXCEEDED and the
+    // funding-policy POLICY_DENIED) into the journal-then-fail
+    // denyWorkload("budget", …) path — the check is an ORDERED SHAPE
+    // (instanceof PlatformError -> both typed codes -> denyWorkload)
+    // because the code contains a second, inert BUDGET_EXCEEDED literal
+    // (the denial-code ternary inside the journal call) that satisfied
+    // the old substring check and let the dropped-branch mutant through
+    // (a defect this round's re-review found: D2 stopped discriminating).
+    if (
+      !/instanceof PlatformError[\s\S]{0,400}?error\.code === "BUDGET_EXCEEDED"[\s\S]{0,160}?error\.code === "POLICY_DENIED"[\s\S]{0,900}?denyWorkload\(/.test(
+        code,
+      ) ||
+      !code.includes('"budget"')
+    ) {
       violations.push("training-budget-denial-fail-closed");
     }
     // ---- T3/T4: verification before release (the release shape) ----
@@ -205,7 +219,7 @@ export function trainingFabricViolations(
   }
 
   // ---- T8: the checkpoint identity is content-addressed ----
-  if (domain === undefined || !domain.content.includes("zeck:training-checkpoint:v1:")) {
+  if (domain === undefined || !domain.content.includes("zeck:training-checkpoint:v2:")) {
     violations.push("training-checkpoint-content-addressed");
   }
   if (migration === undefined || !migration.content.includes("tc_identity_unique")) {

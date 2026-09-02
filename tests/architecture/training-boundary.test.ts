@@ -160,6 +160,51 @@ test("verification-before-release: there is no second verification authority and
   }
 });
 
+test("the training/accelerator source lives STRICTLY under the declared surfaces", () => {
+  // The surface-boundary scan (the briefing's B4 discipline): every file
+  // under src/ whose CODE carries the training/accelerator vocabulary
+  // must live under src/modules/sandbox/**, src/integrations/accelerators/**
+  // or be migration 0025 (the claimed migration). Anything else means the
+  // fabric leaked outside the declared change surfaces.
+  const all = loadSourceFiles(process.cwd(), "src");
+  const ALLOWED_PREFIXES = ["src/modules/sandbox/", "src/integrations/accelerators/"];
+  const ALLOWED_MIGRATION = "src/platform/db/migrations/0025_training_accelerator_workloads.sql";
+  const MARKERS = [
+    "createTrainingService",
+    "InMemoryTrainingStore",
+    "SqlTrainingStore",
+    "TrainingWorkload",
+    "TrainingStore",
+    "training_workloads",
+    "training_checkpoints",
+    "training_operations",
+    "training_run_leases",
+    "sandbox.training_",
+    "trainingOperationKey",
+    "trop:",
+    "AcceleratorSubstrate",
+    "createAcceleratorOperator",
+    "SimulatedAcceleratorFleet",
+    "accelerator-fabric",
+    "trainingCheckpointIdentity",
+    "trainingRequestFingerprint",
+  ];
+  const offenders: string[] = [];
+  for (const file of all) {
+    if (ALLOWED_PREFIXES.some((prefix) => file.path.startsWith(prefix))) {
+      continue;
+    }
+    if (file.path === ALLOWED_MIGRATION) {
+      continue;
+    }
+    const code = file.content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    if (MARKERS.some((marker) => code.includes(marker))) {
+      offenders.push(file.path);
+    }
+  }
+  expect(offenders).toEqual([]);
+});
+
 test("WORK-030 touches neither spec/ nor spec/development-state/ (architect-owned)", () => {
   // The static shape: the training fabric exists ONLY under the declared
   // surfaces. (The full diff-level audit is the evidence doc + the

@@ -304,6 +304,20 @@ export class InMemoryTrainingStore implements TrainingStore {
     const seqKey = `${input.applicationId}:${input.workloadId}:${input.contents.checkpointSequence}`;
     const seqExisting = this.checkpointSeq.get(seqKey);
     if (seqExisting !== undefined) {
+      if (seqExisting.contentDigest !== input.contentDigest) {
+        // SQL-twin parity: the migration's tc_sequence_gate raises the
+        // same typed rejection — the unit tier previously ACCEPTED the
+        // write as a replay of the existing row, hiding the
+        // sequence-continuation defect the real-PG tier then found.
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message: `training workload ${input.workloadId} checkpoint sequence ${input.contents.checkpointSequence} already exists with a different content identity`,
+          details: {
+            workloadId: input.workloadId,
+            checkpointSequence: input.contents.checkpointSequence,
+          },
+        });
+      }
       return { claimed: false, record: seqExisting };
     }
     const record: TrainingCheckpointRecord = {

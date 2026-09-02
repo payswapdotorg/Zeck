@@ -39,12 +39,7 @@
 import { describe, expect, test } from "vitest";
 import { PlatformError } from "../../../src/shared/errors";
 import { definePgSuite, type PgContext } from "./harness";
-import {
-  countOf,
-  type TrainingPgWorld,
-  trainingSpecOf,
-  seedTrainingWorld,
-} from "./training-world";
+import { countOf, seedTrainingWorld, type TrainingPgWorld, trainingSpecOf } from "./training-world";
 
 definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: PgContext) => {
   let world: TrainingPgWorld;
@@ -134,15 +129,15 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
       await world.fundApplication();
     }
     const executionId = await world.seedExecution("RUNNING");
-    const admitted = await world.boot(null).service.submitWorkload(
-      { executionId, spec: trainingSpecOf() },
-      key,
-      world.actor(),
-    );
-    const final = await world.boot(null).service.dispatchWorkload(
-      { applicationId: world.applicationId, workloadId: admitted.id },
-      world.actor(),
-    );
+    const admitted = await world
+      .boot(null)
+      .service.submitWorkload({ executionId, spec: trainingSpecOf() }, key, world.actor());
+    const final = await world
+      .boot(null)
+      .service.dispatchWorkload(
+        { applicationId: world.applicationId, workloadId: admitted.id },
+        world.actor(),
+      );
     return { executionId, admitted, final };
   };
 
@@ -164,9 +159,7 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
       // (content-addressed, tenant-scoped).
       const artifact = await w.artifacts.getArtifact(
         { tenantId: w.tenantId },
-        final.outputArtifactDigest as unknown as Parameters<
-          typeof w.artifacts.getArtifact
-        >[1],
+        final.outputArtifactDigest as unknown as Parameters<typeof w.artifacts.getArtifact>[1],
       );
       expect(artifact.digest).toBe(final.outputArtifactDigest);
       // The budget reservation was settled exactly once (REAL budgets).
@@ -195,22 +188,28 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
       const w = await freshWorld();
       await world.fundApplication();
       const executionId = await world.seedExecution("RUNNING");
-      const admitted = await world.boot(null).service.submitWorkload(
-        { executionId, spec: trainingSpecOf() },
-        "pg-cancel-1",
-        world.actor(),
-      );
-      const cancelled = await world.boot(null).service.cancelWorkload(
-        { applicationId: w.applicationId, workloadId: admitted.id },
-        w.actor(),
-      );
+      const admitted = await world
+        .boot(null)
+        .service.submitWorkload(
+          { executionId, spec: trainingSpecOf() },
+          "pg-cancel-1",
+          world.actor(),
+        );
+      const cancelled = await world
+        .boot(null)
+        .service.cancelWorkload(
+          { applicationId: w.applicationId, workloadId: admitted.id },
+          w.actor(),
+        );
       expect(cancelled.status).toBe("cancelled");
       expect(w.fleet.listAllocations().length).toBe(0); // ZERO paid activity
       expect(w.fleet.runCount()).toBe(0);
       expect(await reservationStatusOf(cancelled.budgetOperationId as string)).toBe("released");
       expect(await reservationsOf()).toBe(1); // the single (released) reservation
       // interruption-requested rides the canonical ledger.
-      expect((await eventsOf(executionId)).filter((c) => c === "interruption-requested").length).toBe(1);
+      expect(
+        (await eventsOf(executionId)).filter((c) => c === "interruption-requested").length,
+      ).toBe(1);
     });
   });
 
@@ -227,11 +226,13 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
       // budget-class denial (the re-review defect: previously propagated
       // raw, leaving NO durable denied row).
       await expectPlatformError("POLICY_DENIED", () =>
-        w.boot(null).service.submitWorkload(
-          { executionId, spec: trainingSpecOf() },
-          "pg-denied-unfunded",
-          w.actor(),
-        ),
+        w
+          .boot(null)
+          .service.submitWorkload(
+            { executionId, spec: trainingSpecOf() },
+            "pg-denied-unfunded",
+            w.actor(),
+          ),
       );
       const row = await workloadRow("pg-denied-unfunded");
       expect(row?.status).toBe("denied");
@@ -251,11 +252,13 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
       await w.fundApplication("100"); // far below the 250000 estimate
       const executionId = await w.seedExecution("RUNNING");
       await expectPlatformError("BUDGET_EXCEEDED", () =>
-        w.boot(null).service.submitWorkload(
-          { executionId, spec: trainingSpecOf() },
-          "pg-denied-overspend",
-          w.actor(),
-        ),
+        w
+          .boot(null)
+          .service.submitWorkload(
+            { executionId, spec: trainingSpecOf() },
+            "pg-denied-overspend",
+            w.actor(),
+          ),
       );
       const row = await workloadRow("pg-denied-overspend");
       expect(row?.status).toBe("denied");
@@ -284,7 +287,7 @@ definePgSuite("training durable discipline (real PostgreSQL; WORK-030)", (ctx: P
         })
         .then((result) => result.rows[0]);
       expect(order).toBeDefined();
-      expect(order!.created.getTime()).toBeLessThanOrEqual(order!.allocated.getTime());
+      expect(order?.created.getTime() ?? 0).toBeLessThanOrEqual(order?.allocated.getTime() ?? 0);
       expect(await settledOf(final.budgetOperationId as string)).toBe(1);
       expect(
         await countOf(
@@ -403,11 +406,13 @@ VALUES ($1, $2, $3, $4, 'terminal-exec', 'fp', 'training', 'admitted', '{}'::jso
       const w = await freshWorld();
       await w.fundApplication();
       const executionId = await w.seedExecution("RUNNING");
-      const admitted = await w.boot(null).service.submitWorkload(
-        { executionId, spec: trainingSpecOf() },
-        "pg-transition-1",
-        w.actor(),
-      );
+      const admitted = await w
+        .boot(null)
+        .service.submitWorkload(
+          { executionId, spec: trainingSpecOf() },
+          "pg-transition-1",
+          w.actor(),
+        );
       await expect(
         w.db.execute({
           sql: "UPDATE sandbox.training_workloads SET status = 'completed' WHERE application_id = $1 AND workload_key = $2",
@@ -454,13 +459,7 @@ VALUES ($1, $2, $3, $4, 'terminal-exec', 'fp', 'training', 'admitted', '{}'::jso
   (id, application_id, tenant_id, execution_id, workload_id, workload_key, checkpoint_sequence,
    step_position, lineage, metrics_digest, substrate_id, resource_class, recorded_by, content_digest, created_at)
 VALUES ('00000000-0000-7000-8000-00000000e201', $1, $2, $3, $4, $5, 1, 4, '{}'::jsonb, repeat('c', 64), 's', 'r', 'rec', repeat('f', 64), now())`,
-          parameters: [
-            w.applicationId,
-            w.tenantId,
-            final.executionId,
-            final.id,
-            "pg-ckpt-1",
-          ],
+          parameters: [w.applicationId, w.tenantId, final.executionId, final.id, "pg-ckpt-1"],
         }),
       ).rejects.toThrow(/checkpoint sequence 1 already exists with a different content identity/);
     });
@@ -474,13 +473,7 @@ VALUES ('00000000-0000-7000-8000-00000000e201', $1, $2, $3, $4, $5, 1, 4, '{}'::
   (id, application_id, tenant_id, execution_id, workload_id, workload_key, checkpoint_sequence,
    step_position, lineage, metrics_digest, substrate_id, resource_class, recorded_by, content_digest, created_at)
 VALUES ('00000000-0000-7000-8000-00000000e202', $1, $2, $3, $4, $5, 9, 36, '{}'::jsonb, repeat('d', 64), 's', 'r', 'rec', repeat('e', 64), now())`,
-          parameters: [
-            w.applicationId,
-            w.tenantId,
-            final.executionId,
-            final.id,
-            "pg-ckpt-2",
-          ],
+          parameters: [w.applicationId, w.tenantId, final.executionId, final.id, "pg-ckpt-2"],
         }),
       ).rejects.toThrow(/checkpoint sequence must be gapless/);
     });
@@ -521,7 +514,13 @@ VALUES ('00000000-0000-7000-8000-00000000e202', $1, $2, $3, $4, $5, 9, 36, '{}':
   (id, application_id, tenant_id, execution_id, workload_id, operation_kind, operation_key,
    request_fingerprint, created_at, updated_at)
 VALUES ('00000000-0000-7000-8000-00000000e301', $1, $2, $3, $4, 'allocate', $5, 'different-fingerprint', now(), now())`,
-          parameters: [w.applicationId, w.tenantId, final.executionId, final.id, `trop:allocate:pg-ops-1:attempt:1`],
+          parameters: [
+            w.applicationId,
+            w.tenantId,
+            final.executionId,
+            final.id,
+            `trop:allocate:pg-ops-1:attempt:1`,
+          ],
         }),
       ).rejects.toThrow(/duplicate key value violates unique constraint/);
       // The workload key of the operation is scoped to the application.
@@ -649,15 +648,15 @@ VALUES ('00000000-0000-7000-8000-00000000e301', $1, $2, $3, $4, 'allocate', $5, 
       const w = await freshWorld({ failRunsOf: () => true });
       await w.fundApplication();
       const executionId = await w.seedExecution("RUNNING");
-      const admitted = await w.boot(null).service.submitWorkload(
-        { executionId, spec: trainingSpecOf() },
-        "pg-release-3",
-        w.actor(),
-      );
-      const failed = await w.boot(null).service.dispatchWorkload(
-        { applicationId: w.applicationId, workloadId: admitted.id },
-        w.actor(),
-      );
+      const admitted = await w
+        .boot(null)
+        .service.submitWorkload({ executionId, spec: trainingSpecOf() }, "pg-release-3", w.actor());
+      const failed = await w
+        .boot(null)
+        .service.dispatchWorkload(
+          { applicationId: w.applicationId, workloadId: admitted.id },
+          w.actor(),
+        );
       expect(failed.status).toBe("failed");
       await expectPlatformError("INVALID_STATE_TRANSITION", () =>
         w.boot(null).service.verifyAndReleaseWorkload(
@@ -685,21 +684,23 @@ VALUES ('00000000-0000-7000-8000-00000000e301', $1, $2, $3, $4, 'allocate', $5, 
       const w = await freshWorld({ failRunsOf: (_id, attempt) => attempt === 1 });
       await w.fundApplication();
       const executionId = await w.seedExecution("RUNNING");
-      const admitted = await w.boot(null).service.submitWorkload(
-        { executionId, spec: trainingSpecOf() },
-        "pg-retry-1",
-        w.actor(),
-      );
-      const first = await w.boot(null).service.dispatchWorkload(
-        { applicationId: w.applicationId, workloadId: admitted.id },
-        w.actor(),
-      );
+      const admitted = await w
+        .boot(null)
+        .service.submitWorkload({ executionId, spec: trainingSpecOf() }, "pg-retry-1", w.actor());
+      const first = await w
+        .boot(null)
+        .service.dispatchWorkload(
+          { applicationId: w.applicationId, workloadId: admitted.id },
+          w.actor(),
+        );
       expect(first.status).toBe("failed");
       expect(await reservationStatusOf(first.budgetOperationId as string)).toBe("released");
-      const retry = await w.boot(null).service.retryWorkload(
-        { applicationId: w.applicationId, workloadId: admitted.id },
-        w.actor(),
-      );
+      const retry = await w
+        .boot(null)
+        .service.retryWorkload(
+          { applicationId: w.applicationId, workloadId: admitted.id },
+          w.actor(),
+        );
       expect(retry.status).toBe("completed");
       expect(retry.attempts).toBe(2);
       expect(retry.budgetOperationId).not.toBe(first.budgetOperationId);

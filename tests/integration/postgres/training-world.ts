@@ -55,10 +55,16 @@
 import { createHash } from "node:crypto";
 import { expect } from "vitest";
 import {
-  createInMemoryArtifactStore,
-  createNodeDigestPort,
+  createAcceleratorOperator,
+  createAcceleratorSubstrateRuntime,
+  SimulatedAcceleratorFleet,
+  type SimulatedAcceleratorFleetOptions,
+} from "../../../src/integrations/accelerators/public";
+import {
   type ArtifactService,
   createArtifactService,
+  createInMemoryArtifactStore,
+  createNodeDigestPort,
 } from "../../../src/modules/artifacts/public";
 import {
   SqlBudgetStore,
@@ -74,12 +80,6 @@ import { createSubstrateRegistry } from "../../../src/modules/capabilities/appli
 import type { CapabilityRegistry } from "../../../src/modules/capabilities/ports/capability-registry";
 import type { ComputationalSubstrateInput } from "../../../src/modules/capabilities/public";
 import {
-  createAcceleratorOperator,
-  createAcceleratorSubstrateRuntime,
-  SimulatedAcceleratorFleet,
-  type SimulatedAcceleratorFleetOptions,
-} from "../../../src/integrations/accelerators/public";
-import {
   SqlExecutionStore,
   SqlExecutionsIdempotency,
 } from "../../../src/modules/executions/adapters/sql-execution-store";
@@ -87,29 +87,27 @@ import {
   createExecutionService,
   type ExecutionService,
 } from "../../../src/modules/executions/application/execution-service";
-import { createSandboxCapabilityGate } from "../../../src/modules/sandbox/adapters/capability-gate";
-import { createTrainingExecutionLedgerAdapter } from "../../../src/modules/sandbox/adapters/training-execution-ledger";
-import { createPolicyTrainingAdmission } from "../../../src/modules/sandbox/adapters/policy-training-admission";
-import { SqlTrainingStore } from "../../../src/modules/sandbox/adapters/sql-training-store";
-import { createSubstrateCatalogAdapter } from "../../../src/modules/sandbox/adapters/substrate-catalog";
-import { createVerificationTrainingGate } from "../../../src/modules/sandbox/adapters/verification-training-gate";
-import {
-  createAcceleratorRuntimeRegistry,
-  createTrainingService,
-  type TrainingService,
-} from "../../../src/modules/sandbox/public";
-import type { SandboxTask } from "../../../src/modules/sandbox/domain/sandbox";
-import type { AcceleratorSubstrateRuntime } from "../../../src/modules/sandbox/ports/accelerator-substrate";
-import type { TrainingWorkloadSpec } from "../../../src/modules/sandbox/domain/workload";
 import {
   createPolicyAuthority,
   InMemoryPolicyStore,
   nodePolicyHasher,
   type PolicyAuthority,
 } from "../../../src/modules/policies/public";
+import { createSandboxCapabilityGate } from "../../../src/modules/sandbox/adapters/capability-gate";
+import { createPolicyTrainingAdmission } from "../../../src/modules/sandbox/adapters/policy-training-admission";
+import { SqlTrainingStore } from "../../../src/modules/sandbox/adapters/sql-training-store";
+import { createSubstrateCatalogAdapter } from "../../../src/modules/sandbox/adapters/substrate-catalog";
+import { createTrainingExecutionLedgerAdapter } from "../../../src/modules/sandbox/adapters/training-execution-ledger";
+import { createVerificationTrainingGate } from "../../../src/modules/sandbox/adapters/verification-training-gate";
+import type { SandboxTask } from "../../../src/modules/sandbox/domain/sandbox";
+import type { TrainingWorkloadSpec } from "../../../src/modules/sandbox/domain/workload";
+import type { AcceleratorSubstrateRuntime } from "../../../src/modules/sandbox/ports/accelerator-substrate";
 import {
-  createDeterministicEvaluatorBank,
-} from "../../../src/modules/verification/adapters/deterministic-evaluators";
+  createAcceleratorRuntimeRegistry,
+  createTrainingService,
+  type TrainingService,
+} from "../../../src/modules/sandbox/public";
+import { createDeterministicEvaluatorBank } from "../../../src/modules/verification/adapters/deterministic-evaluators";
 import {
   createExecutionLedgerAdapter,
   createExecutionTransitionAdapter,
@@ -245,7 +243,9 @@ export const TRA_GPU_INVENTORY = Array.from({ length: 8 }, () => ({
 }));
 
 /** The canonical governed training workload spec of the world. */
-export function trainingSpecOf(overrides: Partial<TrainingWorkloadSpec> = {}): TrainingWorkloadSpec {
+export function trainingSpecOf(
+  overrides: Partial<TrainingWorkloadSpec> = {},
+): TrainingWorkloadSpec {
   return {
     workloadKind: "training",
     task: { command: "train", args: ["--epochs", "3"], publicEnv: {} },
@@ -377,10 +377,11 @@ export async function seedTrainingWorld(
   });
   const actor = () => ({ actorId: TRA_ACTOR_ID, applicationId, tenantId });
   for (const submission of await operator.listSubstrates(applicationId)) {
-    await substrateRegistry.publish(
-      submission.substrate as ComputationalSubstrateInput,
-      { actorId: TRA_ACTOR_ID, applicationId, tenantId },
-    );
+    await substrateRegistry.publish(submission.substrate as ComputationalSubstrateInput, {
+      actorId: TRA_ACTOR_ID,
+      applicationId,
+      tenantId,
+    });
   }
 
   // Budgets: the REAL service (funding configured by the caller).
@@ -436,7 +437,9 @@ export async function seedTrainingWorld(
    * authority (the substrate→artifact handoff the composition root
    * owns in production; simulated here exactly like the substrate).
    */
-  const materializingRuntime = (runtime: AcceleratorSubstrateRuntime): AcceleratorSubstrateRuntime => ({
+  const materializingRuntime = (
+    runtime: AcceleratorSubstrateRuntime,
+  ): AcceleratorSubstrateRuntime => ({
     adapterRef: runtime.adapterRef,
     async allocate(request, allocationKey, context) {
       return runtime.allocate(request, allocationKey, context);
@@ -473,17 +476,13 @@ export async function seedTrainingWorld(
   });
 
   const runtimes = createAcceleratorRuntimeRegistry();
-  runtimes.register(
-    materializingRuntime(createAcceleratorSubstrateRuntime(fleet)),
-  );
+  runtimes.register(materializingRuntime(createAcceleratorSubstrateRuntime(fleet)));
 
   const substrates = createSubstrateCatalogAdapter(substrateRegistry);
   const capabilities = createSandboxCapabilityGate(capabilityRegistry);
-  const ledger = createTrainingExecutionLedgerAdapter(executionService);
   const admission = createPolicyTrainingAdmission(authority, {
     substrateIsolation: "container",
   });
-  const verification = createVerificationTrainingGate(verificationService);
 
   const boot = (point: TrainingCrashPoint | null = null) => {
     // A NEW training service instance over the SURVIVING SQL store +
