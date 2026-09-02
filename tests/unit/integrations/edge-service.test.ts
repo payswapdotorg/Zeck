@@ -376,7 +376,7 @@ describe("edge service: safety envelope admission", () => {
     const world = createInMemoryEdgeWorld();
     const executionId = await world.seedExecution();
     const deviceId = await world.register();
-    world.capabilities.failWith(["edge-channel:locomotion"]);
+    world.capabilities.failWith(["edge-channel-locomotion"]);
     await expectPlatformError(
       "CAPABILITY_UNAVAILABLE",
       world.approveEnvelope(executionId, deviceId),
@@ -604,7 +604,7 @@ describe("edge service: the governed command path (AC-4/AC-5)", () => {
     } = await governedWorld();
     const requestB = worldB.commandRequest(exB, devB, envB);
     const approvalB = await worldB.approveCommand(requestB);
-    worldB.capabilities.failWith(["edge-channel:locomotion"]);
+    worldB.capabilities.failWith(["edge-channel-locomotion"]);
     await expectPlatformError(
       "CAPABILITY_UNAVAILABLE",
       worldB.service.submitCommand({ ...requestB, approvalId: approvalB }, "ck-capability"),

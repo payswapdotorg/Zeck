@@ -600,7 +600,7 @@ describe("discrimination: edge runtime reds (the safety boundaries stay closed)"
     world.policy.allow();
 
     // capability denial
-    world.capabilities.failWith(["edge-channel:locomotion"]);
+    world.capabilities.failWith(["edge-channel-locomotion"]);
     await expectPlatformError(
       "CAPABILITY_UNAVAILABLE",
       world.service.submitCommand(base, "red-capability"),

@@ -334,9 +334,13 @@ export function isEdgeActuatorChannel(value: string): value is EdgeActuatorChann
 /**
  * The capability atom a commanded actuator channel resolves through the
  * capability registry (the REAL authority): a device governable on a
- * channel declares this atom in its capability evidence.
+ * channel declares this atom in its capability evidence. The atom is a
+ * NEUTRAL VOCABULARY SLUG (`[a-z0-9][a-z0-9._-]{0,63}`) — the REAL
+ * registry's claim/requirement identifier contract (colons are not in
+ * the slug alphabet; the policy tool-fact vocabulary is a different,
+ * free-form namespace).
  */
-export const EDGE_CHANNEL_ATOM_PREFIX = "edge-channel:";
+export const EDGE_CHANNEL_ATOM_PREFIX = "edge-channel-";
 
 export function edgeChannelAtom(channel: EdgeActuatorChannel): string {
   return `${EDGE_CHANNEL_ATOM_PREFIX}${channel}`;

@@ -1066,7 +1066,7 @@ RETURNING ${ENVELOPE_COLUMNS}`,
     try {
       const result = await this.db.execute<CommandRow>({
         sql: `INSERT INTO edge.commands (id, application_id, tenant_id, execution_id, device_id, envelope_id, command_key, request_fingerprint, sequence, command_kind, effect_class, channel, magnitude, payload_digest, estimated_micro_usd, not_before, not_after, status, denial_class, denial_reason, approval_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::timestamptz, $17::timestamptz, CASE WHEN $18 IS NULL THEN 'authorized' ELSE 'denied' END, $18, $19, $20, $21::timestamptz)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::timestamptz, $17::timestamptz, CASE WHEN $18::text IS NULL THEN 'authorized' ELSE 'denied' END, $18::text, $19, $20, $21::timestamptz)
 ON CONFLICT (application_id, command_key) DO NOTHING
 RETURNING ${COMMAND_COLUMNS}`,
         parameters: [

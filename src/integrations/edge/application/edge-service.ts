@@ -1344,9 +1344,13 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
     // The one-active-envelope discipline: an existing admitted envelope
     // must be superseded EXPLICITLY by this new authorized admission.
+    // (A concurrent SAME-KEY admission that lost the insert race sees
+    // its own envelope as the active one — that is idempotent
+    // self-convergence, not a discipline violation; the keyed insert
+    // below converges it onto the winner's row.)
     const active = await store.findActiveEnvelopeForDevice(request.applicationId, device.id);
     if (request.supersedesEnvelopeId === null) {
-      if (active !== null) {
+      if (active !== null && active.envelopeKey !== idempotencyKey) {
         await failClaim(
           request.applicationId,
           operationKey,
@@ -1360,6 +1364,19 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         });
       }
     } else {
+      if (active !== null && active.id !== request.supersedesEnvelopeId) {
+        await failClaim(
+          request.applicationId,
+          operationKey,
+          "the device holds a DIFFERENT admitted envelope than the one this admission supersedes",
+        );
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message:
+            "the device's admitted safety envelope is not the one this admission supersedes (supersede the ACTIVE envelope)",
+          details: { deviceId: device.id, activeEnvelopeId: active.id },
+        });
+      }
       const target = await store.findEnvelope(request.applicationId, request.supersedesEnvelopeId);
       if (target === null || target.deviceId !== device.id || target.status !== "admitted") {
         const reason =

@@ -342,9 +342,13 @@ describe("architecture: the governed edge boundary (WORK-029)", () => {
     expect(MIGRATION_SOURCE).toContain("edge device % is revoked (terminal-immutable)");
     expect(MIGRATION_SOURCE).toContain("monotonic and dispatched never exceeds the stream");
     // Approval identity-core immutability + terminal decisions +
-    // write-once ledger bindings.
+    // write-once ledger bindings (the DECISION columns are
+    // terminal-immutable; the ledger bindings stay bindable on a
+    // decided row — write-once — the crash-window discipline).
     expect(MIGRATION_SOURCE).toContain("edge.approvals identity core is immutable");
-    expect(MIGRATION_SOURCE).toContain("edge approval % is terminal-immutable in status %");
+    expect(MIGRATION_SOURCE).toContain(
+      "edge approval % decision is terminal-immutable in status %",
+    );
     expect(MIGRATION_SOURCE).toContain("wait-human ledger binding is write-once");
     expect(MIGRATION_SOURCE).toContain("resume ledger binding is write-once");
     // Command identity-core immutability + write-once

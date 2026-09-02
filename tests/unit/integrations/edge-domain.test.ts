@@ -86,7 +86,7 @@ describe("edge domain: request validation (fail-closed, total)", () => {
       ...base,
       label: "cell-1",
       workloadClasses: ["edge", "realtime"],
-      capabilityAtoms: ["edge-channel:locomotion"],
+      capabilityAtoms: ["edge-channel-locomotion"],
       controllerRef: "controller-alpha",
     };
     expect(validateEdgeDeviceRegistration(valid)).toEqual({ valid: true });

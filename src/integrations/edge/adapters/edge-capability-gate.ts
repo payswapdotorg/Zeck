@@ -8,7 +8,7 @@
  * / `createComputerUseCapabilityGate` precedent). There is no second
  * capability authority and no bypass path: the requirement atoms (a
  * device's declared evidence atoms at envelope admission, the
- * `edge-channel:<channel>` atom at command admission) resolve through
+ * `edge-channel-<channel>` atom (the neutral-vocabulary slug the REAL registry resolves) at command admission) resolve through
  * the same arbitrated catalog every other governed surface consults.
  */
 

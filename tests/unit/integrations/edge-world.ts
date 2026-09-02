@@ -200,7 +200,7 @@ export function deviceRegistration(
     },
     label: "cell-1 controller",
     workloadClasses: ["edge", "embodied", "realtime"],
-    capabilityAtoms: ["edge-channel:locomotion", "edge-channel:manipulation", "edge:telemetry"],
+    capabilityAtoms: ["edge-channel-locomotion", "edge-channel-manipulation", "edge-telemetry"],
     controllerRef: "controller-alpha",
     ...overrides,
   };
