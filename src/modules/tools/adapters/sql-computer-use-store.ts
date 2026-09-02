@@ -536,7 +536,7 @@ export class SqlComputerUseStore implements ComputerUseStore {
     try {
       const result = await this.db.execute<SessionRow>({
         sql: `INSERT INTO tools.computer_use_sessions (id, application_id, tenant_id, execution_id, session_key, request_fingerprint, task_kind, status, initial_mode, current_mode, route_evidence, admission, mode_context, denial_class, denial_reason, requested_at, activated_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13, $14, $15, CASE WHEN $13 IS NULL THEN $15 ELSE NULL END, $15, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9, $10, $11, $12, $13::text, $14, $15::timestamptz, CASE WHEN $13::text IS NULL THEN $15::timestamptz ELSE NULL END, $15::timestamptz, $15::timestamptz)
 ON CONFLICT (application_id, session_key) DO NOTHING
 RETURNING ${SESSION_COLUMNS}`,
         parameters: [
