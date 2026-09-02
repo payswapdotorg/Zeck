@@ -1,6 +1,6 @@
 /**
  * `deployments` ports layer — outbound/inbound interfaces owned by
- * this module (WORK-023, WORK-024, WORK-025).
+ * this module (WORK-023, WORK-024, WORK-025, WORK-026).
  *
  * Ports are provider-neutral: no infrastructure clients, no provider
  * SDKs. Adapters (in `adapters/`) implement them
@@ -10,6 +10,12 @@
 export * from "./agent-inventory";
 export * from "./deployment-store";
 export * from "./environment-resolver";
+export * from "./media-admission";
+export * from "./media-artifact-authority";
+export * from "./media-execution-ledger";
+export * from "./media-rail";
+export * from "./media-store";
+export * from "./media-verification";
 export * from "./messaging-admission";
 export * from "./messaging-execution-ledger";
 export * from "./messaging-rail";
