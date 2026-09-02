@@ -475,10 +475,6 @@ export function validateStartMessagingConversationInput(
   ) {
     return { valid: false, reason: "initialPayloadRef must be at most 512 characters" };
   }
-  const attachmentFailure = validateAttachmentRefs(c.attachments);
-  if (attachmentFailure !== null) {
-    return { valid: false, reason: attachmentFailure };
-  }
   for (const [field, value] of [
     ["participantRef", c.participantRef],
     ["initialPayloadRef", c.initialPayloadRef],
