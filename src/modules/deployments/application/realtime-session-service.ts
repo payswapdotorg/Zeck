@@ -53,7 +53,6 @@
 
 import { PlatformError } from "../../../shared/errors";
 import { isUuid } from "../../../shared/ids";
-import type { DeploymentProfile } from "../domain/profile";
 import type {
   RealtimeEventKind,
   RealtimeInboundEventInput,
@@ -297,7 +296,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
     if (context.sessionId !== null && context.channelSessionRef !== null) {
       // The channel journal row (bounded, append-only).
       await store
-        .appendEvent({
+        .appendChannelEvent({
           eventId: generateId(),
           applicationId: context.applicationId,
           tenantId: context.tenantId,
@@ -382,7 +381,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
     readonly routeClass: RealtimeRouteClass | null;
     readonly actorId: string;
   }) => {
-    return store.appendEvent({
+    return store.appendChannelEvent({
       eventId: generateId(),
       applicationId: input.session.applicationId,
       tenantId: input.session.tenantId,
@@ -717,23 +716,11 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
 
       // 6. USER TURN — the planner route (MOD-007: the existing planner
       // decision establishes whether generative inference is needed).
-      const { plan } = await resolvePinnedPlan(
+      const { profile } = await resolvePinnedPlan(
         actor.applicationId,
         session.pinnedPlanId,
         session.pinnedPlanVersion,
       );
-      const profile = (await deployments.findProfile(
-        actor.applicationId,
-        plan.profileRef.profileId,
-        plan.profileRef.version,
-      )) as DeploymentProfile | null;
-      if (profile === null) {
-        throw new PlatformError({
-          code: "PROVIDER_ERROR",
-          message:
-            "the pinned plan's profile is not published (deployment fabric invariant violated)",
-        });
-      }
       const route: RealtimeTurnRoute = await router.routeTurn({
         tenantId: actor.tenantId,
         applicationId: actor.applicationId,
@@ -1152,6 +1139,40 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         cause: cause ?? "human escalation",
       });
       if (!transfer.delivered) {
+        // Failure provenance (AC4): the transfer failed on the rail AFTER
+        // the governed wait — durably recorded on both ledgers, then the
+        // typed failure (no transfer journal row, no terminal move).
+        const transferFailure = await ledger.recordEvidence(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            executionId: session.executionId,
+            evidenceClass: "failure",
+            cause: "realtime human transfer failed on the upstream rail",
+            reference: {
+              sessionId: session.id,
+              eventKey: `${idempotencyKey}:transfer`,
+              channelSessionRef: session.channelSessionRef,
+              channelEpoch: session.channelEpoch,
+              waitSequence: wait.sequence,
+            },
+            payload: { destination, reason: transfer.reason },
+          },
+          `realtime:transfer-failure:${idempotencyKey}`,
+        );
+        await sessionEvent({
+          session,
+          kind: "failure-recorded",
+          direction: "outbound",
+          eventKey: `${idempotencyKey}:transfer`,
+          cause: `rail transfer failed: ${transfer.reason.slice(0, 400)}`,
+          payloadRef: null,
+          payloadPreview: `transfer to ${destination}`,
+          ledgerSequence: transferFailure.sequence,
+          routeClass: null,
+          actorId: actor.actorId,
+        });
         throw new PlatformError({
           code: "PROVIDER_ERROR",
           message: "the realtime rail refused the human transfer",

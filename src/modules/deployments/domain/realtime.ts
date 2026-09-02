@@ -396,7 +396,7 @@ export function validateRealtimeInboundEvent(input: unknown): RealtimeValidation
 }
 
 /**
- * The DETERMINISTIC SUBSTITUE idempotency key for rails that do not
+ * The DETERMINISTIC SUBSTITUTE idempotency key for rails that do not
  * supply event ids (the work order's implementation requirement):
  * session coordinates + kind + occurrence ordinal, digest-stable.
  */

@@ -123,7 +123,7 @@ export interface RealtimeStore {
   applyGuardedSessionMutation(
     input: RealtimeSessionMutation,
   ): Promise<RealtimeSessionMutationOutcome>;
-  appendEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome>;
+  appendChannelEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome>;
   /** The channel journal of one session in append order. */
   listEvents(applicationId: string, sessionId: string): Promise<readonly RealtimeEventRecord[]>;
 }

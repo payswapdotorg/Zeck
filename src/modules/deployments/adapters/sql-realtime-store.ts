@@ -15,7 +15,7 @@
  *  - `applyGuardedSessionMutation`: the single-row guarded UPDATE
  *    arbitrates concurrent mutations (first writer wins; duplicates
  *    converge on the committed row);
- *  - `appendEvent`: ON CONFLICT (application, session, event_key) DO
+ *  - `appendChannelEvent`: ON CONFLICT (application, session, event_key) DO
  *    NOTHING + digest-checked convergence — the channel journal IS the
  *    inbound idempotency ledger (a duplicate inbound event converges on
  *    the committed row; a same-key/different-body insert fails closed);
@@ -352,7 +352,7 @@ RETURNING ${SESSION_COLUMNS}`,
     });
   }
 
-  async appendEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome> {
+  async appendChannelEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome> {
     try {
       const result = await this.db.execute<EventRow>({
         sql: `INSERT INTO deployments.realtime_events (

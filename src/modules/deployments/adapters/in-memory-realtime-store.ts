@@ -185,7 +185,7 @@ export class InMemoryRealtimeStore implements RealtimeStore {
     return { status: "applied", session: this.toRecord(session) };
   }
 
-  async appendEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome> {
+  async appendChannelEvent(input: RealtimeEventAppendInput): Promise<RealtimeEventAppendOutcome> {
     const session = this.findMutable(input.applicationId, input.sessionId);
     if (input.executionId !== null && input.executionId !== session.executionId) {
       throw new PlatformError({
