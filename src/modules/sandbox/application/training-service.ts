@@ -1445,6 +1445,21 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       "allocate",
       `${found.workloadKey}:attempt:${found.attempts}`,
     );
+    // Re-arm the durable allocation intent under the SAME stable key
+    // (convergent when the original dispatch already claimed it — and
+    // self-sufficient when the resume is the first re-drive, so the
+    // completion tail always finds its operation row).
+    await store.insertTrainingOperation({
+      id: deps.generateId(),
+      applicationId: found.applicationId,
+      tenantId: found.tenantId,
+      executionId: found.executionId,
+      workloadId: found.id,
+      operationKind: "allocate",
+      operationKey: allocationKey,
+      requestFingerprint: `allocate:${found.workloadKey}:${found.attempts}`,
+      createdAt: iso(),
+    });
     if (found.status === "allocating") {
       return allocateAndRun(found, allocationKey);
     }
