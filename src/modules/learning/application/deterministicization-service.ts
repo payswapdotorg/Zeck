@@ -877,7 +877,7 @@ export function createDeterministicizationService(
       requireScope(request);
       const scope = { applicationId: request.applicationId, tenantId: request.tenantId };
       const candidate = await loadCandidate(scope, request.candidateId);
-      if (candidate.status !== "validated" && candidate.status !== "rolled-back") {
+      if (candidate.status !== "validated") {
         throw new PlatformError({
           code: "INVALID_STATE_TRANSITION",
           message: `the shadow phase requires a validated candidate (status '${candidate.status}')`,

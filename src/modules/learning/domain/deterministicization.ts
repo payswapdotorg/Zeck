@@ -79,8 +79,9 @@ export function isDeterministicizationCandidateClass(
  * The candidate lifecycle states. The offline validation stages move
  * `proposed → validating → validated`; the rollout stages move
  * `validated → shadow → canary`; the governed decisions move
- * `canary → promoted` and `promoted → rolled-back`; `rejected` is
- * terminal, `deferred` waits for more evidence (re-enterable).
+ * `canary → promoted` and `promoted → rolled-back`; `rejected` and
+ * `rolled-back` are terminal (re-validation after a rollback is a NEW
+ * candidate); `deferred` waits for more evidence (re-enterable).
  */
 export const DETERMINISTICIZATION_CANDIDATE_STATUSES = [
   "proposed",
@@ -115,7 +116,11 @@ export const CANDIDATE_STATUS_TRANSITIONS: Readonly<
   promoted: ["rolled-back"],
   rejected: [],
   deferred: ["validating", "rejected"],
-  "rolled-back": ["shadow", "rejected", "deferred"],
+  // Terminal like 'rejected': a rolled-back candidate's replacement
+  // lifecycle is over — re-validation is a NEW candidate (the rollout
+  // phases are single-epoch per candidate; a re-entered phase would
+  // collide with the committed first-epoch rows).
+  "rolled-back": [],
 };
 
 /** The closed field-type vocabulary of a replacement contract. */
