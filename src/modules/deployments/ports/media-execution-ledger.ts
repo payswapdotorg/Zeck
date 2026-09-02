@@ -38,6 +38,23 @@ export interface MediaLedgerIdentity {
   readonly actorId: string;
 }
 
+/**
+ * One verification result bound to a media completion/failure edge —
+ * the executions module's `VerificationResultInput` shape (the
+ * deployments module carries it; the executions authority owns the
+ * PASS-binding discipline: a completion without at least one PASS
+ * result never writes).
+ */
+export interface MediaVerificationResult {
+  readonly criterionId: string;
+  readonly strategy: string;
+  readonly status: "PASS" | "FAIL" | "INCONCLUSIVE";
+  /** Recorded evidence links (artifact digests, observation refs, references). */
+  readonly evidence?: readonly string[];
+  /** Who/what produced the result (verifier identity — the verification authority seam). */
+  readonly recordedBy: string;
+}
+
 /** The provenance evidence classes the media fabric records. */
 export type MediaEvidenceClass =
   | "job-submitted"
@@ -150,6 +167,15 @@ export interface MediaExecutionLedger {
       readonly actorId: string;
       readonly executionId: string;
       readonly reason: string;
+      /**
+       * The verification results bound to the completion edge (the
+       * executions module's PHYSICAL discipline: a `pass` without at
+       * least one PASS result never writes — "no provider-success
+       * shortcut to completion"). The media fabric supplies the
+       * deterministic postprocessing-shape PASS (mode none) or the
+       * verification authority's PASS verdict (mode required).
+       */
+      readonly verificationResults: readonly MediaVerificationResult[];
     },
     idempotencyKey: string,
   ): Promise<{ readonly sequence: number; readonly replayed: boolean }>;
@@ -162,6 +188,8 @@ export interface MediaExecutionLedger {
       readonly actorId: string;
       readonly executionId: string;
       readonly reason: string;
+      /** Optional verification observations recorded with the failure (e.g. a FAIL verdict). */
+      readonly verificationResults?: readonly MediaVerificationResult[];
     },
     idempotencyKey: string,
   ): Promise<{ readonly sequence: number; readonly replayed: boolean }>;
