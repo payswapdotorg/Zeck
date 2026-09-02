@@ -45,7 +45,6 @@ import type {
   EdgeActuationEventRecord,
   EdgeApprovalDecisionInput,
   EdgeApprovalRecord,
-  EdgeApprovalRequestInput,
   EdgeCommandEffectClass,
   EdgeCommandKind,
   EdgeCommandRecord,
@@ -374,19 +373,14 @@ export interface EdgeStore {
   insertDevice(input: EdgeDeviceInsertInput): Promise<EdgeDeviceInsertOutcome>;
   findDevice(applicationId: string, deviceId: string): Promise<EdgeDeviceRecord | null>;
   findDeviceByKey(applicationId: string, deviceKey: string): Promise<EdgeDeviceRecord | null>;
-  applyGuardedDeviceRevocation(
-    input: EdgeDeviceRevokeInput,
-  ): Promise<EdgeDeviceRevokeOutcome>;
+  applyGuardedDeviceRevocation(input: EdgeDeviceRevokeInput): Promise<EdgeDeviceRevokeOutcome>;
   insertHealthReport(input: EdgeHealthReportInsertInput): Promise<EdgeDeviceRecord>;
   listDevices(applicationId: string): Promise<readonly EdgeDeviceRecord[]>;
 
   // -- approvals ---------------------------------------------------------------
   insertApproval(input: EdgeApprovalInsertInput): Promise<EdgeApprovalInsertOutcome>;
   findApproval(applicationId: string, approvalId: string): Promise<EdgeApprovalRecord | null>;
-  findApprovalByKey(
-    applicationId: string,
-    approvalKey: string,
-  ): Promise<EdgeApprovalRecord | null>;
+  findApprovalByKey(applicationId: string, approvalKey: string): Promise<EdgeApprovalRecord | null>;
   applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord>;
   /** The write-once ledger-sequence bindings (NULL -> value; never moved). */
   bindApprovalLedgerSequences(
@@ -401,10 +395,7 @@ export interface EdgeStore {
   // -- envelopes ---------------------------------------------------------------
   insertEnvelope(input: EdgeEnvelopeInsertInput): Promise<EdgeEnvelopeInsertOutcome>;
   findEnvelope(applicationId: string, envelopeId: string): Promise<EdgeEnvelopeRecord | null>;
-  findEnvelopeByKey(
-    applicationId: string,
-    envelopeKey: string,
-  ): Promise<EdgeEnvelopeRecord | null>;
+  findEnvelopeByKey(applicationId: string, envelopeKey: string): Promise<EdgeEnvelopeRecord | null>;
   findActiveEnvelopeForDevice(
     applicationId: string,
     deviceId: string,
@@ -418,19 +409,14 @@ export interface EdgeStore {
   applyGuardedEnvelopeRevocation(
     input: EdgeEnvelopeRevokeInput,
   ): Promise<EdgeEnvelopeRevokeOutcome>;
-  bumpEnvelopeCommandCount(
-    input: EdgeEnvelopeCommandCountInput,
-  ): Promise<EdgeEnvelopeRecord>;
+  bumpEnvelopeCommandCount(input: EdgeEnvelopeCommandCountInput): Promise<EdgeEnvelopeRecord>;
 
   // -- commands ----------------------------------------------------------------
   insertCommand(input: EdgeCommandInsertInput): Promise<EdgeCommandInsertOutcome>;
   finalizeCommand(input: EdgeCommandFinalizeInput): Promise<EdgeCommandRecord>;
   bindCommandLedgerSequence(input: EdgeCommandLedgerBinding): Promise<EdgeCommandRecord>;
   findCommand(applicationId: string, commandId: string): Promise<EdgeCommandRecord | null>;
-  findCommandByKey(
-    applicationId: string,
-    commandKey: string,
-  ): Promise<EdgeCommandRecord | null>;
+  findCommandByKey(applicationId: string, commandKey: string): Promise<EdgeCommandRecord | null>;
   listCommandsByDevice(
     applicationId: string,
     deviceId: string,
@@ -507,8 +493,5 @@ export interface EdgeStore {
     reason: string,
     updatedAt: string,
   ): Promise<EdgeOperationRecord>;
-  findOperation(
-    applicationId: string,
-    operationKey: string,
-  ): Promise<EdgeOperationRecord | null>;
+  findOperation(applicationId: string, operationKey: string): Promise<EdgeOperationRecord | null>;
 }

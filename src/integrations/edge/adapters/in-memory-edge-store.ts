@@ -10,11 +10,7 @@
  * seed; the real crash proofs run against the SQL store (real PG).
  */
 
-import {
-  isTerminalEdgeCommandStatus,
-  isTerminalEdgeDeviceStatus,
-  isTerminalEdgeEnvelopeStatus,
-} from "../domain/edge";
+import { PlatformError } from "../../../shared/errors";
 import type {
   EdgeActuationEventRecord,
   EdgeApprovalRecord,
@@ -25,6 +21,7 @@ import type {
   EdgeReconciliationRecord,
   EdgeSensorObservationRecord,
 } from "../domain/edge";
+import { isTerminalEdgeCommandStatus } from "../domain/edge";
 import type {
   EdgeActuationEventInsertInput,
   EdgeActuationEventInsertOutcome,
@@ -192,7 +189,10 @@ export class InMemoryEdgeStore implements EdgeStore {
     return { status: "inserted", record: { ...record } };
   }
 
-  async findApproval(applicationId: string, approvalId: string): Promise<EdgeApprovalRecord | null> {
+  async findApproval(
+    applicationId: string,
+    approvalId: string,
+  ): Promise<EdgeApprovalRecord | null> {
     const row = this.approvals.find(
       (entry) => entry.applicationId === applicationId && entry.id === approvalId,
     );
@@ -209,22 +209,24 @@ export class InMemoryEdgeStore implements EdgeStore {
     return row === undefined ? null : { ...row };
   }
 
-  async applyApprovalDecision(
-    input: EdgeApprovalDecisionOutcome,
-  ): Promise<EdgeApprovalRecord> {
+  async applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord> {
     const row = this.approvals.find(
       (entry) => entry.applicationId === input.applicationId && entry.id === input.approvalId,
     );
     if (row === undefined) {
-      throw new Error(`edge approval ${input.approvalId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge approval ${input.approvalId} does not exist`,
+      });
     }
     if (row.status !== "pending") {
       if (row.decision === input.decision && row.approverId === input.approverId) {
         return { ...row }; // converged replay of the same decision
       }
-      throw new Error(
-        `edge approval ${row.id} is already decided (${row.status}); decisions are terminal-immutable`,
-      );
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge approval ${row.id} is already decided (${row.status}); decisions are terminal-immutable`,
+      });
     }
     row.status = input.decision;
     row.decision = input.decision;
@@ -242,7 +244,10 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === applicationId && entry.id === approvalId,
     );
     if (row === undefined) {
-      throw new Error(`edge approval ${approvalId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge approval ${approvalId} does not exist`,
+      });
     }
     if (sequences.waitSequence !== undefined && row.ledgerWaitSequence === null) {
       row.ledgerWaitSequence = sequences.waitSequence;
@@ -290,7 +295,10 @@ export class InMemoryEdgeStore implements EdgeStore {
     return { status: "inserted", record: { ...record } };
   }
 
-  async findEnvelope(applicationId: string, envelopeId: string): Promise<EdgeEnvelopeRecord | null> {
+  async findEnvelope(
+    applicationId: string,
+    envelopeId: string,
+  ): Promise<EdgeEnvelopeRecord | null> {
     const row = this.envelopes.find(
       (entry) => entry.applicationId === applicationId && entry.id === envelopeId,
     );
@@ -339,12 +347,16 @@ export class InMemoryEdgeStore implements EdgeStore {
       if (row.supersededByEnvelopeId === input.supersededByEnvelopeId) {
         return { ...row }; // converged
       }
-      throw new Error(
-        `edge envelope ${row.id} is already superseded by a different admission; supersede links are write-once`,
-      );
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge envelope ${row.id} is already superseded by a different admission; supersede links are write-once`,
+      });
     }
     if (row.status !== "admitted") {
-      throw new Error(`edge envelope ${row.id} is ${row.status}; only admitted envelopes are superseded`);
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge envelope ${row.id} is ${row.status}; only admitted envelopes are superseded`,
+      });
     }
     row.status = "superseded";
     row.supersededByEnvelopeId = input.supersededByEnvelopeId;
@@ -405,9 +417,11 @@ export class InMemoryEdgeStore implements EdgeStore {
       (row) => row.applicationId === input.applicationId && row.deviceId === input.deviceId,
     ).length;
     if (input.sequence !== count + 1) {
-      throw new Error(
-        `edge device ${input.deviceId} command sequence must be gapless (expected ${count + 1}, got ${input.sequence})`,
-      );
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge device ${input.deviceId} command sequence must be gapless (expected ${count + 1}, got ${input.sequence})`,
+        details: { guard: "ec_commands_sequence_gate" },
+      });
     }
     const record: Mutable<EdgeCommandRecord> = {
       id: input.commandId,
@@ -459,25 +473,34 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === input.applicationId && entry.id === input.commandId,
     );
     if (row === undefined) {
-      throw new Error(`edge command ${input.commandId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge command ${input.commandId} does not exist`,
+      });
     }
     if (isTerminalEdgeCommandStatus(row.status)) {
       if (row.status === input.status) {
         return { ...row }; // converged replay of the same terminal outcome
       }
-      throw new Error(
-        `edge command ${row.id} is terminal-immutable in status ${row.status}`,
-      );
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge command ${row.id} is terminal-immutable in status ${row.status}`,
+        details: { guard: "ec_commands_lifecycle_guard" },
+      });
     }
     const legal =
       (row.status === "authorized" &&
-        (input.status === "dispatched" || input.status === "failed" || input.status === "invalidated")) ||
+        (input.status === "dispatched" ||
+          input.status === "failed" ||
+          input.status === "invalidated")) ||
       (row.status === "dispatched" &&
         (input.status === "settled" || input.status === "failed" || input.status === "conflicted"));
     if (!legal) {
-      throw new Error(
-        `edge command ${row.id} cannot move from ${row.status} to ${input.status}`,
-      );
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge command ${row.id} cannot move from ${row.status} to ${input.status}`,
+        details: { guard: "ec_commands_lifecycle_guard" },
+      });
     }
     row.status = input.status;
     row.failureClass = input.failureClass;
@@ -508,7 +531,10 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === input.applicationId && entry.id === input.commandId,
     );
     if (row === undefined) {
-      throw new Error(`edge command ${input.commandId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge command ${input.commandId} does not exist`,
+      });
     }
     if (input.phase === "requested" && row.ledgerRequestedSequence === null) {
       row.ledgerRequestedSequence = input.sequence;
@@ -566,13 +592,20 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === applicationId && entry.id === commandId,
     );
     if (row === undefined) {
-      throw new Error(`edge command ${commandId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge command ${commandId} does not exist`,
+      });
     }
     if (row.status === "settled") {
       return { ...row }; // settled EXACTLY ONCE (the convergence)
     }
     if (row.status !== "dispatched") {
-      throw new Error(`edge command ${row.id} is ${row.status}; only dispatched commands settle`);
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge command ${row.id} is ${row.status}; only dispatched commands settle`,
+        details: { guard: "ec_commands_lifecycle_guard" },
+      });
     }
     row.status = "settled";
     row.settledAt = settledAt;
@@ -589,13 +622,20 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === applicationId && entry.id === commandId,
     );
     if (row === undefined) {
-      throw new Error(`edge command ${commandId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge command ${commandId} does not exist`,
+      });
     }
     if (row.status === "conflicted") {
       return { ...row };
     }
     if (row.status !== "dispatched") {
-      throw new Error(`edge command ${row.id} is ${row.status}; only dispatched commands conflict`);
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `edge command ${row.id} is ${row.status}; only dispatched commands conflict`,
+        details: { guard: "ec_commands_lifecycle_guard" },
+      });
     }
     row.status = "conflicted";
     row.reconciledAt = reconciledAt;
@@ -627,7 +667,8 @@ export class InMemoryEdgeStore implements EdgeStore {
       sequence: input.sequence,
       actuationClass: input.actuationClass as EdgeActuationEventRecord["actuationClass"],
       violationKind: input.violationKind,
-      channel: input.channel === null ? null : input.channel as EdgeActuationEventRecord["channel"],
+      channel:
+        input.channel === null ? null : (input.channel as EdgeActuationEventRecord["channel"]),
       magnitude: input.magnitude,
       actuationDigest: input.actuationDigest,
       occurredAt: input.occurredAt,
@@ -698,7 +739,10 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === applicationId && entry.id === observationId,
     );
     if (row === undefined) {
-      throw new Error(`edge sensor observation ${observationId} does not exist`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge sensor observation ${observationId} does not exist`,
+      });
     }
     if (row.ledgerSequence === null) {
       row.ledgerSequence = ledgerSequence;
@@ -759,7 +803,9 @@ export class InMemoryEdgeStore implements EdgeStore {
           row.deviceId === deviceId &&
           row.status === "conflict",
       )
-      .sort((a, b) => (a.reconciledAt < b.reconciledAt ? 1 : a.reconciledAt > b.reconciledAt ? -1 : 0));
+      .sort((a, b) =>
+        a.reconciledAt < b.reconciledAt ? 1 : a.reconciledAt > b.reconciledAt ? -1 : 0,
+      );
     const latest = conflicts[0];
     return latest === undefined ? null : { ...latest };
   }
@@ -858,30 +904,39 @@ export class InMemoryEdgeStore implements EdgeStore {
       (entry) => entry.applicationId === applicationId && entry.id === deviceId,
     );
     if (row === undefined) {
-      throw new Error(`edge device ${deviceId} does not exist in application ${applicationId}`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge device ${deviceId} does not exist in application ${applicationId}`,
+      });
     }
     return row;
   }
 
-  private requireEnvelope(
-    applicationId: string,
-    envelopeId: string,
-  ): Mutable<EdgeEnvelopeRecord> {
+  private requireEnvelope(applicationId: string, envelopeId: string): Mutable<EdgeEnvelopeRecord> {
     const row = this.envelopes.find(
       (entry) => entry.applicationId === applicationId && entry.id === envelopeId,
     );
     if (row === undefined) {
-      throw new Error(`edge envelope ${envelopeId} does not exist in application ${applicationId}`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge envelope ${envelopeId} does not exist in application ${applicationId}`,
+      });
     }
     return row;
   }
 
-  private requireOperation(applicationId: string, operationKey: string): Mutable<EdgeOperationRecord> {
+  private requireOperation(
+    applicationId: string,
+    operationKey: string,
+  ): Mutable<EdgeOperationRecord> {
     const row = this.operations.find(
       (entry) => entry.applicationId === applicationId && entry.operationKey === operationKey,
     );
     if (row === undefined) {
-      throw new Error(`edge operation ${operationKey} does not exist in application ${applicationId}`);
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: `edge operation ${operationKey} does not exist in application ${applicationId}`,
+      });
     }
     return row;
   }

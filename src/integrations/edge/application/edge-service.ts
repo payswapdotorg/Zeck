@@ -71,8 +71,8 @@
  * surface; the projected envelope is the device's disconnected authority).
  */
 
-import { PlatformError } from "../../../shared/errors";
 import type { BudgetAuthority } from "../../../modules/budgets/public";
+import { PlatformError } from "../../../shared/errors";
 import type {
   EdgeActuationEventRecord,
   EdgeApprovalDecisionInput,
@@ -83,8 +83,8 @@ import type {
   EdgeCommandStatus,
   EdgeDeviceRecord,
   EdgeDeviceRegistrationRequest,
-  EdgeEnvelopeRecord,
   EdgeEnvelopeAdmissionRequest,
+  EdgeEnvelopeRecord,
   EdgeHealthReport,
   EdgePolicyEvidence,
   EdgeReconciliationReport,
@@ -93,10 +93,12 @@ import type {
   EdgeSensorObservationRecord,
 } from "../domain/edge";
 import {
+  canonicalEdgeJson,
   EDGE_COMMAND_EFFECT_CLASS_BY_KIND,
   EDGE_TOOL_FACTS,
-  canonicalEdgeJson,
   edgeApprovalAuthorizes,
+  edgeApprovalDecideOperationKey,
+  edgeApprovalRequestOperationKey,
   edgeBudgetOperationId,
   edgeBudgetReleaseKey,
   edgeBudgetReserveKey,
@@ -114,8 +116,6 @@ import {
   edgeEnvelopeFingerprint,
   edgeEnvelopeProjectExternalKey,
   edgeEnvelopeRevokeOperationKey,
-  edgeApprovalRequestOperationKey,
-  edgeApprovalDecideOperationKey,
   edgeLedgerEventKey,
   edgeReconcileOperationKey,
   edgeReconciliationReportDigest,
@@ -134,7 +134,7 @@ import type {
   EdgeCapabilityGateDecision,
   EdgePolicyAdmission,
 } from "../ports/edge-admission";
-import type { EdgeControllerAdapter, EdgeDispatchAck } from "../ports/edge-controller";
+import type { EdgeControllerAdapter } from "../ports/edge-controller";
 import type { EdgeExecutionLedger } from "../ports/edge-ledger";
 import type { EdgeStore } from "../ports/edge-store";
 
@@ -521,7 +521,11 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       return await policyAdmit(request);
     } catch (error) {
       if (error instanceof PlatformError) {
-        await failClaim(applicationId, operationKey, `POLICY_DENIED: ${error.message}`.slice(0, 512));
+        await failClaim(
+          applicationId,
+          operationKey,
+          `POLICY_DENIED: ${error.message}`.slice(0, 512),
+        );
       }
       throw error;
     }
@@ -741,10 +745,8 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
               commandId: command.id,
               status: "invalidated",
               failureClass: "device-revoked",
-              failureMessage: `the device identity was revoked before dispatch: ${input.reason}`.slice(
-                0,
-                512,
-              ),
+              failureMessage:
+                `the device identity was revoked before dispatch: ${input.reason}`.slice(0, 512),
               dispatchDigest: null,
               usageMicroUsd: null,
               ledgerResultSequence: null,
@@ -997,7 +999,11 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
             approval.tenantId,
             "tool-result",
             "edge-approval",
-            { approvalId: approval.id, decision: approval.decision, approverId: approval.approverId },
+            {
+              approvalId: approval.id,
+              decision: approval.decision,
+              approverId: approval.approverId,
+            },
             {
               approvalId: approval.id,
               phase: "approval-decided",
@@ -1499,7 +1505,8 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       if (existing.status === "denied") {
         throw new PlatformError({
           code: denialCodeOf(existing.denialClass),
-          message: `edge command was denied (${existing.denialClass}): ${existing.denialReason ?? ""}`.trim(),
+          message:
+            `edge command was denied (${existing.denialClass}): ${existing.denialReason ?? ""}`.trim(),
           details: { commandId: existing.id, denialClass: existing.denialClass },
         });
       }
@@ -1546,11 +1553,11 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
     // ----- 3. The conflicted-device gate (AC-6, fail-closed). ------------
     const conflict = await store.findConflictReconciliation(request.applicationId, device.id);
-    const actuationHistory = await store.listActuationEvents(
-      request.applicationId,
-      device.id,
-    );
-    if (conflict !== null || actuationHistory.some((event) => event.actuationClass === "violation")) {
+    const actuationHistory = await store.listActuationEvents(request.applicationId, device.id);
+    if (
+      conflict !== null ||
+      actuationHistory.some((event) => event.actuationClass === "violation")
+    ) {
       throw new PlatformError({
         code: "NON_CONVERGENT_EXTERNAL_EFFECT",
         message:
@@ -1576,10 +1583,14 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     // reuses the checkpointed command id, so the wallet reservation
     // (keyed by it) converges instead of orphaning (the WORK-027
     // stage-checkpoint discipline).
-    const commandId =
-      (begun.record.stage?.commandId as string | undefined) ?? deps.generateId();
+    const commandId = (begun.record.stage?.commandId as string | undefined) ?? deps.generateId();
     if (begun.record.stage?.commandId === undefined) {
-      await store.recordOperationCheckpoint(request.applicationId, operationKey, { commandId }, iso());
+      await store.recordOperationCheckpoint(
+        request.applicationId,
+        operationKey,
+        { commandId },
+        iso(),
+      );
     }
 
     // ----- 5. POLICY admission (REQUIRED seam — a denial is a DURABLE
@@ -2083,11 +2094,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
   const denialCodeOf = (
     denialClass: string | null,
-  ):
-    | "POLICY_DENIED"
-    | "BUDGET_EXCEEDED"
-    | "CAPABILITY_UNAVAILABLE"
-    | "AUTHORIZATION_DENIED" => {
+  ): "POLICY_DENIED" | "BUDGET_EXCEEDED" | "CAPABILITY_UNAVAILABLE" | "AUTHORIZATION_DENIED" => {
     switch (denialClass) {
       case "policy":
         return "POLICY_DENIED";
@@ -2355,10 +2362,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     let executedMaxSequence = 0;
 
     // The envelopes that ever governed this device (classification input).
-    const governedEnvelopes = await store.listEnvelopesByDevice(
-      device.applicationId,
-      device.id,
-    );
+    const governedEnvelopes = await store.listEnvelopesByDevice(device.applicationId, device.id);
 
     for (const entry of report.executed) {
       if (entry.commandKey !== null) {
@@ -2463,11 +2467,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       }
 
       // ---- an AUTONOMOUS (command-less) actuation: envelope ----------
-      const classification = classifyAutonomousActuation(
-        governedEnvelopes,
-        entry,
-        report.executed,
-      );
+      const classification = classifyAutonomousActuation(governedEnvelopes, entry, report.executed);
       if (classification.within) {
         autonomousCount += 1;
         await insertActuationEvidence(device, entry, {

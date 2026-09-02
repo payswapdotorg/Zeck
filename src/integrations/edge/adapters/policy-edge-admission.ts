@@ -39,9 +39,7 @@ function toEvidence(evidence: PolicyAdmissionEvidence): EdgePolicyEvidence {
 
 export function createPolicyEdgeAdmission(authority: PolicyAuthority): EdgePolicyAdmission {
   return {
-    async admit(
-      request: EdgePolicyAdmissionRequest,
-    ): Promise<EdgePolicyAdmissionDecision> {
+    async admit(request: EdgePolicyAdmissionRequest): Promise<EdgePolicyAdmissionDecision> {
       const context = {
         tenantId: request.tenantId,
         applicationId: request.applicationId,
@@ -57,9 +55,7 @@ export function createPolicyEdgeAdmission(authority: PolicyAuthority): EdgePolic
         return {
           allowed: false,
           reason:
-            base.reason ??
-            base.denial?.message ??
-            "edge dispatch denied by the effective policy",
+            base.reason ?? base.denial?.message ?? "edge dispatch denied by the effective policy",
         };
       }
       const evidence = base.evidence !== undefined ? toEvidence(base.evidence) : undefined;

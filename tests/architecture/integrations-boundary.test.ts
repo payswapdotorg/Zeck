@@ -56,13 +56,25 @@ const BENCHMARK_FILES = collectFiles("benchmarks");
 const FRAMEWORK_IDENTIFIER =
   /\b(LangGraph|CrewAI|AutoGen|OpenAIAgentsSDK|AnthropicAgentSDK|langgraph|crewai|autogen|openai-agents)\w*/;
 
+/** Outbound network imports (no WorkflowOS mutation channel; no driver SDK). */
+const NETWORK_IMPORTS =
+  /\bfrom\s+["'](node:http|node:https|node:net|node:tls|undici|axios|got|node-fetch|pg|postgres)["']|\bfetch\s*\(/;
+
+/** Raw SQL statements (the durable-state adapters own them, nothing else). */
+const SQL_STATEMENTS = /\b(INSERT INTO|UPDATE\s+[a-z]+\.[a-z_]+|DELETE FROM)\b/;
+
 /** The authority-mutation calls a MEASUREMENT surface must never make. */
 const MEASUREMENT_MUTATION_CALL =
   /\.(createExecution|transition|registerAgent|publishVersion|promote|rollback|suspend|resume|retire|reserve|settle|release|publish|submitWork|createSession|runSession|recordStepEvent|recordAction)\s*\(/;
 
-/** Outbound network/SQL surfaces (no WorkflowOS mutation channel). */
-const NETWORK_OR_SQL =
-  /\bfrom\s+["'](node:http|node:https|node:net|node:tls|undici|axios|got|node-fetch|pg|postgres)["']|\bfetch\s*\(|\b(INSERT INTO|UPDATE\s+[a-z]+\.[a-z_]+|DELETE FROM)\b/;
+/**
+ * WORK-029: the edge integration owns durable edge state (migration
+ * 0024) behind the provider-neutral platform DatabasePort — the SQL
+ * text exemption is scoped to the ONE durable-state adapter file, the
+ * same way module SQL adapters own their statements. No network/driver
+ * import exists anywhere in the integration tree.
+ */
+const EDGE_SQL_STORE_FILE = "src/integrations/edge/adapters/sql-edge-store.ts";
 
 function resolveSpecifier(fromFile: string, specifier: string): string {
   const from = fromFile.split("/").slice(0, -1);
@@ -135,13 +147,44 @@ describe("architecture: the WORK-016 integration boundary", () => {
         const isSubstrateFederation = file
           .slice(REPO_ROOT.length + 1)
           .startsWith("src/integrations/substrate-federation");
+        // WORK-029 (EDGE-001/002/003): the edge integration consumes the
+        // REAL admission/authority barrels — policies (the WORK-007 policy
+        // engine behind the edge policy-admission adapter), capabilities
+        // (the WORK-005 registry behind the edge capability gate), budgets
+        // (the WORK-004 BudgetAuthority seam the costed commands reserve
+        // through) — and the provider-neutral platform DatabasePort for its
+        // OWN durable state (migration 0024, the integration-owned schema).
+        // The allowances are import-rule-scoped to the edge namespace ONLY,
+        // exactly the substrate-federation/payment-rails precedent; the
+        // integration still holds no authority logic of its own (the
+        // authority-logic test below enforces delegation-only).
+        const isEdgeNamespace = file
+          .slice(REPO_ROOT.length + 1)
+          .startsWith("src/integrations/edge/");
+        const isPoliciesBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "policies" &&
+          segments[3] === "public";
+        const isBudgetsBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "budgets" &&
+          segments[3] === "public";
+        const isPlatformDbPort = resolved === "src/platform/db/port";
         if (
           !isExecutionBarrel &&
           !isAgentsBarrel &&
           !isShared &&
           !isIntraIntegration &&
           !(isSubstrateFederation && isCapabilitiesBarrel) &&
-          !(isPaymentRailsNamespace && isEconomicsBarrel)
+          !(isPaymentRailsNamespace && isEconomicsBarrel) &&
+          !(
+            isEdgeNamespace &&
+            (isCapabilitiesBarrel || isPoliciesBarrel || isBudgetsBarrel || isPlatformDbPort)
+          )
         ) {
           violations.push(`${file}: ${specifier} -> ${resolved}`);
         }
@@ -164,35 +207,44 @@ describe("architecture: the WORK-016 integration boundary", () => {
   test("the integration holds NO policy/budget/verification/learning/capability authority logic", () => {
     // The integration CANNOT decide policy, budgets, verification, learning
     // or capabilities — it never imports those modules (delegation only).
-    // Two scoped allowances exist (both import-rule-scoped above): the
+    // Scoped allowances exist (all import-rule-scoped above): the
     // payment-rails namespace imports the economics PUBLIC barrel — the
-    // neutral rail contract, no authority surface — and the
+    // neutral rail contract, no authority surface —; the
     // substrate-federation integration (WORK-031) consumes the
     // capabilities module's public substrate REGISTRY surface (the one
-    // claim authority); neither ever imports
-    // policies/budgets/verification/learning.
+    // claim authority); and the edge integration (WORK-029) consumes the
+    // policies/capabilities/budgets PUBLIC barrels as the REQUIRED
+    // authority seams of its governed admission chain (delegation-only —
+    // the edge integration reimplements no decision logic, its adapters
+    // purely map edge facts onto the authority contracts).
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
-      const isSubstrateFederation = file
-        .slice(REPO_ROOT.length + 1)
-        .startsWith("src/integrations/substrate-federation");
-      if (!isSubstrateFederation) {
+      const relative = file.slice(REPO_ROOT.length + 1);
+      const isSubstrateFederation = relative.startsWith("src/integrations/substrate-federation");
+      const isEdgeNamespace = relative.startsWith("src/integrations/edge/");
+      if (!isSubstrateFederation && !isEdgeNamespace) {
         expect(text, file).not.toMatch(
           /modules\/(policies|budgets|verification|learning|capabilities)\//,
         );
       }
-      expect(text, file).not.toMatch(/modules\/(policies|budgets|verification|learning)\/public/);
+      if (!isEdgeNamespace) {
+        expect(text, file).not.toMatch(/modules\/(policies|budgets|verification|learning)\/public/);
+      }
     }
   });
 
-  test("M1/M2/M9: no WorkflowOS-state mutation channel exists (no network, no SQL, no SDK; the payment-rails tree is network-free too until a real rail arrives with its own governed dependency)", () => {
+  test("M1/M2/M9: no WorkflowOS-state mutation channel exists (no network, no SDK; raw SQL lives only in the edge integration's durable-state adapter, the platform-port bridge of migration 0024; the payment-rails tree is network-free too until a real rail arrives with its own governed dependency)", () => {
     for (const file of [...INTEGRATION_FILES, ...BENCHMARK_FILES]) {
       const text = readFileSync(file, "utf8");
-      expect(text, file).not.toMatch(NETWORK_OR_SQL);
+      expect(text, file).not.toMatch(NETWORK_IMPORTS);
       // No WorkflowOS SDK import anywhere (it is not a declared
       // dependency; when one arrives it must live ONLY in
       // src/integrations/workflowos/adapters/ — the engine's boundary).
       expect(text, file).not.toMatch(/from\s+["']@workflowos\//);
+      const relative = file.slice(REPO_ROOT.length + 1);
+      if (relative !== EDGE_SQL_STORE_FILE) {
+        expect(text, file).not.toMatch(SQL_STATEMENTS);
+      }
     }
   });
 

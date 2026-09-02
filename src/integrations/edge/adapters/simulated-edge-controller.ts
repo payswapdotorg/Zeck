@@ -34,15 +34,12 @@
  * (a real controller's idempotent submission endpoints deliver the same).
  */
 
-import {
-  edgeCommandFreshness,
-  edgeEnvelopeCoversCommand,
-} from "../domain/edge";
 import type {
   EdgeActuatorChannel,
   EdgeReconciliationReport,
   EdgeSafetyEnvelopeContent,
 } from "../domain/edge";
+import { edgeCommandFreshness, edgeEnvelopeCoversCommand } from "../domain/edge";
 import type {
   EdgeCommandDispatch,
   EdgeControllerAdapter,
@@ -68,7 +65,11 @@ interface SimulatedDeviceState {
   /** The envelope projections the device holds, keyed by envelope id. */
   readonly envelopes: Map<
     string,
-    { status: "admitted" | "superseded" | "revoked"; contentDigest: string; content: EdgeSafetyEnvelopeContent }
+    {
+      status: "admitted" | "superseded" | "revoked";
+      contentDigest: string;
+      content: EdgeSafetyEnvelopeContent;
+    }
   >;
   /** The envelope that currently governs the device (the latest admitted, un-revoked). */
   activeEnvelopeId: string | null;
@@ -230,7 +231,11 @@ export function createSimulatedEdgeController(
         return converged; // one submission per key — the keyed external effect
       }
       const refuse = (
-        failureClass: "envelope-coverage" | "stale-command" | "out-of-order" | "transport-disconnected",
+        failureClass:
+          | "envelope-coverage"
+          | "stale-command"
+          | "out-of-order"
+          | "transport-disconnected",
         message: string,
       ): EdgeDispatchAck => {
         const ack: EdgeDispatchAck = { outcome: "refused", failureClass, message };
@@ -342,7 +347,7 @@ export function createSimulatedEdgeController(
       // event, never the call time — convergence by digest).
       const reportedAt =
         state.journal.length > 0
-          ? state.journal[state.journal.length - 1]?.occurredAt ?? "1970-01-01T00:00:00.000Z"
+          ? (state.journal[state.journal.length - 1]?.occurredAt ?? "1970-01-01T00:00:00.000Z")
           : "1970-01-01T00:00:00.000Z";
       return {
         deviceId,

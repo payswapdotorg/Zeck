@@ -33,8 +33,8 @@
 import type {
   EdgeCommandEffectClass,
   EdgeCommandKind,
-  EdgeReportedActuation,
   EdgeReconciliationReport,
+  EdgeReportedActuation,
   EdgeSafetyEnvelopeContent,
 } from "../domain/edge";
 

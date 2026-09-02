@@ -13,10 +13,7 @@
  */
 
 import type { CapabilityRegistry } from "../../../modules/capabilities/public";
-import type {
-  EdgeCapabilityGate,
-  EdgeCapabilityGateRequest,
-} from "../ports/edge-admission";
+import type { EdgeCapabilityGate, EdgeCapabilityGateRequest } from "../ports/edge-admission";
 
 export function createEdgeCapabilityGate(registry: CapabilityRegistry): EdgeCapabilityGate {
   return {

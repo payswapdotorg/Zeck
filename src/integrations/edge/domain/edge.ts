@@ -704,6 +704,7 @@ export interface EdgeReconciliationReport {
 // ---------------------------------------------------------------------------
 
 const fingerprintOf = (value: unknown): string => canonicalEdgeJson(value);
+
 export { fingerprintOf as edgeFingerprintOf };
 
 /** The maximum number of neutral metric facts on one health report. */
@@ -754,7 +755,7 @@ export function validateEdgeHealthReport(
   if (typeof report.reportedAt !== "string" || Number.isNaN(Date.parse(report.reportedAt))) {
     return { valid: false, reason: "reportedAt must be an ISO-8601 timestamp" };
   }
-  return { valid: true }
+  return { valid: true };
 }
 
 const boundedString = (value: unknown, max: number): value is string =>
@@ -1161,7 +1162,10 @@ export function validateEdgeSensorObservation(
       };
     }
   }
-  if (request.retention === "retained" && (request.content === null || request.content === undefined)) {
+  if (
+    request.retention === "retained" &&
+    (request.content === null || request.content === undefined)
+  ) {
     return {
       valid: false,
       reason: "retained observations carry their content (ephemeral is the digest-only class)",
