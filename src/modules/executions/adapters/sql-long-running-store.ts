@@ -586,6 +586,7 @@ RETURNING ${LEASE_COLUMNS}`,
 SET expires_at = GREATEST(expires_at, $5), last_heartbeat_at = $4, heartbeat_count = heartbeat_count + 1,
     updated_at = $4
 WHERE execution_id = $1 AND application_id = $2 AND owner_id = $3 AND epoch = $6 AND released_at IS NULL
+  AND expires_at > $4
 RETURNING ${LEASE_COLUMNS}`,
         parameters: [
           input.executionId,
@@ -1022,10 +1023,13 @@ WHERE application_id = $1 AND operation_key = $2`,
   async pendingWakeUpApplies(
     applicationId: string,
   ): Promise<readonly LongRunningOperationRecord[]> {
-    // The lr_ops_pending_scan partial index backs this recovery scan.
+    // The lr_ops_pending_scan partial index backs this recovery scan; the
+    // deterministic (created_at, id) order mirrors the due-ordering
+    // discipline (a stable replay order across processes).
     const result = await this.db.execute<OperationRow>({
       sql: `SELECT ${OPERATION_COLUMNS} FROM executions.execution_operations
-WHERE application_id = $1 AND operation_kind = 'wakeup-apply' AND status = 'pending'`,
+WHERE application_id = $1 AND operation_kind = 'wakeup-apply' AND status = 'pending'
+ORDER BY created_at, id`,
       parameters: [applicationId],
     });
     return result.rows.map(toOperation);

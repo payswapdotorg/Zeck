@@ -635,8 +635,50 @@ export function createLongRunningExecutionService(
       const lease = await store.getLease(input.applicationId, input.executionId);
       return { executionId: input.executionId, lease: lease as LeaseRecord, replayed: true };
     }
-    // The renew itself is the heartbeat: (owner, epoch) claim required,
-    // expiry extended, monotonic heartbeat ledger advanced.
+    // CRASH CONVERGENCE (the renew is a COUNTING side effect — the
+    // heartbeat ledger must advance EXACTLY ONCE per stable key): the
+    // "renewing" stage is written BEFORE the store renew carrying the
+    // pre-renew heartbeat count; the "renewed" stage is written AFTER.
+    //   * stage "renewed"            -> the durable renew committed; converge
+    //                                  (complete + replay, NO second bump);
+    //   * stage "renewing" + the live lease's heartbeatCount already past
+    //     heartbeatCountBefore        -> the renew (or a successor
+    //                                  heartbeat) committed after the claim;
+    //                                  the lease IS renewed — converge;
+    //   * otherwise                   -> the renew never committed; run it.
+    const stage = stageOf(record);
+    if (stage !== null && stage.stage === "renewed") {
+      await store.completeOperation(input.applicationId, operationKey, iso());
+      const lease = await store.getLease(input.applicationId, input.executionId);
+      return { executionId: input.executionId, lease: lease as LeaseRecord, replayed: true };
+    }
+    if (stage !== null && stage.stage === "renewing") {
+      // The claim wrote its pre-state but the completion did not follow.
+      // Read the CURRENT row (the guard is NOT applied here — the renew
+      // may have committed and the lease may legitimately have expired
+      // since): the counter moving past the recorded pre-state under the
+      // SAME (owner, epoch) claim means the durable renew committed; the
+      // operation converges without a second heartbeat bump.
+      const current = await store.getLease(input.applicationId, input.executionId);
+      if (
+        current !== null &&
+        current.ownerId === input.worker.ownerId &&
+        current.epoch === input.worker.epoch &&
+        current.heartbeatCount > Number(stage.heartbeatCountBefore)
+      ) {
+        await store.completeOperation(input.applicationId, operationKey, iso());
+        return { executionId: input.executionId, lease: current, replayed: true };
+      }
+    }
+    // The renew never committed (or the claim is stale): the renew is the
+    // heartbeat — (owner, epoch) claim required, expiry extended,
+    // monotonic heartbeat ledger advanced. The guard runs BEFORE the
+    // write (a stale/expired claim fails typed closed).
+    const before = await guardLease(input.applicationId, input.executionId, input.worker);
+    await checkpointOperationStage(input.applicationId, operationKey, {
+      stage: "renewing",
+      heartbeatCountBefore: before.heartbeatCount,
+    });
     const lease = await store.renewLease({
       applicationId: input.applicationId,
       executionId: input.executionId,
@@ -1644,7 +1686,35 @@ export function createLongRunningExecutionService(
         // The crash happened BEFORE the wake application: process it now.
         recoveredTargets.push({ wakeUp, operationKey: operation.operationKey });
       } else if (wakeUp.status === "applied") {
-        // The crash happened AFTER the marker: converge the operation row.
+        // The crash happened AFTER the marker: converge the operation row
+        // and the provenance tail (the `wake-up-applied` evidence under
+        // its stable write-once key — a terminal execution accepts no
+        // further step events; its own terminal evidence is the record).
+        const recoveredExecution = await executions.getExecution(
+          input.applicationId,
+          wakeUp.executionId,
+        );
+        if (
+          recoveredExecution !== null &&
+          recoveredExecution.tenantId === input.actor.tenantId &&
+          !isTerminal(recoveredExecution.status)
+        ) {
+          await recordEvidence(
+            {
+              applicationId: input.applicationId,
+              executionId: wakeUp.executionId,
+              actor: input.actor,
+              command: "wake-up-applied",
+              // Deterministic cause/reference/payload: the evidence
+              // fingerprint is IDENTICAL on every application branch so
+              // this recovery re-write under the stable key converges.
+              cause: `wake-up ${wakeUp.wakeKey} applied`,
+              reference: { wakeKey: wakeUp.wakeKey, cause: wakeUp.cause },
+              payload: { wakeKey: wakeUp.wakeKey },
+            },
+            `wakeup-applied:${wakeUp.executionId}:${wakeUp.wakeKey}`,
+          );
+        }
         await store.completeOperation(input.applicationId, operation.operationKey, iso());
         applications.push({
           action: "replayed",
@@ -1744,7 +1814,10 @@ export function createLongRunningExecutionService(
             executionId: wakeUp.executionId,
             actor: input.actor,
             command: "wake-up-applied",
-            cause: `wake-up ${wakeUp.wakeKey} applied (execution already RUNNING)`,
+            // Deterministic cause/reference/payload: the evidence
+            // fingerprint is IDENTICAL on every application branch so a
+            // crash-recovery re-write under the stable key converges.
+            cause: `wake-up ${wakeUp.wakeKey} applied`,
             reference: { wakeKey: wakeUp.wakeKey, cause: wakeUp.cause },
             payload: { wakeKey: wakeUp.wakeKey },
           },
@@ -1804,7 +1877,10 @@ export function createLongRunningExecutionService(
           executionId: wakeUp.executionId,
           actor: input.actor,
           command: "wake-up-applied",
-          cause: `wake-up ${wakeUp.wakeKey} applied (execution resumed)`,
+          // Deterministic cause/reference/payload: the evidence
+          // fingerprint is IDENTICAL on every application branch so a
+          // crash-recovery re-write under the stable key converges.
+          cause: `wake-up ${wakeUp.wakeKey} applied`,
           reference: { wakeKey: wakeUp.wakeKey, cause: wakeUp.cause },
           payload: { wakeKey: wakeUp.wakeKey },
         },
