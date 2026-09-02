@@ -113,6 +113,13 @@ export function definePgSuite(name: string, register: (ctx: PgContext) => void):
       connectionString: `${adminUrl.replace(/\/[^/]*$/, "")}/${databaseName}`,
       max: 4,
     });
+    // The canonical pg pool guard: a client socket error surfacing
+    // outside a query (e.g. the teardown terminate racing a mid-end
+    // client) is re-emitted on the pool — without a listener an 'error'
+    // event with no handler throws (an unhandled exception that fails
+    // the run even when every test passed). Teardown-time transport
+    // noise is benign by definition here.
+    pool.on("error", () => undefined);
     const port = new PgDatabasePort(pool);
     const applied = await applyShippedMigrations(port);
     if (applied.applied.length === 0) {

@@ -13,3 +13,12 @@ export {
   type DeploymentService,
   type DeploymentServiceDeps,
 } from "./deployment-service";
+export {
+  createRealtimeSessionService,
+  type RealtimeActor,
+  type RealtimeDeploymentFacts,
+  type RealtimeIngestOutcome,
+  type RealtimeSessionService,
+  type RealtimeSessionServiceDeps,
+  type StartRealtimeSessionOutcome,
+} from "./realtime-session-service";

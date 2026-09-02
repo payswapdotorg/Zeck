@@ -39,15 +39,34 @@
 
 import type { ModuleDescriptor } from "../../shared/module";
 import { createAgentInventoryAdapter } from "./adapters/agent-inventory-adapter";
+import { createBudgetRealtimeAdmission } from "./adapters/budget-realtime-admission";
+import { createCapabilityRealtimeAdmission } from "./adapters/capability-realtime-admission";
+import { createConnectionsRealtimeSecretMediation } from "./adapters/connections-realtime-secret-mediation";
 import { createSqlEnvironmentResolver } from "./adapters/environment-resolver-adapter";
 import { InMemoryDeploymentStore } from "./adapters/in-memory-deployment-store";
+import { InMemoryRealtimeStore } from "./adapters/in-memory-realtime-store";
+import { createInProcessRealtimeRail } from "./adapters/in-process-realtime-rail";
+import { createPlannerSubtaskRouter } from "./adapters/planner-subtask-router";
+import { createPolicyRealtimeAdmission } from "./adapters/policy-realtime-admission";
+import { createRealtimeExecutionLedgerAdapter } from "./adapters/realtime-execution-ledger";
+import { createRealtimeModalityAdapter } from "./adapters/realtime-modality-adapter";
 import { SqlDeploymentStore } from "./adapters/sql-deployment-store";
+import { SqlRealtimeStore } from "./adapters/sql-realtime-store";
 import type {
   DeploymentActor,
   DeploymentService,
   DeploymentServiceDeps,
 } from "./application/deployment-service";
 import { createDeploymentService } from "./application/deployment-service";
+import type {
+  RealtimeActor,
+  RealtimeDeploymentFacts,
+  RealtimeIngestOutcome,
+  RealtimeSessionService,
+  RealtimeSessionServiceDeps,
+  StartRealtimeSessionOutcome,
+} from "./application/realtime-session-service";
+import { createRealtimeSessionService } from "./application/realtime-session-service";
 import type {
   CreateDeploymentInput,
   DeploymentEventKind,
@@ -99,6 +118,54 @@ import {
   profileContainsRawSecretValue,
   validateDeploymentProfileInput,
 } from "./domain/profile";
+import type {
+  RealtimeChannelKind,
+  RealtimeEventDirection,
+  RealtimeEventKind,
+  RealtimeEventRecord,
+  RealtimeInboundEventInput,
+  RealtimeInboundKind,
+  RealtimeOperationCheckpoint,
+  RealtimeOperationKind,
+  RealtimeOperationRecord,
+  RealtimeOperationStatus,
+  RealtimeRouteClass,
+  RealtimeSessionRecord,
+  RealtimeSessionStatus,
+  RealtimeValidation,
+  StartRealtimeSessionInput,
+} from "./domain/realtime";
+import {
+  canTransitionRealtimeSession,
+  deterministicRealtimeEventKey,
+  isRealtimeChannelKind,
+  isRealtimeEventKind,
+  isRealtimeInboundKind,
+  isRealtimeOperationKind,
+  isRealtimeOperationStatus,
+  isRealtimeRouteClass,
+  isRealtimeSessionStatus,
+  isTerminalRealtimeSessionStatus,
+  REALTIME_CHANNEL_KINDS,
+  REALTIME_EVENT_DIRECTIONS,
+  REALTIME_EVENT_KINDS,
+  REALTIME_INBOUND_KINDS,
+  REALTIME_OPERATION_KINDS,
+  REALTIME_OPERATION_STATUSES,
+  REALTIME_ROUTE_CLASSES,
+  REALTIME_SESSION_STATUSES,
+  REALTIME_SESSION_TRANSITIONS,
+  realtimeContainsRawSecretValue,
+  realtimeEventBodyDigestBase,
+  realtimeOperationKey,
+  realtimeRailCloseKey,
+  realtimeRailDeliverKey,
+  realtimeRailOpenKey,
+  realtimeRailTransferKey,
+  realtimeSessionCreationFingerprint,
+  validateRealtimeInboundEvent,
+  validateStartRealtimeSessionInput,
+} from "./domain/realtime";
 import type { AgentVersionFact, DeploymentAgentInventory } from "./ports/agent-inventory";
 import type {
   DeploymentInsertInput,
@@ -119,6 +186,60 @@ import type {
   ModalityChannelAdapter,
 } from "./ports/modality-adapter";
 import { createModalityAdapterRegistry } from "./ports/modality-adapter";
+import type {
+  RealtimeAdmissionEvidence,
+  RealtimeBudgetAdmission,
+  RealtimeBudgetReservation,
+  RealtimeBudgetReserveCommand,
+  RealtimeCapabilityAdmission,
+  RealtimeCapabilityAdmissionDecision,
+  RealtimeCapabilityAdmissionRequest,
+  RealtimePolicyAction,
+  RealtimePolicyAdmission,
+  RealtimePolicyAdmissionDecision,
+  RealtimePolicyAdmissionRequest,
+  RealtimeSecretMediation,
+  RealtimeSecretMediationOutcome,
+  RealtimeSecretMediationRequest,
+} from "./ports/realtime-admission";
+import type {
+  RealtimeEvidenceClass,
+  RealtimeEvidenceInput,
+  RealtimeEvidenceOutcome,
+  RealtimeExecutionLedger,
+  RealtimeExecutionOpenInput,
+  RealtimeExecutionOpenOutcome,
+} from "./ports/realtime-execution-ledger";
+import type {
+  RealtimeRail,
+  RealtimeRailCallback,
+  RealtimeRailDelivery,
+  RealtimeRailDeliveryOutcome,
+  RealtimeRailDescriptor,
+  RealtimeRailSession,
+  RealtimeRailSessionRequest,
+} from "./ports/realtime-rail";
+import type {
+  RealtimeEventAppendInput,
+  RealtimeEventAppendOutcome,
+  RealtimeOperationBeginInput,
+  RealtimeOperationBeginOutcome,
+  RealtimeSessionInsertInput,
+  RealtimeSessionInsertOutcome,
+  RealtimeSessionMutation,
+  RealtimeSessionMutationOutcome,
+  RealtimeStore,
+} from "./ports/realtime-store";
+import type {
+  RealtimeSubtaskRouter,
+  RealtimeTurnRoute,
+  RealtimeTurnRouteRequest,
+} from "./ports/realtime-subtask-router";
+import type {
+  RealtimeTurnResponder,
+  RealtimeTurnResponderRequest,
+  RealtimeTurnResponse,
+} from "./ports/realtime-turn-responder";
 
 export const moduleDescriptor: ModuleDescriptor = { id: "deployments" };
 
@@ -164,6 +285,70 @@ export type {
   ProfileInsertOutcome,
   ProfileValidation,
   PromoteDeploymentInput,
+  // ---- WORK-024: realtime voice sessions (MOD-005/006/007) ----
+  RealtimeActor,
+  RealtimeAdmissionEvidence,
+  RealtimeBudgetAdmission,
+  RealtimeBudgetReservation,
+  RealtimeBudgetReserveCommand,
+  RealtimeCapabilityAdmission,
+  RealtimeCapabilityAdmissionDecision,
+  RealtimeCapabilityAdmissionRequest,
+  RealtimeChannelKind,
+  RealtimeDeploymentFacts,
+  RealtimeEventAppendInput,
+  RealtimeEventAppendOutcome,
+  RealtimeEventDirection,
+  RealtimeEventKind,
+  RealtimeEventRecord,
+  RealtimeEvidenceClass,
+  RealtimeEvidenceInput,
+  RealtimeEvidenceOutcome,
+  RealtimeExecutionLedger,
+  RealtimeExecutionOpenInput,
+  RealtimeExecutionOpenOutcome,
+  RealtimeInboundEventInput,
+  RealtimeInboundKind,
+  RealtimeIngestOutcome,
+  RealtimeOperationBeginInput,
+  RealtimeOperationBeginOutcome,
+  RealtimeOperationCheckpoint,
+  RealtimeOperationKind,
+  RealtimeOperationRecord,
+  RealtimeOperationStatus,
+  RealtimePolicyAction,
+  RealtimePolicyAdmission,
+  RealtimePolicyAdmissionDecision,
+  RealtimePolicyAdmissionRequest,
+  RealtimeRail,
+  RealtimeRailCallback,
+  RealtimeRailDelivery,
+  RealtimeRailDeliveryOutcome,
+  RealtimeRailDescriptor,
+  RealtimeRailSession,
+  RealtimeRailSessionRequest,
+  RealtimeRouteClass,
+  RealtimeSecretMediation,
+  RealtimeSecretMediationOutcome,
+  RealtimeSecretMediationRequest,
+  RealtimeSessionInsertInput,
+  RealtimeSessionInsertOutcome,
+  RealtimeSessionMutation,
+  RealtimeSessionMutationOutcome,
+  RealtimeSessionRecord,
+  RealtimeSessionService,
+  RealtimeSessionServiceDeps,
+  RealtimeSessionStatus,
+  RealtimeStore,
+  RealtimeSubtaskRouter,
+  RealtimeTurnResponder,
+  RealtimeTurnResponderRequest,
+  RealtimeTurnResponse,
+  RealtimeTurnRoute,
+  RealtimeTurnRouteRequest,
+  RealtimeValidation,
+  StartRealtimeSessionInput,
+  StartRealtimeSessionOutcome,
 };
 // Adapters are re-exported for composition roots (the WORK-003/005/007
 // precedent: factories and provider-neutral adapters cross the barrel;
@@ -172,9 +357,19 @@ export {
   canonicalPlanJson,
   canonicalProfileJson,
   canTransitionDeployment,
+  canTransitionRealtimeSession,
   createAgentInventoryAdapter,
+  createBudgetRealtimeAdmission,
+  createCapabilityRealtimeAdmission,
+  createConnectionsRealtimeSecretMediation,
   createDeploymentService,
+  createInProcessRealtimeRail,
   createModalityAdapterRegistry,
+  createPlannerSubtaskRouter,
+  createPolicyRealtimeAdmission,
+  createRealtimeExecutionLedgerAdapter,
+  createRealtimeModalityAdapter,
+  createRealtimeSessionService,
   createSqlEnvironmentResolver,
   DEPLOYMENT_CHANNEL_KINDS,
   DEPLOYMENT_EVENT_KINDS,
@@ -186,14 +381,44 @@ export {
   DEPLOYMENT_STATUS_TRANSITIONS,
   DEPLOYMENT_STATUSES,
   deploymentCreationFingerprint,
+  deterministicRealtimeEventKey,
   InMemoryDeploymentStore,
+  InMemoryRealtimeStore,
   isDeploymentEventKind,
   isDeploymentStatus,
+  isRealtimeChannelKind,
+  isRealtimeEventKind,
+  isRealtimeInboundKind,
+  isRealtimeOperationKind,
+  isRealtimeOperationStatus,
+  isRealtimeRouteClass,
+  isRealtimeSessionStatus,
   isTerminalDeploymentStatus,
+  isTerminalRealtimeSessionStatus,
   profileContainsRawSecretValue,
+  REALTIME_CHANNEL_KINDS,
+  REALTIME_EVENT_DIRECTIONS,
+  REALTIME_EVENT_KINDS,
+  REALTIME_INBOUND_KINDS,
+  REALTIME_OPERATION_KINDS,
+  REALTIME_OPERATION_STATUSES,
+  REALTIME_ROUTE_CLASSES,
+  REALTIME_SESSION_STATUSES,
+  REALTIME_SESSION_TRANSITIONS,
+  realtimeContainsRawSecretValue,
+  realtimeEventBodyDigestBase,
+  realtimeOperationKey,
+  realtimeRailCloseKey,
+  realtimeRailDeliverKey,
+  realtimeRailOpenKey,
+  realtimeRailTransferKey,
+  realtimeSessionCreationFingerprint,
   SqlDeploymentStore,
+  SqlRealtimeStore,
   validateCause,
   validateCreateDeploymentInput,
   validateDeploymentPlanInput,
   validateDeploymentProfileInput,
+  validateRealtimeInboundEvent,
+  validateStartRealtimeSessionInput,
 };
