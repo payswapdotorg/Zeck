@@ -85,11 +85,11 @@ import type {
   ComputerUseTrajectoryEntry,
 } from "../domain/computer-use";
 import {
-  actionConfinementCheck,
   ACTION_OBSERVATION_TYPES,
   ACTION_SIDE_EFFECTS,
-  canonicalComputerUseJson,
+  actionConfinementCheck,
   COMPUTER_USE_KEY_PREFIXES,
+  canonicalComputerUseJson,
   computerUseActionDispatchKey,
   computerUseBudgetReleaseKey,
   computerUseBudgetReserveKey,
@@ -107,7 +107,6 @@ import {
   isTerminalComputerUseSessionStatus,
   validateComputerUseSessionRequest,
 } from "../domain/computer-use";
-import type { ExecutionLedger } from "../ports/execution-ledger";
 import type {
   ComputerUseCapabilityGate,
   ComputerUsePolicyAdmission,
@@ -115,11 +114,9 @@ import type {
 } from "../ports/computer-use-admission";
 import type { ComputerUseEnvironment } from "../ports/computer-use-environment";
 import type { ComputerUseCapabilityRegistry } from "../ports/computer-use-registry";
-import type {
-  ComputerUseSessionInsertInput,
-  ComputerUseStore,
-} from "../ports/computer-use-store";
+import type { ComputerUseSessionInsertInput, ComputerUseStore } from "../ports/computer-use-store";
 import type { ComputerUseTerminalExecutor } from "../ports/computer-use-terminal";
+import type { ExecutionLedger } from "../ports/execution-ledger";
 
 /** Bounded payloads (the honest-memory discipline; fail-closed). */
 export const COMPUTER_USE_INPUT_MAX = 8192;
@@ -352,7 +349,12 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         ledgerKey(record.id, "session-denied"),
       );
     }
-    await store.failOperation(record.applicationId, operationKey, `${code}: ${reason}`.slice(0, 512), iso());
+    await store.failOperation(
+      record.applicationId,
+      operationKey,
+      `${code}: ${reason}`.slice(0, 512),
+      iso(),
+    );
     if (budgetAuthority !== undefined && budgetOperationId !== null) {
       try {
         await budgetAuthority.release(
@@ -524,7 +526,8 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         if (existing.status === "denied") {
           throw new PlatformError({
             code: denialCodeOf(existing.denialClass),
-            message: `computer-use session was denied (${existing.denialClass}): ${existing.denialReason ?? ""}`.trim(),
+            message:
+              `computer-use session was denied (${existing.denialClass}): ${existing.denialReason ?? ""}`.trim(),
             details: { sessionId: existing.id, denialClass: existing.denialClass },
           });
         }
@@ -655,14 +658,17 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     const initialMode = initialStage.mode;
     const routeHosts = [
       ...new Set(
-        routeEvidence.route.flatMap((stage) => stageDeclaration(stage.mode, stage.capabilityId)?.hosts ?? []),
+        routeEvidence.route.flatMap(
+          (stage) => stageDeclaration(stage.mode, stage.capabilityId)?.hosts ?? [],
+        ),
       ),
     ];
     const routeSecretRef = initialDeclaration.secretRef;
     const costCeilingMicroUsd = routeEvidence.route
       .reduce(
         (total, stage) =>
-          total + BigInt(stageDeclaration(stage.mode, stage.capabilityId)?.estimatedMicroUsd ?? "0"),
+          total +
+          BigInt(stageDeclaration(stage.mode, stage.capabilityId)?.estimatedMicroUsd ?? "0"),
         0n,
       )
       .toString();
@@ -743,7 +749,10 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     };
     /** The insert input carrying the LATEST admission draft (the draft is
      * refined by every admission step; the final row carries them all). */
-    const finalInput = (): ComputerUseSessionInsertInput => ({ ...insertInput, admission: admissionDraft });
+    const finalInput = (): ComputerUseSessionInsertInput => ({
+      ...insertInput,
+      admission: admissionDraft,
+    });
 
     // ----- 6. POLICY admission (the gate — before any environment
     // interaction; the denial is journaled and thrown typed). --------------
@@ -757,7 +766,14 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       secretRef: routeSecretRef,
     });
     if (!policyDecision.allowed) {
-      await denySession(finalInput(), "policy", "POLICY_DENIED", policyDecision.reason, operationKey, null);
+      await denySession(
+        finalInput(),
+        "policy",
+        "POLICY_DENIED",
+        policyDecision.reason,
+        operationKey,
+        null,
+      );
     }
     admissionDraft = {
       ...admissionDraft,
@@ -810,7 +826,9 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     }
 
     // ----- 8. CAPABILITY admission (the capabilities authority). ----------
-    const routeAtoms = [...new Set(routeEvidence.route.map((stage) => `computer-use-${stage.mode}`))];
+    const routeAtoms = [
+      ...new Set(routeEvidence.route.map((stage) => `computer-use-${stage.mode}`)),
+    ];
     const resolution = await capabilities.resolve({ requirementAtoms: routeAtoms });
     if (!resolution.satisfied) {
       await denySession(
@@ -822,7 +840,10 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         budgetOperationId,
       );
     }
-    admissionDraft = { ...admissionDraft, capabilitySatisfaction: resolution.satisfactions[0] ?? null };
+    admissionDraft = {
+      ...admissionDraft,
+      capabilitySatisfaction: resolution.satisfactions[0] ?? null,
+    };
 
     // ----- 9. SECRET mediation (reference-only; fails closed). ------------
     if (routeSecretRef !== null && request.connectionRef === null) {
@@ -867,7 +888,6 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         );
       }
       admissionDraft = { ...admissionDraft, secretGrantRef: mediatedGrantRef };
-
     }
 
     // ----- 10. Durable session row + ledger intent. ------------------------
@@ -1090,14 +1110,22 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         message: "computer-use action state diverged (completed operation without an action row)",
       });
     }
-    const durableActionId = (begun.record.stage?.actionId as string | undefined) ?? deps.generateId();
+    const durableActionId =
+      (begun.record.stage?.actionId as string | undefined) ?? deps.generateId();
     if (begun.record.stage?.actionId === undefined) {
-      await store.recordOperationCheckpoint(applicationId, operationKey, { actionId: durableActionId }, iso());
+      await store.recordOperationCheckpoint(
+        applicationId,
+        operationKey,
+        { actionId: durableActionId },
+        iso(),
+      );
     }
 
     if (!actionPolicy.allowed) {
       // Journal-then-fail: the denial is durable on the action axis; ZERO
-      // environment activity happened for this action.
+      // environment activity happened for this action. The denied row
+      // consumes the NEXT gapless action sequence (denied requests are
+      // still ordered trajectory evidence).
       await store.insertAction({
         actionId: durableActionId,
         applicationId,
@@ -1105,7 +1133,7 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         sessionId,
         executionId: session.executionId,
         actionKey,
-        sequence: 0,
+        sequence: (await store.listActions(applicationId, sessionId)).length + 1,
         mode: session.currentMode,
         actionType: request.actionType,
         target: request.target,
@@ -1228,7 +1256,7 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       session.admission.costCeilingMicroUsd !== "0" &&
       usageAfter > BigInt(session.admission.costCeilingMicroUsd)
     ) {
-      const deniedAction = await store.finalizeAction({
+      await store.finalizeAction({
         applicationId,
         actionId: durableActionId,
         status: "denied",
@@ -1291,7 +1319,8 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         if (command.length === 0 || command.includes("\0") || command.includes(" ")) {
           throw new PlatformError({
             code: "POLICY_DENIED",
-            message: "terminal-exec requires a shell-free command in input.command (argv, never a shell)",
+            message:
+              "terminal-exec requires a shell-free command in input.command (argv, never a shell)",
           });
         }
         const publicEnv: Record<string, string> = {};
@@ -1450,7 +1479,8 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       if (!expectedTypes.includes(frame.observationType)) {
         continue;
       }
-      const observationSequence = (await store.listObservations(applicationId, sessionId)).length + 1;
+      const observationSequence =
+        (await store.listObservations(applicationId, sessionId)).length + 1;
       const inserted = await store.insertObservation({
         id: deps.generateId(),
         applicationId,
@@ -1485,9 +1515,13 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
 
     // ----- 10. Outcome finalization + ledger evidence. ---------------------
     const succeeded =
-      outcome.kind === "env" ? outcome.result.outcome === "succeeded" : outcome.run.outcome === "succeeded";
+      outcome.kind === "env"
+        ? outcome.result.outcome === "succeeded"
+        : outcome.run.outcome === "succeeded";
     const usageMicroUsd =
-      outcome.kind === "env" ? outcome.result.usageMicroUsd : (declaration?.estimatedMicroUsd ?? "0");
+      outcome.kind === "env"
+        ? outcome.result.usageMicroUsd
+        : (declaration?.estimatedMicroUsd ?? "0");
     const resultBody =
       outcome.kind === "env"
         ? (outcome.result.result ?? {})
@@ -1498,9 +1532,13 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       actionId: durableActionId,
       status: succeeded ? "succeeded" : "failed",
       failureClass:
-        outcome.kind === "env" ? (outcome.result.failure?.failureClass ?? null) : outcome.run.failureClass,
+        outcome.kind === "env"
+          ? (outcome.result.failure?.failureClass ?? null)
+          : outcome.run.failureClass,
       failureMessage:
-        outcome.kind === "env" ? (outcome.result.failure?.message ?? null) : outcome.run.failureMessage,
+        outcome.kind === "env"
+          ? (outcome.result.failure?.message ?? null)
+          : outcome.run.failureMessage,
       resultDigest,
       usageMicroUsd: succeeded ? usageMicroUsd : null,
       environmentRef: outcome.kind === "env" ? session.environmentRef : null,
@@ -1697,10 +1735,36 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       const existing = await store.listEscalations(applicationId, sessionId);
       if (existing.some((escalation) => escalation.toMode === request.targetMode)) {
         const current = await store.findSession(applicationId, sessionId);
+        // Converge the escalated mode's environment open when a prior
+        // process died between the escalation commit and the environment
+        // boundary (the session row is otherwise wedged active with no
+        // environment — the same convergence createSession's replay path
+        // performs).
+        if (
+          current !== null &&
+          current.environmentRef === null &&
+          !isTerminalComputerUseSessionStatus(current.status)
+        ) {
+          const declaration = await registry.resolve(current.modeContext.capabilityId);
+          if (declaration === null) {
+            throw new PlatformError({
+              code: "CAPABILITY_UNAVAILABLE",
+              message: `the session's capability ${current.modeContext.capabilityId} is no longer registered`,
+            });
+          }
+          const withEnvironment = await openEnvironment(
+            current,
+            declaration,
+            computerUseEnvOpenKey(current.id, current.currentMode),
+            `${COMPUTER_USE_KEY_PREFIXES.envOpenExternal}:${current.id}:${current.currentMode}`,
+          );
+          return receiptOf(withEnvironment, true);
+        }
         return receiptOf(current ?? session, true);
       }
     }
-    const escalationId = (begun.record.stage?.escalationId as string | undefined) ?? deps.generateId();
+    const escalationId =
+      (begun.record.stage?.escalationId as string | undefined) ?? deps.generateId();
     if (begun.record.stage?.escalationId === undefined) {
       await store.recordOperationCheckpoint(applicationId, operationKey, { escalationId }, iso());
     }

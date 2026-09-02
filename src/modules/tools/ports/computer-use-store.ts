@@ -241,7 +241,10 @@ export interface ComputerUseStore {
   // -- sessions -------------------------------------------------------------
   insertSession(input: ComputerUseSessionInsertInput): Promise<ComputerUseSessionInsertOutcome>;
   findSession(applicationId: string, sessionId: string): Promise<ComputerUseSessionRecord | null>;
-  findSessionByKey(applicationId: string, sessionKey: string): Promise<ComputerUseSessionRecord | null>;
+  findSessionByKey(
+    applicationId: string,
+    sessionKey: string,
+  ): Promise<ComputerUseSessionRecord | null>;
   patchSession(input: ComputerUseSessionPatch): Promise<ComputerUseSessionRecord>;
   applyGuardedSessionMutation(
     input: ComputerUseSessionStatusMutation,
@@ -253,7 +256,9 @@ export interface ComputerUseStore {
   ): Promise<readonly ComputerUseSessionRecord[]>;
 
   // -- escalations ----------------------------------------------------------
-  insertEscalation(input: ComputerUseEscalationInsertInput): Promise<ComputerUseEscalationInsertOutcome>;
+  insertEscalation(
+    input: ComputerUseEscalationInsertInput,
+  ): Promise<ComputerUseEscalationInsertOutcome>;
   listEscalations(
     applicationId: string,
     sessionId: string,
@@ -267,7 +272,10 @@ export interface ComputerUseStore {
     sessionId: string,
     actionKey: string,
   ): Promise<ComputerUseActionRecord | null>;
-  listActions(applicationId: string, sessionId: string): Promise<readonly ComputerUseActionRecord[]>;
+  listActions(
+    applicationId: string,
+    sessionId: string,
+  ): Promise<readonly ComputerUseActionRecord[]>;
 
   // -- observations ---------------------------------------------------------
   insertObservation(

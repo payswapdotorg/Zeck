@@ -16,10 +16,7 @@
  * capability that was never admitted here.
  */
 
-import type {
-  ComputerUseCapabilityDeclaration,
-  ComputerUseCheck,
-} from "../domain/computer-use";
+import type { ComputerUseCapabilityDeclaration, ComputerUseCheck } from "../domain/computer-use";
 
 export interface ComputerUseCapabilityRegistry {
   /**

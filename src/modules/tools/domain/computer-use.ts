@@ -160,9 +160,7 @@ export const COMPUTER_USE_OBSERVATION_TYPES = [
 ] as const;
 export type ComputerUseObservationType = (typeof COMPUTER_USE_OBSERVATION_TYPES)[number];
 
-export function isComputerUseObservationType(
-  value: string,
-): value is ComputerUseObservationType {
+export function isComputerUseObservationType(value: string): value is ComputerUseObservationType {
   return (COMPUTER_USE_OBSERVATION_TYPES as readonly string[]).includes(value);
 }
 
@@ -1302,8 +1300,7 @@ export function validateComputerUseCapability(declaration: unknown): ComputerUse
     if (!terminal.process) {
       return {
         valid: false,
-        reason:
-          "a desktop capability with terminal interaction must grant the process capability",
+        reason: "a desktop capability with terminal interaction must grant the process capability",
       };
     }
     if (!Array.isArray(terminal.egressAllowlist)) {
@@ -1331,7 +1328,8 @@ export function validateComputerUseCapability(declaration: unknown): ComputerUse
     if (!Array.isArray(profile.egressAllowlist) || profile.egressAllowlist.length === 0) {
       return {
         valid: false,
-        reason: "browser capabilities declare a non-empty egress allowlist (no hidden network access)",
+        reason:
+          "browser capabilities declare a non-empty egress allowlist (no hidden network access)",
       };
     }
     if (new Set(profile.egressAllowlist).size !== profile.egressAllowlist.length) {
