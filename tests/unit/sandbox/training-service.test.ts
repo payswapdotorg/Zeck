@@ -399,6 +399,40 @@ describe("training dispatch (the paid boundary after the reservation)", () => {
     expect(w.fleet.listAllocations().length).toBe(1);
   });
 
+  test("every emitted checkpoint gets its OWN ledger envelope; the completion binding matches the completion event (the per-identity key fix)", async () => {
+    const w = world();
+    const { final } = await submitAndDispatch(w);
+    // interval 4 over the simulated 12 steps -> exactly 3 checkpoints.
+    const checkpoints = await w.store.listTrainingCheckpointsByWorkload(
+      TR_APPLICATION_ID,
+      "training-key-1",
+    );
+    expect(checkpoints.length).toBe(3);
+    const checkpointEvents = w.ledger
+      .eventsOf(TR_EXECUTION_ID)
+      .filter((entry) => entry.event.command === "checkpoint-recorded");
+    // The re-review defect regression: a workload-scoped event key
+    // burned on the FIRST checkpoint silently dropped every later
+    // envelope (only 1 of 3 reached the canonical ledger).
+    expect(checkpointEvents.length).toBe(3);
+    const identities = checkpointEvents.map(
+      (entry) => entry.event.payload.checkpointIdentity,
+    );
+    expect(new Set(identities).size).toBe(3);
+    for (const checkpoint of checkpoints) {
+      expect(identities).toContain(checkpoint.contentDigest);
+    }
+    // The completed binding points at the completion event's sequence
+    // (the missing durable-state transition the retry defect exposed).
+    expect(final.ledgerCompletedSequence).not.toBeNull();
+    const completedEvents = w.ledger
+      .eventsOf(TR_EXECUTION_ID)
+      .filter((entry) => entry.event.command === "sandbox-completed");
+    expect(completedEvents.length).toBe(1);
+    expect(completedEvents[0]?.sequence).toBe(final.ledgerCompletedSequence);
+    expect(final.ledgerAdmittedSequence).not.toBeNull();
+  });
+
   test("a running workload re-dispatch fails closed (resume is the recovery path)", async () => {
     const w = world();
     // Simulate the honest crash state: admitted → allocating/running
@@ -699,6 +733,42 @@ describe("training retry (fresh admission per attempt)", () => {
       w.service.retryWorkload({ applicationId: TR_APPLICATION_ID, workloadId: admitted.id }, ACTOR),
     );
   });
+
+  test("a retried workload's completion records its OWN attempt envelope and binds the completed sequence (the per-attempt key fix)", async () => {
+    const w = world({ failRunsOf: (_id, attempt) => attempt === 1 });
+    const admitted = await submit(w);
+    const first = await w.service.dispatchWorkload(
+      { applicationId: TR_APPLICATION_ID, workloadId: admitted.id },
+      ACTOR,
+    );
+    expect(first.status).toBe("failed");
+    // The failed attempt's terminal outcome IS on the ledger...
+    const failedEvents = w.ledger
+      .eventsOf(TR_EXECUTION_ID)
+      .filter((entry) => entry.event.command === "sandbox-completed");
+    expect(failedEvents.length).toBe(1);
+    expect(failedEvents[0]?.event.payload.outcomeClass).toBe("workload-failed");
+    expect(first.ledgerCompletedSequence).toBeNull(); // failure never binds it
+
+    const retry = await w.service.retryWorkload(
+      { applicationId: TR_APPLICATION_ID, workloadId: admitted.id },
+      ACTOR,
+    );
+    expect(retry.status).toBe("completed");
+    // The re-review defect regression: the completion event key was
+    // workload-scoped, so the successful attempt's envelope collided
+    // with the failed attempt's burned key and was silently dropped —
+    // the row completed with a NULL completed binding while the
+    // ledger's final training event said "workload-failed".
+    const completedEvents = w.ledger
+      .eventsOf(TR_EXECUTION_ID)
+      .filter((entry) => entry.event.command === "sandbox-completed");
+    expect(completedEvents.length).toBe(2);
+    expect(completedEvents[0]?.event.payload.outcomeClass).toBe("workload-failed");
+    expect(completedEvents[1]?.event.payload.outcomeClass).toBe("workload-completed");
+    expect(retry.ledgerCompletedSequence).toBe(completedEvents[1]?.sequence);
+    expect(retry.ledgerCompletedSequence).not.toBeNull();
+  });
 });
 
 describe("verification before release (ACC-003)", () => {
@@ -876,5 +946,45 @@ describe("tenant isolation", () => {
       await expectPlatformError("TENANT_SCOPE_VIOLATION", op);
     }
     expect(await w.service.getWorkload(TR_OTHER_APPLICATION_ID, admitted.id)).toBeNull();
+  });
+});
+
+describe("store parity (the in-memory store enforces the SQL store's contracts)", () => {
+  test("insertTrainingOperation fails closed on same key + different fingerprint (SQL parity)", async () => {
+    const w = world();
+    const base = {
+      applicationId: TR_APPLICATION_ID,
+      tenantId: TR_TENANT_ID,
+      executionId: TR_EXECUTION_ID,
+      workloadId: null,
+      operationKind: "cancel" as const,
+      operationKey: "trop:cancel:parity-key",
+      createdAt: new Date().toISOString(),
+    };
+    const first = await w.store.insertTrainingOperation({
+      ...base,
+      id: "00000000-0000-7000-8000-0000000000d1",
+      requestFingerprint: "cancel:parity-key",
+    });
+    expect(first.claimed).toBe(true);
+    // Same key + SAME fingerprint: convergent replay with attempts bumped.
+    const replay = await w.store.insertTrainingOperation({
+      ...base,
+      id: "00000000-0000-7000-8000-0000000000d2",
+      requestFingerprint: "cancel:parity-key",
+    });
+    expect(replay.claimed).toBe(false);
+    expect(replay.record.attempts).toBe(2);
+    // Same key + DIFFERENT fingerprint: key reuse fails closed — the
+    // SQL store's contract the in-memory twin previously omitted (the
+    // re-review store-parity defect: the unit tier accepted writes the
+    // real store rejects).
+    await expectPlatformError("IDEMPOTENCY_KEY_REUSED", () =>
+      w.store.insertTrainingOperation({
+        ...base,
+        id: "00000000-0000-7000-8000-0000000000d3",
+        requestFingerprint: "cancel:parity-key-OTHER",
+      }),
+    );
   });
 });

@@ -313,12 +313,26 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
    * Append one training step event on the canonical ledger. Payloads are
    * DETERMINISTIC per logical workload (no timing values) so retries
    * replay the SAME envelope instead of colliding on the idempotency key.
+   *
+   * The event KEY is per LOGICAL EVENT INSTANCE (the resume-round
+   * re-review defect family): `sandbox-admitted` once per workload,
+   * `sandbox-completed` once per ATTEMPT (a retried workload's
+   * successful attempt must not collide with its failed attempt's
+   * burned key — the collision previously swallowed the completion
+   * envelope, leaving a completed row with a null completed-binding and
+   * a ledger whose final training event said "workload-failed"),
+   * `checkpoint-recorded` once per CHECKPOINT IDENTITY (the 2nd+checkpoint
+   * events were previously silently dropped by the same collision), and
+   * the resume evidence once per (attempt, resume point).
    */
   const appendLedgerEvent = async (
     record: TrainingWorkloadRecord,
     command: TrainingStepEventCommand,
     extraPayload: Readonly<Record<string, unknown>>,
-    options: { readonly bind?: "admitted" | "completed" } = {},
+    options: {
+      readonly bind?: "admitted" | "completed";
+      readonly eventKey?: string;
+    } = {},
   ) => {
     const outcome = await ledger.recordStepEvent(
       {
@@ -352,7 +366,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
           ...extraPayload,
         },
       },
-      `${record.id}:${command}`,
+      options.eventKey ?? `${record.id}:${command}`,
     );
     if (options.bind !== undefined) {
       await store.bindWorkloadLedgerSequence({
@@ -1022,9 +1036,14 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     };
     validateTrainingCheckpointContents(contents);
     const identity = trainingCheckpointIdentity(contents, digest);
+    // The checkpoint operation key is ATTEMPT-SCOPED (the re-review
+    // defect: a workload-scoped `seq` key combined with the
+    // identity-bearing fingerprint made attempt 2's seq-1 checkpoint a
+    // key-reuse failure on the SQL store — the retry path broke
+    // exactly-once checkpoint writes over real persistence).
     const operationKey = trainingOperationKey(
       "checkpoint",
-      `${record.workloadKey}:seq:${contents.checkpointSequence}`,
+      `${record.workloadKey}:attempt:${record.attempts}:seq:${contents.checkpointSequence}`,
     );
     await store.insertTrainingOperation({
       id: deps.generateId(),
@@ -1049,6 +1068,10 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       createdAt: iso(),
     });
     if (claim.claimed) {
+      // One ledger envelope PER CHECKPOINT IDENTITY (the re-review
+      // defect fix: a workload-scoped key burned on the first checkpoint
+      // silently dropped every later checkpoint's envelope — a lineage
+      // gap for the EXECUTION-PROVENANCE contract).
       try {
         await appendLedgerEvent(
           record,
@@ -1059,7 +1082,10 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
             stepPosition: contents.stepPosition,
             metricsDigest: contents.metricsDigest,
           },
-          { bind: undefined },
+          {
+            bind: undefined,
+            eventKey: `${record.id}:checkpoint-recorded:${identity}`,
+          },
         );
       } catch (error) {
         if (!isIdempotencyReuse(error)) {
@@ -1094,13 +1120,23 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       (await store.findWorkloadByKey(record.applicationId, record.workloadKey)) ?? record;
     if (current.ledgerCompletedSequence === null) {
       try {
-        const appended = await appendLedgerEvent(current, "sandbox-completed", {
-          outcomeClass: "workload-completed",
-          status: "completed",
-          stepsCompleted: observation.stepsCompleted,
-          outputArtifactDigest: observation.output?.contentDigest ?? null,
-          usageMicroUsd: observation.usageMicroUsd,
-        });
+        const appended = await appendLedgerEvent(
+          current,
+          "sandbox-completed",
+          {
+            outcomeClass: "workload-completed",
+            status: "completed",
+            stepsCompleted: observation.stepsCompleted,
+            outputArtifactDigest: observation.output?.contentDigest ?? null,
+            usageMicroUsd: observation.usageMicroUsd,
+          },
+          {
+            // One completion envelope PER ATTEMPT: a retried workload's
+            // successful attempt must not collide with its failed
+            // attempt's burned key (the re-review defect fix).
+            eventKey: `${current.id}:sandbox-completed:attempt:${current.attempts}`,
+          },
+        );
         completedSequence = appended.sequence;
       } catch (error) {
         if (!isIdempotencyReuse(error)) {
@@ -1151,12 +1187,22 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       (await store.findWorkloadByKey(record.applicationId, record.workloadKey)) ?? record;
     if (current.ledgerCompletedSequence === null) {
       try {
-        await appendLedgerEvent(current, "sandbox-completed", {
-          outcomeClass: "workload-failed",
-          status: "failed",
-          failureClass: failure.failureClass,
-          failureMessage: failure.message,
-        });
+        await appendLedgerEvent(
+          current,
+          "sandbox-completed",
+          {
+            outcomeClass: "workload-failed",
+            status: "failed",
+            failureClass: failure.failureClass,
+            failureMessage: failure.message,
+          },
+          {
+            // One failure envelope PER ATTEMPT (the attempt-ladder
+            // provenance: attempt 2's failure is a distinct event from
+            // attempt 1's — same-key collisions previously dropped it).
+            eventKey: `${current.id}:sandbox-completed:attempt:${current.attempts}`,
+          },
+        );
       } catch (error) {
         if (!isIdempotencyReuse(error)) {
           throw error;
@@ -1380,9 +1426,14 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
     const lease = await store.findTrainingRunLease(found.applicationId, found.id);
     if (lease !== null && lease.releasedAt === null && lease.expiresAt > iso()) {
       try {
-        await appendLedgerEvent(found, "resume-denied", {
-          reason: "a live run lease is held; lease conflicts fail closed",
-        });
+        await appendLedgerEvent(
+          found,
+          "resume-denied",
+          {
+            reason: "a live run lease is held; lease conflicts fail closed",
+          },
+          { eventKey: `${found.id}:resume-denied:attempt:${found.attempts}` },
+        );
       } catch (error) {
         if (!isIdempotencyReuse(error)) {
           throw error;
@@ -1427,10 +1478,15 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
           });
           if (!decision.allowed) {
             try {
-              await appendLedgerEvent(found, "resume-denied", {
-                reason: decision.reason,
-                changedDimensions: [...changed],
-              });
+              await appendLedgerEvent(
+                found,
+                "resume-denied",
+                {
+                  reason: decision.reason,
+                  changedDimensions: [...changed],
+                },
+                { eventKey: `${found.id}:resume-denied:attempt:${found.attempts}` },
+              );
             } catch (error) {
               if (!isIdempotencyReuse(error)) {
                 throw error;
@@ -1457,10 +1513,22 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       leaseDurationMs,
     });
     try {
-      await appendLedgerEvent(found, "resume-recorded", {
-        attempt: found.attempts,
-        resumeCheckpointIdentity: found.lastCheckpointIdentity,
-      });
+      await appendLedgerEvent(
+        found,
+        "resume-recorded",
+        {
+          attempt: found.attempts,
+          resumeCheckpointIdentity: found.lastCheckpointIdentity,
+        },
+        {
+          // One resume envelope per (attempt, resume point) — a later
+          // resume from a NEWER checkpoint is a distinct evidence event,
+          // not a swallowed key collision.
+          eventKey: `${found.id}:resume-recorded:attempt:${found.attempts}:${
+            found.lastCheckpointIdentity ?? "cold"
+          }`,
+        },
+      );
     } catch (error) {
       if (!isIdempotencyReuse(error)) {
         throw error;
@@ -1650,7 +1718,18 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       return found; // the release binding is write-once: replay it
     }
 
-    const releaseKey = trainingOperationKey("release", found.workloadKey);
+    // The release operation is keyed per CALLER REQUEST (workload key +
+    // the caller's idempotency key — the re-review defect fix: a
+    // workload-scoped operation key combined with a caller-key-bearing
+    // fingerprint made ANY re-verification after a failed verdict fail
+    // IDEMPOTENCY_KEY_REUSED on the SQL store, while the in-memory
+    // store's missing fingerprint arbitration hid it in the unit tier).
+    // The workload-level release binding stays write-once — exactly one
+    // release ever lands regardless of how many requests attempt it.
+    const releaseKey = trainingOperationKey(
+      "release",
+      `${found.workloadKey}:${idempotencyKey}`,
+    );
     await store.insertTrainingOperation({
       id: deps.generateId(),
       applicationId: found.applicationId,

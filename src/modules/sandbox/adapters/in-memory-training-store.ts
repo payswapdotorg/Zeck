@@ -348,6 +348,17 @@ export class InMemoryTrainingStore implements TrainingStore {
   ): Promise<TrainingClaimOutcome<TrainingOperationRecord>> {
     const existing = this.operations.get(`${input.applicationId}:${input.operationKey}`);
     if (existing !== undefined) {
+      // Fingerprint arbitration — the SQL store's fail-closed contract
+      // (same key + different fingerprint = key reuse; the unit tier
+      // previously accepted it, hiding store divergence from the proofs).
+      if (existing.requestFingerprint !== input.requestFingerprint) {
+        throw new PlatformError({
+          code: "IDEMPOTENCY_KEY_REUSED",
+          message:
+            "training operation key already exists with a different request fingerprint (same key, different body)",
+          details: { operationKey: input.operationKey, operationKind: input.operationKind },
+        });
+      }
       return {
         claimed: false,
         record: { ...existing, attempts: existing.attempts + 1, updatedAt: input.createdAt },
