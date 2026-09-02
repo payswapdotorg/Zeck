@@ -562,7 +562,7 @@ describe("pause and resume (the identity invariant)", () => {
         cause: "tool-call timeout",
         earliestWakeAt: "2026-09-15T13:00:00.000Z",
       },
-      key: "pause-${executionId}",
+      key: `pause-${executionId}`,
     });
     expect(paused.status).toBe("WAITING_TOOL");
     expect(paused.wakeUpScheduled).toBe(true);
@@ -619,7 +619,7 @@ describe("pause and resume (the identity invariant)", () => {
   test("a TAMPERED checkpoint digest is rejected at resume (integrity)", async () => {
     const world = createWorld();
     const executionId = await driveToRunning(world);
-    const paused = await pause(world, executionId, { key: "pause-tamper-${executionId}" });
+    const paused = await pause(world, executionId, { key: `pause-tamper-${executionId}` });
     world.store.tamperCheckpointDigest(paused.checkpointId, sha256("tampered-digest"));
     await expect(
       world.service.resumeExecution(
@@ -637,7 +637,7 @@ describe("pause and resume (the identity invariant)", () => {
   test("TAMPERED checkpoint contents are rejected at resume (digest mismatch)", async () => {
     const world = createWorld();
     const executionId = await driveToRunning(world);
-    const paused = await pause(world, executionId, { key: "pause-tamper2-${executionId}" });
+    const paused = await pause(world, executionId, { key: `pause-tamper2-${executionId}` });
     world.store.tamperCheckpointContents(paused.checkpointId, { lastEventPosition: 99 });
     await expect(
       world.service.resumeExecution(
@@ -657,7 +657,7 @@ describe("pause and resume (the identity invariant)", () => {
     const executionId = await driveToRunning(world);
     await pause(world, executionId, {
       checkpoint: checkpointOf(executionId, { planRevision: 4 }),
-      key: "pause-incompat-${executionId}",
+      key: `pause-incompat-${executionId}`,
     });
     await expect(
       world.service.resumeExecution(
@@ -719,7 +719,7 @@ describe("pause and resume (the identity invariant)", () => {
   test("a resume replays its completed operation (one transition, no duplicates)", async () => {
     const world = createWorld();
     const executionId = await driveToRunning(world);
-    await pause(world, executionId, { key: "pause-replay-resume-${executionId}" });
+    await pause(world, executionId, { key: `pause-replay-resume-${executionId}` });
     const command: ResumeExecutionCommand = {
       applicationId: APPLICATION_ID,
       executionId,
@@ -787,7 +787,7 @@ describe("materially changed resumes re-enter the CURRENT admission controls", (
   async function pausedWorld(): Promise<{ world: World; executionId: string }> {
     const world = createWorld();
     const executionId = await driveToRunning(world);
-    await pause(world, executionId, { key: "pause-material-${executionId}" });
+    await pause(world, executionId, { key: `pause-material-${executionId}` });
     return { world, executionId };
   }
 
@@ -998,7 +998,7 @@ describe("human interruption and governed termination", () => {
   test("interruption of an already-waiting execution records the request without a move", async () => {
     const world = createWorld();
     const executionId = await driveToRunning(world);
-    await pause(world, executionId, { key: "pause-interrupt-${executionId}" });
+    await pause(world, executionId, { key: `pause-interrupt-${executionId}` });
     const interrupted = await world.service.requestInterruption(
       {
         applicationId: APPLICATION_ID,
@@ -1022,7 +1022,7 @@ describe("human interruption and governed termination", () => {
         cause: "auto-resume",
         earliestWakeAt: "2026-09-15T13:00:00.000Z",
       },
-      key: "pause-terminate-${executionId}",
+      key: `pause-terminate-${executionId}`,
     });
     const command = {
       applicationId: APPLICATION_ID,
@@ -1129,7 +1129,7 @@ describe("wake-up scheduling and application", () => {
         cause: "timeout",
         earliestWakeAt: "2026-09-15T12:01:00.000Z",
       },
-      key: "pause-wake-once-${executionId}",
+      key: `pause-wake-once-${executionId}`,
     });
     world.advance(2 * 60_000);
     const first = await world.service.applyWakeUps({ applicationId: APPLICATION_ID, actor });

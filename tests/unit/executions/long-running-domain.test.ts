@@ -174,7 +174,7 @@ describe("checkpoint integrity (tamper rejection)", () => {
 
   test("the canonical form is key-order stable (digest reproducibility)", () => {
     const a = contents();
-    const b = contents();
+    const _b = contents();
     const aJson = canonicalCheckpointJson({
       ...a,
       requiredCapabilities: [...a.requiredCapabilities],

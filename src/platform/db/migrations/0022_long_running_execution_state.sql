@@ -107,8 +107,15 @@ CREATE TRIGGER lr_checkpoints_no_mutation
 -- count gate keeps the per-execution sequence gapless) and binds to a
 -- NON-TERMINAL execution at insert time (terminal executions accept no
 -- further checkpoints — the recovery tail converges through the
--- operation state instead).
-CREATE OR REPLACE FUNCTION executions.lr_checkpoint_sequence_gate() RETURNS trigger AS $$ DECLARE existing integer; terminal boolean; BEGIN SELECT COUNT(*) INTO existing FROM executions.execution_checkpoints WHERE execution_id = NEW.execution_id; IF NEW.checkpoint_sequence IS DISTINCT FROM existing + 1 THEN RAISE EXCEPTION 'execution % checkpoint sequence must be gapless (expected %, got %)', NEW.execution_id, existing + 1, NEW.checkpoint_sequence; END IF; SELECT status IN ('COMPLETED','FAILED','CANCELLED','EXPIRED') INTO terminal FROM executions.executions WHERE id = NEW.execution_id AND application_id = NEW.application_id; IF terminal IS NULL THEN RAISE EXCEPTION 'execution % does not exist in application %', NEW.execution_id, NEW.application_id; END IF; IF terminal THEN RAISE EXCEPTION 'execution % is terminal; checkpoints are append-only evidence of a LIVE execution', NEW.execution_id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+-- operation state instead). CONVERGENCE-AWARE: the store inserts with
+-- ON CONFLICT (execution_id, checkpoint_sequence) DO NOTHING, and a
+-- BEFORE-INSERT trigger runs BEFORE the conflict arbiter — so an exact
+-- duplicate (same sequence + same content digest, the crash-resume
+-- re-issue of an already-committed checkpoint) must pass this gate and
+-- let the UNIQUE constraint deduplicate it (one row survives; the
+-- store's convergence read returns it). A same-sequence/different-digest
+-- insert is PHYSICAL key reuse and fails closed right here.
+CREATE OR REPLACE FUNCTION executions.lr_checkpoint_sequence_gate() RETURNS trigger AS $$ DECLARE existing integer; existing_digest text; terminal boolean; BEGIN SELECT content_digest INTO existing_digest FROM executions.execution_checkpoints WHERE execution_id = NEW.execution_id AND checkpoint_sequence = NEW.checkpoint_sequence; IF existing_digest IS NOT NULL THEN IF existing_digest = NEW.content_digest THEN RETURN NEW; END IF; RAISE EXCEPTION 'execution % checkpoint sequence % already exists with a different content digest (same key, different body)', NEW.execution_id, NEW.checkpoint_sequence; END IF; SELECT COUNT(*) INTO existing FROM executions.execution_checkpoints WHERE execution_id = NEW.execution_id; IF NEW.checkpoint_sequence IS DISTINCT FROM existing + 1 THEN RAISE EXCEPTION 'execution % checkpoint sequence must be gapless (expected %, got %)', NEW.execution_id, existing + 1, NEW.checkpoint_sequence; END IF; SELECT status IN ('COMPLETED','FAILED','CANCELLED','EXPIRED') INTO terminal FROM executions.executions WHERE id = NEW.execution_id AND application_id = NEW.application_id; IF terminal IS NULL THEN RAISE EXCEPTION 'execution % does not exist in application %', NEW.execution_id, NEW.application_id; END IF; IF terminal THEN RAISE EXCEPTION 'execution % is terminal; checkpoints are append-only evidence of a LIVE execution', NEW.execution_id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER lr_checkpoint_sequence_gate
     BEFORE INSERT ON executions.execution_checkpoints

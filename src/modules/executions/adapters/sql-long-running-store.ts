@@ -89,6 +89,16 @@ function toTypedGuardError(error: unknown): PlatformError {
       details: { guard: "lr_checkpoint_sequence_gate" },
     });
   }
+  if (
+    message.includes("checkpoint sequence") &&
+    message.includes("already exists with a different content digest")
+  ) {
+    return new PlatformError({
+      code: "IDEMPOTENCY_KEY_REUSED",
+      message,
+      details: { guard: "lr_checkpoint_sequence_gate" },
+    });
+  }
   if (message.includes("is terminal; checkpoints are append-only evidence")) {
     return new PlatformError({
       code: "INVALID_STATE_TRANSITION",
@@ -615,14 +625,13 @@ RETURNING ${LEASE_COLUMNS}`,
     try {
       const result = await this.db.execute<LeaseRow>({
         sql: `UPDATE executions.execution_leases
-SET released_at = $5, release_cause = $6, updated_at = $5
-WHERE execution_id = $1 AND application_id = $2 AND owner_id = $3 AND epoch = $7 AND released_at IS NULL
+SET released_at = $4, release_cause = $5, updated_at = $4
+WHERE execution_id = $1 AND application_id = $2 AND owner_id = $3 AND epoch = $6 AND released_at IS NULL
 RETURNING ${LEASE_COLUMNS}`,
         parameters: [
           input.executionId,
           input.applicationId,
           input.ownerId,
-          input.now,
           input.now,
           input.cause,
           input.epoch,

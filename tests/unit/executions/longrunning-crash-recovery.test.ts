@@ -69,13 +69,15 @@ import {
   type LongRunningExecutionService,
   type ResumeExecutionCommand,
 } from "../../../src/modules/executions/application/long-running-service";
-import type { CheckpointContents, ResumeFacts } from "../../../src/modules/executions/domain/checkpoint";
+import type {
+  CheckpointContents,
+  ResumeFacts,
+} from "../../../src/modules/executions/domain/checkpoint";
 import {
-  longRunningOperationKey,
   type LongRunningOperationKind,
+  longRunningOperationKey,
 } from "../../../src/modules/executions/domain/longrunning";
 import type { ResumeReAdmissionRequest } from "../../../src/modules/executions/ports/resume-admission";
-import { PlatformError } from "../../../src/shared/errors";
 import {
   allowAllAuthorization,
   FakeBudgetAuthority,
@@ -333,7 +335,7 @@ const factsOf = (contents: CheckpointContents): ResumeFacts => ({
   maxCostMicroUsd: contents.maxCostMicroUsd,
 });
 
-async function acquire(world: World, service: LongRunningExecutionService, executionId: string) {
+async function acquire(_world: World, service: LongRunningExecutionService, executionId: string) {
   return service.acquireLease(
     { applicationId: APPLICATION_ID, executionId, actor, ownerId: "worker-1", ttlMs: 60_000 },
     `lease-${executionId}`,
@@ -349,11 +351,7 @@ const eventsOf = (world: World, command: string) =>
   world.executionStore.events.filter((event) => event.command === command);
 
 /** The operation row of one stable key (surviving world). */
-const operationOf = (
-  world: World,
-  kind: LongRunningOperationKind,
-  discriminator: string,
-) => {
+const operationOf = (world: World, kind: LongRunningOperationKind, discriminator: string) => {
   const key = longRunningOperationKey(kind, discriminator);
   return world.store.operations.get(`${APPLICATION_ID}|${key}`);
 };
@@ -646,9 +644,7 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     expect(outcome.status).toBe("WAITING_USER");
     expect(world.store.leases.get(executionId)?.releaseCause).toBe("paused");
     // Exactly one wait-user envelope exists (the transition replayed by key).
-    const waitEvents = world.executionStore.events.filter(
-      (event) => event.command === "wait-user",
-    );
+    const waitEvents = world.executionStore.events.filter((event) => event.command === "wait-user");
     expect(waitEvents).toHaveLength(1);
     expect(operationOf(world, "pause", `${executionId}:pause-${executionId}`)).toMatchObject({
       status: "completed",
@@ -881,9 +877,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     // operation key (the budget seam is key-convergent) and one transition.
     expect(world.admissions.policyCalls).toHaveLength(2);
     expect(world.budgets.reserveCalls).toHaveLength(2);
-    expect(
-      new Set(world.budgets.reserveCalls.map((call) => String(call.operationId))).size,
-    ).toBe(1);
+    expect(new Set(world.budgets.reserveCalls.map((call) => String(call.operationId))).size).toBe(
+      1,
+    );
     expect(operationOf(world, "resume", `${executionId}:resume-${executionId}`)).toMatchObject({
       status: "completed",
       attempts: 2,
@@ -914,9 +910,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
       actor,
       resumeFacts: factsOf(checkpointOf(executionId, { resourceClass: "gpu" })),
     };
-    await expect(setup.service.resumeExecution(command, `resume-${executionId}`)).rejects.toMatchObject(
-      { code: "POLICY_DENIED" },
-    );
+    await expect(
+      setup.service.resumeExecution(command, `resume-${executionId}`),
+    ).rejects.toMatchObject({ code: "POLICY_DENIED" });
     expect(world.admissions.policyCalls).toHaveLength(1);
     expect(eventsOf(world, "resume-denied")).toHaveLength(1); // journaled denial
     expect(operationOf(world, "resume", `${executionId}:resume-${executionId}`)).toMatchObject({
@@ -953,12 +949,12 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     // The durable request committed BEFORE the pause move (journal-then-act);
     // the stage write had not run yet (crash between evidence and stage).
     expect(eventsOf(world, "interruption-requested")).toHaveLength(1);
-    expect(operationOf(world, "interrupt", `${executionId}:interrupt-${executionId}`)).toMatchObject(
-      {
-        status: "pending",
-        stage: null,
-      },
-    );
+    expect(
+      operationOf(world, "interrupt", `${executionId}:interrupt-${executionId}`),
+    ).toMatchObject({
+      status: "pending",
+      stage: null,
+    });
     const restarted = world.boot(null);
     const outcome = await restarted.service.requestInterruption(
       { applicationId: APPLICATION_ID, executionId, actor, reason: "operator halt" },
@@ -967,12 +963,12 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     expect(outcome.status).toBe("WAITING_HUMAN");
     expect(outcome.leaseReleased).toBe(true);
     expect(eventsOf(world, "interruption-requested")).toHaveLength(1); // ONE request
-    expect(operationOf(world, "interrupt", `${executionId}:interrupt-${executionId}`)).toMatchObject(
-      {
-        status: "completed",
-        attempts: 2,
-      },
-    );
+    expect(
+      operationOf(world, "interrupt", `${executionId}:interrupt-${executionId}`),
+    ).toMatchObject({
+      status: "completed",
+      attempts: 2,
+    });
   });
 
   test("C13: interruption crash AFTER the wake supersede / lease force-release — the retry converges to WAITING_HUMAN; the wake never fires afterwards", async () => {
@@ -1056,11 +1052,11 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     // The frozen cancel move committed (CANCELLED); the operation row is
     // the honest PENDING claim — the [cancel, stage] crash window.
     expect(world.executionStore.executions.get(executionId)?.status).toBe("CANCELLED");
-    expect(operationOf(world, "terminate", `${executionId}:terminate-${executionId}`)).toMatchObject(
-      {
-        status: "pending",
-      },
-    );
+    expect(
+      operationOf(world, "terminate", `${executionId}:terminate-${executionId}`),
+    ).toMatchObject({
+      status: "pending",
+    });
     // RESTART: the retry MUST converge (terminal states are final — the
     // committed terminal move IS the outcome; a fresh terminate claim on a
     // terminal execution still fails closed, but the crash-resume of THIS
@@ -1072,16 +1068,14 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     );
     expect(outcome.status).toBe("CANCELLED");
     expect(outcome.leaseReleased).toBe(true);
-    expect(operationOf(world, "terminate", `${executionId}:terminate-${executionId}`)).toMatchObject(
-      {
-        status: "completed",
-        attempts: 2,
-      },
-    );
+    expect(
+      operationOf(world, "terminate", `${executionId}:terminate-${executionId}`),
+    ).toMatchObject({
+      status: "completed",
+      attempts: 2,
+    });
     // Exactly one cancel envelope (the transition replayed by key).
-    const cancelEvents = world.executionStore.events.filter(
-      (event) => event.command === "cancel",
-    );
+    const cancelEvents = world.executionStore.events.filter((event) => event.command === "cancel");
     expect(cancelEvents).toHaveLength(1);
   });
 
@@ -1108,12 +1102,14 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
         ),
       dying.crashed,
     );
-    expect(world.store.wakeUps.get(`${APPLICATION_ID}|${executionId}|retry-backoff`)).toMatchObject({
-      status: "scheduled",
-    });
-    expect(operationOf(world, "wakeup-schedule", `${executionId}:sched-${executionId}`)).toMatchObject(
-      { status: "pending" },
+    expect(world.store.wakeUps.get(`${APPLICATION_ID}|${executionId}|retry-backoff`)).toMatchObject(
+      {
+        status: "scheduled",
+      },
     );
+    expect(
+      operationOf(world, "wakeup-schedule", `${executionId}:sched-${executionId}`),
+    ).toMatchObject({ status: "pending" });
     const restarted = world.boot(null);
     const outcome = await restarted.service.scheduleWakeUp(
       {
@@ -1127,11 +1123,13 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
       `sched-${executionId}`,
     );
     expect(outcome.status).toBe("scheduled");
-    expect([...world.store.wakeUps.values()].filter((row) => row.wakeKey === "retry-backoff")).toHaveLength(1);
+    expect(
+      [...world.store.wakeUps.values()].filter((row) => row.wakeKey === "retry-backoff"),
+    ).toHaveLength(1);
     expect(eventsOf(world, "wake-up-scheduled")).toHaveLength(1);
-    expect(operationOf(world, "wakeup-schedule", `${executionId}:sched-${executionId}`)).toMatchObject(
-      { status: "completed", attempts: 2 },
-    );
+    expect(
+      operationOf(world, "wakeup-schedule", `${executionId}:sched-${executionId}`),
+    ).toMatchObject({ status: "completed", attempts: 2 });
   });
 
   test("C16: wakeup-apply crash AFTER the 'claimed' stage (before the resume) — the recovery scan converges the PENDING claim; exactly one resume", async () => {
@@ -1324,9 +1322,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
       epoch: 1,
       heartbeatCount: 0,
     });
-    expect(operationOf(world, "lease-acquire", `${executionId}:lease-${executionId}`)).toMatchObject(
-      { status: "pending" },
-    );
+    expect(
+      operationOf(world, "lease-acquire", `${executionId}:lease-${executionId}`),
+    ).toMatchObject({ status: "pending" });
     const restarted = world.boot(null);
     const outcome = await restarted.service.acquireLease(
       { applicationId: APPLICATION_ID, executionId, actor, ownerId: "worker-1", ttlMs: 60_000 },
@@ -1334,9 +1332,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     );
     expect(outcome.lease).toMatchObject({ ownerId: "worker-1", epoch: 1 });
     expect(outcome.lease.heartbeatCount).toBe(0);
-    expect(operationOf(world, "lease-acquire", `${executionId}:lease-${executionId}`)).toMatchObject(
-      { status: "completed", attempts: 2 },
-    );
+    expect(
+      operationOf(world, "lease-acquire", `${executionId}:lease-${executionId}`),
+    ).toMatchObject({ status: "completed", attempts: 2 });
     // A DIFFERENT owner while the lease is live: refused (fail closed).
     const other = world.boot(null);
     await expect(
@@ -1466,9 +1464,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
       dying.crashed,
     );
     expect(world.store.leases.get(executionId)?.releaseCause).toBe("worker-released");
-    expect(operationOf(world, "lease-release", `${executionId}:release-${executionId}`)).toMatchObject(
-      { status: "pending" },
-    );
+    expect(
+      operationOf(world, "lease-release", `${executionId}:release-${executionId}`),
+    ).toMatchObject({ status: "pending" });
     const restarted = world.boot(null);
     const outcome = await restarted.service.releaseLease(
       {
@@ -1481,9 +1479,9 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
       `release-${executionId}`,
     );
     expect(outcome.lease).toMatchObject({ releaseCause: "worker-released" });
-    expect(operationOf(world, "lease-release", `${executionId}:release-${executionId}`)).toMatchObject(
-      { status: "completed", attempts: 2 },
-    );
+    expect(
+      operationOf(world, "lease-release", `${executionId}:release-${executionId}`),
+    ).toMatchObject({ status: "completed", attempts: 2 });
     // The released epoch cannot renew (stale workers never mutate the lease).
     const other = world.boot(null);
     await expect(
@@ -1508,7 +1506,13 @@ describe("crash-injection proofs: durable operation state + stable keys (WORK-02
     const second = await world.driveToRunning();
     const process = world.boot(null);
     await process.service.acquireLease(
-      { applicationId: APPLICATION_ID, executionId: first, actor, ownerId: "worker-1", ttlMs: 60_000 },
+      {
+        applicationId: APPLICATION_ID,
+        executionId: first,
+        actor,
+        ownerId: "worker-1",
+        ttlMs: 60_000,
+      },
       "same-key",
     );
     await process.service.acquireLease(
