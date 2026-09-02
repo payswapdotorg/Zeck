@@ -1047,6 +1047,24 @@ export function createDeterministicizationService(
           message: "promotion requires a non-empty decidedBy actor",
         });
       }
+      // IDEMPOTENT REPLAY (exactly-once per logical promotion): an
+      // already-promoted candidate returns its RECORDED promotion
+      // decision — the durable outcome is the authority and a
+      // re-request of the same logical promotion never re-runs the
+      // gate, never appends a second decision and never touches state.
+      if (candidate.status === "promoted") {
+        const decisions = await deps.store.listDecisions(scope, candidate.candidateId);
+        const existing = [...decisions].reverse().find((entry) => entry.kind === "promoted");
+        if (existing !== undefined) {
+          return { decision: existing, replayed: true };
+        }
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message:
+            "the candidate is promoted but carries no promotion decision (inconsistent durable state — fail closed)",
+          details: { candidateId: candidate.candidateId },
+        });
+      }
       const config = resolveGateConfig(request.gateConfig);
       const { evaluation, gate } = await evaluateGateFor(scope, candidate, config);
       if (evaluation.verdict !== "promote") {
@@ -1130,7 +1148,15 @@ export function createDeterministicizationService(
           details: { candidateId: candidate.candidateId },
         });
       }
+      // IDEMPOTENT REPLAY (exactly-once per logical rejection): an
+      // already-rejected candidate returns its RECORDED rejection
+      // decision — the durable outcome is the authority.
       if (candidate.status === "rejected") {
+        const decisions = await deps.store.listDecisions(scope, candidate.candidateId);
+        const existing = [...decisions].reverse().find((entry) => entry.kind === "rejected");
+        if (existing !== undefined) {
+          return { decision: existing, replayed: true };
+        }
         throw new PlatformError({
           code: "INVALID_STATE_TRANSITION",
           message: "the candidate is already rejected (terminal)",
@@ -1208,6 +1234,22 @@ export function createDeterministicizationService(
       requireScope(request);
       const scope = { applicationId: request.applicationId, tenantId: request.tenantId };
       const candidate = await loadCandidate(scope, request.candidateId);
+      // IDEMPOTENT REPLAY (exactly-once per logical rollback): an
+      // already-rolled-back candidate returns its RECORDED rollback
+      // decision — the incumbent restoration stays durable and a
+      // re-request never appends a second decision.
+      if (candidate.status === "rolled-back") {
+        const decisions = await deps.store.listDecisions(scope, candidate.candidateId);
+        const existing = [...decisions].reverse().find((entry) => entry.kind === "rolled-back");
+        if (existing !== undefined) {
+          return { decision: existing, replayed: true };
+        }
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message: "the candidate is rolled back but carries no rollback decision (inconsistent durable state — fail closed)",
+          details: { candidateId: candidate.candidateId },
+        });
+      }
       if (candidate.status !== "promoted") {
         throw new PlatformError({
           code: "INVALID_STATE_TRANSITION",

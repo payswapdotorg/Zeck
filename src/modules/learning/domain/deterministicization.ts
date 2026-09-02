@@ -963,7 +963,21 @@ export function validateStageEvidenceRecord(value: unknown): asserts value is St
       message: "deterministicization stage evidence metrics are MANDATORY",
     });
   }
-  requirePositiveInteger(metrics, "population", "metrics population");
+  // The metrics population is non-negative: an 'insufficient' record
+  // honestly carries ZERO observed runs (no evidence is recorded as no
+  // evidence — never fabricated). Every other status requires the
+  // non-empty runs the shape check above already enforced.
+  const metricsPopulation = metrics.population;
+  if (
+    typeof metricsPopulation !== "number" ||
+    !Number.isInteger(metricsPopulation) ||
+    metricsPopulation < 0
+  ) {
+    throw new PlatformError({
+      code: "PROVIDER_ERROR",
+      message: "deterministicization metrics population must be a non-negative integer",
+    });
+  }
   if (
     typeof metrics.acceptedCount !== "number" ||
     !Number.isInteger(metrics.acceptedCount) ||
