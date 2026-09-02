@@ -184,6 +184,20 @@ export interface ComputerUseActionFinalizeInput {
   readonly ledgerResultSequence: number | null;
 }
 
+/**
+ * The write-once ledger-sequence binding of one action row (the
+ * WORK-010 `bindLedgerSequence` discipline): the requested binding lands
+ * while the row is dispatching, the result binding may land right after
+ * finalization — each slot is NULL -> value exactly once and never moved
+ * (the physical write-once guard of migration 0023).
+ */
+export interface ComputerUseActionLedgerBinding {
+  readonly applicationId: string;
+  readonly actionId: string;
+  readonly phase: "requested" | "result";
+  readonly sequence: number;
+}
+
 // ---------------------------------------------------------------------------
 // Observations (append-only, sequence-gapless, digest-protected)
 // ---------------------------------------------------------------------------
@@ -267,6 +281,8 @@ export interface ComputerUseStore {
   // -- actions --------------------------------------------------------------
   insertAction(input: ComputerUseActionInsertInput): Promise<ComputerUseActionInsertOutcome>;
   finalizeAction(input: ComputerUseActionFinalizeInput): Promise<ComputerUseActionRecord>;
+  /** Write-once ledger-sequence binding (NULL -> value; never moved). */
+  bindActionLedgerSequence(input: ComputerUseActionLedgerBinding): Promise<ComputerUseActionRecord>;
   findActionByKey(
     applicationId: string,
     sessionId: string,

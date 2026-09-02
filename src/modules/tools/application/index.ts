@@ -6,6 +6,18 @@
  */
 
 export {
+  COMPUTER_USE_INPUT_MAX,
+  COMPUTER_USE_OBSERVATION_CONTENT_MAX,
+  type ComputerUseActionDispatchResult,
+  type ComputerUseActionRequest,
+  type ComputerUseEscalationRequest,
+  type ComputerUseService,
+  type ComputerUseServiceDeps,
+  type ComputerUseSessionReceipt,
+  type ComputerUseTrajectory,
+  createComputerUseService,
+} from "./computer-use-service";
+export {
   createSynthesisService,
   type SubmitProgramOutcome,
   SYNTHESIS_DEFAULT_TIMEOUT_MS,

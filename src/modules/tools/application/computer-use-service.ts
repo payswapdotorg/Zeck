@@ -523,6 +523,25 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
         });
       }
       if (isTerminalComputerUseSessionStatus(existing.status)) {
+        // Converge the session-create operation onto the committed
+        // outcome: a crash between the durable session row and the
+        // operation completion leaves the honest PENDING row; the row's
+        // terminal status IS the committed-effect proof (the WORK-028
+        // pre-terminal-stage discipline).
+        const createKey = computerUseSessionCreateKey(idempotencyKey);
+        const operation = await store.findOperation(request.applicationId, createKey);
+        if (operation !== null && operation.status === "pending") {
+          if (existing.status === "denied") {
+            await store.failOperation(
+              request.applicationId,
+              createKey,
+              `denied (${existing.denialClass}): ${existing.denialReason ?? ""}`.slice(0, 512),
+              iso(),
+            );
+          } else {
+            await store.completeOperation(request.applicationId, createKey, iso());
+          }
+        }
         if (existing.status === "denied") {
           throw new PlatformError({
             code: denialCodeOf(existing.denialClass),
@@ -1246,7 +1265,12 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       },
       ledgerKey(durableActionId, "action-requested"),
     );
-    actionRecord = { ...actionRecord, ledgerRequestedSequence: requestedSequence };
+    actionRecord = await store.bindActionLedgerSequence({
+      applicationId,
+      actionId: durableActionId,
+      phase: "requested",
+      sequence: requestedSequence,
+    });
 
     // ----- 7. Budget guard (usage stays under the route ceiling). ----------
     const declaration = await registry.resolve(session.modeContext.capabilityId);
@@ -1589,7 +1613,12 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       },
       ledgerKey(durableActionId, "action-result"),
     );
-    actionRecord = { ...actionRecord, ledgerResultSequence: resultSequence };
+    actionRecord = await store.bindActionLedgerSequence({
+      applicationId,
+      actionId: durableActionId,
+      phase: "result",
+      sequence: resultSequence,
+    });
     await store.completeOperation(applicationId, operationKey, iso());
     return actionResultOf(currentSession ?? session, actionRecord, recordedObservations, false);
   };

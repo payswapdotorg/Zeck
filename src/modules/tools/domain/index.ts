@@ -6,6 +6,7 @@
  * HTTP libraries (`IMPLEMENTATION.md` §3).
  */
 
+export * from "./computer-use";
 export * from "./invocation";
 export * from "./schema";
 export * from "./synthesis";
