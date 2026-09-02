@@ -66,7 +66,6 @@ import type {
   MessagingPolicyAdmissionRequest,
   MessagingRouteClass,
   MessagingSecretMediationRequest,
-  MessagingConversationServiceDeps,
   MessagingTurnResponderRequest,
   MessagingTurnRouteRequest,
   StartMessagingConversationInput,
