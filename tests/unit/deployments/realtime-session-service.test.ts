@@ -16,10 +16,22 @@
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import type {
+  CreateDeploymentInput,
+  DeploymentPlanInput,
+  DeploymentProfileInput,
   RealtimeActor,
+  RealtimeBudgetReserveCommand,
+  RealtimeCapabilityAdmissionRequest,
+  RealtimeEvidenceInput,
+  RealtimeExecutionLedger,
+  RealtimeExecutionOpenInput,
   RealtimeInboundEventInput,
+  RealtimePolicyAdmissionRequest,
   RealtimeRouteClass,
+  RealtimeSecretMediationRequest,
   RealtimeSessionServiceDeps,
+  RealtimeTurnResponderRequest,
+  RealtimeTurnRouteRequest,
   StartRealtimeSessionInput,
 } from "../../../src/modules/deployments/public";
 import {
@@ -34,6 +46,9 @@ import { PlatformError } from "../../../src/shared/errors";
 
 const digest = (input: string): string => createHash("sha256").update(input).digest("hex");
 
+/** Structural view of a typed input (evidence inspection helper). */
+const struct = (value: unknown): Record<string, unknown> => value as Record<string, unknown>;
+
 const ACTOR: RealtimeActor = {
   actorId: "00000000-0000-7000-8000-0000000000d1",
   applicationId: "00000000-0000-7000-8000-0000000000d2",
@@ -47,7 +62,7 @@ const OTHER_TENANT_ACTOR: RealtimeActor = {
 const AGENT_ID = "00000000-0000-7000-8000-0000000000a1";
 const ENV_ID = "00000000-0000-7000-8000-0000000000a2";
 
-const PROFILE = {
+const PROFILE: DeploymentProfileInput = {
   profileId: "support-voice",
   modality: "realtime-voice",
   channelKinds: ["web", "telephony"],
@@ -59,10 +74,10 @@ const PROFILE = {
   outputModalities: ["audio"],
 };
 
-const planInput = (overrides: Record<string, unknown> = {}) => ({
+const planInput = (overrides: Partial<DeploymentPlanInput> = {}): DeploymentPlanInput => ({
   planId: "support-voice-plan",
   profileRef: { profileId: "support-voice", version: 1 },
-  agentRef: { agentId: AGENT_ID, agentVersion: "1.0.0", agentKind: "zeck" },
+  agentRef: { agentId: AGENT_ID, agentVersion: "1.0.0", agentKind: "zeck" as const },
   environmentId: ENV_ID,
   channelBindings: [
     { channelKind: "web", adapterCapabilityId: "realtime-channel-adapter" },
@@ -72,22 +87,22 @@ const planInput = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const CREATION = {
+const CREATION: CreateDeploymentInput = {
   slug: "support-voice-prod",
   name: "Support voice",
   environmentId: ENV_ID,
   agentId: AGENT_ID,
   agentVersion: "1.0.0",
-  agentKind: "zeck",
+  agentKind: "zeck" as const,
   planId: "support-voice-plan",
 };
 
 /** Recording fake: the policy admission seam. */
 class FakePolicyAdmission {
-  readonly calls: Array<Record<string, unknown>> = [];
+  readonly calls: RealtimePolicyAdmissionRequest[] = [];
   deny = false;
-  constructor(private readonly onCall: (call: Record<string, unknown>) => void = () => {}) {}
-  async admit(request: Record<string, unknown>) {
+  constructor(private readonly onCall: (call: RealtimePolicyAdmissionRequest) => void = () => {}) {}
+  async admit(request: RealtimePolicyAdmissionRequest) {
     this.calls.push(request);
     this.onCall(request);
     if (this.deny) {
@@ -107,10 +122,12 @@ class FakePolicyAdmission {
 
 /** Recording fake: the capability admission seam. */
 class FakeCapabilityAdmission {
-  readonly calls: Array<Record<string, unknown>> = [];
+  readonly calls: RealtimeCapabilityAdmissionRequest[] = [];
   unmet: string[] = [];
-  constructor(private readonly onCall: (call: Record<string, unknown>) => void = () => {}) {}
-  async resolve(request: Record<string, unknown>) {
+  constructor(
+    private readonly onCall: (call: RealtimeCapabilityAdmissionRequest) => void = () => {},
+  ) {}
+  async resolve(request: RealtimeCapabilityAdmissionRequest) {
     this.calls.push(request);
     this.onCall(request);
     return { satisfied: this.unmet.length === 0, unmet: this.unmet };
@@ -119,12 +136,12 @@ class FakeCapabilityAdmission {
 
 /** Recording fake: the budget admission seam. */
 class FakeBudgetAdmission {
-  readonly reserves: Array<Record<string, unknown>> = [];
+  readonly reserves: RealtimeBudgetReserveCommand[] = [];
   readonly settles: Array<Record<string, unknown>> = [];
   readonly releases: Array<Record<string, unknown>> = [];
   failReserve = false;
   private seq = 0;
-  async reserve(command: Record<string, unknown>) {
+  async reserve(command: RealtimeBudgetReserveCommand) {
     this.reserves.push(command);
     if (this.failReserve) {
       throw new PlatformError({
@@ -135,7 +152,7 @@ class FakeBudgetAdmission {
     this.seq += 1;
     return {
       reservationId: `resv-${this.seq}`,
-      amountMicroUsd: String(command.amountMicroUsd ?? "0"),
+      amountMicroUsd: String(command.amountMicroUsd),
       converged: false,
     };
   }
@@ -151,10 +168,10 @@ class FakeBudgetAdmission {
 
 /** Recording fake: the secret mediation seam. */
 class FakeSecretMediation {
-  readonly calls: Array<Record<string, unknown>> = [];
+  readonly calls: RealtimeSecretMediationRequest[] = [];
   refuse = false;
-  constructor(private readonly onCall: (call: Record<string, unknown>) => void = () => {}) {}
-  async mediate(request: Record<string, unknown>) {
+  constructor(private readonly onCall: (call: RealtimeSecretMediationRequest) => void = () => {}) {}
+  async mediate(request: RealtimeSecretMediationRequest) {
     this.calls.push(request);
     this.onCall(request);
     if (this.refuse) {
@@ -166,10 +183,10 @@ class FakeSecretMediation {
 
 /** Recording fake: the planner-decided subtask router. */
 class FakeRouter {
-  readonly calls: Array<Record<string, unknown>> = [];
+  readonly calls: RealtimeTurnRouteRequest[] = [];
   routeClass: RealtimeRouteClass = "generative";
-  constructor(private readonly onCall: (call: Record<string, unknown>) => void = () => {}) {}
-  async routeTurn(request: Record<string, unknown>) {
+  constructor(private readonly onCall: (call: RealtimeTurnRouteRequest) => void = () => {}) {}
+  async routeTurn(request: RealtimeTurnRouteRequest) {
     this.calls.push(request);
     this.onCall(request);
     return {
@@ -189,9 +206,9 @@ class FakeRouter {
 
 /** Recording fake: the deployed agent's turn responder. */
 class FakeResponder {
-  readonly calls: Array<Record<string, unknown>> = [];
-  constructor(private readonly onCall: (call: Record<string, unknown>) => void = () => {}) {}
-  async respond(request: Record<string, unknown>) {
+  readonly calls: RealtimeTurnResponderRequest[] = [];
+  constructor(private readonly onCall: (call: RealtimeTurnResponderRequest) => void = () => {}) {}
+  async respond(request: RealtimeTurnResponderRequest) {
     this.calls.push(request);
     this.onCall(request);
     return {
@@ -203,22 +220,19 @@ class FakeResponder {
 }
 
 /** In-memory model of the executions public seam (the ledger port). */
-class FakeExecutionLedger {
-  readonly opened: Array<{ key: string; input: Record<string, unknown> }> = [];
-  readonly evidence: Array<{ key: string; input: Record<string, unknown> }> = [];
+class FakeExecutionLedger implements RealtimeExecutionLedger {
+  readonly opened: Array<{ key: string; input: RealtimeExecutionOpenInput }> = [];
+  readonly evidence: Array<{ key: string; input: RealtimeEvidenceInput }> = [];
   readonly humanWaits: Array<{ key: string; input: Record<string, unknown> }> = [];
   readonly resumes: Array<{ key: string; input: Record<string, unknown> }> = [];
+  private readonly executions = new Map<string, string>();
+  private readonly evidenceKeys = new Set<string>();
   private seq = 0;
   private nextExecution = 0;
-  async openExecution(input: Record<string, unknown>, idempotencyKey: string) {
-    const existing = this.opened.find((entry) => entry.key === idempotencyKey);
+  async openExecution(input: RealtimeExecutionOpenInput, idempotencyKey: string) {
+    const existing = this.executions.get(idempotencyKey);
     if (existing !== undefined) {
-      const executionId = String(existing.input.task && "x");
-      void executionId;
-      const first = this.executions.get(idempotencyKey);
-      if (first !== undefined) {
-        return { executionId: first, replayed: true, status: "running" };
-      }
+      return { executionId: existing, replayed: true, status: "running" };
     }
     this.nextExecution += 1;
     const executionId = `00000000-0000-7000-8000-${String(this.nextExecution).padStart(12, "0")}`;
@@ -226,9 +240,7 @@ class FakeExecutionLedger {
     this.opened.push({ key: idempotencyKey, input });
     return { executionId, replayed: false, status: "running" };
   }
-  private readonly executions = new Map<string, string>();
-  private readonly evidenceKeys = new Set<string>();
-  async recordEvidence(input: Record<string, unknown>, idempotencyKey: string) {
+  async recordEvidence(input: RealtimeEvidenceInput, idempotencyKey: string) {
     const replayed = this.evidenceKeys.has(idempotencyKey);
     this.evidenceKeys.add(idempotencyKey);
     this.seq += 1;
@@ -365,25 +377,21 @@ async function seededWorld(): Promise<RealtimeWorld> {
     applicationId: ACTOR.applicationId,
     tenantId: ACTOR.tenantId,
   };
-  await world.deploymentService.publishProfile(
-    { ...PROFILE } as never,
-    { version: 1 },
-    actor as never,
-  );
-  await world.deploymentService.publishPlan(planInput() as never, { version: 1 }, actor as never);
+  await world.deploymentService.publishProfile({ ...PROFILE }, { version: 1 }, actor);
+  await world.deploymentService.publishPlan(planInput(), { version: 1 }, actor);
   const created = await world.deploymentService.createDeployment(
     { ...CREATION },
     "deploy-key-0",
-    actor as never,
+    actor,
   );
   world.deploymentId = created.deploymentId;
   // Plan v2 exists (for promotion/pinning proofs).
   await world.deploymentService.publishPlan(
     planInput({
       sessionPolicy: { maxSessionDurationMs: 300_000, maxConcurrentSessions: 4 },
-    }) as never,
+    }),
     { version: 2 },
-    actor as never,
+    actor,
   );
   return world;
 }
@@ -446,8 +454,7 @@ describe("realtime session service: startSession (AC1/AC3)", () => {
     // Provenance: session-started on the execution ledger + the journal.
     expect(
       world.ledger.evidence.some(
-        (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "session-started",
+        (entry) => String(struct(entry.input).evidenceClass) === "session-started",
       ),
     ).toBe(true);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, outcome.sessionId);
@@ -542,7 +549,7 @@ describe("realtime session service: startSession (AC1/AC3)", () => {
     expect(world.rail.openedSessions).toBe(0);
     expect(world.ledger.opened).toHaveLength(0);
     expect(world.policy.calls).toHaveLength(1);
-    expect((world.policy.calls[0] as Record<string, unknown>).action).toBe("session-start");
+    expect(world.policy.calls[0]?.action).toBe("session-start");
   });
 
   test("a suspended deployment refuses session starts (state gate)", async () => {
@@ -610,21 +617,17 @@ describe("realtime session service: ingestInboundEvent (user turns)", () => {
     expect(world.rail.deliveries.filter((record) => record.kind === "deliver")).toHaveLength(1);
     // The admission chain ran in order: policy → capability → budget → secret.
     expect(world.policy.calls).toHaveLength(2); // start + turn
-    expect((world.policy.calls[1] as Record<string, unknown>).action).toBe("turn-dispatch");
+    expect(world.policy.calls[1]?.action).toBe("turn-dispatch");
     expect(world.capabilities.calls).toHaveLength(1);
     expect(world.budget.reserves).toHaveLength(1);
     expect(world.budget.settles).toHaveLength(1);
     expect(world.secrets.calls).toHaveLength(1);
     // The responder saw the reservation id and the mediated grant ref.
-    expect((world.responder.calls[0] as Record<string, unknown>).reservationId).toBe("resv-1");
-    expect((world.responder.calls[0] as Record<string, unknown>).channelGrantRef).toBe(
-      "mediated:conn-1:cred",
-    );
+    expect(world.responder.calls[0]?.reservationId).toBe("resv-1");
+    expect(world.responder.calls[0]?.channelGrantRef).toBe("mediated:conn-1:cred");
     // Turn provenance rode the execution ledger and the journal.
     expect(
-      world.ledger.evidence.some(
-        (entry) => String((entry.input as Record<string, unknown>).evidenceClass) === "turn",
-      ),
+      world.ledger.evidence.some((entry) => String(struct(entry.input).evidenceClass) === "turn"),
     ).toBe(true);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, started.sessionId);
     const outboundTurn = events.find(
@@ -654,10 +657,9 @@ describe("realtime session service: ingestInboundEvent (user turns)", () => {
     expect(world.rail.deliveries.filter((record) => record.kind === "deliver")).toHaveLength(1);
     expect(
       world.ledger.evidence.some((entry) => {
-        const input = entry.input as Record<string, unknown>;
+        const input = struct(entry.input);
         return (
-          input.evidenceClass === "turn" &&
-          (input.payload as Record<string, unknown>).routeClass === "deterministic"
+          input.evidenceClass === "turn" && struct(input.payload).routeClass === "deterministic"
         );
       }),
     ).toBe(true);
@@ -701,8 +703,7 @@ describe("realtime session service: ingestInboundEvent (user turns)", () => {
     ).toBe(true);
     expect(
       world.ledger.evidence.some(
-        (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "significant-action",
+        (entry) => String(struct(entry.input).evidenceClass) === "significant-action",
       ),
     ).toBe(true);
   });
@@ -776,7 +777,7 @@ describe("realtime session service: ingestInboundEvent (user turns)", () => {
     expect(world.budget.releases).toHaveLength(1);
     expect(
       world.ledger.evidence.some(
-        (entry) => String((entry.input as Record<string, unknown>).evidenceClass) === "failure",
+        (entry) => String(struct(entry.input).evidenceClass) === "failure",
       ),
     ).toBe(true);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, started.sessionId);
@@ -893,8 +894,7 @@ describe("realtime session service: interruption, hangup, transfer (AC4)", () =>
     expect(world.policy.calls).toHaveLength(1); // only the session-start admission
     expect(
       world.ledger.evidence.some(
-        (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "interruption",
+        (entry) => String(struct(entry.input).evidenceClass) === "interruption",
       ),
     ).toBe(true);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, started.sessionId);
@@ -922,8 +922,7 @@ describe("realtime session service: interruption, hangup, transfer (AC4)", () =>
     expect(session?.session.closedAt).not.toBeNull();
     expect(
       world.ledger.evidence.some(
-        (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "session-completed",
+        (entry) => String(struct(entry.input).evidenceClass) === "session-completed",
       ),
     ).toBe(true);
     // The rail saw the channel close.
@@ -952,16 +951,14 @@ describe("realtime session service: interruption, hangup, transfer (AC4)", () =>
     // Policy was consulted for the human-transfer action (the
     // policy-designated escalation) and the execution moved to the
     // auditable human wait; the rail transferred exactly once.
-    const transferCall = world.policy.calls.find(
-      (call) => (call as Record<string, unknown>).action === "human-transfer",
-    );
+    const transferCall = world.policy.calls.find((call) => call.action === "human-transfer");
     expect(transferCall).toBeDefined();
     expect(world.ledger.humanWaits).toHaveLength(1);
     expect(world.rail.deliveries.filter((record) => record.kind === "transfer")).toHaveLength(1);
     // Transfer provenance on the ledger + journal; terminal status.
     expect(
       world.ledger.evidence.some(
-        (entry) => String((entry.input as Record<string, unknown>).evidenceClass) === "transfer",
+        (entry) => String(struct(entry.input).evidenceClass) === "transfer",
       ),
     ).toBe(true);
     const session = await world.service.getSession(ACTOR.applicationId, started.sessionId);
@@ -1013,8 +1010,8 @@ describe("realtime session service: interruption, hangup, transfer (AC4)", () =>
     expect(
       world.ledger.evidence.some(
         (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "failure" &&
-          String((entry.input as Record<string, unknown>).cause).includes("human transfer failed"),
+          String(struct(entry.input).evidenceClass) === "failure" &&
+          String(struct(entry.input).cause).includes("human transfer failed"),
       ),
     ).toBe(true);
     const session = await world.service.getSession(ACTOR.applicationId, started.sessionId);
@@ -1051,9 +1048,7 @@ describe("realtime session service: reconnect and close (AC7)", () => {
       (entry) => entry.key === "realtime:reattach:reattach-1",
     );
     expect(reattachEvidence).toBeDefined();
-    expect((reattachEvidence?.input as Record<string, unknown>).executionId).toBe(
-      started.executionId,
-    );
+    expect(struct(reattachEvidence?.input).executionId).toBe(started.executionId);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, started.sessionId);
     expect(events.some((event) => event.kind === "session-reattached")).toBe(true);
     // The session continues to work on the NEW coordinates.
@@ -1139,8 +1134,7 @@ describe("realtime session service: reconnect and close (AC7)", () => {
     expect(second.replayed).toBe(true);
     expect(
       world.ledger.evidence.filter(
-        (entry) =>
-          String((entry.input as Record<string, unknown>).evidenceClass) === "session-completed",
+        (entry) => String(struct(entry.input).evidenceClass) === "session-completed",
       ),
     ).toHaveLength(1);
   });
@@ -1157,7 +1151,7 @@ describe("realtime session service: reconnect and close (AC7)", () => {
     expect(session?.session.status).toBe("failed");
     expect(
       world.ledger.evidence.some(
-        (entry) => String((entry.input as Record<string, unknown>).evidenceClass) === "failure",
+        (entry) => String(struct(entry.input).evidenceClass) === "failure",
       ),
     ).toBe(true);
     const events = await world.service.listSessionEvents(ACTOR.applicationId, started.sessionId);
@@ -1198,11 +1192,7 @@ describe("realtime session service: version pinning and rollback (AC7)", () => {
     const turnEntry = world.ledger.evidence.find(
       (entry) => entry.key === "realtime:turn:evt-on-v1",
     );
-    expect(
-      (turnEntry?.input as Record<string, unknown> | undefined)?.reference &&
-        ((turnEntry?.input as Record<string, unknown>).reference as Record<string, unknown>)
-          .pinnedPlanVersion,
-    ).toBe(1);
+    expect(struct(struct(turnEntry?.input).reference).pinnedPlanVersion).toBe(1);
   });
 
   test("S11: rollback moves the deployment back but NEVER rewrites prior execution identity", async () => {
