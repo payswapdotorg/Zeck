@@ -127,10 +127,7 @@ export interface MediaExecutionLedger {
    * sequencing, gaplessness, append-only enforcement and status
    * preservation).
    */
-  recordEvidence(
-    input: MediaEvidenceInput,
-    idempotencyKey: string,
-  ): Promise<MediaEvidenceOutcome>;
+  recordEvidence(input: MediaEvidenceInput, idempotencyKey: string): Promise<MediaEvidenceOutcome>;
 
   /** Tenant-guarded execution facts read. */
   readExecution(

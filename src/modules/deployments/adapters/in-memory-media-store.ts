@@ -20,9 +20,10 @@ import type {
   MediaArtifactRecord,
   MediaJobRecord,
   MediaObservationRecord,
+  MediaOperationCheckpoint,
   MediaOperationRecord,
+  MediaProviderObservation,
 } from "../domain/media";
-import type { MediaOperationCheckpoint, MediaProviderObservation } from "../domain/media";
 import {
   canTransitionMediaJob,
   isTerminalMediaJobStatus,
@@ -248,8 +249,7 @@ export class InMemoryMediaStore implements MediaStore {
       if (existing.creationFingerprint !== input.creationFingerprint) {
         throw new PlatformError({
           code: "IDEMPOTENCY_KEY_REUSED",
-          message:
-            "media job submission key already exists with a different creation fingerprint",
+          message: "media job submission key already exists with a different creation fingerprint",
           details: { jobId: existing.id },
         });
       }
@@ -326,10 +326,7 @@ export class InMemoryMediaStore implements MediaStore {
       // The committed row already satisfies the target: convergence.
       return { status: "converged", job: toJob(job) };
     }
-    if (
-      job.status !== input.expectedStatus ||
-      !canTransitionMediaJob(job.status, input.toStatus)
-    ) {
+    if (job.status !== input.expectedStatus || !canTransitionMediaJob(job.status, input.toStatus)) {
       throw new PlatformError({
         code: "INVALID_STATE_TRANSITION",
         message: `media job ${input.jobId} guard disagreed: row is ${job.status}; the guarded mutation expected ${input.expectedStatus} -> ${input.toStatus} (first writer wins; replays converge on the committed state)`,
@@ -486,9 +483,7 @@ export class InMemoryMediaStore implements MediaStore {
     return out.sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
   }
 
-  async beginMediaOperation(
-    input: MediaOperationBeginInput,
-  ): Promise<MediaOperationBeginOutcome> {
+  async beginMediaOperation(input: MediaOperationBeginInput): Promise<MediaOperationBeginOutcome> {
     const existing = this.operations.get(`${input.applicationId}:${input.operationKey}`);
     if (existing === undefined) {
       const operation: MemoryOperation = {

@@ -59,7 +59,6 @@ import { createInProcessRealtimeRail } from "./adapters/in-process-realtime-rail
 import { createMediaArtifactAuthorityAdapter } from "./adapters/media-artifact-authority";
 import { createMediaExecutionLedgerAdapter } from "./adapters/media-execution-ledger";
 import { createMediaModalityAdapter } from "./adapters/media-modality-adapter";
-import { createVerificationMediaGate } from "./adapters/verification-media-gate";
 import { createMessagingExecutionLedgerAdapter } from "./adapters/messaging-execution-ledger";
 import { createMessagingModalityAdapter } from "./adapters/messaging-modality-adapter";
 import { createPlannerMessagingSubtaskRouter } from "./adapters/planner-messaging-subtask-router";
@@ -73,6 +72,7 @@ import { SqlDeploymentStore } from "./adapters/sql-deployment-store";
 import { SqlMediaStore } from "./adapters/sql-media-store";
 import { SqlMessagingStore } from "./adapters/sql-messaging-store";
 import { SqlRealtimeStore } from "./adapters/sql-realtime-store";
+import { createVerificationMediaGate } from "./adapters/verification-media-gate";
 import type {
   DeploymentActor,
   DeploymentService,
@@ -119,6 +119,18 @@ import type {
   DeploymentStatus,
   DeploymentValidation,
   PromoteDeploymentInput,
+} from "./domain/deployment";
+import {
+  canTransitionDeployment,
+  DEPLOYMENT_EVENT_KINDS,
+  DEPLOYMENT_STATUS_TRANSITIONS,
+  DEPLOYMENT_STATUSES,
+  deploymentCreationFingerprint,
+  isDeploymentEventKind,
+  isDeploymentStatus,
+  isTerminalDeploymentStatus,
+  validateCause,
+  validateCreateDeploymentInput,
 } from "./domain/deployment";
 import type {
   DeriveMediaVariantInput,
@@ -178,18 +190,6 @@ import {
   validateMediaCallbackInput,
   validateSubmitMediaJobInput,
 } from "./domain/media";
-import {
-  canTransitionDeployment,
-  DEPLOYMENT_EVENT_KINDS,
-  DEPLOYMENT_STATUS_TRANSITIONS,
-  DEPLOYMENT_STATUSES,
-  deploymentCreationFingerprint,
-  isDeploymentEventKind,
-  isDeploymentStatus,
-  isTerminalDeploymentStatus,
-  validateCause,
-  validateCreateDeploymentInput,
-} from "./domain/deployment";
 import type {
   MessagingCallbackStatus,
   MessagingChannelKind,
@@ -335,6 +335,18 @@ import {
 } from "./domain/realtime";
 import type { AgentVersionFact, DeploymentAgentInventory } from "./ports/agent-inventory";
 import type {
+  DeploymentInsertInput,
+  DeploymentInsertOutcome,
+  DeploymentStore,
+  GuardedMutation,
+  JournalAppendInput,
+  PlanInsertInput,
+  PlanInsertOutcome,
+  ProfileInsertInput,
+  ProfileInsertOutcome,
+} from "./ports/deployment-store";
+import type { DeploymentEnvironmentResolver, EnvironmentRef } from "./ports/environment-resolver";
+import type {
   MediaAdmissionEvidence,
   MediaBudgetAdmission,
   MediaBudgetReservation,
@@ -366,11 +378,11 @@ import type {
 } from "./ports/media-execution-ledger";
 import type {
   MediaRail,
-  MediaRailCancelRequest,
   MediaRailCancelOutcome,
+  MediaRailCancelRequest,
   MediaRailDescriptor,
-  MediaRailDispatchRequest,
   MediaRailDispatchOutcome,
+  MediaRailDispatchRequest,
   MediaRailJobCallback,
   MediaRailPollOutcome,
 } from "./ports/media-rail";
@@ -392,18 +404,6 @@ import type {
   MediaVerificationOutcome,
   MediaVerificationRequest,
 } from "./ports/media-verification";
-import type {
-  DeploymentInsertInput,
-  DeploymentInsertOutcome,
-  DeploymentStore,
-  GuardedMutation,
-  JournalAppendInput,
-  PlanInsertInput,
-  PlanInsertOutcome,
-  ProfileInsertInput,
-  ProfileInsertOutcome,
-} from "./ports/deployment-store";
-import type { DeploymentEnvironmentResolver, EnvironmentRef } from "./ports/environment-resolver";
 import type {
   MessagingAdmissionEvidence,
   MessagingBudgetAdmission,
@@ -559,6 +559,7 @@ export type {
   GuardedMutation,
   JournalAppendInput,
   // ---- WORK-026: provider-neutral media generation (MOD-011/012/013) ----
+  DeriveMediaVariantInput,
   MediaActor,
   MediaAdmissionEvidence,
   MediaArtifactAdoptionInput,
@@ -627,9 +628,6 @@ export type {
   MediaVerificationOutcome,
   MediaVerificationRequest,
   MediaVerificationResult,
-  RetryMediaJobInput,
-  SubmitMediaJobInput,
-  SubmitMediaJobOutcome,
   // ---- WORK-025: provider-neutral conversational messaging (MOD-008/009) ----
   MessagingActor,
   MessagingAdmissionEvidence,
@@ -780,10 +778,13 @@ export type {
   RealtimeTurnRoute,
   RealtimeTurnRouteRequest,
   RealtimeValidation,
+  RetryMediaJobInput,
   StartMessagingConversationInput,
   StartMessagingConversationOutcome,
   StartRealtimeSessionInput,
   StartRealtimeSessionOutcome,
+  SubmitMediaJobInput,
+  SubmitMediaJobOutcome,
 };
 // Adapters are re-exported for composition roots (the WORK-003/005/007
 // precedent: factories and provider-neutral adapters cross the barrel;
@@ -813,7 +814,6 @@ export {
   createMediaExecutionLedgerAdapter,
   createMediaGenerationService,
   createMediaModalityAdapter,
-  createVerificationMediaGate,
   createMessagingConversationService,
   createMessagingExecutionLedgerAdapter,
   createMessagingModalityAdapter,
@@ -827,6 +827,7 @@ export {
   createRealtimeModalityAdapter,
   createRealtimeSessionService,
   createSqlEnvironmentResolver,
+  createVerificationMediaGate,
   DEPLOYMENT_CHANNEL_KINDS,
   DEPLOYMENT_EVENT_KINDS,
   DEPLOYMENT_IO_MODALITIES,
@@ -900,14 +901,6 @@ export {
   MESSAGING_ORDERING_MARKERS,
   MESSAGING_ORDERING_MODES,
   MESSAGING_ROUTE_CLASSES,
-  messagingContainsRawSecretValue,
-  messagingConversationCreationFingerprint,
-  messagingMessageBodyDigestBase,
-  messagingOperationKey,
-  messagingRailCloseKey,
-  messagingRailEscalateKey,
-  messagingRailOpenKey,
-  messagingRailSendKey,
   mediaBudgetOperationId,
   mediaContainsRawSecretValue,
   mediaEvidenceKey,
@@ -919,6 +912,14 @@ export {
   mediaRailDispatchKey,
   mediaVariantArtifactKey,
   mediaVerificationKey,
+  messagingContainsRawSecretValue,
+  messagingConversationCreationFingerprint,
+  messagingMessageBodyDigestBase,
+  messagingOperationKey,
+  messagingRailCloseKey,
+  messagingRailEscalateKey,
+  messagingRailOpenKey,
+  messagingRailSendKey,
   postprocessMediaOutput,
   preprocessMediaJobSpec,
   profileContainsRawSecretValue,
@@ -950,10 +951,10 @@ export {
   validateDeploymentProfileInput,
   validateDeriveMediaVariantInput,
   validateMediaCallbackInput,
-  validateSubmitMediaJobInput,
   validateMessagingDeliveryCallback,
   validateMessagingInboundEvent,
   validateRealtimeInboundEvent,
   validateStartMessagingConversationInput,
   validateStartRealtimeSessionInput,
+  validateSubmitMediaJobInput,
 };

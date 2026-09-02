@@ -154,7 +154,10 @@ import type {
   MediaSecretMediation,
 } from "../ports/media-admission";
 import type { MediaArtifactAuthority } from "../ports/media-artifact-authority";
-import type { MediaExecutionLedger, MediaVerificationResult } from "../ports/media-execution-ledger";
+import type {
+  MediaExecutionLedger,
+  MediaVerificationResult,
+} from "../ports/media-execution-ledger";
 import type { MediaRail } from "../ports/media-rail";
 import type { MediaStore } from "../ports/media-store";
 import type { MediaVerificationGate } from "../ports/media-verification";
@@ -387,7 +390,8 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     if (profile === null) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
-        message: "the pinned plan's profile is not published (deployment fabric invariant violated)",
+        message:
+          "the pinned plan's profile is not published (deployment fabric invariant violated)",
       });
     }
     return { plan, profile };
@@ -911,7 +915,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         // DETERMINISTIC REJECTION: the shape check failed — the job
         // NEVER completes with an invalid output (AC5's deterministic
         // half; the executions ledger records the FAIL verdict).
-        const cause = error instanceof Error ? error.message : "deterministic postprocessing rejected the output";
+        const cause =
+          error instanceof Error
+            ? error.message
+            : "deterministic postprocessing rejected the output";
         await store.applyGuardedJobMutation({
           applicationId: actor.applicationId,
           jobId: job.id,
@@ -959,10 +966,7 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         });
       }
     }
-    if (
-      outputArtifactDigest === null &&
-      checkpoint?.outputArtifactDigest === undefined
-    ) {
+    if (outputArtifactDigest === null && checkpoint?.outputArtifactDigest === undefined) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
         message: `media job ${job.id} reported completion without an output descriptor`,
@@ -1263,7 +1267,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     },
     actor: MediaActor,
   ): Promise<MediaObservationApplyOutcome> => {
-    const operationKey = mediaOperationKey("observation-apply", `${job.id}:${frame.observationKey}`);
+    const operationKey = mediaOperationKey(
+      "observation-apply",
+      `${job.id}:${frame.observationKey}`,
+    );
     const begun = await beginOperation("observation-apply", `${job.id}:${frame.observationKey}`, {
       applicationId: actor.applicationId,
       tenantId: actor.tenantId,
@@ -1617,7 +1624,11 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     }
     // 1. TENANT — server-derived scope + deployment facts (the
     //    media-generation modality gate).
-    const deployment = await resolveDeployment(actor.applicationId, input.deploymentId, actor.tenantId);
+    const deployment = await resolveDeployment(
+      actor.applicationId,
+      input.deploymentId,
+      actor.tenantId,
+    );
     if (deployment.status !== "active") {
       throw new PlatformError({
         code: "INVALID_STATE_TRANSITION",
@@ -1883,9 +1894,10 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
           actorId: actor.actorId,
           executionId: execution.executionId,
           evidenceClass: "job-submitted",
-          cause: retryOfJobId === null
-            ? "media generation job submitted on the deployment fabric"
-            : `media generation job submitted as an idempotent retry of job ${retryOfJobId}`,
+          cause:
+            retryOfJobId === null
+              ? "media generation job submitted on the deployment fabric"
+              : `media generation job submitted as an idempotent retry of job ${retryOfJobId}`,
           reference: {
             jobId: durableJobId,
             deploymentId: deployment.id,
@@ -2135,7 +2147,11 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         idempotencyKey: mediaRailCancelKey(job.id),
         cause: boundedCause,
       });
-      if (cancelled.cancelled && "alreadyTerminal" in cancelled && cancelled.alreadyTerminal === true) {
+      if (
+        cancelled.cancelled &&
+        "alreadyTerminal" in cancelled &&
+        cancelled.alreadyTerminal === true
+      ) {
         // The provider already reached a terminal state: the
         // cancellation FAILS CLOSED — the job's outcome is the
         // provider's terminal state, applied through the observation
@@ -2271,10 +2287,16 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     ): Promise<SubmitMediaJobOutcome> {
       requireKey(idempotencyKey);
       if (!isRecordish(input)) {
-        throw new PlatformError({ code: "PROVIDER_ERROR", message: "media retry input must be an object" });
+        throw new PlatformError({
+          code: "PROVIDER_ERROR",
+          message: "media retry input must be an object",
+        });
       }
       if (typeof input.prompt !== "string" || input.prompt.length < 1) {
-        throw new PlatformError({ code: "PROVIDER_ERROR", message: "retry prompt must be a non-empty string" });
+        throw new PlatformError({
+          code: "PROVIDER_ERROR",
+          message: "retry prompt must be a non-empty string",
+        });
       }
       const failed = await resolveJob(actor, jobId);
       if (failed.status !== "failed") {

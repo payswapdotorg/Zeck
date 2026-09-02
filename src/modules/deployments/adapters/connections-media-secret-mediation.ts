@@ -36,9 +36,7 @@ export function createConnectionsMediaSecretMediation(
   catalog: ConnectionCatalog,
 ): MediaSecretMediation {
   return {
-    async mediate(
-      request: MediaSecretMediationRequest,
-    ): Promise<MediaSecretMediationOutcome> {
+    async mediate(request: MediaSecretMediationRequest): Promise<MediaSecretMediationOutcome> {
       let facts: Awaited<ReturnType<ConnectionCatalog["getConnectionForDispatch"]>>;
       try {
         facts = await catalog.getConnectionForDispatch(

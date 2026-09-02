@@ -54,11 +54,11 @@ function requireArtifactDigest(value: string): ArtifactDigest {
   return value as ArtifactDigest;
 }
 
-export function createMediaArtifactAuthorityAdapter(service: ArtifactService): MediaArtifactAuthority {
+export function createMediaArtifactAuthorityAdapter(
+  service: ArtifactService,
+): MediaArtifactAuthority {
   return {
-    async adoptArtifact(
-      input: MediaArtifactAdoptionInput,
-    ): Promise<MediaArtifactAdoptionOutcome> {
+    async adoptArtifact(input: MediaArtifactAdoptionInput): Promise<MediaArtifactAdoptionOutcome> {
       const outcome = await service.putArtifact({
         tenantId: input.tenantId,
         kind: "task-output",

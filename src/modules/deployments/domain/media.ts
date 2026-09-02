@@ -102,16 +102,15 @@ export function isMediaJobStatus(value: string): value is MediaJobStatus {
   return (MEDIA_JOB_STATUSES as readonly string[]).includes(value);
 }
 
-export const MEDIA_JOB_TRANSITIONS: Readonly<Record<MediaJobStatus, readonly MediaJobStatus[]>> =
-  {
-    submitted: ["dispatching", "cancelled"],
-    dispatching: ["generating", "failed", "cancelled"],
-    generating: ["verifying", "failed", "cancelled"],
-    verifying: ["completed", "failed"],
-    completed: [],
-    failed: [],
-    cancelled: [],
-  };
+export const MEDIA_JOB_TRANSITIONS: Readonly<Record<MediaJobStatus, readonly MediaJobStatus[]>> = {
+  submitted: ["dispatching", "cancelled"],
+  dispatching: ["generating", "failed", "cancelled"],
+  generating: ["verifying", "failed", "cancelled"],
+  verifying: ["completed", "failed"],
+  completed: [],
+  failed: [],
+  cancelled: [],
+};
 
 export function canTransitionMediaJob(from: MediaJobStatus, to: MediaJobStatus): boolean {
   return MEDIA_JOB_TRANSITIONS[from].includes(to);
@@ -353,7 +352,6 @@ const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 const REF_PATTERN = /^[\x21-\x7e]{1,200}$/;
 const PROMPT_MAX = 4000;
 const KEY_MAX = 200;
-const CAUSE_MAX = 2000;
 const PARAMETERS_MAX = 2048;
 const MAX_CRITERIA = 8;
 
@@ -418,16 +416,16 @@ export function validateSubmitMediaJobInput(input: unknown): MediaValidation {
     }
     try {
       if (JSON.stringify(j.parameters).length > PARAMETERS_MAX) {
-        return { valid: false, reason: `parameters must serialize to at most ${PARAMETERS_MAX} bytes` };
+        return {
+          valid: false,
+          reason: `parameters must serialize to at most ${PARAMETERS_MAX} bytes`,
+        };
       }
     } catch {
       return { valid: false, reason: "parameters must be serializable" };
     }
     for (const value of Object.values(j.parameters)) {
-      if (
-        typeof value === "string" &&
-        mediaContainsRawSecretValue(value)
-      ) {
+      if (typeof value === "string" && mediaContainsRawSecretValue(value)) {
         return { valid: false, reason: "parameters look like they embed a raw secret value" };
       }
     }
@@ -507,9 +505,14 @@ export function validateMediaCallbackInput(input: unknown): MediaValidation {
   }
   if (
     c.callbackKey !== undefined &&
-    (typeof c.callbackKey !== "string" || c.callbackKey.length < 1 || c.callbackKey.length > KEY_MAX)
+    (typeof c.callbackKey !== "string" ||
+      c.callbackKey.length < 1 ||
+      c.callbackKey.length > KEY_MAX)
   ) {
-    return { valid: false, reason: "callbackKey must be 1..200 characters when supplied by the rail" };
+    return {
+      valid: false,
+      reason: "callbackKey must be 1..200 characters when supplied by the rail",
+    };
   }
   if (typeof c.observation !== "string" || !isMediaProviderObservation(c.observation)) {
     return {
@@ -548,11 +551,7 @@ export function validateMediaCallbackInput(input: unknown): MediaValidation {
     ["providerStateLabel", c.providerStateLabel],
     ["callbackKey", c.callbackKey],
   ] as const) {
-    if (
-      value !== undefined &&
-      typeof value === "string" &&
-      mediaContainsRawSecretValue(value)
-    ) {
+    if (value !== undefined && typeof value === "string" && mediaContainsRawSecretValue(value)) {
       return { valid: false, reason: `${field} looks like it embeds a raw secret value` };
     }
   }
@@ -644,7 +643,9 @@ export function postprocessMediaOutput(input: {
   }
   try {
     if (JSON.stringify(descriptor).length > PARAMETERS_MAX) {
-      throw new Error("media provider output rejected: normalized descriptor exceeds the bounded size");
+      throw new Error(
+        "media provider output rejected: normalized descriptor exceeds the bounded size",
+      );
     }
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("media provider output rejected")) {
@@ -792,7 +793,12 @@ export function isMediaOperationStatus(value: string): value is MediaOperationSt
  *    adopted — the provenance tail completes from here.
  */
 export interface MediaOperationCheckpoint {
-  readonly stage: "job-recorded" | "dispatched" | "artifact-adopted" | "rail-issued" | "variant-adopted";
+  readonly stage:
+    | "job-recorded"
+    | "dispatched"
+    | "artifact-adopted"
+    | "rail-issued"
+    | "variant-adopted";
   readonly jobId?: string;
   readonly executionId?: string;
   readonly deploymentId?: string;

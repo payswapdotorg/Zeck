@@ -64,5 +64,8 @@ export interface MediaVerificationGate {
    * (idempotent by the supplied stable key; INCONCLUSIVE is never
    * acceptance — the authority's own contract).
    */
-  verify(request: MediaVerificationRequest, idempotencyKey: string): Promise<MediaVerificationOutcome>;
+  verify(
+    request: MediaVerificationRequest,
+    idempotencyKey: string,
+  ): Promise<MediaVerificationOutcome>;
 }

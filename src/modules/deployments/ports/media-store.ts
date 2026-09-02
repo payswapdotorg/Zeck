@@ -42,6 +42,7 @@
 import type {
   MediaArtifactRecord,
   MediaArtifactRole,
+  MediaCriteriaRef,
   MediaJobRecord,
   MediaJobStatus,
   MediaObservationRecord,
@@ -51,7 +52,6 @@ import type {
   MediaOperationRecord,
   MediaProviderObservation,
   MediaVerificationMode,
-  MediaCriteriaRef,
 } from "../domain/media";
 
 export interface MediaJobInsertInput {
@@ -203,10 +203,7 @@ export interface MediaStore {
   appendObservation(input: MediaObservationAppendInput): Promise<MediaObservationAppendOutcome>;
   /** Insert the immutable artifact-adoption record (idempotent by artifact key). */
   insertArtifact(input: MediaArtifactInsertInput): Promise<MediaArtifactInsertOutcome>;
-  findArtifact(
-    applicationId: string,
-    artifactKey: string,
-  ): Promise<MediaArtifactRecord | null>;
+  findArtifact(applicationId: string, artifactKey: string): Promise<MediaArtifactRecord | null>;
   /** The adoption records of one job in adoption order. */
   listArtifacts(applicationId: string, jobId: string): Promise<readonly MediaArtifactRecord[]>;
 

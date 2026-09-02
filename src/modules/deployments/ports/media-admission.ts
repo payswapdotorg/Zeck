@@ -92,9 +92,7 @@ export interface MediaCapabilityAdmissionDecision {
 }
 
 export interface MediaCapabilityAdmission {
-  resolve(
-    request: MediaCapabilityAdmissionRequest,
-  ): Promise<MediaCapabilityAdmissionDecision>;
+  resolve(request: MediaCapabilityAdmissionRequest): Promise<MediaCapabilityAdmissionDecision>;
 }
 
 /** Budget reservation command (the paid dispatch only — always). */

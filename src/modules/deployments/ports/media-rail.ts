@@ -60,10 +60,7 @@
  * documented as such in docs/work-items/WORK-026.md.
  */
 
-import type {
-  MediaGenerationKind,
-  MediaProviderObservation,
-} from "../domain/media";
+import type { MediaGenerationKind, MediaProviderObservation } from "../domain/media";
 
 export interface MediaRailDescriptor {
   /** Provider-neutral rail identity (e.g. "simulated-media-rail"). */

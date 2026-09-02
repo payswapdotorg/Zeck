@@ -734,9 +734,7 @@ WHERE application_id = $1 AND job_id = $2 ORDER BY created_at, id`,
 
   // -- the durable, recoverable operation state (WORK-024 standard) --
 
-  async beginMediaOperation(
-    input: MediaOperationBeginInput,
-  ): Promise<MediaOperationBeginOutcome> {
+  async beginMediaOperation(input: MediaOperationBeginInput): Promise<MediaOperationBeginOutcome> {
     try {
       const result = await this.db.execute<OperationRow>({
         sql: `INSERT INTO deployments.media_operations (

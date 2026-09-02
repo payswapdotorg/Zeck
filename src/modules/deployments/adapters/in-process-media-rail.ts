@@ -54,6 +54,7 @@
  */
 
 import { createHash } from "node:crypto";
+import type { MediaGenerationKind } from "../domain/media";
 import type {
   MediaRail,
   MediaRailCancelOutcome,
@@ -63,7 +64,6 @@ import type {
   MediaRailJobCallback,
   MediaRailPollOutcome,
 } from "../ports/media-rail";
-import type { MediaGenerationKind } from "../domain/media";
 
 /** One recorded transport side effect (the test observable). */
 export interface SimulatedMediaRailRecord {
@@ -286,9 +286,7 @@ export function createInProcessMediaRail(
         };
       }
       if (!generationKinds.includes(request.generationKind)) {
-        return failDispatch(
-          `the rail does not serve generation kind ${request.generationKind}`,
-        );
+        return failDispatch(`the rail does not serve generation kind ${request.generationKind}`);
       }
       if (failNext !== null || options.failDispatches !== undefined) {
         return failDispatch(failNext ?? "fixture dispatch refusal");

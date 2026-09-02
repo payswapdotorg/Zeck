@@ -27,9 +27,7 @@ import type {
 
 export function createPolicyMediaAdmission(authority: PolicyAuthority): MediaPolicyAdmission {
   return {
-    async admit(
-      request: MediaPolicyAdmissionRequest,
-    ): Promise<MediaPolicyAdmissionDecision> {
+    async admit(request: MediaPolicyAdmissionRequest): Promise<MediaPolicyAdmissionDecision> {
       const result = await authority.admitDispatch({
         context: {
           tenantId: request.tenantId,
