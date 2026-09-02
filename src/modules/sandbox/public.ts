@@ -143,6 +143,7 @@ export const moduleDescriptor: ModuleDescriptor = { id: "sandbox" };
 // provider SDK types never do).
 export {
   ContainerSandboxProvider,
+  createExecutionResumeReadmission,
   createPolicySandboxAdmission,
   createSandboxCapabilityGate,
   createSandboxExecutionLedgerAdapter,
