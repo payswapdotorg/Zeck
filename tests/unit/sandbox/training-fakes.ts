@@ -31,17 +31,14 @@ import { createHash } from "node:crypto";
 import type { ExecutionRecord, ExecutionStatus } from "../../../src/modules/executions/public";
 import type { SubstrateSelection } from "../../../src/modules/sandbox/ports/accelerator-substrate";
 import type {
-  TrainingAdmission,
   TrainingAdmissionDecision,
   TrainingAdmissionRequest,
 } from "../../../src/modules/sandbox/ports/training-admission";
 import type {
-  TrainingExecutionLedger,
   TrainingLedgerStepEvent,
   TrainingLedgerStepEventOutcome,
 } from "../../../src/modules/sandbox/ports/training-ledger";
 import type {
-  TrainingVerificationGate,
   TrainingVerificationRequest,
   TrainingVerificationVerdict,
 } from "../../../src/modules/sandbox/ports/training-verification";
@@ -244,9 +241,7 @@ export class FakeTrainingBudget {
     };
   }
 
-  async settle(command: {
-    readonly operationId: string;
-  }): Promise<{
+  async settle(command: { readonly operationId: string }): Promise<{
     readonly reservation: never;
     readonly converged: boolean;
     readonly replayed: boolean;
@@ -264,9 +259,7 @@ export class FakeTrainingBudget {
     };
   }
 
-  async release(command: {
-    readonly operationId: string;
-  }): Promise<{
+  async release(command: { readonly operationId: string }): Promise<{
     readonly reservation: never;
     readonly converged: boolean;
     readonly replayed: boolean;
