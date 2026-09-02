@@ -35,7 +35,7 @@
  * holds under sustained concurrency.
  */
 
-import { describe, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { count, type EdgePgWorld, seedEdgeWorld } from "./edge-world";
 import { definePgSuite, type PgContext } from "./harness";
 
@@ -132,7 +132,7 @@ definePgSuite("edge sequence-gate stress regression (WORK-030 inherited fix)", (
     const w = await freshWorld();
     const executionId = await w.driveToRunning(w.boot(null).executions);
     const deviceId = await w.register();
-    const { approvalId, envelopeId } = await w.approveEnvelope(executionId, deviceId);
+    const { envelopeId } = await w.approveEnvelope(executionId, deviceId);
     const request = w.commandRequest(executionId, deviceId, envelopeId);
     const commandApprovalId = await w.approveCommand(request);
     await w.service.submitCommand({ ...request, approvalId: commandApprovalId }, "semantics-1");
