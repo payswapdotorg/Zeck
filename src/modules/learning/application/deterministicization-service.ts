@@ -561,6 +561,41 @@ export function createDeterministicizationService(
     };
   };
 
+  /**
+   * The IDEMPOTENT REPLAY (exactly-once per logical decision): an
+   * already-decided candidate returns its RECORDED decision — the
+   * durable outcome is the authority and a re-request never re-runs
+   * the gate and never appends a second decision. A crash between the
+   * decision commit and the operation-row completion leaves the row
+   * PENDING; the replay CONVERGES it (the row is the durable outcome
+   * tracker, never a stuck pending scanner entry).
+   */
+  const replayRecordedDecision = async (
+    scope: { readonly applicationId: string; readonly tenantId: string },
+    candidateId: string,
+    kind: "promotion" | "rollback",
+  ): Promise<PromotionDecisionRecord> => {
+    const decisionKind = kind === "promotion" ? "promoted" : "rolled-back";
+    const decisions = await deps.store.listDecisions(scope, candidateId);
+    const existing = [...decisions].reverse().find((entry) => entry.kind === decisionKind);
+    if (existing === undefined) {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `the candidate is decided but carries no ${decisionKind} decision (inconsistent durable state — fail closed)`,
+        details: { candidateId },
+      });
+    }
+    // Converge a crash-window PENDING operation row for the recorded
+    // decision's stable key (no new side effect — the decision is
+    // already durable).
+    const operationKey = deterministicizationOperationKey(kind, existing.decisionId);
+    const operation = await deps.store.findOperation(scope.applicationId, operationKey);
+    if (operation !== null && operation.status === "pending") {
+      await deps.store.completeOperation(scope.applicationId, operationKey, iso());
+    }
+    return existing;
+  };
+
   /** Build a decision record from a DecisionRequest (shared shape). */
   const buildDecision = (
     candidate: DeterministicizationCandidate,
@@ -1053,17 +1088,12 @@ export function createDeterministicizationService(
       // re-request of the same logical promotion never re-runs the
       // gate, never appends a second decision and never touches state.
       if (candidate.status === "promoted") {
-        const decisions = await deps.store.listDecisions(scope, candidate.candidateId);
-        const existing = [...decisions].reverse().find((entry) => entry.kind === "promoted");
-        if (existing !== undefined) {
-          return { decision: existing, replayed: true };
-        }
-        throw new PlatformError({
-          code: "INVALID_STATE_TRANSITION",
-          message:
-            "the candidate is promoted but carries no promotion decision (inconsistent durable state — fail closed)",
-          details: { candidateId: candidate.candidateId },
-        });
+        const existing = await replayRecordedDecision(
+          scope,
+          candidate.candidateId,
+          "promotion",
+        );
+        return { decision: existing, replayed: true };
       }
       const config = resolveGateConfig(request.gateConfig);
       const { evaluation, gate } = await evaluateGateFor(scope, candidate, config);
@@ -1218,17 +1248,12 @@ export function createDeterministicizationService(
       // decision — the incumbent restoration stays durable and a
       // re-request never appends a second decision.
       if (candidate.status === "rolled-back") {
-        const decisions = await deps.store.listDecisions(scope, candidate.candidateId);
-        const existing = [...decisions].reverse().find((entry) => entry.kind === "rolled-back");
-        if (existing !== undefined) {
-          return { decision: existing, replayed: true };
-        }
-        throw new PlatformError({
-          code: "INVALID_STATE_TRANSITION",
-          message:
-            "the candidate is rolled back but carries no rollback decision (inconsistent durable state — fail closed)",
-          details: { candidateId: candidate.candidateId },
-        });
+        const existing = await replayRecordedDecision(
+          scope,
+          candidate.candidateId,
+          "rollback",
+        );
+        return { decision: existing, replayed: true };
       }
       if (candidate.status !== "promoted") {
         throw new PlatformError({

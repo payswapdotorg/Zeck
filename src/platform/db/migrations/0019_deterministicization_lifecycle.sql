@@ -57,7 +57,9 @@
 --     contract, program, proposer, timestamp) is immutable on every
 --     UPDATE path; only the guarded status may move (single-step
 --     forward only — the frozen transition table); terminal statuses
---     (promoted/rejected) are fully immutable; rows never deleted;
+--     (rejected/rolled-back) are fully immutable (promoted is NOT —
+--     its only legal move is the rollback path to rolled-back); rows
+--     never deleted;
 --   * provenance is PHYSICALLY MANDATORY: source_execution_ids and
 --     evidence_refs are CHECK-bound non-empty jsonb arrays, the
 --     corpus digest is CHECK-bound non-empty (a provenance-less
@@ -126,6 +128,10 @@ CREATE TABLE learning.deterministicization_candidates (
     created_at     timestamptz NOT NULL,
     updated_at     timestamptz NOT NULL,
     schema_version integer NOT NULL,
+    -- The composite application binding the child FKs reference (the
+    -- 0016/0017 discipline: evidence/rollout/decision rows point only
+    -- at candidates of THEIR OWN application).
+    CONSTRAINT dtr_candidates_id_application_unique UNIQUE (id, application_id),
     CONSTRAINT dtr_candidates_class_vocabulary CHECK (
         candidate_class IN ('removal','deterministic-replacement','hybrid-split','pipeline-replacement','tool-extraction')
     ),
@@ -197,8 +203,11 @@ CREATE TRIGGER dtr_candidates_core_guard
 -- same transition table as the domain; promoted -> rolled-back is the
 -- rollback path; rejected and rolled-back are terminal (re-validation
 -- after a rollback is a NEW candidate — the rollout phases are
--- single-epoch per candidate); deferred re-enters validating).
-CREATE OR REPLACE FUNCTION learning.dtr_candidates_lifecycle() RETURNS trigger AS $$ BEGIN IF OLD.status IN ('promoted','rejected','rolled-back') AND OLD.status <> NEW.status THEN RAISE EXCEPTION 'learning.deterministicization_candidates is terminal-immutable in status % (candidate %)', OLD.status, OLD.id; END IF; IF NOT ((NEW.status = OLD.status) OR (OLD.status = 'proposed' AND NEW.status IN ('validating','rejected','deferred')) OR (OLD.status = 'validating' AND NEW.status IN ('validating','validated','rejected','deferred')) OR (OLD.status = 'validated' AND NEW.status IN ('shadow','rejected','deferred')) OR (OLD.status = 'shadow' AND NEW.status IN ('canary','rejected','deferred')) OR (OLD.status = 'canary' AND NEW.status IN ('promoted','rejected','deferred')) OR (OLD.status = 'promoted' AND NEW.status = 'rolled-back') OR (OLD.status = 'deferred' AND NEW.status IN ('validating','rejected'))) THEN RAISE EXCEPTION 'deterministicization candidate % cannot move from status % to % (single-step forward only)', OLD.id, OLD.status, NEW.status; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+-- single-epoch per candidate); deferred re-enters validating). NOTE:
+-- 'promoted' is NOT terminal — the rollback path moves it forward to
+-- 'rolled-back' (the transition table below is the guard; only
+-- 'rejected'/'rolled-back' are fully immutable).
+CREATE OR REPLACE FUNCTION learning.dtr_candidates_lifecycle() RETURNS trigger AS $$ BEGIN IF OLD.status IN ('rejected','rolled-back') AND OLD.status <> NEW.status THEN RAISE EXCEPTION 'learning.deterministicization_candidates is terminal-immutable in status % (candidate %)', OLD.status, OLD.id; END IF; IF NOT ((NEW.status = OLD.status) OR (OLD.status = 'proposed' AND NEW.status IN ('validating','rejected','deferred')) OR (OLD.status = 'validating' AND NEW.status IN ('validating','validated','rejected','deferred')) OR (OLD.status = 'validated' AND NEW.status IN ('shadow','rejected','deferred')) OR (OLD.status = 'shadow' AND NEW.status IN ('canary','rejected','deferred')) OR (OLD.status = 'canary' AND NEW.status IN ('promoted','rejected','deferred')) OR (OLD.status = 'promoted' AND NEW.status = 'rolled-back') OR (OLD.status = 'deferred' AND NEW.status IN ('validating','rejected'))) THEN RAISE EXCEPTION 'deterministicization candidate % cannot move from status % to % (single-step forward only)', OLD.id, OLD.status, NEW.status; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER dtr_candidates_lifecycle_guard
     BEFORE UPDATE ON learning.deterministicization_candidates
@@ -338,8 +347,10 @@ CREATE INDEX dtr_rollouts_scope_listing
 
 -- The identity core is write-once; observing -> concluded is the only
 -- status move (first writer wins — a duplicate conclusion converges on
--- the committed row); a concluded rollout is fully immutable.
-CREATE OR REPLACE FUNCTION learning.dtr_rollouts_lifecycle() RETURNS trigger AS $$ BEGIN IF NEW.rollout_id <> OLD.rollout_id OR NEW.application_id <> OLD.application_id OR NEW.tenant_id <> OLD.tenant_id OR NEW.candidate_id <> OLD.candidate_id OR NEW.mode <> OLD.mode OR NEW.began_at <> OLD.began_at OR NEW.schema_version <> OLD.schema_version THEN RAISE EXCEPTION 'learning.deterministicization_rollouts identity core is immutable (rollout %)', OLD.rollout_id; END IF; IF OLD.status = 'concluded' AND NEW.status <> 'concluded' THEN RAISE EXCEPTION 'a concluded rollout is terminal-immutable (rollout %)', OLD.rollout_id; END IF; IF NOT (NEW.status = OLD.status OR (OLD.status = 'observing' AND NEW.status = 'concluded')) THEN RAISE EXCEPTION 'rollout % cannot move from status % to % (observing -> concluded only)', OLD.rollout_id, OLD.status, NEW.status; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+-- the committed row); a concluded rollout is FULLY immutable (its
+-- measurable deltas — the DTR-003 evidence — never move after
+-- conclusion).
+CREATE OR REPLACE FUNCTION learning.dtr_rollouts_lifecycle() RETURNS trigger AS $$ BEGIN IF NEW.rollout_id <> OLD.rollout_id OR NEW.application_id <> OLD.application_id OR NEW.tenant_id <> OLD.tenant_id OR NEW.candidate_id <> OLD.candidate_id OR NEW.mode <> OLD.mode OR NEW.began_at <> OLD.began_at OR NEW.schema_version <> OLD.schema_version THEN RAISE EXCEPTION 'learning.deterministicization_rollouts identity core is immutable (rollout %)', OLD.rollout_id; END IF; IF OLD.status = 'concluded' AND (NEW.status <> 'concluded' OR NEW.population <> OLD.population OR NEW.matched_count <> OLD.matched_count OR NEW.cost_delta_micro_usd <> OLD.cost_delta_micro_usd OR NEW.quality_delta <> OLD.quality_delta OR NEW.latency_delta_ms <> OLD.latency_delta_ms OR NEW.evidence_refs <> OLD.evidence_refs OR NEW.concluded_at <> OLD.concluded_at) THEN RAISE EXCEPTION 'a concluded rollout is terminal-immutable (rollout %)', OLD.rollout_id; END IF; IF NOT (NEW.status = OLD.status OR (OLD.status = 'observing' AND NEW.status = 'concluded')) THEN RAISE EXCEPTION 'rollout % cannot move from status % to % (observing -> concluded only)', OLD.rollout_id, OLD.status, NEW.status; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER dtr_rollouts_lifecycle_guard
     BEFORE UPDATE ON learning.deterministicization_rollouts
