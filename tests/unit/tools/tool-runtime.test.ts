@@ -777,12 +777,16 @@ describe("governed tool runtime — idempotency, concurrency and crash safety", 
     expect(world.budgets.settleCalls).toHaveLength(1);
     // Simulate the settlement ledger losing the record (crash after durable
     // outcome): a replay re-attempts settlement with the SAME key and
-    // converges (fake records the second call with the same key).
+    // converges. The fake models the REAL keyed idempotency — the
+    // re-attempt is observable as a CONVERGED finalization (never a
+    // second debit; exactly one physical settle per stable key).
     await world.runtime.invoke(
       inputOf(world, executionId, { toolId: "side-effect-tool" }),
       "settle-1",
     );
-    expect(world.budgets.settleCalls.length).toBeGreaterThanOrEqual(2);
+    expect(world.budgets.convergedFinalizations).toHaveLength(1);
+    expect(world.budgets.convergedFinalizations[0]).toContain("settle-");
+    expect(world.budgets.settleCalls).toHaveLength(1);
     expect(new Set(world.budgets.settleCalls.map((call) => call.key)).size).toBe(1);
   });
 });

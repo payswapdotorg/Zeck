@@ -343,6 +343,10 @@ export class FakeBudgetAuthority {
   readonly reserveCalls: Array<{ command: Record<string, unknown>; key: string }> = [];
   readonly settleCalls: Array<{ command: Record<string, unknown>; key: string }> = [];
   readonly releaseCalls: Array<{ command: Record<string, unknown>; key: string }> = [];
+  /** Settle/release attempts that converged onto an already-finalized key (the keyed idempotency observability). */
+  readonly convergedFinalizations: string[] = [];
+  private settledKeys = new Set<string>();
+  private releasedKeys = new Set<string>();
   private counter = 0;
   private denyReserve = false;
   private denyReason = "budget exceeded";
@@ -382,6 +386,35 @@ export class FakeBudgetAuthority {
       };
     },
     settle: async (command: Parameters<BudgetAuthority["settle"]>[0], key: string) => {
+      // The REAL budgets service finalizes a reservation EXACTLY ONCE per
+      // stable key (a keyed re-settle converges, never a second debit);
+      // the fake models the same discipline — the crash proofs count
+      // settleCalls as the physical side-effect proof.
+      if (this.settledKeys.has(key)) {
+        this.convergedFinalizations.push(`settle:${key}`);
+        return {
+          reservation: {
+            id: `reservation-${this.counter}`,
+            applicationId: command.applicationId,
+            tenantId: "",
+            executionId: "",
+            operationId: command.operationId,
+            userId: "",
+            fundingMode: "developer" as const,
+            sourceKind: "developer" as const,
+            walletId: "wallet-1",
+            amountMicroUsd: "0",
+            status: "settled" as const,
+            settledAmountMicroUsd: command.actualAmountMicroUsd,
+            monthKey: "2026-09",
+            createdAt: "2026-09-01T00:00:00.000Z",
+            finalizedAt: "2026-09-01T00:00:01.000Z",
+          },
+          converged: true,
+          replayed: true,
+        };
+      }
+      this.settledKeys.add(key);
       this.settleCalls.push({ command: command as unknown as Record<string, unknown>, key });
       return {
         reservation: {
@@ -406,6 +439,32 @@ export class FakeBudgetAuthority {
       };
     },
     release: async (command: Parameters<BudgetAuthority["release"]>[0], key: string) => {
+      // Keyed exactly-once finalization (see settle).
+      if (this.releasedKeys.has(key)) {
+        this.convergedFinalizations.push(`release:${key}`);
+        return {
+          reservation: {
+            id: `reservation-${this.counter}`,
+            applicationId: command.applicationId,
+            tenantId: "",
+            executionId: "",
+            operationId: command.operationId,
+            userId: "",
+            fundingMode: "developer" as const,
+            sourceKind: "developer" as const,
+            walletId: "wallet-1",
+            amountMicroUsd: "0",
+            status: "released" as const,
+            settledAmountMicroUsd: null,
+            monthKey: "2026-09",
+            createdAt: "2026-09-01T00:00:00.000Z",
+            finalizedAt: "2026-09-01T00:00:01.000Z",
+          },
+          converged: true,
+          replayed: true,
+        };
+      }
+      this.releasedKeys.add(key);
       this.releaseCalls.push({ command: command as unknown as Record<string, unknown>, key });
       return {
         reservation: {

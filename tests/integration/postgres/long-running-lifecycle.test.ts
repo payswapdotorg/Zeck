@@ -209,10 +209,12 @@ definePgSuite("long-running execution durable discipline (WORK-028)", (ctx) => {
       );
       expect(row?.n).toBe(1);
     }
-    // The shipped migrations applied in ascending order (0022 last).
+    // Migration 0022 is applied (WORK-027's migration 0023 may follow it —
+    // the shipped set grows; the world's OWN migration is what is pinned
+    // here, not the catalog tail).
     const applied = await ctx.port.execute<{ version: string; name: string }>({
-      sql: "SELECT version, name FROM platform.schema_migrations ORDER BY version DESC LIMIT 1",
-      parameters: [],
+      sql: "SELECT version, name FROM platform.schema_migrations WHERE version = $1",
+      parameters: ["0022"],
     });
     expect(applied.rows[0]?.name).toContain("long_running_execution_state");
   });
