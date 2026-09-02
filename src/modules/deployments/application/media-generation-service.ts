@@ -1869,6 +1869,12 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         replayed: true,
       };
     }
+    // The DURABLE job identity — the operation claim pins it BEFORE
+    // any concurrent duplicate exists, so EVERY keyed seam below
+    // (budget operation id, evidence keys, the insert) derives from
+    // the SAME identity and concurrent duplicates CONVERGE instead of
+    // creating orphaned reservations (MOD-013's duplicate protection).
+    const durableJobId = begun.record.jobId ?? jobId;
     // 1. TENANT — server-derived scope + deployment facts (the
     //    media-generation modality gate).
     const deployment = await resolveDeployment(
@@ -2007,9 +2013,9 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
         applicationId: actor.applicationId,
         tenantId: actor.tenantId,
         executionId: execution.executionId,
-        operationId: mediaBudgetOperationId(jobId),
+        operationId: mediaBudgetOperationId(durableJobId),
         amountMicroUsd: railCostMicroUsd(input.generationKind),
-        reason: `media generation paid dispatch (job ${jobId}, kind ${input.generationKind})`,
+        reason: `media generation paid dispatch (job ${durableJobId}, kind ${input.generationKind})`,
       });
       reservationId = reservation.reservationId;
       reservedAmount = reservation.amountMicroUsd;
@@ -2024,7 +2030,7 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
             executionId: execution.executionId,
             reason: `media job submission denied: ${reason.slice(0, 400)}`,
           },
-          mediaEvidenceKey(jobId, "failure"),
+          mediaEvidenceKey(durableJobId, "failure"),
         )
         .catch(() => undefined);
       await recordDenial({
@@ -2059,7 +2065,7 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
             executionId: execution.executionId,
             reason: `media job submission denied: ${mediation.reason.slice(0, 400)}`,
           },
-          mediaEvidenceKey(jobId, "failure"),
+          mediaEvidenceKey(durableJobId, "failure"),
         )
         .catch(() => undefined);
       await budget
@@ -2067,7 +2073,7 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
           actorId: actor.actorId,
           applicationId: actor.applicationId,
           tenantId: actor.tenantId,
-          operationId: mediaBudgetOperationId(jobId),
+          operationId: mediaBudgetOperationId(durableJobId),
         })
         .catch(() => undefined);
       await recordDenial({
@@ -2099,7 +2105,6 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
       input,
       execution.executionId,
     );
-    const durableJobId = begun.record.jobId ?? jobId;
     const insert = await store.insertJob({
       jobId: durableJobId,
       applicationId: actor.applicationId,
