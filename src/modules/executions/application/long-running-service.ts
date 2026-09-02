@@ -1510,6 +1510,30 @@ export function createLongRunningExecutionService(
       input.actor.tenantId,
     );
     if (isTerminal(execution.status)) {
+      // CRASH CONVERGENCE (the [frozen cancel move, stage/completion]
+      // window): the durable "terminating" stage of THIS operation plus a
+      // terminal execution proves the governed cancel move committed
+      // DURING this operation — the recovery tail converges onto the
+      // committed terminal outcome instead of failing the honest retry
+      // closed (a FRESH terminate claim on a terminal execution still
+      // fails closed below — no stage, no in-flight terminal move).
+      if (stage !== null && stage.stage === "terminating") {
+        const outcome = {
+          executionId: input.executionId,
+          status: execution.status,
+          wakeUpsSuperseded: Number(stage.wakeUpsSuperseded ?? 0),
+          leaseReleased: Boolean(stage.leaseReleased),
+          replayed: false,
+        };
+        await checkpointOperationStage(input.applicationId, operationKey, {
+          stage: "terminated",
+          status: execution.status,
+          wakeUpsSuperseded: outcome.wakeUpsSuperseded,
+          leaseReleased: outcome.leaseReleased,
+        });
+        await store.completeOperation(input.applicationId, operationKey, iso());
+        return outcome;
+      }
       throw new PlatformError({
         code: "INVALID_STATE_TRANSITION",
         message: `execution is already terminal in ${execution.status}; terminal states are final`,
@@ -1530,6 +1554,13 @@ export function createLongRunningExecutionService(
       executionId: input.executionId,
       cause: "terminated",
       now: iso(),
+    });
+    // 2.5 The durable pre-terminal stage: past this point a crash-resume
+    //     converges (the terminal row proves the cancel committed).
+    await checkpointOperationStage(input.applicationId, operationKey, {
+      stage: "terminating",
+      wakeUpsSuperseded: superseded.length,
+      leaseReleased: released !== null,
     });
     // 3. The governed terminal path: the frozen `cancel` command (legal
     //    from every non-terminal state; terminal rows are physically
@@ -1800,6 +1831,31 @@ export function createLongRunningExecutionService(
         continue;
       }
       if (execution.status === "RUNNING") {
+        // CRASH CONVERGENCE: a PENDING resume row under this wake's stable
+        // key plus a RUNNING execution proves a crash in the [resume
+        // transition, wake marker] window — the resume's committed effect
+        // is the RUNNING status itself. Converge the orphaned resume
+        // operation through the recovery-evidence path (the same key
+        // re-issues, records `resume-recorded` once and completes; the
+        // frozen transition replays, never re-fires). A COMPLETED row
+        // converged already; a wake with NO resume row was never crashed
+        // mid-resume (the execution woke by other means) and stays as-is.
+        const resumeKey = longRunningOperationKey(
+          "resume",
+          executionScopedDiscriminator(wakeUp.executionId, `wake:${wakeUp.wakeKey}`),
+        );
+        const resumeRow = await store.findOperation(input.applicationId, resumeKey);
+        if (resumeRow !== null && resumeRow.status === "pending") {
+          await resumeExecution(
+            {
+              applicationId: input.applicationId,
+              executionId: wakeUp.executionId,
+              actor: input.actor,
+              resumeFacts: await wakeResumeFacts(input.applicationId, wakeUp.executionId),
+            },
+            `wake:${wakeUp.wakeKey}`,
+          );
+        }
         // Already awake: the wake is satisfied without a resume.
         await store.markWakeUpApplied({
           applicationId: input.applicationId,
