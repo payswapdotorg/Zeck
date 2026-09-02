@@ -134,10 +134,7 @@ describe("architecture: the realtime voice-session boundary (WORK-024)", () => {
   });
 
   test("RT3: the REQUIRED admission seams exist with the frozen method vocabulary", () => {
-    const admission = readFileSync(
-      join(DEPLOYMENTS_DIR, "ports/realtime-admission.ts"),
-      "utf8",
-    );
+    const admission = readFileSync(join(DEPLOYMENTS_DIR, "ports/realtime-admission.ts"), "utf8");
     expect(admission.includes("admit(request: RealtimePolicyAdmissionRequest)")).toBe(true);
     expect(admission.includes("resolve(")).toBe(true);
     expect(admission.includes("reserve(command: RealtimeBudgetReserveCommand)")).toBe(true);
