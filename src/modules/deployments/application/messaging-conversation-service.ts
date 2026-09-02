@@ -84,6 +84,7 @@
 import { PlatformError } from "../../../shared/errors";
 import { isUuid } from "../../../shared/ids";
 import type {
+  MessagingConversationRecord,
   MessagingDeliveryCallbackInput,
   MessagingDeliveryStatus,
   MessagingInboundEventInput,
@@ -93,7 +94,6 @@ import type {
   MessagingOperationRecord,
   MessagingOrderingMarker,
   MessagingRouteClass,
-  MessagingConversationRecord,
   StartMessagingConversationInput,
 } from "../domain/messaging";
 import {
@@ -101,8 +101,8 @@ import {
   deterministicMessagingEventKey,
   isTerminalMessagingConversationStatus,
   isTerminalMessagingDeliveryStatus,
-  messagingConversationCreationFingerprint,
   messagingContainsRawSecretValue,
+  messagingConversationCreationFingerprint,
   messagingMessageBodyDigestBase,
   messagingOperationKey,
   messagingRailCloseKey,
@@ -914,8 +914,7 @@ export function createMessagingConversationService(deps: MessagingConversationSe
         orderingMode: conversation.orderingMode,
         pinnedPlanId: conversation.pinnedPlanId,
         pinnedPlanVersion: conversation.pinnedPlanVersion,
-        replayed:
-          execution.replayed || insert.status === "converged" || railConversation.replayed,
+        replayed: execution.replayed || insert.status === "converged" || railConversation.replayed,
       };
     },
 
@@ -1047,10 +1046,7 @@ export function createMessagingConversationService(deps: MessagingConversationSe
       const replyMessageKey = `${eventKey}:reply`;
       const turnOperationKey = messagingOperationKey("turn-reply", scopedKey);
       if (claim.status === "converged") {
-        const operation = await store.findMessagingOperation(
-          actor.applicationId,
-          turnOperationKey,
-        );
+        const operation = await store.findMessagingOperation(actor.applicationId, turnOperationKey);
         if (operation !== null && operation.status === "failed") {
           // The durably recorded rail refusal: a retry under the same
           // key replays the recorded failure (no duplicate side effect).
@@ -1611,13 +1607,8 @@ export function createMessagingConversationService(deps: MessagingConversationSe
         });
       }
       if (existingOperation !== null && existingOperation.status === "completed") {
-        const deliveries = await store.listDeliveries(
-          actor.applicationId,
-          conversation.id,
-        );
-        const recorded = deliveries.find(
-          (delivery) => delivery.callbackKey === callbackKey,
-        );
+        const deliveries = await store.listDeliveries(actor.applicationId, conversation.id);
+        const recorded = deliveries.find((delivery) => delivery.callbackKey === callbackKey);
         return {
           conversationId: conversation.id,
           messageKey: input.messageKey,
@@ -1861,7 +1852,8 @@ export function createMessagingConversationService(deps: MessagingConversationSe
           });
           throw new PlatformError({
             code: "POLICY_DENIED",
-            message: "human escalation denied by admission policy (escalation is policy-designated)",
+            message:
+              "human escalation denied by admission policy (escalation is policy-designated)",
             details: { conversationId: conversation.id, reason: decision.reason },
           });
         }
@@ -2068,7 +2060,11 @@ export function createMessagingConversationService(deps: MessagingConversationSe
             .completeMessagingOperation(actor.applicationId, operationKey, iso())
             .catch(() => undefined);
         }
-        return { conversationId: conversation.id, executionId: conversation.executionId, replayed: true };
+        return {
+          conversationId: conversation.id,
+          executionId: conversation.executionId,
+          replayed: true,
+        };
       }
       // The durable operation claim — BEFORE the rail side effect (a
       // crash between the rail close and the terminal mutation leaves
@@ -2092,7 +2088,11 @@ export function createMessagingConversationService(deps: MessagingConversationSe
               "messaging close operation is completed but the conversation is not terminal (invariant violation)",
           });
         }
-        return { conversationId: conversation.id, executionId: conversation.executionId, replayed: true };
+        return {
+          conversationId: conversation.id,
+          executionId: conversation.executionId,
+          replayed: true,
+        };
       }
       const completion = await ledger.recordEvidence(
         {

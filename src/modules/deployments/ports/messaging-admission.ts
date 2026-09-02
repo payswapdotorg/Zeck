@@ -34,10 +34,7 @@
 import type { MessagingRouteClass } from "../domain/messaging";
 
 /** The messaging actions the policy admission evaluates. */
-export type MessagingPolicyAction =
-  | "conversation-start"
-  | "message-send"
-  | "human-escalation";
+export type MessagingPolicyAction = "conversation-start" | "message-send" | "human-escalation";
 
 /** Durable policy-admission provenance (the WORK-007 evidence shape). */
 export interface MessagingAdmissionEvidence {

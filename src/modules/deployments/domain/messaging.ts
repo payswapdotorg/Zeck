@@ -111,12 +111,7 @@ export function isMessagingOrderingMode(value: string): value is MessagingOrderi
  * the thread's already-seen max), `gap` (sequence > max+1), `assigned`
  * (unordered channel; the fabric assigned the arrival ordinal).
  */
-export const MESSAGING_ORDERING_MARKERS = [
-  "in-order",
-  "out-of-order",
-  "gap",
-  "assigned",
-] as const;
+export const MESSAGING_ORDERING_MARKERS = ["in-order", "out-of-order", "gap", "assigned"] as const;
 export type MessagingOrderingMarker = (typeof MESSAGING_ORDERING_MARKERS)[number];
 
 export function isMessagingOrderingMarker(value: string): value is MessagingOrderingMarker {
@@ -154,12 +149,7 @@ export function isMessagingRouteClass(value: string): value is MessagingRouteCla
  * provider's terminal confirmations `delivered` / `undelivered`.
  * Monotonic by ordinal; `delivered`/`undelivered` are terminal.
  */
-export const MESSAGING_DELIVERY_STATUSES = [
-  "pending",
-  "sent",
-  "delivered",
-  "undelivered",
-] as const;
+export const MESSAGING_DELIVERY_STATUSES = ["pending", "sent", "delivered", "undelivered"] as const;
 export type MessagingDeliveryStatus = (typeof MESSAGING_DELIVERY_STATUSES)[number];
 
 export function isMessagingDeliveryStatus(value: string): value is MessagingDeliveryStatus {
@@ -399,9 +389,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function validateAttachmentRefs(
-  attachments: readonly string[] | undefined,
-): string | null {
+function validateAttachmentRefs(attachments: readonly string[] | undefined): string | null {
   if (attachments === undefined) {
     return null;
   }
@@ -420,9 +408,7 @@ function validateAttachmentRefs(
 }
 
 /** Fail-closed validation of the conversation-start input. */
-export function validateStartMessagingConversationInput(
-  input: unknown,
-): MessagingValidation {
+export function validateStartMessagingConversationInput(input: unknown): MessagingValidation {
   if (!isRecord(input)) {
     return { valid: false, reason: "messaging conversation input must be an object" };
   }
@@ -459,7 +445,9 @@ export function validateStartMessagingConversationInput(
   }
   if (
     c.participantRef !== undefined &&
-    (typeof c.participantRef !== "string" || c.participantRef.length < 1 || c.participantRef.length > 200)
+    (typeof c.participantRef !== "string" ||
+      c.participantRef.length < 1 ||
+      c.participantRef.length > 200)
   ) {
     return { valid: false, reason: "participantRef must be 1..200 characters when present" };
   }
@@ -474,7 +462,11 @@ export function validateStartMessagingConversationInput(
     ["initialPayloadRef", c.initialPayloadRef],
     ["channelConversationRef", c.channelConversationRef],
   ] as const) {
-    if (value !== undefined && typeof value === "string" && messagingContainsRawSecretValue(value)) {
+    if (
+      value !== undefined &&
+      typeof value === "string" &&
+      messagingContainsRawSecretValue(value)
+    ) {
       return { valid: false, reason: `${field} looks like it embeds a raw secret value` };
     }
   }
@@ -505,7 +497,10 @@ export function validateMessagingInboundEvent(input: unknown): MessagingValidati
       reason: "channelMessageRef must be the rail's printable opaque reference (1..200 chars)",
     };
   }
-  if (e.threadRef !== undefined && (typeof e.threadRef !== "string" || !THREAD_PATTERN.test(e.threadRef))) {
+  if (
+    e.threadRef !== undefined &&
+    (typeof e.threadRef !== "string" || !THREAD_PATTERN.test(e.threadRef))
+  ) {
     return {
       valid: false,
       reason: "threadRef must be a printable neutral thread reference (1..120 chars)",
@@ -565,7 +560,11 @@ export function validateMessagingInboundEvent(input: unknown): MessagingValidati
     ["payloadRef", e.payloadRef],
     ["eventKey", e.eventKey],
   ] as const) {
-    if (value !== undefined && typeof value === "string" && messagingContainsRawSecretValue(value)) {
+    if (
+      value !== undefined &&
+      typeof value === "string" &&
+      messagingContainsRawSecretValue(value)
+    ) {
       return { valid: false, reason: `${field} looks like it embeds a raw secret value` };
     }
   }
@@ -598,9 +597,14 @@ export function validateMessagingDeliveryCallback(input: unknown): MessagingVali
   }
   if (
     c.callbackKey !== undefined &&
-    (typeof c.callbackKey !== "string" || c.callbackKey.length < 1 || c.callbackKey.length > KEY_MAX)
+    (typeof c.callbackKey !== "string" ||
+      c.callbackKey.length < 1 ||
+      c.callbackKey.length > KEY_MAX)
   ) {
-    return { valid: false, reason: "callbackKey must be 1..200 characters when supplied by the rail" };
+    return {
+      valid: false,
+      reason: "callbackKey must be 1..200 characters when supplied by the rail",
+    };
   }
   if (typeof c.status !== "string" || !isMessagingCallbackStatus(c.status)) {
     return {
@@ -611,7 +615,11 @@ export function validateMessagingDeliveryCallback(input: unknown): MessagingVali
   if (c.detail !== undefined && (typeof c.detail !== "string" || c.detail.length > CAUSE_MAX)) {
     return { valid: false, reason: `detail must be at most ${CAUSE_MAX} characters` };
   }
-  if (c.detail !== undefined && typeof c.detail === "string" && messagingContainsRawSecretValue(c.detail)) {
+  if (
+    c.detail !== undefined &&
+    typeof c.detail === "string" &&
+    messagingContainsRawSecretValue(c.detail)
+  ) {
     return { valid: false, reason: "detail looks like it embeds a raw secret value" };
   }
   return { valid: true };

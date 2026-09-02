@@ -196,7 +196,10 @@ export interface MessagingStore {
   insertConversation(
     input: MessagingConversationInsertInput,
   ): Promise<MessagingConversationInsertOutcome>;
-  findConversation(applicationId: string, conversationId: string): Promise<MessagingConversationRecord | null>;
+  findConversation(
+    applicationId: string,
+    conversationId: string,
+  ): Promise<MessagingConversationRecord | null>;
   /** The idempotent-replay fast path (the conversation-start key lookup). */
   findConversationByStartKey(
     applicationId: string,
@@ -255,7 +258,9 @@ export interface MessagingStore {
   >;
 
   /** Insert the immutable escalation record (idempotent by escalation key). */
-  insertEscalation(input: MessagingEscalationInsertInput): Promise<MessagingEscalationInsertOutcome>;
+  insertEscalation(
+    input: MessagingEscalationInsertInput,
+  ): Promise<MessagingEscalationInsertOutcome>;
   findEscalation(
     applicationId: string,
     escalationKey: string,

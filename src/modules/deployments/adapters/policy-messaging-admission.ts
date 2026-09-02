@@ -28,9 +28,13 @@ import type {
   MessagingPolicyAdmissionRequest,
 } from "../ports/messaging-admission";
 
-export function createPolicyMessagingAdmission(authority: PolicyAuthority): MessagingPolicyAdmission {
+export function createPolicyMessagingAdmission(
+  authority: PolicyAuthority,
+): MessagingPolicyAdmission {
   return {
-    async admit(request: MessagingPolicyAdmissionRequest): Promise<MessagingPolicyAdmissionDecision> {
+    async admit(
+      request: MessagingPolicyAdmissionRequest,
+    ): Promise<MessagingPolicyAdmissionDecision> {
       const result = await authority.admitDispatch({
         context: {
           tenantId: request.tenantId,

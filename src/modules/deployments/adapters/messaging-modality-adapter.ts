@@ -19,8 +19,8 @@
  */
 
 import type { ChannelBinding } from "../domain/plan";
-import type { ModalityBindingCheck, ModalityChannelAdapter } from "../ports/modality-adapter";
 import type { MessagingRail } from "../ports/messaging-rail";
+import type { ModalityBindingCheck, ModalityChannelAdapter } from "../ports/modality-adapter";
 
 export function createMessagingModalityAdapter(rail: MessagingRail): ModalityChannelAdapter {
   return {

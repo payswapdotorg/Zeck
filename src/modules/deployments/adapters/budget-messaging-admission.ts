@@ -39,7 +39,9 @@ function mapBudgetError(error: unknown, operationId: string): never {
   throw error;
 }
 
-export function createBudgetMessagingAdmission(authority: BudgetAuthority): MessagingBudgetAdmission {
+export function createBudgetMessagingAdmission(
+  authority: BudgetAuthority,
+): MessagingBudgetAdmission {
   return {
     async reserve(command: MessagingBudgetReserveCommand): Promise<MessagingBudgetReservation> {
       try {

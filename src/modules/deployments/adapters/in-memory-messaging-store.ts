@@ -292,7 +292,8 @@ export class InMemoryMessagingStore implements MessagingStore {
       ) {
         throw new PlatformError({
           code: "PROVIDER_ERROR",
-          message: "the rail channel conversation reference is already bound to another conversation",
+          message:
+            "the rail channel conversation reference is already bound to another conversation",
           details: { channelConversationRef: input.channelConversationRef },
         });
       }
@@ -457,7 +458,9 @@ export class InMemoryMessagingStore implements MessagingStore {
     return { status: "appended", message: toMessage(message) };
   }
 
-  async appendDelivery(input: MessagingDeliveryAppendInput): Promise<MessagingDeliveryAppendOutcome> {
+  async appendDelivery(
+    input: MessagingDeliveryAppendInput,
+  ): Promise<MessagingDeliveryAppendOutcome> {
     const listKey = `${input.applicationId}:${input.conversationId}`;
     const rows = this.deliveries.get(listKey);
     if (rows === undefined) {
@@ -537,18 +540,22 @@ export class InMemoryMessagingStore implements MessagingStore {
     if (current === input.toStatus) {
       return { status: "converged" as const, message: toMessage(message) };
     }
-    if (isTerminalMessagingDeliveryStatus(current) || !isForwardMessagingDeliveryMove(current, input.toStatus)) {
+    if (
+      isTerminalMessagingDeliveryStatus(current) ||
+      !isForwardMessagingDeliveryMove(current, input.toStatus)
+    ) {
       // A stale callback records its evidence but cannot regress the
       // projection (monotonic delivery vocabulary).
       return { status: "converged" as const, message: toMessage(message) };
     }
     message.deliveryStatus = input.toStatus;
     message.deliveredAt = input.deliveredAt;
-    message.ledgerSequence = message.ledgerSequence;
     return { status: "applied" as const, message: toMessage(message) };
   }
 
-  async insertEscalation(input: MessagingEscalationInsertInput): Promise<MessagingEscalationInsertOutcome> {
+  async insertEscalation(
+    input: MessagingEscalationInsertInput,
+  ): Promise<MessagingEscalationInsertOutcome> {
     const existing = this.escalations.get(`${input.applicationId}:${input.escalationKey}`);
     if (existing !== undefined) {
       return { status: "converged", escalation: toEscalation(existing) };
