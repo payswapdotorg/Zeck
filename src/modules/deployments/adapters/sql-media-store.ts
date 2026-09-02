@@ -44,7 +44,7 @@ import type {
   MediaOperationCheckpoint,
   MediaOperationRecord,
 } from "../domain/media";
-import { mediaObservationBodyDigestBase } from "../domain/media";
+import { isMediaJobForwardProgression, mediaObservationBodyDigestBase } from "../domain/media";
 import type {
   MediaArtifactInsertInput,
   MediaArtifactInsertOutcome,
@@ -468,6 +468,27 @@ RETURNING ${JOB_COLUMNS}`,
           }
         }
         if (message.includes("media_jobs_pkey")) {
+          // The concurrent-duplicate convergence: the operation claim
+          // pinned THIS durable job id for every racer (the claim is
+          // unique per submission key), so a pkey conflict means a
+          // concurrent invocation committed the SAME job under the SAME
+          // submission key — converge on it exactly like the
+          // submission-key unique branch (the in-memory store's
+          // semantics: same key + same fingerprint = the same job). A
+          // pkey hit with a DIFFERENT submission key is a genuine
+          // integrity violation and fails closed.
+          const byId = await this.findJob(input.applicationId, input.jobId);
+          if (byId !== null && byId.submissionKey === input.submissionKey) {
+            if (byId.creationFingerprint !== input.creationFingerprint) {
+              throw new PlatformError({
+                code: "IDEMPOTENCY_KEY_REUSED",
+                message:
+                  "media job submission key already exists with a different creation fingerprint",
+                details: { jobId: byId.id },
+              });
+            }
+            return { status: "converged", job: byId };
+          }
           throw new PlatformError({
             code: "PROVIDER_ERROR",
             message: `media job ${input.jobId} already exists`,
@@ -543,8 +564,11 @@ RETURNING ${JOB_COLUMNS}`,
       throw toTypedGuardError(error);
     }
     // First writer already moved the row (or the guard disagrees):
-    // converge when the committed state equals the target; fail closed
-    // when it does not.
+    // converge when the committed state equals the target, or when the
+    // row has already PROGRESSED PAST the target along the forward
+    // pipeline (a concurrent duplicate of the same logical operation
+    // won the race and moved further — the durable outcome exists);
+    // fail closed on genuine regressions and foreign-terminal states.
     const current = await this.findJob(input.applicationId, input.jobId);
     if (current === null) {
       throw new PlatformError({
@@ -553,6 +577,9 @@ RETURNING ${JOB_COLUMNS}`,
       });
     }
     if (current.status === input.toStatus) {
+      return { status: "converged", job: current };
+    }
+    if (isMediaJobForwardProgression(current.status, input.toStatus)) {
       return { status: "converged", job: current };
     }
     throw new PlatformError({
@@ -664,7 +691,7 @@ RETURNING ${OBSERVATION_COLUMNS}`,
       const result = await this.db.execute<ArtifactRow>({
         sql: `INSERT INTO deployments.media_artifacts (
     ${ARTIFACT_COLUMNS})
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14, $15, $16)
 ON CONFLICT (application_id, artifact_key) DO NOTHING
 RETURNING ${ARTIFACT_COLUMNS}`,
         parameters: [

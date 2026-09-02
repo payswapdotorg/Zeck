@@ -122,6 +122,40 @@ export function isTerminalMediaJobStatus(status: MediaJobStatus): boolean {
 }
 
 /**
+ * The FORWARD pipeline of the closed lifecycle (the happy-path order;
+ * failed/cancelled are terminal EXITS, never pipeline steps).
+ */
+const MEDIA_JOB_PIPELINE: readonly MediaJobStatus[] = [
+  "submitted",
+  "dispatching",
+  "generating",
+  "verifying",
+  "completed",
+];
+
+/**
+ * Whether a committed job status already satisfies a guarded mutation's
+ * target because the row has PROGRESSED PAST the target along the
+ * forward pipeline (a concurrent invocation won the race and moved the
+ * row beyond our requested destination — the durable outcome the
+ * caller wanted exists, so the late mutation CONVERGES instead of
+ * failing; the guard-disagree error stays reserved for genuine
+ * regressions and foreign-terminal states, which are never forward
+ * progressions). This is the SQL-path convergence the claim-then-act
+ * duplicate discipline requires: concurrent duplicates of one
+ * submission race between their (identical) guarded moves, and the
+ * losers must land on the winner's committed state.
+ */
+export function isMediaJobForwardProgression(
+  committed: MediaJobStatus,
+  target: MediaJobStatus,
+): boolean {
+  const committedIndex = MEDIA_JOB_PIPELINE.indexOf(committed);
+  const targetIndex = MEDIA_JOB_PIPELINE.indexOf(target);
+  return committedIndex > targetIndex && targetIndex >= 0;
+}
+
+/**
  * The CLOSED normalized provider-observation vocabulary — the ONLY
  * provider-state vocabulary that crosses the rail seam (the adapter
  * normalizes vendor states onto it; raw provider strings are

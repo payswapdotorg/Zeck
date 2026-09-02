@@ -19,6 +19,7 @@ import { PlatformError } from "../../../shared/errors";
 import type {
   MediaArtifactRecord,
   MediaJobRecord,
+  MediaJobStatus,
   MediaObservationRecord,
   MediaOperationCheckpoint,
   MediaOperationRecord,
@@ -26,6 +27,7 @@ import type {
 } from "../domain/media";
 import {
   canTransitionMediaJob,
+  isMediaJobForwardProgression,
   isTerminalMediaJobStatus,
   mediaObservationBodyDigestBase,
 } from "../domain/media";
@@ -324,6 +326,12 @@ export class InMemoryMediaStore implements MediaStore {
     }
     if (job.status === input.toStatus) {
       // The committed row already satisfies the target: convergence.
+      return { status: "converged", job: toJob(job) };
+    }
+    if (isMediaJobForwardProgression(job.status as MediaJobStatus, input.toStatus)) {
+      // A concurrent duplicate already moved the row PAST the target
+      // along the forward pipeline: the durable outcome exists —
+      // converge (parity with the SQL store's convergence path).
       return { status: "converged", job: toJob(job) };
     }
     if (job.status !== input.expectedStatus || !canTransitionMediaJob(job.status, input.toStatus)) {
