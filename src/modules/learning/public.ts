@@ -71,10 +71,12 @@ import type { InMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-po
 import { createInMemoryLearnedPolicyStore } from "./adapters/in-memory-learned-policy-store";
 import type { InMemoryLearningStore } from "./adapters/in-memory-learning-store";
 import { createInMemoryLearningStore } from "./adapters/in-memory-learning-store";
+import { InMemoryDeterministicizationStore } from "./adapters/in-memory-deterministicization-store";
 import type { InMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createInMemoryOpportunityStore } from "./adapters/in-memory-opportunity-store";
 import { createNodeDigest } from "./adapters/node-digest";
 import { SqlCompositionStore } from "./adapters/sql-composition-store";
+import { SqlDeterministicizationStore } from "./adapters/sql-deterministicization-store";
 import { SqlLearnedPolicyStore } from "./adapters/sql-learned-policy-store";
 import { SqlLearningStore } from "./adapters/sql-learning-store";
 import { SqlOpportunityStore } from "./adapters/sql-opportunity-store";
@@ -97,6 +99,21 @@ import type {
   RollbackLearnedPolicyRequest,
 } from "./application/learned-policy-service";
 import { createLearnedPolicyService } from "./application/learned-policy-service";
+import type {
+  ApplyPromotionRequest,
+  BeginRolloutRequest,
+  ConcludeRolloutRequest,
+  ConsultDeterministicizationRequest,
+  DecisionRequest,
+  DeterministicizationService,
+  DeterministicizationServiceDeps,
+  DeterministicizationSignal,
+  DiscoverCandidatesRequest,
+  ProposeCandidateRequest,
+  RecordStageEvidenceRequest,
+  RolloutDeltaProjection,
+} from "./application/deterministicization-service";
+import { createDeterministicizationService } from "./application/deterministicization-service";
 import type {
   LearningService,
   LearningServiceDeps,
@@ -188,6 +205,52 @@ import {
   isExecutionGraphNodeKind,
   validateExecutionGraph,
 } from "./domain/execution-graph";
+import type {
+  CandidateProvenance,
+  CandidateRecurrence,
+  CandidateSubgraphAnchor,
+  DeterministicizationCandidate,
+  DeterministicizationCandidateClass,
+  DeterministicizationCandidateStatus,
+  DifferentialPair,
+  GateEvaluation,
+  IncumbentBinding,
+  PromotionDecisionRecord,
+  ReplacementAcceptanceCriterion,
+  ReplacementContract,
+  ReplacementFieldSchema,
+  ReplacementProgram,
+  RolloutRecord,
+  StageEvidenceRecord,
+  StageEvidenceStatus,
+  ValidationRunObservation,
+} from "./domain/deterministicization";
+import {
+  CANDIDATE_STATUS_TRANSITIONS,
+  DECISION_KINDS,
+  DETERMINISTICIZATION_CANDIDATE_CLASSES,
+  DETERMINISTICIZATION_CANDIDATE_STATUSES,
+  DETERMINISTICIZATION_SCHEMA_VERSION,
+  REPLACEMENT_FIELD_TYPES,
+  ROLLOUT_MODES,
+  ROLLOUT_STATUSES,
+  STAGE_EVIDENCE_STATUSES,
+  VALIDATION_STAGE_KINDS,
+} from "./domain/deterministicization";
+import type { AiComputationType, DiscoveredSubgraph } from "./domain/deterministicization-discovery";
+import {
+  AI_COMPUTATION_TYPES,
+  DEFAULT_DISCOVERY_CONFIG,
+  discoverDeterminizationCandidates,
+  discoveryCorpusBasis,
+  DISCOVERY_MINIMUM_RECURRENCE,
+} from "./domain/deterministicization-discovery";
+import type { PromotionGateConfig, PromotionGateEvaluation } from "./domain/deterministicization-gate";
+import {
+  DEFAULT_PROMOTION_GATE_CONFIG,
+  evaluatePromotionGate,
+  promotionGateConfigBasis,
+} from "./domain/deterministicization-gate";
 import type { FindingTransitionRecord } from "./domain/finding-transitions";
 import {
   FINDING_TRANSITION_EVIDENCE_KINDS,
@@ -398,6 +461,21 @@ import type {
   TelemetryQuery,
 } from "./ports/learning-store";
 import type {
+  CandidateInsertOutcome,
+  CandidateTransitionOutcome,
+  DecisionAppendOutcome,
+  DeterministicizationOperationKind,
+  DeterministicizationOperationRecord,
+  DeterministicizationScope,
+  DeterministicizationStore,
+  OperationBeginInput,
+  OperationBeginOutcome,
+  RolloutConclusionInput,
+  RolloutInsertOutcome,
+  StageEvidenceInsertOutcome,
+} from "./ports/deterministicization-store";
+import { deterministicizationOperationKey } from "./ports/deterministicization-store";
+import type {
   AnalysisInsertOutcome,
   FindingInsertOutcome,
   OpportunityScope,
@@ -522,6 +600,40 @@ export function createLearnedPolicySource(service: LearnedPolicyService): Learne
   };
 }
 
+/**
+ * The READ seam planning consumes for deterministicization candidates
+ * (WORK-021 / DTR-001..004; advisory evidence, never authority: a
+ * deterministicization candidate is never a planning, execution or
+ * authorization authority — the frozen §10 invariant). The view
+ * carries the candidate's full provenance/contract/decision anchors
+ * (proposed → validating → validated → shadow → canary → promoted |
+ * rejected | deferred | rolled-back); there is no method here that
+ * could change a plan, an execution, a policy, a budget or any state
+ * (the same shape as the seams above).
+ */
+export interface DeterministicizationSignalSource {
+  consult(request: {
+    readonly applicationId: string;
+    readonly tenantId: string;
+    readonly taskClass?: string;
+  }): Promise<readonly DeterministicizationSignal[]>;
+}
+
+/**
+ * Adapt the deterministicization lifecycle service into the candidate
+ * READ seam (a projection, never an authority: candidates leave as
+ * validated immutable evidence records with their full anchors).
+ */
+export function createDeterministicizationSignalSource(
+  service: DeterministicizationService,
+): DeterministicizationSignalSource {
+  return {
+    async consult(request) {
+      return service.consultDeterministicizationSignals(request);
+    },
+  };
+}
+
 // Application: the observational services.
 // Domain: the observation model (telemetry, scorecards, signals, shadow,
 // ratings) + the tool-composition learning model (facts, compositions,
@@ -537,6 +649,28 @@ export type {
   AggregationDefinition,
   AnalysisInsertOutcome,
   AnalyzeSubgraphRequest,
+  ApplyPromotionRequest,
+  BeginRolloutRequest,
+  CandidateInsertOutcome,
+  CandidateProvenance,
+  CandidateRecurrence,
+  CandidateSubgraphAnchor,
+  CandidateTransitionOutcome,
+  ConcludeRolloutRequest,
+  ConsultDeterministicizationRequest,
+  DecisionAppendOutcome,
+  DecisionRequest,
+  DeterministicizationCandidate,
+  DeterministicizationCandidateClass,
+  DeterministicizationCandidateStatus,
+  DeterministicizationOperationKind,
+  DeterministicizationOperationRecord,
+  DeterministicizationScope,
+  DeterministicizationService,
+  DeterministicizationServiceDeps,
+  DeterministicizationSignal,
+  DeterministicizationStore,
+  AiComputationType,
   CompositionAdvisor,
   CompositionAdvisorDeps,
   CompositionCheck,
@@ -554,7 +688,10 @@ export type {
   CostImpact,
   DeterministicEquivalence,
   DeterministicEquivalencePotential,
+  DifferentialPair,
   DigestPort,
+  DiscoveredSubgraph,
+  DiscoverCandidatesRequest,
   EvaluateLearnedPolicyRequest,
   EvaluateShadowInput,
   EvaluationAppendOutcome,
@@ -662,6 +799,7 @@ export type {
 };
 export {
   AGGREGATION_DEFINITIONS,
+  AI_COMPUTATION_TYPES,
   analyzeToolSequences,
   buildExecutionGraph,
   buildFindings,
@@ -678,12 +816,14 @@ export {
   CONFIDENCE_MEDIUM_POPULATION,
   CONSTANT_OUTPUT_CEILING,
   canonicalContextKey,
+  CANDIDATE_STATUS_TRANSITIONS,
   checkToolComposition,
   classifyFindingConfidence,
   classifyRecommendationConfidence,
   compareShadowScores,
   compositionToolRefs,
   createCompositionAdvisor,
+  createDeterministicizationService,
   createInMemoryCompositionStore,
   createInMemoryLearnedPolicyStore,
   createInMemoryLearningStore,
@@ -693,11 +833,17 @@ export {
   createNodeDigest,
   createOpportunityAnalyzer,
   createShadowEvaluator,
+  DEFAULT_DISCOVERY_CONFIG,
   DEFAULT_FRICTION_CONFIG,
   DEFAULT_MAX_PROMPTS,
+  DEFAULT_PROMOTION_GATE_CONFIG,
   DEFAULT_USER_FRICTION_THRESHOLD,
+  DETERMINISTICIZATION_CANDIDATE_CLASSES,
+  DETERMINISTICIZATION_CANDIDATE_STATUSES,
+  DETERMINISTICIZATION_SCHEMA_VERSION,
   DETERMINISTIC_EQUIVALENCE_POTENTIALS,
   decideEvaluationPrompts,
+  DECISION_KINDS,
   detectOpportunities,
   EVALUATION_PROMPT_SCHEMA_VERSION,
   EVALUATION_QUESTION_KINDS,
@@ -716,6 +862,11 @@ export {
   FINDING_TRANSITION_EVIDENCE_KINDS,
   FINDING_TRANSITION_SCHEMA_VERSION,
   FINDING_TRANSITION_TABLE,
+  discoverDeterminizationCandidates,
+  DISCOVERY_MINIMUM_RECURRENCE,
+  discoveryCorpusBasis,
+  deterministicizationOperationKey,
+  evaluatePromotionGate,
   findAggregationDefinition,
   findToolFact,
   HIGH_ERROR_RATE,
@@ -723,6 +874,7 @@ export {
   INSERTABLE_FINDING_STATES,
   isEvaluationQuestionKind,
   isEvaluationRatingAnswer,
+  InMemoryDeterministicizationStore,
   isExecutionGraphNodeKind,
   isFindingConfidenceLevel,
   isFindingState,
@@ -761,15 +913,21 @@ export {
   opportunityAnalysisDigestBasis,
   populationContextKeyOf,
   questionKindForClass,
+  promotionGateConfigBasis,
   RATING_MAX,
   RATING_MIN,
   RATING_SCHEMA_VERSION,
   RATING_SOURCES,
   RECOMMENDATION_ACTIVATION_REASONS,
   ratingFingerprintBasis,
+  REPLACEMENT_FIELD_TYPES,
+  ROLLOUT_MODES,
+  ROLLOUT_STATUSES,
   recommendationSetDigestBasis,
   SCORECARD_SUBJECT_KINDS,
   SHADOW_EVALUATION_STATUSES,
+  SqlDeterministicizationStore,
+  STAGE_EVIDENCE_STATUSES,
   SHADOW_RECORD_CLASSES,
   SHADOW_SCHEMA_VERSION,
   SqlCompositionStore,
@@ -788,6 +946,7 @@ export {
   toolExistsInCatalog,
   toolSequenceOf,
   UNCERTAINTY_LEVELS,
+  VALIDATION_STAGE_KINDS,
   validateCompositionRecommendation,
   validateCompositionRecommendationSet,
   validateEvaluationPrompt,

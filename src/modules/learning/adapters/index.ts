@@ -12,6 +12,7 @@ export type {
   LearningReadSource,
 } from "./in-memory-learned-policy-store";
 export { createInMemoryLearnedPolicyStore } from "./in-memory-learned-policy-store";
+export { InMemoryDeterministicizationStore } from "./in-memory-deterministicization-store";
 export type { InMemoryLearningStore } from "./in-memory-learning-store";
 export { createInMemoryLearningStore } from "./in-memory-learning-store";
 export type { InMemoryOpportunityStore } from "./in-memory-opportunity-store";
@@ -19,5 +20,6 @@ export { createInMemoryOpportunityStore } from "./in-memory-opportunity-store";
 export { createNodeDigest } from "./node-digest";
 export { SqlCompositionStore } from "./sql-composition-store";
 export { SqlLearnedPolicyStore } from "./sql-learned-policy-store";
+export { SqlDeterministicizationStore } from "./sql-deterministicization-store";
 export { SqlLearningStore } from "./sql-learning-store";
 export { SqlOpportunityStore } from "./sql-opportunity-store";
