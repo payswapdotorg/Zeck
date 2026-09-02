@@ -38,6 +38,17 @@ export interface RealtimeTurnResponderRequest {
   readonly pinnedPlanId: string;
   readonly pinnedPlanVersion: number;
   readonly channelKind: string;
+  /**
+   * The turn's STABLE idempotency key (the inbound event key — the
+   * session fabric's turn-operation key rides the seam): a production
+   * responder that performs paid inference uses it to converge the
+   * inference (exactly one paid dispatch per turn across crashes and
+   * retries). The fabric checkpoints the response BEFORE the rail
+   * delivery, so a crash-recovery of the delivery never re-invokes
+   * this seam; the residual crash window (mid-respond, before the
+   * checkpoint) is bounded by THIS key's contract.
+   */
+  readonly turnKey: string;
   /** The planner-decided route class (deterministic/hybrid/generative). */
   readonly routeClass: RealtimeRouteClass;
   /** Bounded preview of the inbound turn (never raw media). */

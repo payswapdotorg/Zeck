@@ -50,6 +50,17 @@
 --     (application_id, session_id, event_key) arbitrates duplicate
 --     inbound events (a duplicate converges on the committed row; a
 --     same-key/different-body insert fails closed);
+--   * realtime_operations (the architect's crash-safety correction for
+--     PR #46): the DURABLE, RECOVERABLE OPERATION STATE — one row per
+--     governed rail-side-effect operation with the PENDING ->
+--     COMPLETED|FAILED machine. UNIQUE (application_id, operation_key)
+--     arbitrates the durable claim; `attempts` is the retry ledger
+--     (monotonic); the checkpoint is bounded jsonb and writable only
+--     while PENDING; COMPLETED/FAILED are fully immutable and
+--     completion-timestamped; rows are never deleted. session_id is a
+--     PROVENANCE REFERENCE WITHOUT FK — a session-start operation row
+--     is durably claimed BEFORE its session row exists (that ordering
+--     is exactly the crash window this ledger closes);
 --   * inbound event freshness: an inbound row's (channel_session_ref,
 --     channel_epoch) must match the session's CURRENT values at insert
 --     time (trigger) — a stale callback cannot mutate the wrong session
@@ -191,3 +202,82 @@ CREATE OR REPLACE FUNCTION deployments.rt_events_append_only() RETURNS trigger A
 CREATE TRIGGER rt_events_append_only_guard
     BEFORE UPDATE OR DELETE ON deployments.realtime_events
     FOR EACH ROW EXECUTE FUNCTION deployments.rt_events_append_only();
+
+-- ---------------------------------------------------------------------------
+-- The durable, recoverable realtime OPERATION state (the architect's
+-- crash-safety correction for PR #46). One row per governed rail-side
+-- effect: PENDING (claimed, not durably complete — a crash in the
+-- claim/completion window leaves this; a retry MUST resume with the
+-- STABLE rail-level idempotency key) -> COMPLETED (the durable outcome
+-- exists; replays return it with no side effect) | FAILED (a durably
+-- recorded terminal failure outcome — the rail refused).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE deployments.realtime_operations (
+    id             uuid PRIMARY KEY,
+    application_id uuid NOT NULL,
+    tenant_id      uuid NOT NULL,
+    -- Provenance reference WITHOUT FK by design: a session-start
+    -- operation row is durably claimed BEFORE the session row exists
+    -- (that ordering is exactly the crash window this ledger closes).
+    session_id     uuid,
+    deployment_id  uuid NOT NULL,
+    execution_id   uuid,
+    operation_kind text NOT NULL,
+    operation_key  text NOT NULL,
+    status         text NOT NULL,
+    attempts       integer NOT NULL DEFAULT 1,
+    -- Bounded stage checkpoint (the past-the-point-of-no-return facts a
+    -- crash-resume completes from; never media, never secrets).
+    checkpoint     jsonb,
+    failure_reason text,
+    created_at     timestamptz NOT NULL,
+    updated_at     timestamptz NOT NULL,
+    completed_at   timestamptz,
+    CONSTRAINT rt_ops_kind_vocabulary CHECK (operation_kind IN ('session-start','turn-delivery','human-transfer','session-close')),
+    CONSTRAINT rt_ops_status_vocabulary CHECK (status IN ('pending','completed','failed')),
+    CONSTRAINT rt_ops_attempts_positive CHECK (attempts >= 1),
+    CONSTRAINT rt_ops_key_bounded CHECK (length(operation_key) BETWEEN 1 AND 200),
+    CONSTRAINT rt_ops_failure_bounded CHECK (failure_reason IS NULL OR length(failure_reason) <= 512),
+    CONSTRAINT rt_ops_checkpoint_bounded CHECK (checkpoint IS NULL OR pg_column_size(checkpoint) <= 4096),
+    CONSTRAINT rt_ops_completed_requires_timestamp CHECK (status <> 'completed' OR completed_at IS NOT NULL),
+    CONSTRAINT rt_ops_failed_requires_reason CHECK (status <> 'failed' OR failure_reason IS NOT NULL),
+    CONSTRAINT rt_ops_pending_outcome_absent CHECK (status <> 'pending' OR (completed_at IS NULL AND failure_reason IS NULL)),
+    CONSTRAINT rt_ops_outcome_fields_exclusive CHECK (completed_at IS NULL OR failure_reason IS NULL),
+    CONSTRAINT rt_ops_key_unique UNIQUE (application_id, operation_key),
+    FOREIGN KEY (application_id, tenant_id)
+        REFERENCES applications.applications (id, tenant_id)
+);
+
+CREATE INDEX rt_ops_session_listing
+    ON deployments.realtime_operations (application_id, session_id, created_at);
+
+CREATE INDEX rt_ops_pending_scan
+    ON deployments.realtime_operations (application_id, status, updated_at)
+    WHERE status = 'pending';
+
+-- The identity core is write-once: application/tenant/deployment
+-- binding, the operation kind and key, the session/execution
+-- provenance references and the creation timestamp never move.
+CREATE OR REPLACE FUNCTION deployments.rt_ops_core_immutable() RETURNS trigger AS $$ BEGIN IF NEW.id <> OLD.id OR NEW.application_id <> OLD.application_id OR NEW.tenant_id <> OLD.tenant_id OR NEW.session_id IS DISTINCT FROM OLD.session_id OR NEW.deployment_id <> OLD.deployment_id OR NEW.execution_id IS DISTINCT FROM OLD.execution_id OR NEW.operation_kind <> OLD.operation_kind OR NEW.operation_key <> OLD.operation_key OR NEW.created_at <> OLD.created_at THEN RAISE EXCEPTION 'deployments.realtime_operations identity core is immutable (operation %)', OLD.id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rt_ops_core_guard
+    BEFORE UPDATE ON deployments.realtime_operations
+    FOR EACH ROW EXECUTE FUNCTION deployments.rt_ops_core_immutable();
+
+-- The recoverable status machine: only PENDING may move (to COMPLETED
+-- or FAILED, with the outcome fields set atomically); COMPLETED/FAILED
+-- are terminal-immutable (checkpoint/failure/reason/timestamps frozen);
+-- attempts never regress. A physical UPDATE of a terminal row is
+-- unrepresentable.
+CREATE OR REPLACE FUNCTION deployments.rt_ops_lifecycle() RETURNS trigger AS $$ BEGIN IF OLD.status IN ('completed','failed') THEN RAISE EXCEPTION 'deployments.realtime_operations is terminal-immutable in state % (operation %)', OLD.status, OLD.id; END IF; IF NEW.status NOT IN ('pending','completed','failed') OR (OLD.status = 'pending' AND NEW.status = 'pending' AND NEW.attempts < OLD.attempts) OR (NEW.status = 'completed' AND (NEW.completed_at IS NULL OR NEW.failure_reason IS NOT NULL)) OR (NEW.status = 'failed' AND (NEW.failure_reason IS NULL OR NEW.completed_at IS NOT NULL)) OR (NEW.status = 'pending' AND (NEW.completed_at IS NOT NULL OR NEW.failure_reason IS NOT NULL)) THEN RAISE EXCEPTION 'realtime operation % cannot move from status % to % (pending -> completed|failed only; completed/failed are terminal)', OLD.id, OLD.status, NEW.status; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rt_ops_lifecycle_guard
+    BEFORE UPDATE ON deployments.realtime_operations
+    FOR EACH ROW EXECUTE FUNCTION deployments.rt_ops_lifecycle();
+
+CREATE OR REPLACE FUNCTION deployments.rt_ops_no_delete() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'deployments.realtime_operations rows are never deleted (operation %)', OLD.id; END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER rt_ops_no_delete_guard
+    BEFORE DELETE ON deployments.realtime_operations
+    FOR EACH ROW EXECUTE FUNCTION deployments.rt_ops_no_delete();

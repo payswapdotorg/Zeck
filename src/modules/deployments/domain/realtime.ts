@@ -411,6 +411,144 @@ export function deterministicRealtimeEventKey(input: {
   return `rt-${input.sessionId}-${input.channelEpoch}-${input.kind}-${input.occurrenceOrdinal}`;
 }
 
+// ---------------------------------------------------------------------------
+// DURABLE, RECOVERABLE OPERATION STATE (the architect's crash-safety
+// correction for PR #46): every governed realtime operation that can
+// perform an external side effect owns ONE durable operation row with a
+// PENDING → COMPLETED|FAILED status machine, plus STABLE rail-level
+// idempotency keys derived below. A crash between the durable claim and
+// the durable completion leaves the row PENDING; a retry must RESUME it
+// (the rail converges by key — exactly one upstream side effect) and
+// then complete it. A COMPLETED row replays its recorded outcome with
+// no side effect; a FAILED row replays its recorded failure.
+// ---------------------------------------------------------------------------
+
+/** The governed operations that own durable recoverable state. */
+export const REALTIME_OPERATION_KINDS = [
+  "session-start",
+  "turn-delivery",
+  "human-transfer",
+  "session-close",
+] as const;
+export type RealtimeOperationKind = (typeof REALTIME_OPERATION_KINDS)[number];
+
+export function isRealtimeOperationKind(value: string): value is RealtimeOperationKind {
+  return (REALTIME_OPERATION_KINDS as readonly string[]).includes(value);
+}
+
+/**
+ * The recoverable status machine: `pending` (claimed, not durably
+ * complete — a crash in the claim/completion window leaves this; a
+ * retry MUST resume), `completed` (the durable outcome exists; replays
+ * return it with no side effect), `failed` (a durably recorded terminal
+ * failure outcome — the rail refused; replays return the recorded
+ * failure). `completed`/`failed` are terminal-immutable.
+ */
+export const REALTIME_OPERATION_STATUSES = ["pending", "completed", "failed"] as const;
+export type RealtimeOperationStatus = (typeof REALTIME_OPERATION_STATUSES)[number];
+
+export function isRealtimeOperationStatus(value: string): value is RealtimeOperationStatus {
+  return (REALTIME_OPERATION_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * The bounded durable stage checkpoint. A checkpoint's meaning: the
+ * operation has passed its POINT OF NO RETURN — resumption must NOT
+ * re-run admission (the decision preceded the side effect) and must
+ * complete the durable tail from these facts:
+ *
+ *  - `session-opened` (session-start): the rail opened the channel and
+ *    the durable session row can now be inserted from these facts;
+ *  - `responded` (turn-delivery): the admitted responder produced the
+ *    response frame — the rail delivery resumes with THESE facts (the
+ *    paid-inference seam is not re-invoked);
+ *  - `rail-issued` (human-transfer / session-close): the rail side
+ *    effect was issued — the durable tail completes from here.
+ */
+export interface RealtimeOperationCheckpoint {
+  readonly stage: "session-opened" | "responded" | "rail-issued";
+  /** session-opened: the pre-generated session identity + rail coordinates. */
+  readonly sessionId?: string;
+  readonly executionId?: string;
+  readonly deploymentId?: string;
+  readonly pinnedPlanId?: string;
+  readonly pinnedPlanVersion?: number;
+  readonly channelSessionRef?: string;
+  readonly channelEpoch?: number;
+  readonly policySetId?: string | null;
+  /** responded: the responder's bounded output + reservation binding. */
+  readonly routeClass?: RealtimeRouteClass;
+  /** responded: the planner's decision vocabulary (provenance fidelity on recovery). */
+  readonly plannerOutcome?: "sufficient" | "uncertain" | "insufficient";
+  readonly reasonCodes?: readonly string[];
+  readonly responseRef?: string | null;
+  readonly responsePreview?: string;
+  readonly reservationId?: string | null;
+  readonly actualCostMicroUsd?: string;
+  /** The bounded rail delivery cause (the route rationale slice). */
+  readonly deliveryCause?: string | null;
+  /** rail-issued: the original delivery acknowledgment. */
+  readonly deliveredAt?: string;
+}
+
+/** The immutable-view durable operation record (status moves only pending → terminal). */
+export interface RealtimeOperationRecord {
+  readonly id: string;
+  readonly applicationId: string;
+  readonly tenantId: string;
+  /** Provenance reference (NO FK — a session-start row precedes its session row by design). */
+  readonly sessionId: string | null;
+  readonly deploymentId: string;
+  readonly executionId: string | null;
+  readonly operationKind: RealtimeOperationKind;
+  /** The stable operation key (UNIQUE per application — the recovery discriminator). */
+  readonly operationKey: string;
+  readonly status: RealtimeOperationStatus;
+  /** How many invocations claimed/resumed this operation (the retry ledger). */
+  readonly attempts: number;
+  readonly checkpoint: RealtimeOperationCheckpoint | null;
+  readonly failureReason: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly completedAt: string | null;
+}
+
+/**
+ * The stable DURABLE OPERATION key (the recovery discriminator — the
+ * retry looks the operation up by exactly this key): the operation kind
+ * plus the operation's logical discriminator (the caller idempotency
+ * key for start/transfer/close, the inbound event key for turns and
+ * hangup closes). Deterministic: the same logical retry derives the
+ * same key.
+ */
+export function realtimeOperationKey(kind: RealtimeOperationKind, discriminator: string): string {
+  return `rtop:${kind}:${discriminator}`;
+}
+
+/**
+ * The STABLE RAIL-LEVEL IDEMPOTENCY KEYS (the architect's required
+ * correction): every call that can perform an upstream side effect
+ * carries one, derived deterministically from the SAME durable
+ * coordinates across retries — a retry (or a crash-resume) re-issues
+ * the call under the SAME key and the rail converges (exactly one
+ * upstream side effect, ever).
+ */
+export function realtimeRailOpenKey(idempotencyKey: string): string {
+  return `rtrail:open:${idempotencyKey}`;
+}
+
+export function realtimeRailDeliverKey(eventKey: string): string {
+  return `rtrail:deliver:${eventKey}`;
+}
+
+export function realtimeRailTransferKey(idempotencyKey: string): string {
+  return `rtrail:transfer:${idempotencyKey}`;
+}
+
+export function realtimeRailCloseKey(discriminator: string): string {
+  return `rtrail:close:${discriminator}`;
+}
+
 /**
  * Deterministic session-creation fingerprint (the idempotency
  * discriminator): the same logical session start under the same key

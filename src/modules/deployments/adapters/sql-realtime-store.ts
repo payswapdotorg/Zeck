@@ -31,6 +31,10 @@ import type {
   RealtimeEventDirection,
   RealtimeEventKind,
   RealtimeEventRecord,
+  RealtimeOperationCheckpoint,
+  RealtimeOperationKind,
+  RealtimeOperationRecord,
+  RealtimeOperationStatus,
   RealtimeRouteClass,
   RealtimeSessionRecord,
   RealtimeSessionStatus,
@@ -38,6 +42,8 @@ import type {
 import type {
   RealtimeEventAppendInput,
   RealtimeEventAppendOutcome,
+  RealtimeOperationBeginInput,
+  RealtimeOperationBeginOutcome,
   RealtimeSessionInsertInput,
   RealtimeSessionInsertOutcome,
   RealtimeSessionMutation,
@@ -80,7 +86,28 @@ function toTypedGuardError(error: unknown): PlatformError {
   ) {
     return new PlatformError({ code: "INVALID_STATE_TRANSITION", message });
   }
-  if (message.includes("identity core is immutable")) {
+  if (message.includes("realtime_operations identity core is immutable")) {
+    return new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message,
+      details: { guard: "rt_ops_core_guard" },
+    });
+  }
+  if (message.includes("realtime operation") && message.includes("cannot move from status")) {
+    return new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message,
+      details: { guard: "rt_ops_lifecycle_guard" },
+    });
+  }
+  if (message.includes("realtime_operations is terminal-immutable")) {
+    return new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message,
+      details: { guard: "rt_ops_lifecycle_guard" },
+    });
+  }
+  if (message.includes("realtime session") && message.includes("identity core is immutable")) {
     return new PlatformError({
       code: "INVALID_STATE_TRANSITION",
       message,
@@ -92,6 +119,19 @@ function toTypedGuardError(error: unknown): PlatformError {
       code: "INVALID_STATE_TRANSITION",
       message,
       details: { guard: "rt_events_append_only_guard" },
+    });
+  }
+  // The operations ledger's (application_id, tenant_id) FK: a claim for
+  // a tenant that does not own the application IS a tenant-scope
+  // violation (the claim is the first durable write of an operation).
+  if (
+    message.includes("realtime_operations") &&
+    message.includes("violates foreign key constraint")
+  ) {
+    return new PlatformError({
+      code: "TENANT_SCOPE_VIOLATION",
+      message: "realtime operation claims require a tenant that owns the application",
+      details: { guard: "rt_ops_tenant_fk", cause: message },
     });
   }
   return new PlatformError({
@@ -204,6 +244,55 @@ function toEvent(row: EventRow): RealtimeEventRecord {
 const EVENT_COLUMNS = `id, application_id, tenant_id, session_id, deployment_id, kind, direction,
     event_key, channel_session_ref, channel_epoch, execution_id, ledger_sequence, route_class,
     cause, payload_ref, payload_preview, actor_id, event_seq, body_digest, created_at`;
+
+interface OperationRow {
+  readonly id: string;
+  readonly application_id: string;
+  readonly tenant_id: string;
+  readonly session_id: string | null;
+  readonly deployment_id: string;
+  readonly execution_id: string | null;
+  readonly operation_kind: string;
+  readonly operation_key: string;
+  readonly status: string;
+  readonly attempts: number | string;
+  readonly checkpoint: RealtimeOperationCheckpoint | null;
+  readonly failure_reason: string | null;
+  readonly created_at: Date | string;
+  readonly updated_at: Date | string;
+  readonly completed_at: Date | string | null;
+}
+
+function toOperation(row: OperationRow): RealtimeOperationRecord {
+  return {
+    id: row.id,
+    applicationId: row.application_id,
+    tenantId: row.tenant_id,
+    sessionId: row.session_id,
+    deploymentId: row.deployment_id,
+    executionId: row.execution_id,
+    operationKind: row.operation_kind as RealtimeOperationKind,
+    operationKey: row.operation_key,
+    status: row.status as RealtimeOperationStatus,
+    attempts: Number(row.attempts),
+    checkpoint: row.checkpoint,
+    failureReason: row.failure_reason,
+    createdAt:
+      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    updatedAt:
+      row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
+    completedAt:
+      row.completed_at === null
+        ? null
+        : row.completed_at instanceof Date
+          ? row.completed_at.toISOString()
+          : String(row.completed_at),
+  };
+}
+
+const OPERATION_COLUMNS = `id, application_id, tenant_id, session_id, deployment_id, execution_id,
+    operation_kind, operation_key, status, attempts, checkpoint, failure_reason, created_at,
+    updated_at, completed_at`;
 
 export class SqlRealtimeStore implements RealtimeStore {
   constructor(private readonly db: DatabasePort) {}
@@ -424,6 +513,198 @@ WHERE application_id = $1 AND session_id = $2 ORDER BY event_seq`,
       parameters: [applicationId, sessionId],
     });
     return result.rows.map(toEvent);
+  }
+
+  // -- the durable, recoverable operation state (PR #46 correction) --
+
+  async beginRealtimeOperation(
+    input: RealtimeOperationBeginInput,
+  ): Promise<RealtimeOperationBeginOutcome> {
+    try {
+      const result = await this.db.execute<OperationRow>({
+        sql: `INSERT INTO deployments.realtime_operations (
+    ${OPERATION_COLUMNS})
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', 1, NULL, NULL, $9, $9, NULL)
+ON CONFLICT (application_id, operation_key) DO NOTHING
+RETURNING ${OPERATION_COLUMNS}`,
+        parameters: [
+          input.operationId,
+          input.applicationId,
+          input.tenantId,
+          input.sessionId,
+          input.deploymentId,
+          input.executionId,
+          input.operationKind,
+          input.operationKey,
+          input.createdAt,
+        ],
+      });
+      const row = result.rows[0];
+      if (row !== undefined) {
+        return { status: "begun", record: toOperation(row) };
+      }
+    } catch (error) {
+      throw toTypedGuardError(error);
+    }
+    // The conflict path: the operation row already exists — bump the
+    // attempts ledger (PENDING rows only; a terminal row is immutable,
+    // so a completed/failed operation replays without an attempt bump).
+    const existing = await this.findRealtimeOperation(input.applicationId, input.operationKey);
+    if (existing === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: "realtime operation begin returned no row",
+        details: { operationKey: input.operationKey },
+      });
+    }
+    if (existing.status !== "pending") {
+      return { status: "existing", record: existing };
+    }
+    try {
+      const bumped = await this.db.execute<OperationRow>({
+        sql: `UPDATE deployments.realtime_operations
+SET attempts = attempts + 1, updated_at = $3
+WHERE application_id = $1 AND operation_key = $2 AND status = 'pending'
+RETURNING ${OPERATION_COLUMNS}`,
+        parameters: [input.applicationId, input.operationKey, input.createdAt],
+      });
+      const row = bumped.rows[0];
+      if (row !== undefined) {
+        return { status: "existing", record: toOperation(row) };
+      }
+    } catch (error) {
+      throw toTypedGuardError(error);
+    }
+    // A concurrent terminal move won the race: replay the committed row.
+    const committed = await this.findRealtimeOperation(input.applicationId, input.operationKey);
+    if (committed === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: "realtime operation row disappeared after begin",
+        details: { operationKey: input.operationKey },
+      });
+    }
+    return { status: "existing", record: committed };
+  }
+
+  async recordRealtimeOperationCheckpoint(
+    applicationId: string,
+    operationKey: string,
+    checkpoint: RealtimeOperationCheckpoint,
+    updatedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    try {
+      const result = await this.db.execute<OperationRow>({
+        sql: `UPDATE deployments.realtime_operations
+SET checkpoint = $3::jsonb, updated_at = $4
+WHERE application_id = $1 AND operation_key = $2 AND status = 'pending'
+RETURNING ${OPERATION_COLUMNS}`,
+        parameters: [applicationId, operationKey, JSON.stringify(checkpoint), updatedAt],
+      });
+      const row = result.rows[0];
+      if (row !== undefined) {
+        return toOperation(row);
+      }
+    } catch (error) {
+      throw toTypedGuardError(error);
+    }
+    const existing = await this.requireOperation(applicationId, operationKey);
+    throw new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message: `realtime operation ${operationKey} is ${existing.status}; a checkpoint is writable only while pending`,
+    });
+  }
+
+  async completeRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+    completedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    try {
+      const result = await this.db.execute<OperationRow>({
+        sql: `UPDATE deployments.realtime_operations
+SET status = 'completed', completed_at = $3, updated_at = $3
+WHERE application_id = $1 AND operation_key = $2 AND status = 'pending'
+RETURNING ${OPERATION_COLUMNS}`,
+        parameters: [applicationId, operationKey, completedAt],
+      });
+      const row = result.rows[0];
+      if (row !== undefined) {
+        return toOperation(row);
+      }
+    } catch (error) {
+      throw toTypedGuardError(error);
+    }
+    const existing = await this.requireOperation(applicationId, operationKey);
+    if (existing.status === "completed") {
+      // Idempotent convergence: the durable outcome already exists.
+      return existing;
+    }
+    throw new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message: `realtime operation ${operationKey} is ${existing.status}; a failed operation cannot be completed`,
+      details: { failureReason: existing.failureReason },
+    });
+  }
+
+  async failRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+    reason: string,
+    failedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    try {
+      const result = await this.db.execute<OperationRow>({
+        sql: `UPDATE deployments.realtime_operations
+SET status = 'failed', failure_reason = $3, updated_at = $4
+WHERE application_id = $1 AND operation_key = $2 AND status = 'pending'
+RETURNING ${OPERATION_COLUMNS}`,
+        parameters: [applicationId, operationKey, reason.slice(0, 512), failedAt],
+      });
+      const row = result.rows[0];
+      if (row !== undefined) {
+        return toOperation(row);
+      }
+    } catch (error) {
+      throw toTypedGuardError(error);
+    }
+    const existing = await this.requireOperation(applicationId, operationKey);
+    if (existing.status === "failed") {
+      // Idempotent convergence: the recorded failure already exists.
+      return existing;
+    }
+    throw new PlatformError({
+      code: "INVALID_STATE_TRANSITION",
+      message: `realtime operation ${operationKey} is ${existing.status}; a completed operation cannot be failed`,
+      details: { completedAt: existing.completedAt },
+    });
+  }
+
+  async findRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+  ): Promise<RealtimeOperationRecord | null> {
+    const result = await this.db.execute<OperationRow>({
+      sql: `SELECT ${OPERATION_COLUMNS} FROM deployments.realtime_operations
+WHERE application_id = $1 AND operation_key = $2`,
+      parameters: [applicationId, operationKey],
+    });
+    const row = result.rows[0];
+    return row === undefined ? null : toOperation(row);
+  }
+
+  private async requireOperation(
+    applicationId: string,
+    operationKey: string,
+  ): Promise<RealtimeOperationRecord> {
+    const existing = await this.findRealtimeOperation(applicationId, operationKey);
+    if (existing === null) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: `realtime operation ${operationKey} not found in this application`,
+      });
+    }
+    return existing;
   }
 
   async findSessionByStartKey(applicationId: string, idempotencyKey: string) {

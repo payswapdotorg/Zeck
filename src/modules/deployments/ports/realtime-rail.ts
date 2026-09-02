@@ -27,6 +27,20 @@
  *     adapter's own scope through the mediated connections vault —
  *     never through this port's shapes (references only).
  *
+ * STABLE RAIL-LEVEL IDEMPOTENCY KEYS (the architect's crash-safety
+ * correction for PR #46): every method that can perform an upstream
+ * side effect (`openSession`, `deliverTurn`, `transferCall`,
+ * `closeSession`) carries an `idempotencyKey` derived deterministically
+ * from the durable session coordinates (domain/realtime.ts
+ * `realtimeRail*Key`). The key's contract: re-issuing the SAME call
+ * under the SAME key MUST converge — the rail performs the upstream
+ * side effect EXACTLY ONCE and returns the ORIGINAL acknowledgment
+ * with `replayed: true` (a real provider implements this with its
+ * idempotency-key semantics; the shipped simulated rail implements it
+ * with its in-memory key ledger). A crash between the durable claim and
+ * the durable completion of an operation is recovered by REPLAYING the
+ * call under the same key — no duplicate upstream side effect, ever.
+ *
  * The shipped in-process simulated rail (adapters/in-process-realtime-rail.ts)
  * implements this seam for tests and local composition; REAL external
  * realtime/telephony provider behavior is explicitly UNVERIFIED in this
@@ -54,6 +68,14 @@ export interface RealtimeRailSessionRequest {
   readonly pinnedPlanVersion: number;
   readonly executionId: string;
   readonly channelKind: RealtimeChannelKind;
+  /**
+   * The STABLE rail-level idempotency key for this open (derived from
+   * the session-start idempotency key): a retry/recovery re-opens under
+   * the same key and converges on the SAME channel coordinates — a
+   * crash between the rail open and the durable session row can never
+   * produce a second upstream channel/session.
+   */
+  readonly idempotencyKey: string;
   /** The caller-supplied rail session reference to bind (when the rail pre-allocated one). */
   readonly channelSessionRef: string | null;
   readonly callerRef: string | null;
@@ -69,6 +91,8 @@ export interface RealtimeRailSession {
   readonly channelEpoch: number;
   /** Neutral rail metadata for the binding (never credentials, never vendor ids). */
   readonly railMetadata: Readonly<Record<string, unknown>>;
+  /** True when the rail converged on an existing key-bound session (idempotent open). */
+  readonly replayed: boolean;
 }
 
 export interface RealtimeRailDelivery {
@@ -78,6 +102,12 @@ export interface RealtimeRailDelivery {
   readonly channelEpoch: number;
   /** The turn's route class (the rail may adapt transport per class). */
   readonly routeClass: RealtimeRouteClass;
+  /**
+   * The STABLE rail-level idempotency key for this delivery (derived
+   * from the inbound event key): a retry/recovery re-delivers under the
+   * same key and converges — exactly one upstream delivery, ever.
+   */
+  readonly idempotencyKey: string;
   /** ARTIFACT REFERENCE of the response media (never the bytes). */
   readonly responseRef: string | null;
   /** Bounded text preview of the response (never raw media). */
@@ -90,24 +120,28 @@ export type RealtimeRailDeliveryOutcome =
   | {
       readonly delivered: true;
       readonly deliveredAt: string;
+      /** True when the rail converged on the original delivery (idempotent replay). */
+      readonly replayed: boolean;
       readonly railMetadata?: Readonly<Record<string, unknown>>;
     }
   | { readonly delivered: false; readonly reason: string };
 
 export interface RealtimeRail {
   readonly descriptor: RealtimeRailDescriptor;
-  /** Open (or bind) one channel session on the upstream rail. */
+  /** Open (or bind) one channel session on the upstream rail (idempotent by key). */
   openSession(request: RealtimeRailSessionRequest): Promise<RealtimeRailSession>;
-  /** Deliver one outbound turn frame to the caller (THE external side effect). */
+  /** Deliver one outbound turn frame to the caller (THE external side effect; idempotent by key). */
   deliverTurn(delivery: RealtimeRailDelivery): Promise<RealtimeRailDeliveryOutcome>;
-  /** Transfer the live channel to a human destination (the escalation side effect). */
+  /** Transfer the live channel to a human destination (the escalation side effect; idempotent by key). */
   transferCall(delivery: RealtimeRailDelivery): Promise<RealtimeRailDeliveryOutcome>;
-  /** Close the channel session on the upstream rail. */
+  /** Close the channel session on the upstream rail (idempotent by key). */
   closeSession(reference: {
     readonly applicationId: string;
     readonly sessionId: string;
     readonly channelSessionRef: string;
     readonly channelEpoch: number;
+    /** The STABLE rail-level idempotency key for this close. */
+    readonly idempotencyKey: string;
     readonly cause: string | null;
   }): Promise<RealtimeRailDeliveryOutcome>;
 }

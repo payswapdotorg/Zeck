@@ -4,8 +4,11 @@
  * The test/world implementation of the `RealtimeStore` port with the
  * SAME arbitration contract as the SQL store (migration 0018):
  * idempotent session creation, guarded session mutations, the
- * append-only channel journal as the inbound idempotency ledger, and
- * the stale-callback freshness guard.
+ * append-only channel journal as the inbound idempotency ledger, the
+ * stale-callback freshness guard, and the durable, recoverable
+ * operation state (PENDING -> COMPLETED|FAILED with the same
+ * key-uniqueness, attempts-ledger and terminal-immutability
+ * discipline).
  */
 
 import { PlatformError } from "../../../shared/errors";
@@ -14,6 +17,10 @@ import type {
   RealtimeEventDirection,
   RealtimeEventKind,
   RealtimeEventRecord,
+  RealtimeOperationCheckpoint,
+  RealtimeOperationKind,
+  RealtimeOperationRecord,
+  RealtimeOperationStatus,
   RealtimeRouteClass,
   RealtimeSessionRecord,
   RealtimeSessionStatus,
@@ -22,6 +29,8 @@ import { canTransitionRealtimeSession, isTerminalRealtimeSessionStatus } from ".
 import type {
   RealtimeEventAppendInput,
   RealtimeEventAppendOutcome,
+  RealtimeOperationBeginInput,
+  RealtimeOperationBeginOutcome,
   RealtimeSessionInsertInput,
   RealtimeSessionInsertOutcome,
   RealtimeSessionMutation,
@@ -48,10 +57,29 @@ interface MemoryRealtimeSession {
   closedAt: string | null;
 }
 
+interface MemoryRealtimeOperation {
+  readonly id: string;
+  readonly applicationId: string;
+  readonly tenantId: string;
+  readonly sessionId: string | null;
+  readonly deploymentId: string;
+  readonly executionId: string | null;
+  readonly operationKind: RealtimeOperationKind;
+  readonly operationKey: string;
+  status: RealtimeOperationStatus;
+  attempts: number;
+  checkpoint: RealtimeOperationCheckpoint | null;
+  failureReason: string | null;
+  readonly createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
+
 export class InMemoryRealtimeStore implements RealtimeStore {
   private readonly sessions = new Map<string, MemoryRealtimeSession>();
   private readonly sessionEvents = new Map<string, RealtimeEventRecord[]>();
   private readonly eventsByLogicalKey = new Map<string, RealtimeEventRecord>();
+  private readonly operations = new Map<string, MemoryRealtimeOperation>();
   private seq = 0;
 
   async insertSession(input: RealtimeSessionInsertInput): Promise<RealtimeSessionInsertOutcome> {
@@ -281,6 +309,129 @@ export class InMemoryRealtimeStore implements RealtimeStore {
     return [...(this.sessionEvents.get(sessionId) ?? [])]
       .filter((event) => event.applicationId === applicationId)
       .sort((a, b) => a.eventSeq - b.eventSeq);
+  }
+
+  // -- the durable, recoverable operation state (PR #46 correction) --
+
+  private operationKeyOf(applicationId: string, operationKey: string): string {
+    return `${applicationId}:${operationKey}`;
+  }
+
+  private toOperationRecord(op: MemoryRealtimeOperation): RealtimeOperationRecord {
+    return { ...op };
+  }
+
+  async beginRealtimeOperation(
+    input: RealtimeOperationBeginInput,
+  ): Promise<RealtimeOperationBeginOutcome> {
+    const key = this.operationKeyOf(input.applicationId, input.operationKey);
+    const existing = this.operations.get(key);
+    if (existing !== undefined) {
+      if (existing.status === "pending") {
+        existing.attempts += 1;
+        existing.updatedAt = input.createdAt;
+      }
+      return { status: "existing", record: this.toOperationRecord(existing) };
+    }
+    const operation: MemoryRealtimeOperation = {
+      id: input.operationId,
+      applicationId: input.applicationId,
+      tenantId: input.tenantId,
+      sessionId: input.sessionId,
+      deploymentId: input.deploymentId,
+      executionId: input.executionId,
+      operationKind: input.operationKind,
+      operationKey: input.operationKey,
+      status: "pending",
+      attempts: 1,
+      checkpoint: null,
+      failureReason: null,
+      createdAt: input.createdAt,
+      updatedAt: input.createdAt,
+      completedAt: null,
+    };
+    this.operations.set(key, operation);
+    return { status: "begun", record: this.toOperationRecord(operation) };
+  }
+
+  async recordRealtimeOperationCheckpoint(
+    applicationId: string,
+    operationKey: string,
+    checkpoint: RealtimeOperationCheckpoint,
+    updatedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    const op = this.requireOperation(applicationId, operationKey);
+    if (op.status !== "pending") {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `realtime operation ${operationKey} is ${op.status}; a checkpoint is writable only while pending`,
+      });
+    }
+    op.checkpoint = checkpoint;
+    op.updatedAt = updatedAt;
+    return this.toOperationRecord(op);
+  }
+
+  async completeRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+    completedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    const op = this.requireOperation(applicationId, operationKey);
+    if (op.status === "completed") {
+      return this.toOperationRecord(op);
+    }
+    if (op.status === "failed") {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `realtime operation ${operationKey} is failed; a failed operation cannot be completed`,
+      });
+    }
+    op.status = "completed";
+    op.completedAt = completedAt;
+    op.updatedAt = completedAt;
+    return this.toOperationRecord(op);
+  }
+
+  async failRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+    reason: string,
+    failedAt: string,
+  ): Promise<RealtimeOperationRecord> {
+    const op = this.requireOperation(applicationId, operationKey);
+    if (op.status === "failed") {
+      return this.toOperationRecord(op);
+    }
+    if (op.status === "completed") {
+      throw new PlatformError({
+        code: "INVALID_STATE_TRANSITION",
+        message: `realtime operation ${operationKey} is completed; a completed operation cannot be failed`,
+      });
+    }
+    op.status = "failed";
+    op.failureReason = reason.slice(0, 512);
+    op.updatedAt = failedAt;
+    return this.toOperationRecord(op);
+  }
+
+  async findRealtimeOperation(
+    applicationId: string,
+    operationKey: string,
+  ): Promise<RealtimeOperationRecord | null> {
+    const op = this.operations.get(this.operationKeyOf(applicationId, operationKey));
+    return op === undefined ? null : this.toOperationRecord(op);
+  }
+
+  private requireOperation(applicationId: string, operationKey: string): MemoryRealtimeOperation {
+    const op = this.operations.get(this.operationKeyOf(applicationId, operationKey));
+    if (op === undefined) {
+      throw new PlatformError({
+        code: "PROVIDER_ERROR",
+        message: `realtime operation ${operationKey} not found in this application`,
+      });
+    }
+    return op;
   }
 
   private findMutable(applicationId: string, sessionId: string): MemoryRealtimeSession {

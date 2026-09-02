@@ -400,17 +400,26 @@ definePgSuite("realtime voice sessions (WORK-024) on real PostgreSQL", (ctx) => 
         Array.from({ length: 8 }, () => world.service.ingestInboundEvent(input, actor)),
       );
       const fulfilled = outcomes.filter((outcome) => outcome.status === "fulfilled");
+      // The crash-safety correction (PR #46): a converged inbound claim
+      // alone proves NOTHING about the side effect — concurrent
+      // duplicates of an IN-FLIGHT turn RESUME the pipeline (the same
+      // discipline as a crash recovery), and every invoker converges.
       expect(fulfilled.length).toBe(8);
       const results = fulfilled.map(
         (outcome) => (outcome as PromiseFulfilledResult<{ readonly replayed: boolean }>).value,
       );
-      expect(results.filter((result) => result.replayed === false)).toHaveLength(1);
-      expect(results.filter((result) => result.replayed === true)).toHaveLength(7);
+      // The original (non-replayed) outcome exists; the `replayed` flag
+      // is advisory under concurrency (either racer may record the
+      // turn evidence first — the claim winner or a duplicate whose
+      // evidence lands first), so 1..2 invocations report non-replayed
+      // while the SIDE-EFFECT invariants below hold exactly.
+      expect(results.some((result) => result.replayed === false)).toBe(true);
+      expect(results.filter((result) => result.replayed === true).length).toBeGreaterThanOrEqual(6);
 
-      // The durable + observable state holds EXACTLY one turn.
+      // The durable + observable state holds EXACTLY one turn side
+      // effect (the stable rail key converges; the journal and the
+      // executions ledger each carry exactly one row).
       expect(world.rail.deliveries.filter((record) => record.kind === "deliver")).toHaveLength(1);
-      expect(world.admissions.responderCalls).toHaveLength(1);
-      expect(world.admissions.reserves).toHaveLength(1);
       const journal = await journalRows(started.sessionId);
       expect(journal.filter((row) => row.event_key === "evt-concurrent")).toHaveLength(1);
       expect(journal.filter((row) => row.event_key === "evt-concurrent:turn")).toHaveLength(1);
@@ -418,6 +427,14 @@ definePgSuite("realtime voice sessions (WORK-024) on real PostgreSQL", (ctx) => 
       expect(
         events.filter((event) => String(event.command) === "agent-action-recorded"),
       ).toHaveLength(1);
+      // Pre-checkpoint duplicates MAY re-consult the decision seams —
+      // every re-consultation carries the SAME stable convergence key
+      // (the responder's turnKey; the budget's operationId), so the
+      // seams' own idempotency contracts bound them to one paid effect.
+      expect(world.admissions.responderCalls.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(world.admissions.responderCalls.map((call) => call.turnKey)).size).toBe(1);
+      expect(world.admissions.reserves.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(world.admissions.reserves.map((call) => call.operationId)).size).toBe(1);
     });
   });
 
@@ -899,7 +916,11 @@ definePgSuite("realtime voice sessions (WORK-024) on real PostgreSQL", (ctx) => 
       expect(world.rail.deliveries.filter((record) => record.kind === "deliver")).toHaveLength(0);
       expect(world.admissions.responderCalls).toHaveLength(0);
       const journal = await journalRows(started.sessionId);
-      const denial = journal.find((row) => row.event_key === "denial:evt-budgetdenial");
+      // The denial journal key carries the SESSION-SCOPED event
+      // discriminator (event keys are unique per session).
+      const denial = journal.find(
+        (row) => row.event_key === `denial:${started.sessionId}:evt-budgetdenial`,
+      );
       expect(denial).toBeDefined();
       expect(denial?.kind).toBe("failure-recorded");
       expect(String(denial?.cause)).toContain("BUDGET_EXCEEDED");

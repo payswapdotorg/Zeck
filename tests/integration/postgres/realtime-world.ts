@@ -95,8 +95,18 @@ class RealtimeAdmissions {
       if (this.failBudget) {
         throw new Error("fixture: budget exhausted (mapped by the adapter contract)");
       }
+      // Key-convergent reservation (the REAL budgets module treats
+      // operationId as the idempotency discriminator: a retried or
+      // concurrent duplicate converges on the SAME reservation — the
+      // crash-recovery proofs depend on that convergence).
+      const existing = this.reservationsByOperation.get(command.operationId);
+      if (existing !== undefined) {
+        return { reservationId: existing, amountMicroUsd: "10000", converged: true };
+      }
+      const reservationId = `resv-${this.reserves.length}`;
+      this.reservationsByOperation.set(command.operationId, reservationId);
       return {
-        reservationId: `resv-${this.reserves.length}`,
+        reservationId,
         amountMicroUsd: "10000",
         converged: false,
       };
@@ -107,6 +117,8 @@ class RealtimeAdmissions {
       return { reservationId: "resv-x", released: true };
     },
   };
+
+  private readonly reservationsByOperation = new Map<string, string>();
 
   readonly secrets = {
     mediate: async (request: RealtimeSecretMediationRequest) => {
@@ -159,6 +171,88 @@ export interface RealtimePgWorld {
   readonly rail: ReturnType<typeof createInProcessRealtimeRail>;
   readonly admissions: RealtimeAdmissions;
   readonly actor: () => RealtimeActor;
+  /**
+   * Boot (or re-boot) the realtime session service over the SURVIVING
+   * world — the process-restart primitive for the crash-injection
+   * proofs: the PG store, the executions ledger (PG), the upstream rail
+   * (the external provider's idempotency-key ledger) and the admission
+   * seams persist across a Zeck process death; a `point` arms ONE
+   * durable-boundary crash (a method on store/rail/ledger, before/after
+   * its durable commit) that kills the booted process mid-flight.
+   */
+  readonly boot: (point?: CrashInjectionPoint | null) => {
+    readonly service: RealtimeSessionService;
+    readonly crashed: () => boolean;
+  };
+}
+
+/** The simulated process death (never a typed service error). */
+export class ProcessCrashError extends Error {
+  constructor(point: string) {
+    super(`simulated process crash at ${point}`);
+    this.name = "ProcessCrashError";
+  }
+}
+
+/** One armed durable-boundary crash point (per booted process). */
+export interface CrashInjectionPoint {
+  readonly target: "store" | "rail" | "ledger";
+  readonly method: string;
+  readonly when: "before" | "after";
+  /** Fire on the Nth invocation within THIS process (default 1). */
+  readonly occurrence?: number;
+}
+
+/**
+ * Wrap one durable/external seam so the booted process dies at the
+ * planned point (`before` = the durable commit did not happen; `after`
+ * = the commit / external side effect did). The wrapper records the
+ * firing so a vacuous proof (a point the service never reaches) fails
+ * its `crashed()` assertion.
+ */
+function crashableSeam<T extends object>(
+  target: T,
+  label: string,
+  point: CrashInjectionPoint | null,
+) {
+  let fired = false;
+  if (point === null || point.target !== label) {
+    return { proxy: target, crashed: () => fired };
+  }
+  const seen = new Map<string, number>();
+  const proxy = new Proxy(target, {
+    get(t, prop) {
+      if (typeof prop !== "string") {
+        return Reflect.get(t, prop, t);
+      }
+      const value = Reflect.get(t, prop, t);
+      if (typeof value !== "function") {
+        return value;
+      }
+      return (...args: unknown[]) => {
+        const invocations = (seen.get(prop) ?? 0) + 1;
+        seen.set(prop, invocations);
+        const matches = prop === point.method && (point.occurrence ?? 1) === invocations;
+        const die = (phase: "before" | "after") => {
+          if (matches && point.when === phase) {
+            fired = true;
+            throw new ProcessCrashError(`${label}.${prop}#${invocations}:${phase}`);
+          }
+        };
+        die("before");
+        const result = (value as (...a: unknown[]) => unknown).apply(t, args);
+        if (result instanceof Promise) {
+          return result.then((resolved) => {
+            die("after");
+            return resolved;
+          });
+        }
+        die("after");
+        return result;
+      };
+    },
+  });
+  return { proxy, crashed: () => fired };
 }
 
 export async function seedRealtimeWorld(db: DatabasePort): Promise<RealtimePgWorld> {
@@ -204,22 +298,36 @@ export async function seedRealtimeWorld(db: DatabasePort): Promise<RealtimePgWor
   const admissions = new RealtimeAdmissions();
   const rail = createInProcessRealtimeRail(["web", "in-app", "telephony"]);
   const realtimeStore = new SqlRealtimeStore(db);
-  const service = createRealtimeSessionService({
-    store: realtimeStore,
-    deployments: base.deploymentStore,
-    rail,
-    policy: createPolicyRealtimeAdmission(authority),
-    capabilities: admissions.capabilities,
-    budget: admissions.budget,
-    secrets: admissions.secrets,
-    router: admissions.router,
-    responder: admissions.responder,
-    ledger: createRealtimeExecutionLedgerAdapter(base.executionService),
-    railConnectionRef: "connections:simulated-realtime-rail",
-    digest: sha256Hex,
-    generateId: createUuidv7Generator(),
-    now: () => new Date(),
-  });
+  const ledger = createRealtimeExecutionLedgerAdapter(base.executionService);
+  const railConnectionRef = "connections:simulated-realtime-rail";
+  const sha = sha256Hex;
+  const newId = createUuidv7Generator();
+  const now = () => new Date();
+  const boot = (point: CrashInjectionPoint | null = null) => {
+    const storeProcess = crashableSeam(realtimeStore, "store", point);
+    const railProcess = crashableSeam(rail, "rail", point);
+    const ledgerProcess = crashableSeam(ledger, "ledger", point);
+    const service = createRealtimeSessionService({
+      store: storeProcess.proxy,
+      deployments: base.deploymentStore,
+      rail: railProcess.proxy,
+      policy: createPolicyRealtimeAdmission(authority),
+      capabilities: admissions.capabilities,
+      budget: admissions.budget,
+      secrets: admissions.secrets,
+      router: admissions.router,
+      responder: admissions.responder,
+      ledger: ledgerProcess.proxy,
+      railConnectionRef,
+      digest: sha,
+      generateId: newId,
+      now,
+    });
+    return {
+      service,
+      crashed: () => storeProcess.crashed() || railProcess.crashed() || ledgerProcess.crashed(),
+    };
+  };
 
   return {
     db,
@@ -229,7 +337,7 @@ export async function seedRealtimeWorld(db: DatabasePort): Promise<RealtimePgWor
     environmentId: base.environmentId,
     deploymentId: created.deploymentId,
     realtimeStore,
-    service,
+    service: boot().service,
     rail,
     admissions,
     actor: () => ({
@@ -237,6 +345,7 @@ export async function seedRealtimeWorld(db: DatabasePort): Promise<RealtimePgWor
       applicationId: base.applicationId,
       tenantId: base.tenantId,
     }),
+    boot,
   };
 }
 

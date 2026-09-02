@@ -20,29 +20,51 @@
  * happens BEFORE every side effect and is durably recorded
  * (journal-then-fail) on the channel journal AND the execution ledger.
  *
+ * DURABLE, RECOVERABLE OPERATION STATE (the architect's crash-safety
+ * correction for PR #46): every operation that can perform an external
+ * side effect owns ONE durable operation row (pending → completed |
+ * failed) plus a STABLE rail-level idempotency key. The ordering rule:
+ * the durable operation claim is written BEFORE the rail side effect,
+ * and the durable completion AFTER every durable outcome — a crash in
+ * between leaves the row PENDING, and a retry RESUMES it (the rail
+ * converges by key: exactly one upstream side effect, ever) instead
+ * of mistaking the claim for convergence. A stage checkpoint marks
+ * the point of no return: resumption past it NEVER re-runs admission
+ * (the decision preceded the side effect) and completes the durable
+ * tail from the checkpointed facts.
+ *
  * ```text
  * startSession      → deployment facts (tenant-guarded, active status)
  *                     → version PIN (the deployment's current plan)
  *                     → policy admission → execution identity (idempotent)
- *                     → rail session open → durable session row
- *                     → provenance (agent-session-started)
+ *                     → OP CLAIM → rail session open (STABLE KEY)
+ *                     → CHECKPOINT(session-opened) → durable session row
+ *                     → provenance (agent-session-started) → OP COMPLETE
  * ingestEvent       → session resolution (tenant + stale-callback guard)
  *                     → inbound claim (idempotency ledger — duplicates
  *                       converge, no second side effect)
+ *                     → OP STATE check (completed → pure replay; failed →
+ *                       recorded failure; pending/absent → RESUME)
  *                     → [user-turn] planner route (deterministic/hybrid/
  *                       generative) → policy → capability → budget (paid
- *                       routes) → secret mediation → responder → RAIL
- *                       DELIVERY → budget settle → provenance
- *                     → [interruption] provenance (no dispatch)
- *                     → [caller-hangup] close + provenance
+ *                       routes) → secret mediation → responder →
+ *                       CHECKPOINT(responded) → RAIL DELIVERY (STABLE KEY)
+ *                       → budget settle → provenance → OP COMPLETE
+ *                     → [interruption] provenance (no dispatch, no op —
+ *                       the evidence keys converge on replay)
+ *                     → [caller-hangup] close op + provenance → terminal
  * transferToHuman   → policy-designated escalation (deny → no side
- *                     effect) → execution wait-human (auditable) → rail
- *                     transfer → session transferred (terminal)
+ *                     effect) → OP CLAIM → execution wait-human
+ *                     (auditable) → rail transfer (STABLE KEY) →
+ *                     CHECKPOINT(rail-issued) → provenance → session
+ *                     transferred (terminal) → OP COMPLETE
  * reattachSession   → guarded channel-coordinate move (epoch+1) — the
  *                     execution identity NEVER changes (no second
- *                     authoritative execution)
- * closeSession      → provenance → rail close → terminal
- * failSession       → failure provenance → terminal
+ *                     authoritative execution; no rail side effect)
+ * closeSession      → OP CLAIM → provenance → rail close (STABLE KEY,
+ *                     best-effort) → terminal → OP COMPLETE
+ * failSession       → failure provenance → rail close (STABLE KEY) →
+ *                     terminal → OP COMPLETE
  * ```
  *
  * Deployment version pinning + rollback (AC7): the session pins the
@@ -56,6 +78,8 @@ import { isUuid } from "../../../shared/ids";
 import type {
   RealtimeEventKind,
   RealtimeInboundEventInput,
+  RealtimeOperationCheckpoint,
+  RealtimeOperationRecord,
   RealtimeRouteClass,
   RealtimeSessionRecord,
   StartRealtimeSessionInput,
@@ -65,6 +89,11 @@ import {
   isTerminalRealtimeSessionStatus,
   realtimeContainsRawSecretValue,
   realtimeEventBodyDigestBase,
+  realtimeOperationKey,
+  realtimeRailCloseKey,
+  realtimeRailDeliverKey,
+  realtimeRailOpenKey,
+  realtimeRailTransferKey,
   realtimeSessionCreationFingerprint,
   validateRealtimeInboundEvent,
   validateStartRealtimeSessionInput,
@@ -413,6 +442,64 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
     });
   };
 
+  /**
+   * Claim (or re-claim) the durable, recoverable operation row — the
+   * crash-safety discriminator. Written BEFORE the rail side effect;
+   * completed after every durable outcome. A crash between leaves it
+   * PENDING and the retry resumes from `beginOperation`'s record.
+   */
+  const beginOperation = (
+    kind: "session-start" | "turn-delivery" | "human-transfer" | "session-close",
+    discriminator: string,
+    refs: {
+      readonly applicationId: string;
+      readonly tenantId: string;
+      readonly sessionId: string | null;
+      readonly deploymentId: string;
+      readonly executionId: string | null;
+    },
+  ) =>
+    store.beginRealtimeOperation({
+      operationId: generateId(),
+      ...refs,
+      operationKind: kind,
+      operationKey: realtimeOperationKey(kind, discriminator),
+      createdAt: iso(),
+    });
+
+  /**
+   * RACE-TOLERANT checkpoint write: a CONCURRENT invocation of the same
+   * logical operation may complete (or durably fail) it between our
+   * state check and this write — the winner owns the outcome, and our
+   * durable tail converges through the stable keys (rail, executions
+   * ledger, journal); a still-pending row means the write genuinely
+   * failed and the error stands.
+   */
+  const checkpointOperation = async (
+    applicationId: string,
+    operationKey: string,
+    checkpoint: RealtimeOperationCheckpoint,
+  ): Promise<RealtimeOperationRecord | null> => {
+    try {
+      return await store.recordRealtimeOperationCheckpoint(
+        applicationId,
+        operationKey,
+        checkpoint,
+        iso(),
+      );
+    } catch (error) {
+      if (error instanceof PlatformError && error.code === "INVALID_STATE_TRANSITION") {
+        const reread = await store.findRealtimeOperation(applicationId, operationKey);
+        if (reread !== null && reread.status !== "pending") {
+          // The concurrent winner completed/failed the operation — our
+          // tail converges from here.
+          return reread;
+        }
+      }
+      throw error;
+    }
+  };
+
   return {
     /** Start (or idempotently replay) one realtime session on a deployment. */
     async startSession(
@@ -425,6 +512,9 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       if (!check.valid) {
         throw new PlatformError({ code: "PROVIDER_ERROR", message: check.reason });
       }
+      // The durable session-start OPERATION key (the recovery
+      // discriminator — the same retry derives the same key).
+      const operationKey = realtimeOperationKey("session-start", idempotencyKey);
       // Idempotent replay fast path (a reconnect/retry converges on the
       // SAME session + execution identity — never a second one), WITH
       // creation-fingerprint arbitration (the WORK-023 createDeployment
@@ -445,6 +535,55 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             details: { sessionId: replayed.id },
           });
         }
+        // CRASH RECOVERY: the session row exists but the start operation
+        // may still be PENDING (a crash between the durable insert and
+        // the operation completion lost the provenance tail) — complete
+        // it instead of returning the gap.
+        const op = await store.findRealtimeOperation(actor.applicationId, operationKey);
+        if (op !== null && op.status === "pending") {
+          const session = replayed;
+          const startEvidence = await ledger.recordEvidence(
+            {
+              applicationId: actor.applicationId,
+              tenantId: actor.tenantId,
+              actorId: actor.actorId,
+              executionId: session.executionId,
+              evidenceClass: "session-started",
+              // REPLAY-STABLE cause: identical for the original start and
+              // the recovered provenance tail (the executions idempotency
+              // arbitrates by key + fingerprint).
+              cause: "realtime session started on the deployment fabric",
+              reference: {
+                sessionId: session.id,
+                deploymentId: session.deploymentId,
+                pinnedPlanId: session.pinnedPlanId,
+                pinnedPlanVersion: session.pinnedPlanVersion,
+                channelKind: session.channelKind,
+                channelSessionRef: session.channelSessionRef,
+                channelEpoch: session.channelEpoch,
+                policySet: op.checkpoint?.policySetId ?? null,
+              },
+              payload: {
+                callerRef: session.callerRef,
+                railCapabilityId: rail.descriptor.railCapabilityId,
+              },
+            },
+            `${idempotencyKey}:session-started`,
+          );
+          await sessionEvent({
+            session,
+            kind: "session-started",
+            direction: "internal",
+            eventKey: `${idempotencyKey}:session-started`,
+            cause: null,
+            payloadRef: input.initialPayloadRef ?? null,
+            payloadPreview: null,
+            ledgerSequence: startEvidence.sequence,
+            routeClass: null,
+            actorId: actor.actorId,
+          });
+          await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
+        }
         return {
           sessionId: replayed.id,
           executionId: replayed.executionId,
@@ -455,84 +594,183 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           replayed: true,
         };
       }
-      // 1. TENANT — server-derived scope + deployment facts.
-      const deployment = await resolveDeployment(
-        actor.applicationId,
-        input.deploymentId,
-        actor.tenantId,
-      );
-      if (deployment.status !== "active") {
-        throw new PlatformError({
-          code: "INVALID_STATE_TRANSITION",
-          message: `deployment ${deployment.slug} is ${deployment.status}; realtime sessions start only on active deployments`,
-        });
-      }
-      // 2. Version PIN: the deployment's CURRENT plan version at start.
-      const { plan } = await resolvePinnedPlan(
-        actor.applicationId,
-        deployment.currentPlanId,
-        deployment.currentPlanVersion,
-      );
-      // 3. POLICY — the session-start admission (BEFORE any side effect).
-      const decision = await policy.admit({
-        tenantId: actor.tenantId,
+      // 0. The durable operation claim — BEFORE the rail side effect (a
+      // crash between the rail open and the durable session row leaves
+      // this row PENDING; the retry resumes from its checkpoint).
+      const sessionId = generateId();
+      const begun = await beginOperation("session-start", idempotencyKey, {
         applicationId: actor.applicationId,
-        sessionId: null,
-        deploymentId: deployment.id,
-        action: "session-start",
-        channelKind: input.channelKind,
-        railCapabilityId: rail.descriptor.railCapabilityId,
-        routeClass: null,
-        secretRef: railConnectionRef,
+        tenantId: actor.tenantId,
+        sessionId,
+        deploymentId: input.deploymentId,
+        executionId: null,
       });
-      if (!decision.allowed) {
-        throw new PlatformError({
-          code: "POLICY_DENIED",
-          message: "realtime session start denied by admission policy",
-          details: { deploymentId: deployment.id, reason: decision.reason },
-        });
+      let deployment: Awaited<ReturnType<typeof resolveDeployment>> | null = null;
+      let plan: Awaited<ReturnType<typeof resolvePinnedPlan>>["plan"] | null = null;
+      let execution: Awaited<ReturnType<typeof ledger.openExecution>> | null = null;
+      let decisionEvidence: { readonly policySetId: string | null } | null = null;
+      let railSession: Awaited<ReturnType<typeof rail.openSession>> | null = null;
+      if (begun.status === "existing" && begun.record.status === "completed") {
+        // A concurrent invocation completed this operation: its session
+        // row MUST exist (completion follows the durable insert).
+        const converged = await store.findSessionByStartKey(actor.applicationId, idempotencyKey);
+        if (converged === null) {
+          throw new PlatformError({
+            code: "PROVIDER_ERROR",
+            message:
+              "realtime session start operation is completed but its session row is absent (invariant violation)",
+          });
+        }
+        return {
+          sessionId: converged.id,
+          executionId: converged.executionId,
+          channelSessionRef: converged.channelSessionRef,
+          channelEpoch: converged.channelEpoch,
+          pinnedPlanId: converged.pinnedPlanId,
+          pinnedPlanVersion: converged.pinnedPlanVersion,
+          replayed: true,
+        };
       }
-      // 4. Execution identity (idempotent by key — the single birth path).
-      const execution = await ledger.openExecution(
-        {
+      if (
+        begun.status === "existing" &&
+        begun.record.status === "pending" &&
+        begun.record.checkpoint?.stage === "session-opened"
+      ) {
+        // CRASH RECOVERY from the checkpoint: the rail opened the channel
+        // under the STABLE key — resume the durable tail (insert +
+        // provenance + completion) WITHOUT re-running admission (the
+        // decision preceded the side effect) and WITHOUT a second rail
+        // open (the rail converges by key even if re-issued).
+        const checkpoint = begun.record.checkpoint;
+        execution = {
+          executionId: checkpoint.executionId ?? "",
+          replayed: true,
+          status: "running",
+        };
+        railSession = {
+          channelSessionRef: checkpoint.channelSessionRef ?? "",
+          channelEpoch: checkpoint.channelEpoch ?? 1,
+          railMetadata: {},
+          replayed: true,
+        };
+        decisionEvidence = { policySetId: checkpoint.policySetId ?? null };
+        // The pinned plan facts are re-read for the (already-decided)
+        // insert: the pin was fixed at the original admission.
+        const pinned = await resolvePinnedPlan(
+          actor.applicationId,
+          checkpoint.pinnedPlanId ?? "",
+          checkpoint.pinnedPlanVersion ?? 0,
+        );
+        plan = pinned.plan;
+        deployment = await resolveDeployment(
+          actor.applicationId,
+          checkpoint.deploymentId ?? "",
+          actor.tenantId,
+        );
+      } else {
+        // 1. TENANT — server-derived scope + deployment facts.
+        deployment = await resolveDeployment(
+          actor.applicationId,
+          input.deploymentId,
+          actor.tenantId,
+        );
+        if (deployment.status !== "active") {
+          throw new PlatformError({
+            code: "INVALID_STATE_TRANSITION",
+            message: `deployment ${deployment.slug} is ${deployment.status}; realtime sessions start only on active deployments`,
+          });
+        }
+        // 2. Version PIN: the deployment's CURRENT plan version at start.
+        const pinned = await resolvePinnedPlan(
+          actor.applicationId,
+          deployment.currentPlanId,
+          deployment.currentPlanVersion,
+        );
+        plan = pinned.plan;
+        // 3. POLICY — the session-start admission (BEFORE any side effect).
+        const decision = await policy.admit({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: null,
+          deploymentId: deployment.id,
+          action: "session-start",
+          channelKind: input.channelKind,
+          railCapabilityId: rail.descriptor.railCapabilityId,
+          routeClass: null,
+          secretRef: railConnectionRef,
+        });
+        if (!decision.allowed) {
+          throw new PlatformError({
+            code: "POLICY_DENIED",
+            message: "realtime session start denied by admission policy",
+            details: { deploymentId: deployment.id, reason: decision.reason },
+          });
+        }
+        decisionEvidence = { policySetId: decision.evidence?.policySetId ?? null };
+        // 4. Execution identity (idempotent by key — the single birth path).
+        execution = await ledger.openExecution(
+          {
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            environmentId: deployment.environmentId,
+            task: {
+              kind: "realtime-session",
+              deploymentId: deployment.id,
+              planId: plan.planId,
+              planVersion: plan.version,
+              channelKind: input.channelKind,
+            },
+            ...(input.initialPayloadRef === undefined
+              ? {}
+              : { inputArtifactRefs: [input.initialPayloadRef] }),
+          },
+          `${idempotencyKey}:execution`,
+        );
+        // 5. The rail session open (the upstream binding; neutral refs) —
+        // under the STABLE rail-level idempotency key: a retry or crash
+        // resume re-opens under the SAME key and the rail converges on
+        // the SAME channel coordinates (exactly one upstream channel).
+        railSession = await rail.openSession({
           applicationId: actor.applicationId,
           tenantId: actor.tenantId,
-          actorId: actor.actorId,
-          environmentId: deployment.environmentId,
-          task: {
-            kind: "realtime-session",
-            deploymentId: deployment.id,
-            planId: plan.planId,
-            planVersion: plan.version,
-            channelKind: input.channelKind,
-          },
-          ...(input.initialPayloadRef === undefined
-            ? {}
-            : { inputArtifactRefs: [input.initialPayloadRef] }),
-        },
-        `${idempotencyKey}:execution`,
-      );
-      // 5. The rail session open (the upstream binding; neutral refs).
-      const railSession = await rail.openSession({
-        applicationId: actor.applicationId,
-        tenantId: actor.tenantId,
-        deploymentId: deployment.id,
-        pinnedPlanId: plan.planId,
-        pinnedPlanVersion: plan.version,
-        executionId: execution.executionId,
-        channelKind: input.channelKind,
-        channelSessionRef: input.channelSessionRef,
-        callerRef: input.callerRef ?? null,
-        sessionPolicy: plan.sessionPolicy,
-      });
-      // 6. The durable session row (idempotent convergence).
+          deploymentId: deployment.id,
+          pinnedPlanId: plan.planId,
+          pinnedPlanVersion: plan.version,
+          executionId: execution.executionId,
+          channelKind: input.channelKind,
+          idempotencyKey: realtimeRailOpenKey(idempotencyKey),
+          channelSessionRef: input.channelSessionRef,
+          callerRef: input.callerRef ?? null,
+          sessionPolicy: plan.sessionPolicy,
+        });
+        // 6. CHECKPOINT the past-no-return facts (a crash from here on
+        // resumes the durable tail WITHOUT re-admission and without a
+        // second rail open; a concurrent winner's completion converges).
+        await checkpointOperation(actor.applicationId, operationKey, {
+          stage: "session-opened",
+          sessionId,
+          executionId: execution.executionId,
+          deploymentId: deployment.id,
+          pinnedPlanId: plan.planId,
+          pinnedPlanVersion: plan.version,
+          channelSessionRef: railSession.channelSessionRef,
+          channelEpoch: railSession.channelEpoch,
+          policySetId: decisionEvidence.policySetId,
+        });
+      }
+      // 7. The durable session row (idempotent convergence). The
+      // session identity is the one pinned by the durable operation row
+      // (a crash-resume converges on the SAME identity, never a second
+      // one).
+      const durableSessionId = begun.record.sessionId ?? sessionId;
       const fingerprint = realtimeSessionCreationFingerprint(
         actor.applicationId,
         input,
         execution.executionId,
       );
       const insert = await store.insertSession({
-        sessionId: generateId(),
+        sessionId: durableSessionId,
         applicationId: actor.applicationId,
         tenantId: actor.tenantId,
         deploymentId: deployment.id,
@@ -555,7 +793,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           message: "realtime session row disappeared after insert",
         });
       }
-      // 7. Provenance: the session start rides the executions ledger.
+      // 8. Provenance: the session start rides the executions ledger.
       const startEvidence = await ledger.recordEvidence(
         {
           applicationId: actor.applicationId,
@@ -572,11 +810,10 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             channelKind: session.channelKind,
             channelSessionRef: session.channelSessionRef,
             channelEpoch: session.channelEpoch,
-            policySet: decision.evidence?.policySetId ?? null,
+            policySet: decisionEvidence.policySetId,
           },
           payload: {
             callerRef: session.callerRef,
-            executionReplayed: execution.replayed,
             railCapabilityId: rail.descriptor.railCapabilityId,
           },
         },
@@ -594,6 +831,9 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         routeClass: null,
         actorId: actor.actorId,
       });
+      // 9. The durable operation completion (a crash before this leaves
+      // the row PENDING; the retry completes the tail via the fast path).
+      await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
       return {
         sessionId: session.id,
         executionId: session.executionId,
@@ -601,7 +841,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         channelEpoch: session.channelEpoch,
         pinnedPlanId: session.pinnedPlanId,
         pinnedPlanVersion: session.pinnedPlanVersion,
-        replayed: execution.replayed || insert.status === "converged",
+        replayed: execution.replayed || insert.status === "converged" || railSession.replayed,
       };
     },
 
@@ -614,17 +854,13 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       if (!check.valid) {
         throw new PlatformError({ code: "PROVIDER_ERROR", message: check.reason });
       }
-      // 1. Session resolution: tenant scope + the stale-callback guard.
-      const session = await resolveSession(actor, input.sessionId, {
-        channelSessionRef: input.channelSessionRef,
-        channelEpoch: input.channelEpoch,
-      });
-      if (isTerminalRealtimeSessionStatus(session.status)) {
-        throw new PlatformError({
-          code: "INVALID_STATE_TRANSITION",
-          message: `realtime session ${session.id} is terminal (${session.status}); inbound events are rejected`,
-        });
-      }
+      // 1. Session resolution: tenant scope. The stale-callback and
+      // terminal guards apply to NEW events below — a REPLAY of an
+      // already-claimed event converges regardless of a later terminal
+      // move (our own processing may have closed the session: a
+      // caller-hangup retry after a crash-in-the-close-window must
+      // recover, not be rejected).
+      const session = await resolveSession(actor, input.sessionId);
       // 2. The idempotency discriminator: the upstream-supplied event id
       // or the deterministic substitute (session coordinates + kind +
       // occurrence ordinal).
@@ -639,41 +875,116 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             input.occurrenceOrdinal ??
             priorEvents.filter((event) => event.direction === "inbound").length + 1,
         });
+      const priorInbound = priorEvents.find(
+        (event) => event.direction === "inbound" && event.eventKey === eventKey,
+      );
+      // 2b. The SESSION-SCOPED event discriminator: event keys are unique
+      // per (application, SESSION) — two concurrent calls may legitimately
+      // reuse an upstream event id — so EVERY application-scoped key
+      // derived from an inbound event (the turn-delivery operation key,
+      // the stable rail deliver key, the responder turn key, the budget
+      // operation id and the executions-ledger evidence keys) is scoped
+      // by the session identity: a same-key turn on ANOTHER session is a
+      // DIFFERENT logical operation, never a collision.
+      const scopedKey = `${session.id}:${eventKey}`;
+      if (priorInbound === undefined) {
+        // A NEW event: apply the freshness guards BEFORE the claim.
+        if (isTerminalRealtimeSessionStatus(session.status)) {
+          throw new PlatformError({
+            code: "INVALID_STATE_TRANSITION",
+            message: `realtime session ${session.id} is terminal (${session.status}); inbound events are rejected`,
+          });
+        }
+        if (
+          input.channelSessionRef !== session.channelSessionRef ||
+          input.channelEpoch !== session.channelEpoch
+        ) {
+          throw new PlatformError({
+            code: "INVALID_STATE_TRANSITION",
+            message: `stale realtime callback rejected: event on channel ${input.channelSessionRef} epoch ${input.channelEpoch} but session ${session.id} currently holds channel ${session.channelSessionRef} epoch ${session.channelEpoch}`,
+          });
+        }
+      }
       // 3. The INBOUND CLAIM (the idempotency ledger): a duplicate
       // converges on the committed row — no second side effect, ever.
-      const claim = await sessionEvent({
-        session,
-        kind:
-          input.kind === "user-turn"
-            ? "turn-recorded"
-            : input.kind === "interruption"
-              ? "interruption-recorded"
-              : "session-completed",
-        direction: "inbound",
-        eventKey,
-        cause: null,
-        payloadRef: input.payloadRef ?? null,
-        payloadPreview: input.payloadPreview ?? null,
-        ledgerSequence: null,
-        routeClass: null,
-        actorId: actor.actorId,
-      });
-      if (claim.status === "converged") {
-        // A duplicate inbound event: the winner's processing is the
-        // truth. The turn outcome row (outbound) carries the ledger
-        // linkage; replays return it.
-        const outbound = priorEvents.find(
-          (event) => event.direction === "outbound" && event.eventKey === `${eventKey}:turn`,
+      // A prior claim is NOT re-appended (the physical freshness guards
+      // are new-event guards; a replay's row already exists) — but the
+      // BODY-DIGEST ARBITRATION still runs: a same-key/different-body
+      // replay fails closed (the poisoned-replay discipline, unchanged).
+      const claimKind: RealtimeEventKind =
+        input.kind === "user-turn"
+          ? "turn-recorded"
+          : input.kind === "interruption"
+            ? "interruption-recorded"
+            : "session-completed";
+      if (priorInbound !== undefined) {
+        const replayDigest = digest(
+          realtimeEventBodyDigestBase({
+            sessionId: session.id,
+            kind: claimKind,
+            direction: "inbound",
+            eventKey,
+            payloadRef: input.payloadRef ?? null,
+            payloadPreview: input.payloadPreview ?? null,
+          }),
         );
-        return {
-          eventKey,
-          kind: input.kind,
-          routeClass: outbound?.routeClass ?? null,
-          responsePreview: outbound?.payloadPreview ?? null,
-          responseRef: outbound?.payloadRef ?? null,
-          ledgerSequence: outbound?.ledgerSequence ?? claim.event.eventSeq,
-          replayed: true,
-        };
+        if (priorInbound.bodyDigest !== replayDigest) {
+          throw new PlatformError({
+            code: "IDEMPOTENCY_KEY_REUSED",
+            message: "realtime event key already exists with a different body",
+            details: { eventKey },
+          });
+        }
+      }
+      const claim =
+        priorInbound !== undefined
+          ? ({ status: "converged", event: priorInbound } as const)
+          : await sessionEvent({
+              session,
+              kind: claimKind,
+              direction: "inbound",
+              eventKey,
+              cause: null,
+              payloadRef: input.payloadRef ?? null,
+              payloadPreview: input.payloadPreview ?? null,
+              ledgerSequence: null,
+              routeClass: null,
+              actorId: actor.actorId,
+            });
+      // 3b. THE DURABLE OPERATION STATE check — the crash-safety
+      // discriminator (the architect's correction): a converged claim
+      // alone proves NOTHING about the side effect. A COMPLETED
+      // operation replays its recorded outcome; a FAILED operation
+      // replays its recorded failure; a PENDING or ABSENT operation row
+      // means the claim was committed but the durable outcome was not —
+      // the pipeline RESUMES below (the rail converges by the stable
+      // key: exactly one delivery, ever).
+      const turnOperationKey = realtimeOperationKey("turn-delivery", scopedKey);
+      if (claim.status === "converged" && input.kind === "user-turn") {
+        const operation = await store.findRealtimeOperation(actor.applicationId, turnOperationKey);
+        if (operation !== null && operation.status !== "pending") {
+          // Fully completed (or durably failed): the winner's processing
+          // is the truth. The turn outcome row (outbound) carries the
+          // ledger linkage; replays return it.
+          const outbound = priorEvents.find(
+            (event) => event.direction === "outbound" && event.eventKey === `${eventKey}:turn`,
+          );
+          return {
+            eventKey,
+            kind: input.kind,
+            routeClass: outbound?.routeClass ?? null,
+            responsePreview: outbound?.payloadPreview ?? null,
+            responseRef: outbound?.payloadRef ?? null,
+            ledgerSequence: outbound?.ledgerSequence ?? claim.event.eventSeq,
+            replayed: true,
+          };
+        }
+        // PENDING or ABSENT: fall through and RESUME the turn pipeline.
+      }
+      if (claim.status === "converged" && input.kind !== "user-turn") {
+        // Interruptions carry no external side effect — the provenance
+        // keys converge on replay (the dispatch below re-records them).
+        // Caller-hangups close through their own durable operation.
       }
 
       // 4. Interruptions: provenance only — no dispatch, no admission
@@ -700,7 +1011,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
               payloadRef: input.payloadRef ?? null,
             },
           },
-          `realtime:interruption:${eventKey}`,
+          `realtime:interruption:${scopedKey}`,
         );
         await sessionEvent({
           session,
@@ -721,124 +1032,105 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           responsePreview: null,
           responseRef: null,
           ledgerSequence: interruption.sequence,
-          replayed: false,
+          replayed: claim.status === "converged" && interruption.replayed,
         };
       }
 
-      // 5. Caller hangup: close the session (terminal) + provenance.
+      // 5. Caller hangup: close the session (terminal) + provenance
+      // (through the durable session-close operation).
       if (input.kind === "caller-hangup") {
-        return closeFromInbound(session, actor, eventKey, claim.event.eventSeq, "caller-hangup");
+        return closeFromInbound(
+          session,
+          actor,
+          eventKey,
+          claim.event.eventSeq,
+          "caller-hangup",
+          claim.status === "converged",
+        );
       }
 
-      // 6. USER TURN — the planner route (MOD-007: the existing planner
-      // decision establishes whether generative inference is needed).
-      const { profile } = await resolvePinnedPlan(
-        actor.applicationId,
-        session.pinnedPlanId,
-        session.pinnedPlanVersion,
-      );
-      const route: RealtimeTurnRoute = await router.routeTurn({
-        tenantId: actor.tenantId,
+      // 6. The durable turn-delivery OPERATION (claim or crash-RESUME —
+      // the architect's correction): claimed before the responder and
+      // the rail delivery; completed after every durable outcome. A
+      // crash in between leaves it PENDING and this invocation RESUMES.
+      const begunTurn = await beginOperation("turn-delivery", scopedKey, {
         applicationId: actor.applicationId,
+        tenantId: actor.tenantId,
         sessionId: session.id,
         deploymentId: session.deploymentId,
-        pinnedPlanId: session.pinnedPlanId,
-        pinnedPlanVersion: session.pinnedPlanVersion,
-        channelKind: session.channelKind,
-        subtaskKind: input.subtaskKind ?? "mixed",
-        requiredCapabilities: profile.requiredCapabilities,
-        turnPreview: input.payloadPreview ?? null,
-        turnPayloadRef: input.payloadRef ?? null,
+        executionId: session.executionId,
       });
-
-      // 7. ADMISSION CHAIN — before EVERY governed side effect.
-      // 7a. POLICY (turn dispatch).
-      const policyDecision = await policy.admit({
-        tenantId: actor.tenantId,
-        applicationId: actor.applicationId,
-        sessionId: session.id,
-        deploymentId: session.deploymentId,
-        action: "turn-dispatch",
-        channelKind: session.channelKind,
-        railCapabilityId: rail.descriptor.railCapabilityId,
-        routeClass: route.routeClass,
-        secretRef: railConnectionRef,
-      });
-      if (!policyDecision.allowed) {
-        await recordDenial({
-          applicationId: actor.applicationId,
-          tenantId: actor.tenantId,
-          actorId: actor.actorId,
-          sessionId: session.id,
-          deploymentId: session.deploymentId,
-          executionId: session.executionId,
-          channelSessionRef: session.channelSessionRef,
-          channelEpoch: session.channelEpoch,
-          action: "turn-dispatch",
-          code: "POLICY_DENIED",
-          reason: policyDecision.reason,
-          eventKey,
-        });
-        throw new PlatformError({
-          code: "POLICY_DENIED",
-          message: "realtime turn dispatch denied by admission policy",
-          details: { sessionId: session.id, eventKey, reason: policyDecision.reason },
-        });
-      }
-      // 7b. CAPABILITY (the pinned plan's declaration + the rail).
-      const capabilityDecision = await capabilities.resolve({
-        tenantId: actor.tenantId,
-        applicationId: actor.applicationId,
-        sessionId: session.id,
-        requiredCapabilities: profile.requiredCapabilities,
-        railCapabilityId: rail.descriptor.railCapabilityId,
-      });
-      if (!capabilityDecision.satisfied) {
-        await recordDenial({
-          applicationId: actor.applicationId,
-          tenantId: actor.tenantId,
-          actorId: actor.actorId,
-          sessionId: session.id,
-          deploymentId: session.deploymentId,
-          executionId: session.executionId,
-          channelSessionRef: session.channelSessionRef,
-          channelEpoch: session.channelEpoch,
-          action: "turn-dispatch",
-          code: "CAPABILITY_UNAVAILABLE",
-          reason: `unmet capabilities: ${capabilityDecision.unmet.join(", ")}`,
-          eventKey,
-        });
-        throw new PlatformError({
-          code: "CAPABILITY_UNAVAILABLE",
-          message: "realtime turn dispatch cannot proceed: required capabilities are unmet",
-          details: { sessionId: session.id, unmet: capabilityDecision.unmet },
-        });
-      }
-      // 7c. BUDGET — paid routes only (deterministic routes never
-      // reserve: MOD-007's "generative inference is unnecessary").
+      const respondedCheckpoint =
+        begunTurn.status === "existing" &&
+        begunTurn.record.status === "pending" &&
+        begunTurn.record.checkpoint?.stage === "responded"
+          ? begunTurn.record.checkpoint
+          : null;
+      let route: RealtimeTurnRoute;
+      let response: Awaited<ReturnType<typeof responder.respond>>;
       let reservationId: string | null = null;
       let reservedAmountMicroUsd: string | null = null;
-      if (route.routeClass !== "deterministic" && route.estimatedCostMicroUsd !== null) {
-        if (!MICRO_USD_PATTERN.test(route.estimatedCostMicroUsd)) {
-          throw new PlatformError({
-            code: "PROVIDER_ERROR",
-            message: "the router's paid estimate must be an integer micro-USD string",
-          });
-        }
-        try {
-          const reservation = await budget.reserve({
-            actorId: actor.actorId,
-            applicationId: actor.applicationId,
-            tenantId: actor.tenantId,
-            executionId: session.executionId,
-            operationId: `realtime-turn:${eventKey}`,
-            amountMicroUsd: route.estimatedCostMicroUsd,
-            reason: `realtime turn ${eventKey} on deployment ${session.deploymentId} (route ${route.routeClass})`,
-          });
-          reservationId = reservation.reservationId;
-          reservedAmountMicroUsd = reservation.amountMicroUsd;
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
+      let policySetId: string | null = null;
+      let recoveredDelivery = false;
+      if (respondedCheckpoint !== null) {
+        // CRASH RECOVERY from the responded checkpoint: the admitted
+        // responder ALREADY produced the response frame — the delivery
+        // resumes with THESE facts. The paid-inference seam is NOT
+        // re-invoked; admission is NOT re-run (the decisions preceded
+        // the side effect); the rail delivery converges by the stable
+        // key (exactly one delivery, ever).
+        recoveredDelivery = true;
+        reservationId = respondedCheckpoint.reservationId ?? null;
+        response = {
+          responseRef: respondedCheckpoint.responseRef ?? null,
+          responsePreview: respondedCheckpoint.responsePreview ?? "",
+          actualCostMicroUsd: respondedCheckpoint.actualCostMicroUsd ?? "0",
+        };
+        route = {
+          routeClass: respondedCheckpoint.routeClass ?? "generative",
+          decisionOutcome: respondedCheckpoint.plannerOutcome ?? "uncertain",
+          reasonCodes: respondedCheckpoint.reasonCodes ?? [],
+          rationale: respondedCheckpoint.deliveryCause ?? "crash-recovered turn",
+          estimatedCostMicroUsd: null,
+        };
+        policySetId = respondedCheckpoint.policySetId ?? null;
+      } else {
+        // 6a. USER TURN — the planner route (MOD-007: the existing planner
+        // decision establishes whether generative inference is needed).
+        const { profile } = await resolvePinnedPlan(
+          actor.applicationId,
+          session.pinnedPlanId,
+          session.pinnedPlanVersion,
+        );
+        route = await router.routeTurn({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          deploymentId: session.deploymentId,
+          pinnedPlanId: session.pinnedPlanId,
+          pinnedPlanVersion: session.pinnedPlanVersion,
+          channelKind: session.channelKind,
+          subtaskKind: input.subtaskKind ?? "mixed",
+          requiredCapabilities: profile.requiredCapabilities,
+          turnPreview: input.payloadPreview ?? null,
+          turnPayloadRef: input.payloadRef ?? null,
+        });
+
+        // 7. ADMISSION CHAIN — before EVERY governed side effect.
+        // 7a. POLICY (turn dispatch).
+        const policyDecision = await policy.admit({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          deploymentId: session.deploymentId,
+          action: "turn-dispatch",
+          channelKind: session.channelKind,
+          railCapabilityId: rail.descriptor.railCapabilityId,
+          routeClass: route.routeClass,
+          secretRef: railConnectionRef,
+        });
+        policySetId = policyDecision.evidence?.policySetId ?? null;
+        if (!policyDecision.allowed) {
           await recordDenial({
             applicationId: actor.applicationId,
             tenantId: actor.tenantId,
@@ -849,77 +1141,176 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             channelSessionRef: session.channelSessionRef,
             channelEpoch: session.channelEpoch,
             action: "turn-dispatch",
-            code: "BUDGET_EXCEEDED",
-            reason,
-            eventKey,
+            code: "POLICY_DENIED",
+            reason: policyDecision.reason,
+            eventKey: scopedKey,
           });
-          throw error;
+          throw new PlatformError({
+            code: "POLICY_DENIED",
+            message: "realtime turn dispatch denied by admission policy",
+            details: { sessionId: session.id, eventKey, reason: policyDecision.reason },
+          });
         }
-      }
-      // 7d. SECRET — mediated rail-channel credential access
-      // (references only; before the rail delivery).
-      const mediation = await secrets.mediate({
-        tenantId: actor.tenantId,
-        applicationId: actor.applicationId,
-        sessionId: session.id,
-        connectionRef: railConnectionRef,
-      });
-      if (!mediation.mediated) {
-        await recordDenial({
-          applicationId: actor.applicationId,
+        // 7b. CAPABILITY (the pinned plan's declaration + the rail).
+        const capabilityDecision = await capabilities.resolve({
           tenantId: actor.tenantId,
-          actorId: actor.actorId,
+          applicationId: actor.applicationId,
           sessionId: session.id,
-          deploymentId: session.deploymentId,
-          executionId: session.executionId,
-          channelSessionRef: session.channelSessionRef,
-          channelEpoch: session.channelEpoch,
-          action: "turn-dispatch",
-          code: "AUTHORIZATION_DENIED",
-          reason: mediation.reason,
-          eventKey,
+          requiredCapabilities: profile.requiredCapabilities,
+          railCapabilityId: rail.descriptor.railCapabilityId,
         });
-        if (reservationId !== null) {
-          await budget
-            .release({
+        if (!capabilityDecision.satisfied) {
+          await recordDenial({
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            sessionId: session.id,
+            deploymentId: session.deploymentId,
+            executionId: session.executionId,
+            channelSessionRef: session.channelSessionRef,
+            channelEpoch: session.channelEpoch,
+            action: "turn-dispatch",
+            code: "CAPABILITY_UNAVAILABLE",
+            reason: `unmet capabilities: ${capabilityDecision.unmet.join(", ")}`,
+            eventKey: scopedKey,
+          });
+          throw new PlatformError({
+            code: "CAPABILITY_UNAVAILABLE",
+            message: "realtime turn dispatch cannot proceed: required capabilities are unmet",
+            details: { sessionId: session.id, unmet: capabilityDecision.unmet },
+          });
+        }
+        // 7c. BUDGET — paid routes only (deterministic routes never
+        // reserve: MOD-007's "generative inference is unnecessary").
+        if (route.routeClass !== "deterministic" && route.estimatedCostMicroUsd !== null) {
+          if (!MICRO_USD_PATTERN.test(route.estimatedCostMicroUsd)) {
+            throw new PlatformError({
+              code: "PROVIDER_ERROR",
+              message: "the router's paid estimate must be an integer micro-USD string",
+            });
+          }
+          try {
+            const reservation = await budget.reserve({
               actorId: actor.actorId,
               applicationId: actor.applicationId,
               tenantId: actor.tenantId,
-              operationId: `realtime-turn:${eventKey}`,
-            })
-            .catch(() => undefined);
+              executionId: session.executionId,
+              operationId: `realtime-turn:${scopedKey}`,
+              amountMicroUsd: route.estimatedCostMicroUsd,
+              reason: `realtime turn ${scopedKey} on deployment ${session.deploymentId} (route ${route.routeClass})`,
+            });
+            reservationId = reservation.reservationId;
+            reservedAmountMicroUsd = reservation.amountMicroUsd;
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            await recordDenial({
+              applicationId: actor.applicationId,
+              tenantId: actor.tenantId,
+              actorId: actor.actorId,
+              sessionId: session.id,
+              deploymentId: session.deploymentId,
+              executionId: session.executionId,
+              channelSessionRef: session.channelSessionRef,
+              channelEpoch: session.channelEpoch,
+              action: "turn-dispatch",
+              code: "BUDGET_EXCEEDED",
+              reason,
+              eventKey: scopedKey,
+            });
+            throw error;
+          }
         }
-        throw new PlatformError({
-          code: "AUTHORIZATION_DENIED",
-          message: "mediated rail-channel credential access was refused",
-          details: { sessionId: session.id, reason: mediation.reason },
+        // 7d. SECRET — mediated rail-channel credential access
+        // (references only; before the rail delivery).
+        const mediation = await secrets.mediate({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          connectionRef: railConnectionRef,
         });
-      }
+        if (!mediation.mediated) {
+          await recordDenial({
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            sessionId: session.id,
+            deploymentId: session.deploymentId,
+            executionId: session.executionId,
+            channelSessionRef: session.channelSessionRef,
+            channelEpoch: session.channelEpoch,
+            action: "turn-dispatch",
+            code: "AUTHORIZATION_DENIED",
+            reason: mediation.reason,
+            eventKey: scopedKey,
+          });
+          if (reservationId !== null) {
+            await budget
+              .release({
+                actorId: actor.actorId,
+                applicationId: actor.applicationId,
+                tenantId: actor.tenantId,
+                operationId: `realtime-turn:${scopedKey}`,
+              })
+              .catch(() => undefined);
+          }
+          throw new PlatformError({
+            code: "AUTHORIZATION_DENIED",
+            message: "mediated rail-channel credential access was refused",
+            details: { sessionId: session.id, reason: mediation.reason },
+          });
+        }
 
-      // 8. The responder (the deployed agent's turn handling seam —
-      // deterministic content or admitted paid inference).
-      const response = await responder.respond({
-        tenantId: actor.tenantId,
-        applicationId: actor.applicationId,
-        sessionId: session.id,
-        deploymentId: session.deploymentId,
-        pinnedPlanId: session.pinnedPlanId,
-        pinnedPlanVersion: session.pinnedPlanVersion,
-        channelKind: session.channelKind,
-        routeClass: route.routeClass,
-        turnPreview: input.payloadPreview ?? null,
-        turnPayloadRef: input.payloadRef ?? null,
-        reservationId,
-        channelGrantRef: mediation.grantRef,
-      });
+        // 8. The responder (the deployed agent's turn handling seam —
+        // deterministic content or admitted paid inference). The request
+        // carries the turn's STABLE key so a production responder can
+        // converge paid inference across crashes/retries.
+        response = await responder.respond({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          deploymentId: session.deploymentId,
+          pinnedPlanId: session.pinnedPlanId,
+          pinnedPlanVersion: session.pinnedPlanVersion,
+          channelKind: session.channelKind,
+          turnKey: scopedKey,
+          routeClass: route.routeClass,
+          turnPreview: input.payloadPreview ?? null,
+          turnPayloadRef: input.payloadRef ?? null,
+          reservationId,
+          channelGrantRef: mediation.grantRef,
+        });
+        // 8b. CHECKPOINT the responded facts BEFORE the rail delivery —
+        // the point of no return for the paid-inference seam: a crash from
+        // here on resumes the DELIVERY with these facts and never
+        // re-invokes admission or the responder (a concurrent winner's
+        // completion converges).
+        await checkpointOperation(actor.applicationId, turnOperationKey, {
+          stage: "responded",
+          routeClass: route.routeClass,
+          plannerOutcome: route.decisionOutcome,
+          reasonCodes: route.reasonCodes.slice(0, 8).map((code) => code.slice(0, 64)),
+          responseRef: response.responseRef,
+          responsePreview: response.responsePreview.slice(0, 512),
+          reservationId,
+          actualCostMicroUsd: MICRO_USD_PATTERN.test(response.actualCostMicroUsd)
+            ? response.actualCostMicroUsd
+            : "0",
+          deliveryCause: route.rationale.slice(0, 400),
+          policySetId,
+        });
+      } // end of the full turn pipeline (the non-resumed path)
 
-      // 9. THE RAIL DELIVERY (the governed external side effect).
+      // 9. THE RAIL DELIVERY (the governed external side effect) — under
+      // the STABLE rail-level idempotency key: a retry or crash-resume
+      // re-delivers under the SAME key and the rail converges (exactly
+      // one upstream delivery, ever).
       const delivery = await rail.deliverTurn({
         applicationId: actor.applicationId,
         sessionId: session.id,
         channelSessionRef: session.channelSessionRef,
         channelEpoch: session.channelEpoch,
         routeClass: route.routeClass,
+        idempotencyKey: realtimeRailDeliverKey(scopedKey),
         responseRef: response.responseRef,
         responsePreview: response.responsePreview,
         cause: route.rationale.slice(0, 400),
@@ -943,7 +1334,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             },
             payload: { reason: delivery.reason, routeClass: route.routeClass },
           },
-          `realtime:failure:${eventKey}`,
+          `realtime:failure:${scopedKey}`,
         );
         await sessionEvent({
           session,
@@ -963,10 +1354,21 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
               actorId: actor.actorId,
               applicationId: actor.applicationId,
               tenantId: actor.tenantId,
-              operationId: `realtime-turn:${eventKey}`,
+              operationId: `realtime-turn:${scopedKey}`,
             })
             .catch(() => undefined);
         }
+        // The operation's terminal FAILURE outcome: durably recorded on
+        // both ledgers — a later retry under the same key REPLAYS this
+        // recorded failure (no duplicate side effect, no turn loss).
+        await store
+          .failRealtimeOperation(
+            actor.applicationId,
+            turnOperationKey,
+            `rail delivery refused: ${delivery.reason.slice(0, 400)}`,
+            iso(),
+          )
+          .catch(() => undefined);
         throw new PlatformError({
           code: "PROVIDER_ERROR",
           message: "the realtime rail refused the turn delivery",
@@ -981,7 +1383,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             actorId: actor.actorId,
             applicationId: actor.applicationId,
             tenantId: actor.tenantId,
-            operationId: `realtime-turn:${eventKey}`,
+            operationId: `realtime-turn:${scopedKey}`,
             actualAmountMicroUsd: MICRO_USD_PATTERN.test(response.actualCostMicroUsd)
               ? response.actualCostMicroUsd
               : (reservedAmountMicroUsd ?? "0"),
@@ -997,6 +1399,12 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           actorId: actor.actorId,
           executionId: session.executionId,
           evidenceClass: "turn",
+          // REPLAY-STABLE evidence: the cause/reference/payload are
+          // IDENTICAL for the original invocation and any crash-resume
+          // or concurrent duplicate (the executions idempotency
+          // arbitrates by key + fingerprint — an unstable marker would
+          // fail a legitimate recovery closed). Recovery observability
+          // rides the JOURNAL causes instead (never digested).
           cause: `realtime turn dispatched (${route.routeClass})`,
           reference: {
             sessionId: session.id,
@@ -1007,7 +1415,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             channelEpoch: session.channelEpoch,
             responseRef: response.responseRef,
             reservationId,
-            policySet: policyDecision.evidence?.policySetId ?? null,
+            policySet: policySetId,
           },
           payload: {
             routeClass: route.routeClass,
@@ -1019,20 +1427,27 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
             railMetadata: delivery.railMetadata ?? {},
           },
         },
-        `realtime:turn:${eventKey}`,
+        `realtime:turn:${scopedKey}`,
       );
       await sessionEvent({
         session,
         kind: "turn-recorded",
         direction: "outbound",
         eventKey: `${eventKey}:turn`,
-        cause: null,
+        // Recovery observability rides the JOURNAL cause (never
+        // fingerprint-arbitrated, never in the body digest).
+        cause: recoveredDelivery ? "crash-recovered turn delivery" : null,
         payloadRef: response.responseRef,
         payloadPreview: response.responsePreview.slice(0, 512),
         ledgerSequence: turnEvidence.sequence,
         routeClass: route.routeClass,
         actorId: actor.actorId,
       });
+      // 12. The durable operation COMPLETION — after every durable
+      // outcome (a crash before this leaves the row PENDING and the
+      // retry completes the turn from the checkpoint: exactly one
+      // delivery, no turn loss).
+      await store.completeRealtimeOperation(actor.applicationId, turnOperationKey, iso());
       return {
         eventKey,
         kind: "user-turn",
@@ -1040,7 +1455,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         responsePreview: response.responsePreview,
         responseRef: response.responseRef,
         ledgerSequence: turnEvidence.sequence,
-        replayed: false,
+        replayed: claim.status === "converged" && turnEvidence.replayed,
       };
     },
 
@@ -1065,9 +1480,20 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       const cause = requireCause(input.cause);
       const destination = input.destination ?? "human-operator";
       const session = await resolveSession(actor, input.sessionId);
+      // The durable human-transfer OPERATION key (the recovery
+      // discriminator — the same retry derives the same key).
+      const operationKey = realtimeOperationKey("human-transfer", idempotencyKey);
       // Idempotent replay: a terminal transferred session with this key
-      // replays its committed outcome.
+      // replays its committed outcome (a PENDING operation row is the
+      // crash window between the terminal move and the completion —
+      // reconcile it: the terminal status is the durable proof).
       if (session.status === "transferred") {
+        const operation = await store.findRealtimeOperation(actor.applicationId, operationKey);
+        if (operation !== null && operation.status === "pending") {
+          await store
+            .completeRealtimeOperation(actor.applicationId, operationKey, iso())
+            .catch(() => undefined);
+        }
         const events = await store.listEvents(actor.applicationId, session.id);
         const replay = events.find(
           (event) =>
@@ -1098,41 +1524,105 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           channelEpoch: input.channelEpoch,
         });
       }
-      // POLICY-DESIGNATED escalation: the policy admission decides
-      // BEFORE any side effect (no execution wait, no rail transfer).
-      const decision = await policy.admit({
-        tenantId: actor.tenantId,
+      // The durable operation claim — BEFORE the rail side effect (a
+      // crash between the rail transfer and the terminal mutation
+      // leaves this row PENDING; the retry resumes with the STABLE rail
+      // key instead of transferring twice).
+      const begun = await beginOperation("human-transfer", idempotencyKey, {
         applicationId: actor.applicationId,
+        tenantId: actor.tenantId,
         sessionId: session.id,
         deploymentId: session.deploymentId,
-        action: "human-transfer",
-        channelKind: session.channelKind,
-        railCapabilityId: rail.descriptor.railCapabilityId,
-        routeClass: null,
-        secretRef: railConnectionRef,
+        executionId: session.executionId,
       });
-      if (!decision.allowed) {
-        await recordDenial({
-          applicationId: actor.applicationId,
-          tenantId: actor.tenantId,
-          actorId: actor.actorId,
+      let policySetId: string | null = null;
+      let recoveredTransfer = false;
+      let transferDeliveredAt: string | null = null;
+      if (begun.status === "existing" && begun.record.status === "completed") {
+        // A concurrent invocation completed this operation: the terminal
+        // status MUST be committed (completion follows the terminal move).
+        const reread = await store.findSession(actor.applicationId, session.id);
+        if (reread === null || reread.status !== "transferred") {
+          throw new PlatformError({
+            code: "PROVIDER_ERROR",
+            message:
+              "realtime transfer operation is completed but the session is not transferred (invariant violation)",
+          });
+        }
+        const events = await store.listEvents(actor.applicationId, session.id);
+        const replay = events.find(
+          (event) =>
+            event.kind === "transfer-recorded" && event.eventKey === `${idempotencyKey}:transfer`,
+        );
+        return {
           sessionId: session.id,
-          deploymentId: session.deploymentId,
           executionId: session.executionId,
-          channelSessionRef: session.channelSessionRef,
-          channelEpoch: session.channelEpoch,
-          action: "human-transfer",
-          code: "POLICY_DENIED",
-          reason: decision.reason,
-          eventKey: `${idempotencyKey}:transfer`,
-        });
+          ledgerSequence: replay?.ledgerSequence ?? 0,
+          replayed: true,
+        };
+      }
+      if (begun.status === "existing" && begun.record.status === "failed") {
+        // The durably recorded rail refusal: a retry under the same key
+        // replays the recorded failure (no duplicate side effect).
         throw new PlatformError({
-          code: "POLICY_DENIED",
-          message: "human transfer denied by admission policy (escalation is policy-designated)",
-          details: { sessionId: session.id, reason: decision.reason },
+          code: "PROVIDER_ERROR",
+          message: "the realtime rail refused the human transfer (recorded failure)",
+          details: {
+            sessionId: session.id,
+            reason: begun.record.failureReason ?? undefined,
+          },
         });
       }
-      // The auditable execution wait (the public transition surface).
+      const railIssued =
+        begun.status === "existing" &&
+        begun.record.status === "pending" &&
+        begun.record.checkpoint?.stage === "rail-issued";
+      if (railIssued) {
+        // CRASH RECOVERY: the rail transfer was already issued under the
+        // STABLE key — skip re-admission (the decision preceded the side
+        // effect) and complete the durable tail.
+        recoveredTransfer = true;
+        policySetId = begun.record.checkpoint?.policySetId ?? null;
+        transferDeliveredAt = begun.record.checkpoint?.deliveredAt ?? null;
+      } else {
+        // POLICY-DESIGNATED escalation: the policy admission decides
+        // BEFORE any side effect (no execution wait, no rail transfer).
+        const decision = await policy.admit({
+          tenantId: actor.tenantId,
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          deploymentId: session.deploymentId,
+          action: "human-transfer",
+          channelKind: session.channelKind,
+          railCapabilityId: rail.descriptor.railCapabilityId,
+          routeClass: null,
+          secretRef: railConnectionRef,
+        });
+        policySetId = decision.evidence?.policySetId ?? null;
+        if (!decision.allowed) {
+          await recordDenial({
+            applicationId: actor.applicationId,
+            tenantId: actor.tenantId,
+            actorId: actor.actorId,
+            sessionId: session.id,
+            deploymentId: session.deploymentId,
+            executionId: session.executionId,
+            channelSessionRef: session.channelSessionRef,
+            channelEpoch: session.channelEpoch,
+            action: "human-transfer",
+            code: "POLICY_DENIED",
+            reason: decision.reason,
+            eventKey: `${idempotencyKey}:transfer`,
+          });
+          throw new PlatformError({
+            code: "POLICY_DENIED",
+            message: "human transfer denied by admission policy (escalation is policy-designated)",
+            details: { sessionId: session.id, reason: decision.reason },
+          });
+        }
+      } // end of the policy stage (skipped on crash recovery)
+      // The auditable execution wait (the public transition surface; the
+      // idempotent command converges on recovery).
       const wait = await ledger.awaitHuman(
         {
           applicationId: actor.applicationId,
@@ -1143,58 +1633,84 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         },
         `${idempotencyKey}:wait-human`,
       );
-      // The rail transfer (the external side effect).
-      const transfer = await rail.transferCall({
-        applicationId: actor.applicationId,
-        sessionId: session.id,
-        channelSessionRef: session.channelSessionRef,
-        channelEpoch: session.channelEpoch,
-        routeClass: "deterministic",
-        responseRef: null,
-        responsePreview: `transfer to ${destination}`,
-        cause: cause ?? "human escalation",
-      });
-      if (!transfer.delivered) {
-        // Failure provenance (AC4): the transfer failed on the rail AFTER
-        // the governed wait — durably recorded on both ledgers, then the
-        // typed failure (no transfer journal row, no terminal move).
-        const transferFailure = await ledger.recordEvidence(
-          {
-            applicationId: actor.applicationId,
-            tenantId: actor.tenantId,
-            actorId: actor.actorId,
-            executionId: session.executionId,
-            evidenceClass: "failure",
-            cause: "realtime human transfer failed on the upstream rail",
-            reference: {
-              sessionId: session.id,
-              eventKey: `${idempotencyKey}:transfer`,
-              channelSessionRef: session.channelSessionRef,
-              channelEpoch: session.channelEpoch,
-              waitSequence: wait.sequence,
+      if (!railIssued) {
+        // The rail transfer (the external side effect) — under the STABLE
+        // rail-level idempotency key: a retry or crash-resume re-transfers
+        // under the SAME key and the rail converges (exactly one upstream
+        // transfer, ever).
+        const transfer = await rail.transferCall({
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          channelSessionRef: session.channelSessionRef,
+          channelEpoch: session.channelEpoch,
+          routeClass: "deterministic",
+          idempotencyKey: realtimeRailTransferKey(idempotencyKey),
+          responseRef: null,
+          responsePreview: `transfer to ${destination}`,
+          cause: cause ?? "human escalation",
+        });
+        if (!transfer.delivered) {
+          // Failure provenance (AC4): the transfer failed on the rail AFTER
+          // the governed wait — durably recorded on both ledgers, then the
+          // typed failure (no transfer journal row, no terminal move).
+          const transferFailure = await ledger.recordEvidence(
+            {
+              applicationId: actor.applicationId,
+              tenantId: actor.tenantId,
+              actorId: actor.actorId,
+              executionId: session.executionId,
+              evidenceClass: "failure",
+              cause: "realtime human transfer failed on the upstream rail",
+              reference: {
+                sessionId: session.id,
+                eventKey: `${idempotencyKey}:transfer`,
+                channelSessionRef: session.channelSessionRef,
+                channelEpoch: session.channelEpoch,
+                waitSequence: wait.sequence,
+              },
+              payload: { destination, reason: transfer.reason },
             },
-            payload: { destination, reason: transfer.reason },
-          },
-          `realtime:transfer-failure:${idempotencyKey}`,
-        );
-        await sessionEvent({
-          session,
-          kind: "failure-recorded",
-          direction: "outbound",
-          eventKey: `${idempotencyKey}:transfer`,
-          cause: `rail transfer failed: ${transfer.reason.slice(0, 400)}`,
-          payloadRef: null,
-          payloadPreview: `transfer to ${destination}`,
-          ledgerSequence: transferFailure.sequence,
-          routeClass: null,
-          actorId: actor.actorId,
+            `realtime:transfer-failure:${idempotencyKey}`,
+          );
+          await sessionEvent({
+            session,
+            kind: "failure-recorded",
+            direction: "outbound",
+            eventKey: `${idempotencyKey}:transfer`,
+            cause: `rail transfer failed: ${transfer.reason.slice(0, 400)}`,
+            payloadRef: null,
+            payloadPreview: `transfer to ${destination}`,
+            ledgerSequence: transferFailure.sequence,
+            routeClass: null,
+            actorId: actor.actorId,
+          });
+          // The operation's terminal FAILURE outcome: durably recorded on
+          // both ledgers — a later retry under the same key REPLAYS this
+          // recorded failure (no duplicate side effect).
+          await store
+            .failRealtimeOperation(
+              actor.applicationId,
+              operationKey,
+              `rail transfer refused: ${transfer.reason.slice(0, 400)}`,
+              iso(),
+            )
+            .catch(() => undefined);
+          throw new PlatformError({
+            code: "PROVIDER_ERROR",
+            message: "the realtime rail refused the human transfer",
+            details: { sessionId: session.id, reason: transfer.reason },
+          });
+        }
+        // CHECKPOINT the point-of-no-return (the rail transfer was issued;
+        // the durable tail completes from here on recovery; a concurrent
+        // winner's completion converges).
+        transferDeliveredAt = transfer.deliveredAt;
+        await checkpointOperation(actor.applicationId, operationKey, {
+          stage: "rail-issued",
+          deliveredAt: transfer.deliveredAt,
+          policySetId,
         });
-        throw new PlatformError({
-          code: "PROVIDER_ERROR",
-          message: "the realtime rail refused the human transfer",
-          details: { sessionId: session.id, reason: transfer.reason },
-        });
-      }
+      } // end of the rail-transfer stage (skipped on crash recovery)
       // Transfer provenance (the canonical ledger).
       const transferEvidence = await ledger.recordEvidence(
         {
@@ -1203,16 +1719,23 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
           actorId: actor.actorId,
           executionId: session.executionId,
           evidenceClass: "transfer",
+          // REPLAY-STABLE evidence (see the turn note above): the
+          // recovery marker rides the journal cause, never this
+          // fingerprint-arbitrated record.
           cause: `realtime session transferred to ${destination}`,
           reference: {
             sessionId: session.id,
             eventKey: `${idempotencyKey}:transfer`,
             channelSessionRef: session.channelSessionRef,
             channelEpoch: session.channelEpoch,
-            policySet: decision.evidence?.policySetId ?? null,
+            policySet: policySetId,
             waitSequence: wait.sequence,
           },
-          payload: { destination, cause, deliveredAt: transfer.deliveredAt },
+          payload: {
+            destination,
+            cause,
+            deliveredAt: transferDeliveredAt ?? undefined,
+          },
         },
         `realtime:transfer:${idempotencyKey}`,
       );
@@ -1221,7 +1744,11 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         kind: "transfer-recorded",
         direction: "outbound",
         eventKey: `${idempotencyKey}:transfer`,
-        cause: cause ?? `transferred to ${destination}`,
+        // Recovery observability rides the JOURNAL cause (never
+        // fingerprint-arbitrated, never in the body digest).
+        cause: recoveredTransfer
+          ? `${cause ?? `transferred to ${destination}`} (crash-recovered)`
+          : (cause ?? `transferred to ${destination}`),
         payloadRef: null,
         payloadPreview: `transfer to ${destination}`,
         ledgerSequence: transferEvidence.sequence,
@@ -1240,11 +1767,15 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         toChannelEpoch: null,
         closedAt: iso(),
       });
+      // The durable operation COMPLETION — after every durable outcome
+      // (a crash before this leaves the row PENDING; the retry converges
+      // via the transferred-status reconciliation above).
+      await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
       return {
         sessionId: applied.session.id,
         executionId: session.executionId,
         ledgerSequence: transferEvidence.sequence,
-        replayed: false,
+        replayed: recoveredTransfer || wait.replayed,
       };
     },
 
@@ -1354,7 +1885,43 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       requireKey(idempotencyKey);
       const cause = requireCause(input.cause);
       const session = await resolveSession(actor, input.sessionId);
+      // The durable session-close OPERATION key (the recovery
+      // discriminator — the same retry derives the same key).
+      const operationKey = realtimeOperationKey("session-close", idempotencyKey);
       if (isTerminalRealtimeSessionStatus(session.status)) {
+        // CRASH RECOVERY: a PENDING close operation under this key means
+        // the terminal move committed but the completion did not — the
+        // terminal status IS the durable proof; reconcile and replay.
+        const operation = await store.findRealtimeOperation(actor.applicationId, operationKey);
+        if (operation !== null && operation.status === "pending") {
+          await store
+            .completeRealtimeOperation(actor.applicationId, operationKey, iso())
+            .catch(() => undefined);
+        }
+        return { sessionId: session.id, executionId: session.executionId, replayed: true };
+      }
+      // The durable operation claim — BEFORE the rail side effect (a
+      // crash between the rail close and the terminal mutation leaves
+      // this row PENDING; the retry resumes with the STABLE rail key
+      // instead of closing twice).
+      const begun = await beginOperation("session-close", idempotencyKey, {
+        applicationId: actor.applicationId,
+        tenantId: actor.tenantId,
+        sessionId: session.id,
+        deploymentId: session.deploymentId,
+        executionId: session.executionId,
+      });
+      if (begun.status === "existing" && begun.record.status === "completed") {
+        // A concurrent invocation completed this close: the terminal
+        // status MUST be committed (completion follows the terminal move).
+        const reread = await store.findSession(actor.applicationId, session.id);
+        if (reread === null || !isTerminalRealtimeSessionStatus(reread.status)) {
+          throw new PlatformError({
+            code: "PROVIDER_ERROR",
+            message:
+              "realtime close operation is completed but the session is not terminal (invariant violation)",
+          });
+        }
         return { sessionId: session.id, executionId: session.executionId, replayed: true };
       }
       const completion = await ledger.recordEvidence(
@@ -1375,12 +1942,17 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         },
         `realtime:completion:${idempotencyKey}`,
       );
+      // The rail close (best-effort upstream cleanup) — under the STABLE
+      // rail-level idempotency key: a retry or crash-resume re-closes
+      // under the SAME key and the rail converges (exactly one upstream
+      // close, ever).
       await rail
         .closeSession({
           applicationId: actor.applicationId,
           sessionId: session.id,
           channelSessionRef: session.channelSessionRef,
           channelEpoch: session.channelEpoch,
+          idempotencyKey: realtimeRailCloseKey(idempotencyKey),
           cause,
         })
         .catch(() => undefined);
@@ -1396,18 +1968,26 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         routeClass: null,
         actorId: actor.actorId,
       });
-      await store.applyGuardedSessionMutation({
-        applicationId: actor.applicationId,
+      if (!isTerminalRealtimeSessionStatus(session.status)) {
+        await store.applyGuardedSessionMutation({
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          expectedStatus: session.status,
+          toStatus: "closed",
+          expectedChannelRef: session.channelSessionRef,
+          expectedChannelEpoch: session.channelEpoch,
+          toChannelRef: null,
+          toChannelEpoch: null,
+          closedAt: iso(),
+        });
+      }
+      // The durable operation COMPLETION — after every durable outcome.
+      await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
+      return {
         sessionId: session.id,
-        expectedStatus: session.status,
-        toStatus: "closed",
-        expectedChannelRef: session.channelSessionRef,
-        expectedChannelEpoch: session.channelEpoch,
-        toChannelRef: null,
-        toChannelEpoch: null,
-        closedAt: iso(),
-      });
-      return { sessionId: session.id, executionId: session.executionId, replayed: false };
+        executionId: session.executionId,
+        replayed: begun.status === "existing",
+      };
     },
 
     /** Fail the session (terminal) with failure provenance. */
@@ -1426,7 +2006,37 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         throw new PlatformError({ code: "PROVIDER_ERROR", message: "a failure cause is required" });
       }
       const session = await resolveSession(actor, input.sessionId);
+      // The durable session-close OPERATION key for the failure path (a
+      // DISTINCT key from the graceful close: different logical outcome).
+      const operationKey = realtimeOperationKey("session-close", `${idempotencyKey}:fail`);
       if (isTerminalRealtimeSessionStatus(session.status)) {
+        // CRASH RECOVERY: reconcile a pending failure-close operation
+        // (the terminal status is the durable proof), then replay.
+        const operation = await store.findRealtimeOperation(actor.applicationId, operationKey);
+        if (operation !== null && operation.status === "pending") {
+          await store
+            .completeRealtimeOperation(actor.applicationId, operationKey, iso())
+            .catch(() => undefined);
+        }
+        return { sessionId: session.id, executionId: session.executionId, replayed: true };
+      }
+      // The durable operation claim — BEFORE the rail side effect.
+      const begun = await beginOperation("session-close", `${idempotencyKey}:fail`, {
+        applicationId: actor.applicationId,
+        tenantId: actor.tenantId,
+        sessionId: session.id,
+        deploymentId: session.deploymentId,
+        executionId: session.executionId,
+      });
+      if (begun.status === "existing" && begun.record.status === "completed") {
+        const reread = await store.findSession(actor.applicationId, session.id);
+        if (reread === null || !isTerminalRealtimeSessionStatus(reread.status)) {
+          throw new PlatformError({
+            code: "PROVIDER_ERROR",
+            message:
+              "realtime fail operation is completed but the session is not terminal (invariant violation)",
+          });
+        }
         return { sessionId: session.id, executionId: session.executionId, replayed: true };
       }
       const failure = await ledger.recordEvidence(
@@ -1459,27 +2069,39 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         routeClass: null,
         actorId: actor.actorId,
       });
+      // The rail close (best-effort) — under the STABLE rail-level
+      // idempotency key: a retry or crash-resume converges (exactly one
+      // upstream close, ever).
       await rail
         .closeSession({
           applicationId: actor.applicationId,
           sessionId: session.id,
           channelSessionRef: session.channelSessionRef,
           channelEpoch: session.channelEpoch,
+          idempotencyKey: realtimeRailCloseKey(`${idempotencyKey}:fail`),
           cause: `failed: ${cause}`,
         })
         .catch(() => undefined);
-      await store.applyGuardedSessionMutation({
-        applicationId: actor.applicationId,
+      if (!isTerminalRealtimeSessionStatus(session.status)) {
+        await store.applyGuardedSessionMutation({
+          applicationId: actor.applicationId,
+          sessionId: session.id,
+          expectedStatus: session.status,
+          toStatus: "failed",
+          expectedChannelRef: session.channelSessionRef,
+          expectedChannelEpoch: session.channelEpoch,
+          toChannelRef: null,
+          toChannelEpoch: null,
+          closedAt: iso(),
+        });
+      }
+      // The durable operation COMPLETION — after every durable outcome.
+      await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
+      return {
         sessionId: session.id,
-        expectedStatus: session.status,
-        toStatus: "failed",
-        expectedChannelRef: session.channelSessionRef,
-        expectedChannelEpoch: session.channelEpoch,
-        toChannelRef: null,
-        toChannelEpoch: null,
-        closedAt: iso(),
-      });
-      return { sessionId: session.id, executionId: session.executionId, replayed: false };
+        executionId: session.executionId,
+        replayed: begun.status === "existing",
+      };
     },
 
     /** Read one session (application-scoped) with its execution facts. */
@@ -1510,14 +2132,55 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
     },
   };
 
-  /** The caller-hangup close path (from ingestInboundEvent). */
+  /**
+   * The caller-hangup close path (from ingestInboundEvent) — through the
+   * DURABLE session-close operation: the claim precedes the rail close,
+   * the completion follows the terminal move. A crash in between leaves
+   * the operation PENDING and the hangup retry RESUMES it (the rail
+   * converges by the STABLE key) instead of being rejected or lost.
+   */
   async function closeFromInbound(
     session: RealtimeSessionRecord,
     actor: RealtimeActor,
     eventKey: string,
     inboundEventSeq: number,
     reason: string,
+    claimConverged: boolean,
   ): Promise<RealtimeIngestOutcome> {
+    // The durable session-close OPERATION for the hangup (discriminated
+    // by the SESSION-SCOPED inbound event key — event keys are unique per
+    // (application, session), so the discriminator carries the session
+    // identity; the same hangup retry derives the same key).
+    const operationKey = realtimeOperationKey("session-close", `${session.id}:${eventKey}:hangup`);
+    const existing = await store.findRealtimeOperation(actor.applicationId, operationKey);
+    if (existing !== null && existing.status === "completed") {
+      // TRUE REPLAY: the close completed durably — return the recorded
+      // outcome (no side effect, no second close).
+      const events = await store.listEvents(actor.applicationId, session.id);
+      const closeRow = events.find(
+        (event) => event.kind === "session-completed" && event.eventKey === `${eventKey}:close`,
+      );
+      return {
+        eventKey,
+        kind: "caller-hangup",
+        routeClass: null,
+        responsePreview: null,
+        responseRef: null,
+        ledgerSequence: closeRow?.ledgerSequence ?? 0,
+        replayed: true,
+      };
+    }
+    // Claim (or re-claim — a PENDING row is the crash window; the
+    // attempts ledger records the resume).
+    if (existing === null) {
+      await beginOperation("session-close", `${session.id}:${eventKey}:hangup`, {
+        applicationId: actor.applicationId,
+        tenantId: actor.tenantId,
+        sessionId: session.id,
+        deploymentId: session.deploymentId,
+        executionId: session.executionId,
+      });
+    }
     const completion = await ledger.recordEvidence(
       {
         applicationId: actor.applicationId,
@@ -1535,7 +2198,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
         },
         payload: { reason, pinnedPlanVersion: session.pinnedPlanVersion },
       },
-      `realtime:completion:${eventKey}`,
+      `realtime:completion:${`${session.id}:${eventKey}`}`,
     );
     await sessionEvent({
       session,
@@ -1549,26 +2212,34 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       routeClass: null,
       actorId: actor.actorId,
     });
+    // The rail close (best-effort) — under the STABLE rail-level
+    // idempotency key: a crash-resume re-closes under the SAME key and
+    // the rail converges (exactly one upstream close, ever).
     await rail
       .closeSession({
         applicationId: actor.applicationId,
         sessionId: session.id,
         channelSessionRef: session.channelSessionRef,
         channelEpoch: session.channelEpoch,
+        idempotencyKey: realtimeRailCloseKey(`${session.id}:${eventKey}:hangup`),
         cause: reason,
       })
       .catch(() => undefined);
-    await store.applyGuardedSessionMutation({
-      applicationId: actor.applicationId,
-      sessionId: session.id,
-      expectedStatus: session.status,
-      toStatus: "closed",
-      expectedChannelRef: session.channelSessionRef,
-      expectedChannelEpoch: session.channelEpoch,
-      toChannelRef: null,
-      toChannelEpoch: null,
-      closedAt: iso(),
-    });
+    if (!isTerminalRealtimeSessionStatus(session.status)) {
+      await store.applyGuardedSessionMutation({
+        applicationId: actor.applicationId,
+        sessionId: session.id,
+        expectedStatus: session.status,
+        toStatus: "closed",
+        expectedChannelRef: session.channelSessionRef,
+        expectedChannelEpoch: session.channelEpoch,
+        toChannelRef: null,
+        toChannelEpoch: null,
+        closedAt: iso(),
+      });
+    }
+    // The durable operation COMPLETION — after every durable outcome.
+    await store.completeRealtimeOperation(actor.applicationId, operationKey, iso());
     return {
       eventKey,
       kind: "caller-hangup",
@@ -1576,7 +2247,7 @@ export function createRealtimeSessionService(deps: RealtimeSessionServiceDeps) {
       responsePreview: null,
       responseRef: null,
       ledgerSequence: completion.sequence,
-      replayed: false,
+      replayed: claimConverged && completion.replayed,
     };
   }
 }

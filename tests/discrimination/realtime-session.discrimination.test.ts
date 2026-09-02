@@ -199,8 +199,9 @@ function violationsOf(rules: RealtimeRules): string[] {
     violations.push("mediation-gate-removed");
   }
 
-  // S6 — the duplicate-convergence branch must exist.
-  if (!rules.ingestBody.includes('claim.status === "converged"')) {
+  // S6 — the duplicate-convergence branch must exist (the op-state
+  // replay discriminator for converged user-turn claims).
+  if (!rules.ingestBody.includes('claim.status === "converged" && input.kind === "user-turn"')) {
     violations.push("convergence-branch-removed");
   }
 
@@ -738,7 +739,10 @@ describe("discrimination: realtime voice sessions (WORK-024)", () => {
 
   test("S6 STATIC: removing the duplicate-convergence branch is flagged", () => {
     const mutated = mutateService((content) =>
-      content.replace('if (claim.status === "converged") {', "if (false) {"),
+      content.replace(
+        'if (claim.status === "converged" && input.kind === "user-turn") {',
+        "if (false) {",
+      ),
     );
     expect(violationsOf(mutated)).toContain("convergence-branch-removed");
   });
@@ -898,8 +902,8 @@ describe("discrimination: realtime voice sessions (WORK-024)", () => {
   test("S10 STATIC: the ingest flow drifting to the deployment's current pointer is flagged", () => {
     const mutated = mutateService((content) =>
       content.replace(
-        'pinnedPlanId: session.pinnedPlanId,\n        pinnedPlanVersion: session.pinnedPlanVersion,\n        channelKind: session.channelKind,\n        subtaskKind: input.subtaskKind ?? "mixed",',
-        'pinnedPlanId: deployment.currentPlanId,\n        pinnedPlanVersion: deployment.currentPlanVersion,\n        channelKind: session.channelKind,\n        subtaskKind: input.subtaskKind ?? "mixed",',
+        'pinnedPlanId: session.pinnedPlanId,\n          pinnedPlanVersion: session.pinnedPlanVersion,\n          channelKind: session.channelKind,\n          subtaskKind: input.subtaskKind ?? "mixed",',
+        'pinnedPlanId: deployment.currentPlanId,\n          pinnedPlanVersion: deployment.currentPlanVersion,\n          channelKind: session.channelKind,\n          subtaskKind: input.subtaskKind ?? "mixed",',
       ),
     );
     expect(violationsOf(mutated)).toContain("pin-drift-current-pointer");

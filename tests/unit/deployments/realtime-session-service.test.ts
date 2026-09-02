@@ -1188,9 +1188,10 @@ describe("realtime session service: version pinning and rollback (AC7)", () => {
       ACTOR,
     );
     expect(turnOutcome.replayed).toBe(false);
-    // The turn's provenance records the ORIGINAL pin.
+    // The turn's provenance records the ORIGINAL pin (the evidence key is
+    // session-scoped: event keys are unique per session, not application).
     const turnEntry = world.ledger.evidence.find(
-      (entry) => entry.key === "realtime:turn:evt-on-v1",
+      (entry) => entry.key === `realtime:turn:${started.sessionId}:evt-on-v1`,
     );
     expect(struct(struct(turnEntry?.input).reference).pinnedPlanVersion).toBe(1);
   });
