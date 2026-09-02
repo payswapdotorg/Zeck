@@ -168,19 +168,52 @@ export function createDeterministicReplacementExecutor(
       }
 
       // ---- 3. Durable sandbox admission + dispatch (the ONLY execution) ----
-      const created = await service.createSandboxExecution(
-        {
-          executionId: dispatch.executionId,
-          environmentId: options.environmentId,
-          task: {
-            command: runnerCommand,
-            args: [...runnerArgs, `${INPUT_PRELUDE}${dispatch.replacement.source}`],
-            publicEnv: { [DETERMINISTIC_INPUT_ENV]: inputJson },
+      // The admission authority is JOURNAL-THEN-FAIL: a denied run
+      // leaves a durable DENIED row and throws the typed denial. The
+      // honest executor observation maps that denial (the durable row
+      // identity + reason) — an admission denial is a RECORDED RUN
+      // OUTCOME for validation evidence, never a propagated error that
+      // would lose the provenance.
+      let created: Awaited<ReturnType<typeof service.createSandboxExecution>>;
+      try {
+        created = await service.createSandboxExecution(
+          {
+            executionId: dispatch.executionId,
+            environmentId: options.environmentId,
+            task: {
+              command: runnerCommand,
+              args: [...runnerArgs, `${INPUT_PRELUDE}${dispatch.replacement.source}`],
+              publicEnv: { [DETERMINISTIC_INPUT_ENV]: inputJson },
+            },
           },
-        },
-        dispatch.idempotencyKey,
-        dispatch.actor,
-      );
+          dispatch.idempotencyKey,
+          dispatch.actor,
+        );
+      } catch (error) {
+        const details =
+          error instanceof PlatformError &&
+          typeof error.details === "object" &&
+          error.details !== null
+            ? (error.details as Record<string, unknown>)
+            : null;
+        const deniedRowId =
+          details !== null && typeof details.sandboxId === "string" ? details.sandboxId : null;
+        if (
+          error instanceof PlatformError &&
+          deniedRowId !== null &&
+          (error.code === "POLICY_DENIED" ||
+            error.code === "BUDGET_EXCEEDED" ||
+            error.code === "CAPABILITY_UNAVAILABLE")
+        ) {
+          return {
+            outcome: "failure",
+            failureClass: "admission-denied",
+            message: error.message,
+            sandboxExecutionId: deniedRowId,
+          };
+        }
+        throw error;
+      }
       if (created.status === "denied") {
         return {
           outcome: "failure",
