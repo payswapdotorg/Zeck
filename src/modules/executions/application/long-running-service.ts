@@ -548,13 +548,11 @@ export function createLongRunningExecutionService(
       fingerprint,
     );
     if (record.status === "completed") {
-      const stage = stageOf(record);
       const lease = await store.getLease(input.applicationId, input.executionId);
       return {
         executionId: input.executionId,
         lease: lease as LeaseRecord,
         replayed: true,
-        ...(stage === null ? {} : {}),
       };
     }
     const execution = await scopedExecution(
@@ -600,6 +598,7 @@ export function createLongRunningExecutionService(
     });
     record = await store.completeOperation(input.applicationId, operationKey, iso());
     void staged;
+    void record;
     return { executionId: input.executionId, lease: outcome.lease, replayed: false };
   };
 
@@ -706,11 +705,19 @@ export function createLongRunningExecutionService(
    * insert (the side effect); the evidence tail converges through the
    * stable `checkpoint:<executionId>:<sequence>` key regardless of the
    * lease's later fate (the guard protected the commit itself).
+   *
+   * CRASH RECOVERY (the committed-effect distinction): the digest probe
+   * runs FIRST — a checkpoint row with the same content digest for the
+   * same execution PROVES the durable side effect already committed
+   * (the crash window between the insert and the operation-stage write).
+   * The recovery tail then converges onto it WITHOUT the lease guard and
+   * WITHOUT a second row — the committed external effect is never
+   * duplicated, and a lease that expired during the crash window never
+   * blocks the convergence of an effect that is already durable.
    */
   const commitCheckpoint = async (
     input: RecordCheckpointCommand,
     operationKey: string,
-    recoveredFromStage: string | null,
   ): Promise<{ checkpoint: CheckpointRecord; ledgerSequence: number }> => {
     validateCheckpointContents(input.contents);
     const execution = await scopedExecution(
@@ -747,53 +754,66 @@ export function createLongRunningExecutionService(
         },
       });
     }
-    // The lease guard: ONLY skipped when the operation's stage proves the
-    // checkpoint side effect already committed (the recovery tail).
-    if (recoveredFromStage === null) {
-      await guardLease(input.applicationId, input.executionId, input.worker);
-    }
-    const existing = await store.listCheckpoints(input.applicationId, input.executionId);
-    const checkpointSequence = existing.length + 1;
     const contentDigest = digest(checkpointDigestInput(input.contents));
-    const { checkpoint } = await store.insertCheckpoint({
-      id: generateId(),
-      applicationId: input.applicationId,
-      tenantId: execution.tenantId,
-      executionId: input.executionId,
-      checkpointSequence,
-      contents: input.contents,
+    // 1. The COMMITTED-EFFECT probe: the digest identifies this exact
+    //    checkpoint; a surviving row with the same digest means the side
+    //    effect committed (crash between insert and stage write).
+    const committed = await store.findCheckpointByDigest(
+      input.applicationId,
+      input.executionId,
       contentDigest,
-      recordedBy: input.worker.ownerId,
-      now: iso(),
-    });
-    // The durable stage: past this point the recovery tail converges
-    // through stable keys even if the lease later expires.
-    await checkpointOperationStage(input.applicationId, operationKey, {
-      stage: "checkpoint-committed",
-      checkpointId: checkpoint.id,
-      checkpointSequence,
-      contentDigest,
-    });
-    // The canonical ledger evidence (status-preserving step event).
+    );
+    let checkpoint: CheckpointRecord;
+    if (committed !== null) {
+      checkpoint = committed;
+    } else {
+      // 2. The side effect is NOT yet durable: the lease guard applies
+      //    (a stale worker never commits a checkpoint).
+      await guardLease(input.applicationId, input.executionId, input.worker);
+      const existing = await store.listCheckpoints(input.applicationId, input.executionId);
+      const checkpointSequence = existing.length + 1;
+      const inserted = await store.insertCheckpoint({
+        id: generateId(),
+        applicationId: input.applicationId,
+        tenantId: execution.tenantId,
+        executionId: input.executionId,
+        checkpointSequence,
+        contents: input.contents,
+        contentDigest,
+        recordedBy: input.worker.ownerId,
+        now: iso(),
+      });
+      checkpoint = inserted.checkpoint;
+      // The durable stage: past this point the recovery tail converges
+      // through stable keys even if the lease later expires.
+      await checkpointOperationStage(input.applicationId, operationKey, {
+        stage: "checkpoint-committed",
+        checkpointId: checkpoint.id,
+        checkpointSequence: checkpoint.checkpointSequence,
+        contentDigest,
+      });
+    }
+    // 3. The canonical ledger evidence (status-preserving step event);
+    //    converges through the stable per-sequence key.
     const evidence = await recordEvidence(
       {
         applicationId: input.applicationId,
         executionId: input.executionId,
         actor: input.actor,
         command: "checkpoint-recorded",
-        cause: `checkpoint ${checkpointSequence} recorded by worker ${input.worker.ownerId} (epoch ${input.worker.epoch})`,
+        cause: `checkpoint ${checkpoint.checkpointSequence} recorded by worker ${input.worker.ownerId} (epoch ${input.worker.epoch})`,
         reference: {
           checkpointId: checkpoint.id,
-          checkpointSequence,
+          checkpointSequence: checkpoint.checkpointSequence,
           contentDigest,
           lastEventPosition: input.contents.lastEventPosition,
           planId: input.contents.planId,
           planRevision: input.contents.planRevision,
-          recordedBy: input.contents.contextArtifactRefs,
+          recordedBy: input.worker.ownerId,
           worker: { ownerId: input.worker.ownerId, epoch: input.worker.epoch },
         },
         payload: {
-          checkpointSequence,
+          checkpointSequence: checkpoint.checkpointSequence,
           lastEventPosition: input.contents.lastEventPosition,
           planId: input.contents.planId,
           planRevision: input.contents.planRevision,
@@ -801,7 +821,7 @@ export function createLongRunningExecutionService(
           contextArtifactRefs: input.contents.contextArtifactRefs,
         },
       },
-      `checkpoint:${input.executionId}:${checkpointSequence}`,
+      `checkpoint:${input.executionId}:${checkpoint.checkpointSequence}`,
     );
     return { checkpoint, ledgerSequence: evidence.sequence };
   };
@@ -835,6 +855,7 @@ export function createLongRunningExecutionService(
         input.executionId,
         String(stage.checkpointId),
       );
+      void checkpoint;
       return {
         executionId: input.executionId,
         checkpointId: String(stage.checkpointId),
@@ -843,15 +864,9 @@ export function createLongRunningExecutionService(
         lastEventPosition: Number(stage.lastEventPosition),
         ledgerSequence: Number(stage.ledgerSequence ?? 0),
         replayed: true,
-        ...(checkpoint === null ? {} : {}),
       };
     }
-    const recovered = record.status === "pending" && stage !== null ? stage.stage : null;
-    const { checkpoint, ledgerSequence } = await commitCheckpoint(
-      input,
-      operationKey,
-      recovered === "checkpoint-committed" ? recovered : null,
-    );
+    const { checkpoint, ledgerSequence } = await commitCheckpoint(input, operationKey);
     await checkpointOperationStage(input.applicationId, operationKey, {
       stage: "evidence-recorded",
       checkpointId: checkpoint.id,
@@ -910,10 +925,9 @@ export function createLongRunningExecutionService(
         replayed: true,
       };
     }
-    const recoveredStage = record.status === "pending" && stage !== null ? stage.stage : null;
-    const checkpointCommitted = recoveredStage !== null;
 
-    // 1. The checkpoint commit (lease-guarded unless already committed).
+    // 1. The checkpoint commit (lease-guarded unless the durable row
+    //    already committed — the digest committed-effect probe inside).
     const { checkpoint } = await commitCheckpoint(
       {
         applicationId: input.applicationId,
@@ -923,7 +937,6 @@ export function createLongRunningExecutionService(
         contents: input.checkpoint,
       },
       operationKey,
-      checkpointCommitted ? "checkpoint-committed" : null,
     );
 
     // 2. The frozen wait transition (RUNNING -> WAITING_TOOL/USER) —

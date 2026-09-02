@@ -15,6 +15,13 @@
  *   * `insertCheckpoint` converges on the physical per-execution
  *     sequence (same sequence + same digest = the same row; a same-
  *     sequence different-digest insert fails closed);
+ *   * `findCheckpointByDigest` is the COMMITTED-EFFECT probe: a checkpoint
+ *     row with the same content digest for the same execution PROVES the
+ *     checkpoint side effect already committed (the crash window between
+ *     the durable insert and the operation-stage write) — the recovery
+ *     tail converges onto it instead of inserting a duplicate (the Work
+ *     Order's "crash recovery must distinguish committed external
+ *     effects from reversible internal work");
  *   * `acquireLease` fails CLOSED when a live lease is held (one
  *     authoritative owner per live mutable execution);
  *   * `renewLease`/`releaseLease` require the exact (ownerId, epoch)
@@ -173,6 +180,12 @@ export interface LongRunningExecutionStore {
     applicationId: string,
     executionId: string,
     checkpointId: string,
+  ): Promise<CheckpointRecord | null>;
+  /** The committed-effect probe: same execution + same content digest. */
+  findCheckpointByDigest(
+    applicationId: string,
+    executionId: string,
+    contentDigest: string,
   ): Promise<CheckpointRecord | null>;
   latestCheckpoint(applicationId: string, executionId: string): Promise<CheckpointRecord | null>;
   listCheckpoints(applicationId: string, executionId: string): Promise<readonly CheckpointRecord[]>;

@@ -122,6 +122,20 @@ export class InMemoryLongRunningExecutionStore implements LongRunningExecutionSt
       : null;
   }
 
+  async findCheckpointByDigest(
+    applicationId: string,
+    executionId: string,
+    contentDigest: string,
+  ): Promise<CheckpointRecord | null> {
+    const matches = [...this.checkpoints.values()].filter(
+      (record) =>
+        record.applicationId === applicationId &&
+        record.executionId === executionId &&
+        record.contentDigest === contentDigest,
+    );
+    return matches.length === 0 ? null : (matches[0] as CheckpointRecord);
+  }
+
   async latestCheckpoint(
     applicationId: string,
     executionId: string,

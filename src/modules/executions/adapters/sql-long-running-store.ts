@@ -438,6 +438,21 @@ WHERE application_id = $1 AND execution_id = $2 AND id = $3`,
     return row === undefined ? null : toCheckpoint(row);
   }
 
+  async findCheckpointByDigest(
+    applicationId: string,
+    executionId: string,
+    contentDigest: string,
+  ): Promise<CheckpointRecord | null> {
+    const result = await this.db.execute<CheckpointRow>({
+      sql: `SELECT ${CHECKPOINT_COLUMNS} FROM executions.execution_checkpoints
+WHERE application_id = $1 AND execution_id = $2 AND content_digest = $3
+ORDER BY checkpoint_sequence LIMIT 1`,
+      parameters: [applicationId, executionId, contentDigest],
+    });
+    const row = first(result.rows);
+    return row === undefined ? null : toCheckpoint(row);
+  }
+
   async latestCheckpoint(
     applicationId: string,
     executionId: string,
