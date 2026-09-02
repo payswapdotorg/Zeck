@@ -500,6 +500,33 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     return decision.evidence ?? null;
   };
 
+  /**
+   * POLICY admission with the durable terminal outcome: a denial FAILS
+   * the operation row (never a dangling PENDING) and rethrows typed —
+   * every governed operation converges to completed|failed.
+   */
+  const policyAdmitOrFail = async (
+    applicationId: string,
+    operationKey: string,
+    request: {
+      readonly tenantId: string;
+      readonly applicationId: string;
+      readonly executionId: string | null;
+      readonly toolFact: string;
+      readonly controllerRef: string;
+      readonly channels: readonly string[];
+    },
+  ): Promise<EdgePolicyEvidence | null> => {
+    try {
+      return await policyAdmit(request);
+    } catch (error) {
+      if (error instanceof PlatformError) {
+        await failClaim(applicationId, operationKey, `POLICY_DENIED: ${error.message}`.slice(0, 512));
+      }
+      throw error;
+    }
+  };
+
   const capabilityAdmit = async (
     requirementAtoms: readonly string[],
   ): Promise<EdgeCapabilityGateDecision> => {
@@ -598,7 +625,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       createdAt: iso(),
     });
 
-    await policyAdmit({
+    await policyAdmitOrFail(request.applicationId, operationKey, {
       tenantId: request.actor.tenantId,
       applicationId: request.applicationId,
       executionId: null,
@@ -666,7 +693,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       createdAt: iso(),
     });
 
-    await policyAdmit({
+    await policyAdmitOrFail(input.applicationId, operationKey, {
       tenantId: input.actor.tenantId,
       applicationId: input.applicationId,
       executionId: null,
@@ -692,8 +719,10 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     }
 
     // Revocation TIGHTENS: an admitted envelope fails safe with the
-    // identity (the device's disconnected authority is withdrawn and the
-    // withdrawal is projected to the local controller, keyed).
+    // identity (the device's disconnected authority is withdrawn, the
+    // withdrawal is projected to the local controller keyed, and every
+    // in-flight authorized command under it is INVALIDATED before it
+    // could ever dispatch — its wallet hold released).
     const active = await store.findActiveEnvelopeForDevice(input.applicationId, device.id);
     if (active !== null) {
       const envelopeRevoked = await store.applyGuardedEnvelopeRevocation({
@@ -704,6 +733,28 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         revokedAt: iso(),
       });
       if (envelopeRevoked.status !== "rejected") {
+        const inFlight = await store.listCommandsByEnvelope(input.applicationId, active.id);
+        for (const command of inFlight) {
+          if (command.status === "authorized") {
+            const invalidated = await store.finalizeCommand({
+              applicationId: input.applicationId,
+              commandId: command.id,
+              status: "invalidated",
+              failureClass: "device-revoked",
+              failureMessage: `the device identity was revoked before dispatch: ${input.reason}`.slice(
+                0,
+                512,
+              ),
+              dispatchDigest: null,
+              usageMicroUsd: null,
+              ledgerResultSequence: null,
+              dispatchedAt: null,
+              settledAt: null,
+              reconciledAt: null,
+            });
+            await releaseCommandBudget(invalidated);
+          }
+        }
         await controller.applyEnvelope(
           {
             applicationId: input.applicationId,
@@ -790,6 +841,24 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
     const existing = await store.findApprovalByKey(request.applicationId, idempotencyKey);
     if (existing !== null) {
+      // Crash-window convergence: a process that died between the insert
+      // and the wait-human transition converges it here (keyed).
+      if (existing.ledgerWaitSequence === null) {
+        const wait = await ledger.waitHuman(
+          {
+            applicationId: existing.applicationId,
+            tenantId: existing.tenantId,
+            actorId: request.actor.actorId,
+            executionId: existing.executionId,
+            reason: `edge ${existing.subjectKind} approval ${existing.id}`,
+            reference: { approvalId: existing.id, subjectKind: existing.subjectKind },
+          },
+          edgeLedgerEventKey(existing.id, "approval-wait-human"),
+        );
+        await store.bindApprovalLedgerSequences(existing.applicationId, existing.id, {
+          waitSequence: wait.sequence,
+        });
+      }
       return {
         approvalId: existing.id,
         applicationId: existing.applicationId,
@@ -904,6 +973,41 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     );
     if (isDecided(approval)) {
       if (approval.decision === input.decision && approval.approverId === input.approverId) {
+        // Crash-window convergence: a process that died between the
+        // decision and the resume transition converges it here (keyed).
+        if (approval.ledgerResumeSequence === null) {
+          const resume = await ledger.resume(
+            {
+              applicationId: approval.applicationId,
+              tenantId: approval.tenantId,
+              actorId: input.actor.actorId,
+              executionId: approval.executionId,
+              reason: `edge ${approval.subjectKind} approval ${approval.id} ${approval.decision}`,
+              reference: { approvalId: approval.id, decision: approval.decision },
+            },
+            edgeLedgerEventKey(approval.id, "approval-resume"),
+          );
+          await store.bindApprovalLedgerSequences(approval.applicationId, approval.id, {
+            resumeSequence: resume.sequence,
+          });
+          await appendEvent(
+            approval.applicationId,
+            approval.executionId,
+            input.actor.actorId,
+            approval.tenantId,
+            "tool-result",
+            "edge-approval",
+            { approvalId: approval.id, decision: approval.decision, approverId: approval.approverId },
+            {
+              approvalId: approval.id,
+              phase: "approval-decided",
+              decision: approval.decision,
+              approverId: approval.approverId,
+              rationale: "replay-converged (the recorded decision)",
+            },
+            edgeLedgerEventKey(approval.id, "approval-decided"),
+          );
+        }
         return {
           approvalId: approval.id,
           applicationId: approval.applicationId,
@@ -1068,7 +1172,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       createdAt: iso(),
     });
 
-    const policyEvidence = await policyAdmit({
+    const policyEvidence = await policyAdmitOrFail(request.applicationId, operationKey, {
       tenantId: request.actor.tenantId,
       applicationId: request.applicationId,
       executionId: request.executionId,
@@ -1282,7 +1386,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       createdAt: iso(),
     });
 
-    await policyAdmit({
+    await policyAdmitOrFail(input.applicationId, operationKey, {
       tenantId: input.actor.tenantId,
       applicationId: input.applicationId,
       executionId: envelope.executionId,
@@ -1457,7 +1561,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
     // ----- 4. The durable operation claim (identity first). --------------
     const operationKey = edgeCommandSubmitOperationKey(idempotencyKey);
-    await store.beginEdgeOperation({
+    const begun = await store.beginEdgeOperation({
       operationId: deps.generateId(),
       applicationId: request.applicationId,
       tenantId: request.actor.tenantId,
@@ -1468,19 +1572,71 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       requestFingerprint: fingerprint,
       createdAt: iso(),
     });
+    // The crash-stable command identity: a retry of a PENDING operation
+    // reuses the checkpointed command id, so the wallet reservation
+    // (keyed by it) converges instead of orphaning (the WORK-027
+    // stage-checkpoint discipline).
+    const commandId =
+      (begun.record.stage?.commandId as string | undefined) ?? deps.generateId();
+    if (begun.record.stage?.commandId === undefined) {
+      await store.recordOperationCheckpoint(request.applicationId, operationKey, { commandId }, iso());
+    }
 
-    // ----- 5. POLICY admission (REQUIRED seam). ---------------------------
-    await policyAdmit({
-      tenantId: request.actor.tenantId,
-      applicationId: request.applicationId,
-      executionId: request.executionId,
-      toolFact: EDGE_TOOL_FACTS.commandSubmit,
-      controllerRef: device.controllerRef,
-      channels: [request.channel],
-    });
+    // ----- 5. POLICY admission (REQUIRED seam — a denial is a DURABLE
+    // denied command row + failed operation + `tool-denied` ledger event
+    // BEFORE any external dispatch; zero actuator-path activity). -------
+    try {
+      await policyAdmit({
+        tenantId: request.actor.tenantId,
+        applicationId: request.applicationId,
+        executionId: request.executionId,
+        toolFact: EDGE_TOOL_FACTS.commandSubmit,
+        controllerRef: device.controllerRef,
+        channels: [request.channel],
+      });
+    } catch (error) {
+      if (error instanceof PlatformError) {
+        await denyCommand(
+          request,
+          device,
+          envelope,
+          fingerprint,
+          idempotencyKey,
+          operationKey,
+          "policy",
+          "POLICY_DENIED",
+          `the effective policy denied the command: ${error.message}`,
+          null,
+          payloadDigest,
+          commandId,
+        );
+      }
+      throw error;
+    }
 
-    // ----- 6. CAPABILITY admission (the channel atom, REAL registry). ----
-    await capabilityAdmit([edgeChannelAtom(request.channel)]);
+    // ----- 6. CAPABILITY admission (the channel atom, REAL registry —
+    // same durable denial discipline). ----------------------------------
+    try {
+      await capabilityAdmit([edgeChannelAtom(request.channel)]);
+    } catch (error) {
+      if (error instanceof PlatformError) {
+        await denyCommand(
+          request,
+          device,
+          envelope,
+          fingerprint,
+          idempotencyKey,
+          operationKey,
+          "capability",
+          "CAPABILITY_UNAVAILABLE",
+          `the edge channel capability is unmet: ${error.message}`,
+          null,
+          payloadDigest,
+          commandId,
+        );
+      }
+      throw error;
+    }
 
     // ----- 7. The human-approval discriminator (AC-4). --------------------
     const effectClass = EDGE_COMMAND_EFFECT_CLASS_BY_KIND[request.commandKind];
@@ -1499,6 +1655,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
           "a PHYSICAL-WRITE command requires a bound, approved human approval before any physical side effect",
           null,
           payloadDigest,
+          commandId,
         );
       }
       const approval = await boundApproval(
@@ -1529,6 +1686,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
           `the physical side effect lacks a valid human approval: ${approvalCheck.reason}`,
           approval.id,
           payloadDigest,
+          commandId,
         );
       }
       approvalId = approval.id;
@@ -1553,6 +1711,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
           : "the command window has not opened yet (too early); it cannot be admitted now",
         approvalId,
         payloadDigest,
+        commandId,
       );
     }
 
@@ -1571,6 +1730,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         `the command is outside the pre-authorized safety envelope: ${coverage.reason}`,
         approvalId,
         payloadDigest,
+        commandId,
       );
     }
 
@@ -1589,6 +1749,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         `the command estimate exceeds the envelope's cost ceiling (${envelope.admission.costCeilingMicroUsd} micro-USD)`,
         approvalId,
         payloadDigest,
+        commandId,
       );
     }
     if (BigInt(request.estimatedMicroUsd) > 0n && budgetAuthority === undefined) {
@@ -1604,11 +1765,12 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
         "costed edge commands never execute unbudgeted (no budget authority is wired)",
         approvalId,
         payloadDigest,
+        commandId,
       );
     }
 
-    // ----- 11. The durable command row (identity + sequence). ------------
-    const commandId = deps.generateId();
+    // ----- 11. The wallet reservation (keyed by the crash-stable command
+    // identity) then the durable command row (identity + sequence). ----
     if (BigInt(request.estimatedMicroUsd) > 0n && budgetAuthority !== undefined) {
       try {
         await budgetAuthority.reserve(
@@ -1636,6 +1798,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
             `the wallet refused the reservation: ${error.message}`,
             approvalId,
             payloadDigest,
+            commandId,
           );
         }
         throw error;
@@ -1750,9 +1913,10 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     reason: string,
     approvalId: string | null,
     payloadDigest: string,
+    commandId?: string,
   ): Promise<never> => {
     const inserted = await store.insertCommand({
-      commandId: deps.generateId(),
+      commandId: commandId ?? deps.generateId(),
       applicationId: request.applicationId,
       tenantId: request.actor.tenantId,
       executionId: request.executionId,
@@ -2242,7 +2406,8 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
           continue;
         }
         // Converge the crash window (dispatch happened, the finalize did
-        // not): the controller journal is the truth.
+        // not): the controller journal is the truth — the command settles
+        // EXACTLY ONCE with its actuation provenance row.
         if (command.status === "authorized") {
           const dispatched = await store.finalizeCommand({
             applicationId: command.applicationId,
@@ -2257,9 +2422,23 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
             settledAt: null,
             reconciledAt: null,
           });
-          await settleCommandBudget(dispatched);
+          const settled = await store.settleCommand(
+            dispatched.applicationId,
+            dispatched.id,
+            entry.occurredAt,
+            iso(),
+          );
+          await settleCommandBudget(settled);
           settledCount += 1;
           confirmedCount += 1;
+          await insertActuationEvidence(device, entry, {
+            actuationClass: "commanded",
+            commandId: settled.id,
+            commandKey: settled.commandKey,
+            sequence: settled.sequence,
+            violationKind: null,
+            executionId: settled.executionId,
+          });
           continue;
         }
         // The dispatched command settles EXACTLY ONCE.
