@@ -91,6 +91,7 @@ import type {
   ValidationRunObservation,
 } from "../domain/deterministicization";
 import {
+  CANDIDATE_STATUS_TRANSITIONS,
   candidateIdentityBasis,
   DETERMINISTICIZATION_SCHEMA_VERSION,
   stageEvidenceIdentityBasis,
@@ -400,6 +401,36 @@ export function createDeterministicizationService(
     const result = await input.work(record);
     await deps.store.completeOperation(input.applicationId, operationKey, iso());
     return result;
+  };
+
+  /**
+   * The IDEMPOTENT status tail (the crash-safety discipline): a
+   * converged (replayed) durable insert does NOT imply the pre-crash
+   * process finished the tail — re-read the CURRENT status and apply
+   * the guarded move when the lifecycle still needs it. The store's
+   * expected-status arbitration converges duplicates (first writer
+   * wins); an already-moved or illegal row is a no-op, never a skip.
+   */
+  const transitionIfNeeded = async (
+    scope: { readonly applicationId: string; readonly tenantId: string },
+    candidateId: string,
+    toStatus: DeterministicizationCandidateStatus,
+  ): Promise<void> => {
+    const current = await deps.store.getCandidate(scope, candidateId);
+    if (current === null || current.status === toStatus) {
+      return;
+    }
+    if (!CANDIDATE_STATUS_TRANSITIONS[current.status].includes(toStatus)) {
+      return; // already moved past the target (a duplicate converges)
+    }
+    await deps.store.transitionCandidateStatus({
+      applicationId: scope.applicationId,
+      tenantId: scope.tenantId,
+      candidateId,
+      expectedStatus: current.status,
+      toStatus,
+      updatedAt: iso(),
+    });
   };
 
   /** The honest stage-aware status + metrics of recorded runs/pairs. */
@@ -807,41 +838,24 @@ export function createDeterministicizationService(
         keyDiscriminator: evidenceId,
         work: async (operation) => {
           const outcome = await deps.store.insertStageEvidence(evidence);
-          if (!outcome.replayed) {
-            // The candidate moves proposed/deferred → validating (the
-            // first settled stage evidence); when ALL FOUR offline
-            // stages are settled passing, validating → validated.
-            if (candidate.status === "proposed" || candidate.status === "deferred") {
-              await deps.store.transitionCandidateStatus({
-                applicationId: request.applicationId,
-                tenantId: request.tenantId,
-                candidateId: candidate.candidateId,
-                expectedStatus: candidate.status,
-                toStatus: "validating",
-                updatedAt: iso(),
-              });
-            }
-            const settled = await deps.store.listStageEvidence(scope, candidate.candidateId);
-            const allSettledPassing = VALIDATION_STAGE_KINDS.every((stage) =>
-              settled.some((record) => record.stageKind === stage && record.status === "passed"),
-            );
-            if (allSettledPassing) {
-              await deps.store.transitionCandidateStatus({
-                applicationId: request.applicationId,
-                tenantId: request.tenantId,
-                candidateId: candidate.candidateId,
-                expectedStatus: null,
-                toStatus: "validated",
-                updatedAt: iso(),
-              });
-            }
-            await deps.store.recordOperationCheckpoint(
-              request.applicationId,
-              operation.operationKey,
-              { stageKind: request.stageKind, evidenceId },
-              iso(),
-            );
+          // The status tail runs on RESUME too (crash-safety: a converged
+          // insert does not imply the tail landed before the crash):
+          // proposed/deferred → validating; when ALL FOUR offline stages
+          // are settled passing, validating → validated.
+          await transitionIfNeeded(scope, candidate.candidateId, "validating");
+          const settled = await deps.store.listStageEvidence(scope, candidate.candidateId);
+          const allSettledPassing = VALIDATION_STAGE_KINDS.every((stage) =>
+            settled.some((record) => record.stageKind === stage && record.status === "passed"),
+          );
+          if (allSettledPassing) {
+            await transitionIfNeeded(scope, candidate.candidateId, "validated");
           }
+          await deps.store.recordOperationCheckpoint(
+            request.applicationId,
+            operation.operationKey,
+            { stageKind: request.stageKind, evidenceId },
+            iso(),
+          );
           return { evidence, replayed: outcome.replayed };
         },
         replay: async () => {
@@ -908,16 +922,9 @@ export function createDeterministicizationService(
         keyDiscriminator: rolloutId,
         work: async () => {
           const outcome = await deps.store.insertRollout(rollout);
-          if (!outcome.replayed && candidate.status !== "shadow") {
-            await deps.store.transitionCandidateStatus({
-              applicationId: request.applicationId,
-              tenantId: request.tenantId,
-              candidateId: candidate.candidateId,
-              expectedStatus: candidate.status,
-              toStatus: "shadow",
-              updatedAt: iso(),
-            });
-          }
+          // The status tail runs on RESUME too (crash-safety: the
+          // converged insert does not imply the tail landed).
+          await transitionIfNeeded(scope, candidate.candidateId, "shadow");
           return { rollout, replayed: outcome.replayed };
         },
         replay: async () => {
@@ -1007,16 +1014,9 @@ export function createDeterministicizationService(
         keyDiscriminator: rolloutId,
         work: async () => {
           const outcome = await deps.store.insertRollout(rollout);
-          if (!outcome.replayed && candidate.status !== "canary") {
-            await deps.store.transitionCandidateStatus({
-              applicationId: request.applicationId,
-              tenantId: request.tenantId,
-              candidateId: candidate.candidateId,
-              expectedStatus: candidate.status,
-              toStatus: "canary",
-              updatedAt: iso(),
-            });
-          }
+          // The status tail runs on RESUME too (crash-safety: the
+          // converged insert does not imply the tail landed).
+          await transitionIfNeeded(scope, candidate.candidateId, "canary");
           return { rollout, replayed: outcome.replayed };
         },
         replay: async () => {
@@ -1110,16 +1110,9 @@ export function createDeterministicizationService(
         keyDiscriminator: decisionId,
         work: async () => {
           const appended = await appendDecision(decision);
-          if (!appended.replayed && candidate.status !== "promoted") {
-            await deps.store.transitionCandidateStatus({
-              applicationId: request.applicationId,
-              tenantId: request.tenantId,
-              candidateId: candidate.candidateId,
-              expectedStatus: candidate.status,
-              toStatus: "promoted",
-              updatedAt: decision.decidedAt,
-            });
-          }
+          // The status tail runs on RESUME too (crash-safety: the
+          // converged decision does not imply the tail landed).
+          await transitionIfNeeded(scope, candidate.candidateId, "promoted");
           return { decision, replayed: appended.replayed };
         },
         replay: async () => {
@@ -1182,16 +1175,9 @@ export function createDeterministicizationService(
       });
       const decision = buildDecision(candidate, request, "rejected", decisionId, gate, null);
       const appended = await appendDecision(decision);
-      if (!appended.replayed) {
-        await deps.store.transitionCandidateStatus({
-          applicationId: request.applicationId,
-          tenantId: request.tenantId,
-          candidateId: candidate.candidateId,
-          expectedStatus: candidate.status,
-          toStatus: "rejected",
-          updatedAt: decision.decidedAt,
-        });
-      }
+      // The status tail is idempotent by current-state re-read (a
+      // converged decision append must not skip the move).
+      await transitionIfNeeded(scope, candidate.candidateId, "rejected");
       return appended;
     },
 
@@ -1217,16 +1203,9 @@ export function createDeterministicizationService(
       });
       const decision = buildDecision(candidate, request, "deferred", decisionId, gate, null);
       const appended = await appendDecision(decision);
-      if (!appended.replayed && candidate.status !== "deferred") {
-        await deps.store.transitionCandidateStatus({
-          applicationId: request.applicationId,
-          tenantId: request.tenantId,
-          candidateId: candidate.candidateId,
-          expectedStatus: candidate.status,
-          toStatus: "deferred",
-          updatedAt: decision.decidedAt,
-        });
-      }
+      // The status tail is idempotent by current-state re-read (a
+      // converged decision append must not skip the move).
+      await transitionIfNeeded(scope, candidate.candidateId, "deferred");
       return appended;
     },
 
@@ -1286,16 +1265,9 @@ export function createDeterministicizationService(
         keyDiscriminator: decisionId,
         work: async () => {
           const appended = await appendDecision(decision);
-          if (!appended.replayed && candidate.status !== "rolled-back") {
-            await deps.store.transitionCandidateStatus({
-              applicationId: request.applicationId,
-              tenantId: request.tenantId,
-              candidateId: candidate.candidateId,
-              expectedStatus: candidate.status,
-              toStatus: "rolled-back",
-              updatedAt: decision.decidedAt,
-            });
-          }
+          // The status tail runs on RESUME too (crash-safety: the
+          // converged decision does not imply the tail landed).
+          await transitionIfNeeded(scope, candidate.candidateId, "rolled-back");
           return appended;
         },
         replay: async () => {
