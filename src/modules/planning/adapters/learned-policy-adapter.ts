@@ -7,8 +7,9 @@
  *
  * FAIL-CLOSED VALIDATION AT THE SEAM (three independent gates):
  *
- *  1. THE POLICIES-OWNED RESTRICTION-VOCABULARY BOUNDARY: the
- *     consulted record is scanned with
+ *  1. THE POLICIES-OWNED RESTRICTION-VOCABULARY BOUNDARY: the RAW
+ *     learning output (policy + publication) AND the projected
+ *     consulted record are scanned with
  *     `assertLearnedOutputFreeOfRestrictions` — a learned output
  *     carrying ANY policy restriction vocabulary (a prohibition
  *     field or dimension key, e.g. a smuggled `deniedProviders`)
@@ -48,6 +49,13 @@ import type {
 } from "../ports/learned-policy";
 
 function toConsultedPolicy(view: ActiveLearnedPolicyView): ConsultedLearnedPolicy {
+  // Gate 1a: the policies-owned restriction-vocabulary boundary runs
+  // over the RAW learning output FIRST — the projection below copies
+  // only known preference fields, so scanning the raw record is what
+  // catches a compromised/mutated learning module smuggling a
+  // prohibition (LRN-002/AC-2 at the consumer seam).
+  assertLearnedOutputFreeOfRestrictions(view.policy);
+  assertLearnedOutputFreeOfRestrictions(view.publication);
   const preferences: ConsultedLearnedRoutePreference[] = view.policy.preferences.map(
     (preference) => ({
       taskClass: preference.taskClass,
@@ -83,8 +91,8 @@ function toConsultedPolicy(view: ActiveLearnedPolicyView): ConsultedLearnedPolic
     preferences,
     publishedAt: view.publication.publishedAt,
   };
-  // Gate 1: the policies-owned restriction-vocabulary boundary —
-  // a learned output carrying policy vocabulary never crosses.
+  // Gate 1b: the projection is scanned again (defense in depth — the
+  // record that actually reaches the planner ordering input).
   assertLearnedOutputFreeOfRestrictions(consulted);
   // Gate 2: the planning-side anchor validation (versioning basis,
   // publication anchors, population floor, provenance).
