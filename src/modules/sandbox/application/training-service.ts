@@ -1251,7 +1251,14 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       });
     }
     if (isTerminalTrainingStatus(found.status)) {
-      return found; // cancelled/completed/denied: the durable outcome replays
+      // cancelled/completed/denied: the durable outcome replays — a
+      // cancelled/completed row ALSO reconciles its finalization tail
+      // (idempotent per stable key; crash recovery). A denied row has
+      // no tail (no reservation, no allocation).
+      if (found.status === "cancelled" || found.status === "completed") {
+        await reconcileFinalizedTails(found, found.status);
+      }
+      return found;
     }
     if (found.status === "failed") {
       throw new PlatformError({
