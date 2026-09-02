@@ -335,7 +335,7 @@ describe("deterministicization domain: candidate validation", () => {
   test("the candidate identity basis is content-derived: identical basis ⇒ identical object", () => {
     const candidate = validCandidate();
     const basisOne = candidateIdentityBasis(candidate);
-    const basisTwo = candidateIdentityBasis(validCandidate());
+    const basisTwo = candidateIdentityBasis({ ...validCandidate() });
     expect(basisOne).toEqual(basisTwo);
     // any semantic change diverges the basis
     const changed = {
@@ -346,7 +346,8 @@ describe("deterministicization domain: candidate validation", () => {
     // the program source is NOT the basis (the digest is)
     const sameDigestDifferentSource = {
       ...candidate,
-      program: { ...candidate.program, source: "console.log(2)" },
+      program:
+        candidate.program === null ? null : { ...candidate.program, source: "console.log(2)" },
     };
     expect(candidateIdentityBasis(sameDigestDifferentSource)).toEqual(basisOne);
   });
@@ -556,6 +557,8 @@ function telemetryDatum(overrides: {
       evaluatorIds: [],
       passCount: 0,
       failCount: 0,
+      inconclusiveCount: 0,
+      verified: null,
     },
     costMicroUsd: overrides.costMicroUsd ?? "200",
     latencyMs: 150,

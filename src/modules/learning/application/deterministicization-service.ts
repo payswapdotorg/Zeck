@@ -1246,7 +1246,8 @@ export function createDeterministicizationService(
         }
         throw new PlatformError({
           code: "INVALID_STATE_TRANSITION",
-          message: "the candidate is rolled back but carries no rollback decision (inconsistent durable state — fail closed)",
+          message:
+            "the candidate is rolled back but carries no rollback decision (inconsistent durable state — fail closed)",
           details: { candidateId: candidate.candidateId },
         });
       }

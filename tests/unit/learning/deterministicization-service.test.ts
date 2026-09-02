@@ -36,14 +36,11 @@ import { describe, expect, test } from "vitest";
 import {
   createDeterministicizationService,
   createDeterministicizationSignalSource,
-  createInMemoryDeterministicizationStore,
   createNodeDigest,
   type DeterministicizationService,
   type ExecutionOutcomeTelemetry,
   InMemoryDeterministicizationStore,
-  type InMemoryDeterministicizationStore as Store,
 } from "../../../src/modules/learning/public";
-import { PlatformError } from "../../../src/shared/errors";
 
 const APP_ID = "00000000-0000-7000-8000-0000000000f1";
 const OTHER_APP_ID = "00000000-0000-7000-8000-0000000000f9";
@@ -80,6 +77,8 @@ function telemetryPopulation(count: number): ExecutionOutcomeTelemetry[] {
       evaluatorIds: [],
       passCount: 0,
       failCount: 0,
+      inconclusiveCount: 0,
+      verified: null,
     },
     costMicroUsd: "200",
     latencyMs: 150,
@@ -134,7 +133,7 @@ function proposalRequest(overrides: Record<string, unknown> = {}) {
   return {
     applicationId: APP_ID,
     tenantId: TENANT_ID,
-    candidateClass: "deterministic-replacement",
+    candidateClass: "deterministic-replacement" as const,
     subgraph: {
       subgraphId: "sg-normalize-entity",
       stepPath: ["plan", "normalize-entity"],
