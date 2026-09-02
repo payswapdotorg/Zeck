@@ -89,6 +89,7 @@ import {
   ACTION_SIDE_EFFECTS,
   actionConfinementCheck,
   COMPUTER_USE_KEY_PREFIXES,
+  COMPUTER_USE_MODES,
   canonicalComputerUseJson,
   computerUseActionDispatchKey,
   computerUseBudgetReleaseKey,
@@ -1046,9 +1047,31 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     const operationKey = computerUseActionDispatchKey(sessionId, idempotencyKey);
     const actionKey = idempotencyKey;
 
+    /**
+     * Fail-closed replay arbitration: an action key already committed
+     * with a DIFFERENT request (action type, target, input digest or
+     * mode) is key reuse, NOT a replay — IDEMPOTENCY_KEY_REUSED (the
+     * same-key/different-body discipline the session axis enforces).
+     */
+    const assertActionReplayFingerprint = (action: ComputerUseActionRecord): void => {
+      if (
+        action.actionType !== request.actionType ||
+        action.target !== request.target ||
+        action.inputDigest !== deps.digest(inputJson) ||
+        action.mode !== session.currentMode
+      ) {
+        throw new PlatformError({
+          code: "IDEMPOTENCY_KEY_REUSED",
+          message: "action key was already used with a different request",
+          details: { actionId: action.id },
+        });
+      }
+    };
+
     // ----- 2. Idempotent replay (terminal action rows). --------------------
     const existingAction = await store.findActionByKey(applicationId, sessionId, actionKey);
     if (existingAction !== null && existingAction.status !== "dispatching") {
+      assertActionReplayFingerprint(existingAction);
       return actionResultOf(session, existingAction, [], true);
     }
 
@@ -1116,6 +1139,7 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
     if (begun.record.status === "completed") {
       const completed = await store.findActionByKey(applicationId, sessionId, actionKey);
       if (completed !== null) {
+        assertActionReplayFingerprint(completed);
         return actionResultOf(session, completed, [], true);
       }
       await store.failOperation(
@@ -1726,8 +1750,79 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       throw new PlatformError({
         code: "INVALID_STATE_TRANSITION",
         message: `computer-use session is terminal in ${session.status}; no escalation may occur`,
+        details: { sessionId, status: session.status },
       });
     }
+
+    // ----- 0. Committed-escalation replay convergence. --------------------
+    // The escalation ROW is the durable commit point of an escalation
+    // (physical UNIQUE (session, to_mode)). A retry of an already-committed
+    // escalation — a client replay, or a crash AFTER the row landed —
+    // converges on the committed outcome REGARDLESS of the session's
+    // current mode (the stage/ladder guards below describe only NEW
+    // escalations and would otherwise refuse the replay). The convergence
+    // also repairs the mid-crash window between the escalation row and
+    // the session mode move: the row is the truth, the mode move is
+    // convergent side work.
+    const committedEscalation = (await store.listEscalations(applicationId, sessionId)).find(
+      (escalation) => escalation.toMode === request.targetMode,
+    );
+    if (committedEscalation !== undefined) {
+      const current = (await store.findSession(applicationId, sessionId)) ?? session;
+      if (!isTerminalComputerUseSessionStatus(current.status)) {
+        let converged = current;
+        const committedDeclaration = await registry.resolve(committedEscalation.capabilityId);
+        const modeLags =
+          COMPUTER_USE_MODES.indexOf(current.currentMode) <
+          COMPUTER_USE_MODES.indexOf(committedEscalation.toMode);
+        if (modeLags && committedDeclaration !== null) {
+          // The mid-crash window: the row committed but the mode move was
+          // lost — converge it from the recorded escalation.
+          converged = await store.patchSession({
+            applicationId,
+            sessionId,
+            environmentRef: null,
+            environmentOpenedMode: null,
+            currentMode: committedEscalation.toMode,
+            currentCapabilityId: committedEscalation.capabilityId,
+            currentEnvelope: modeContextOf(committedDeclaration),
+            escalationCount: committedEscalation.sequence,
+            updatedAt: iso(),
+          });
+        }
+        if (converged.environmentRef === null) {
+          const declaration =
+            committedDeclaration ?? (await registry.resolve(converged.modeContext.capabilityId));
+          if (declaration === null) {
+            throw new PlatformError({
+              code: "CAPABILITY_UNAVAILABLE",
+              message: `the session's capability ${converged.modeContext.capabilityId} is no longer registered`,
+            });
+          }
+          converged = await openEnvironment(
+            converged,
+            declaration,
+            computerUseEnvOpenKey(sessionId, converged.currentMode),
+            `${COMPUTER_USE_KEY_PREFIXES.envOpenExternal}:${sessionId}:${converged.currentMode}`,
+          );
+        }
+        // Converge the operation row onto the committed outcome.
+        const operation = await store.findOperation(
+          applicationId,
+          computerUseEscalationKey(sessionId, request.targetMode),
+        );
+        if (operation !== null && operation.status === "pending") {
+          await store.completeOperation(
+            applicationId,
+            computerUseEscalationKey(sessionId, request.targetMode),
+            iso(),
+          );
+        }
+      }
+      const replayed = (await store.findSession(applicationId, sessionId)) ?? session;
+      return receiptOf(replayed, true);
+    }
+
     const targetCheck = escalationTargetCheck(session.currentMode, request.targetMode);
     if (!targetCheck.valid) {
       throw new PlatformError({ code: "POLICY_DENIED", message: targetCheck.reason });
@@ -1761,36 +1856,20 @@ export function createComputerUseService(deps: ComputerUseServiceDeps): Computer
       createdAt: iso(),
     });
     if (begun.record.status === "completed") {
-      const existing = await store.listEscalations(applicationId, sessionId);
-      if (existing.some((escalation) => escalation.toMode === request.targetMode)) {
-        const current = await store.findSession(applicationId, sessionId);
-        // Converge the escalated mode's environment open when a prior
-        // process died between the escalation commit and the environment
-        // boundary (the session row is otherwise wedged active with no
-        // environment — the same convergence createSession's replay path
-        // performs).
-        if (
-          current !== null &&
-          current.environmentRef === null &&
-          !isTerminalComputerUseSessionStatus(current.status)
-        ) {
-          const declaration = await registry.resolve(current.modeContext.capabilityId);
-          if (declaration === null) {
-            throw new PlatformError({
-              code: "CAPABILITY_UNAVAILABLE",
-              message: `the session's capability ${current.modeContext.capabilityId} is no longer registered`,
-            });
-          }
-          const withEnvironment = await openEnvironment(
-            current,
-            declaration,
-            computerUseEnvOpenKey(current.id, current.currentMode),
-            `${COMPUTER_USE_KEY_PREFIXES.envOpenExternal}:${current.id}:${current.currentMode}`,
-          );
-          return receiptOf(withEnvironment, true);
-        }
-        return receiptOf(current ?? session, true);
-      }
+      // The operation row says completed but no escalation row exists for
+      // this target mode: durable-state divergence (the escalation row is
+      // the commit point and always precedes the operation completion).
+      await store.failOperation(
+        applicationId,
+        operationKey,
+        "the escalation operation is completed but its escalation row is missing (durable-state divergence)",
+        iso(),
+      );
+      throw new PlatformError({
+        code: "TOOL_ERROR",
+        message:
+          "computer-use escalation state diverged (completed operation without an escalation row)",
+      });
     }
     const escalationId =
       (begun.record.stage?.escalationId as string | undefined) ?? deps.generateId();

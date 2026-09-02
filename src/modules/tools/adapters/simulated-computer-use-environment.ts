@@ -144,8 +144,8 @@ export class SimulatedComputerUseEnvironment implements ComputerUseEnvironment {
   private readonly openRefs = new Map<string, string>();
   private readonly journal: ComputerUseEnvironmentActivityEntry[] = [];
   private readonly host: SimulatedComputerUseHostWorld;
-  private failNextOpen: boolean;
-  private failNextAction: boolean;
+  private failNextOpenFlag: boolean;
+  private failNextActionFlag: boolean;
   private openCounter = 0;
 
   constructor(
@@ -153,8 +153,18 @@ export class SimulatedComputerUseEnvironment implements ComputerUseEnvironment {
     options: SimulatedComputerUseEnvironmentOptions = {},
   ) {
     this.host = host;
-    this.failNextOpen = options.failNextOpen ?? false;
-    this.failNextAction = options.failNextAction ?? false;
+    this.failNextOpenFlag = options.failNextOpen ?? false;
+    this.failNextActionFlag = options.failNextAction ?? false;
+  }
+
+  /** Test seam: inject a one-shot failure into the next action dispatch. */
+  injectNextActionFailure(): void {
+    this.failNextActionFlag = true;
+  }
+
+  /** Test seam: inject a one-shot failure into the next context open. */
+  injectNextOpenFailure(): void {
+    this.failNextOpenFlag = true;
   }
 
   /** The simulated ambient host world (the no-leak proof surface). */
@@ -192,8 +202,8 @@ export class SimulatedComputerUseEnvironment implements ComputerUseEnvironment {
         });
         return { environmentRef, openedMode: request.mode, inheritedHostState: [] };
       }
-      if (this.failNextOpen) {
-        this.failNextOpen = false;
+      if (this.failNextOpenFlag) {
+        this.failNextOpenFlag = false;
         return {
           failureClass: "environment-unavailable",
           message: "the simulated computer-use environment failed to open (injected)",
@@ -266,8 +276,8 @@ export class SimulatedComputerUseEnvironment implements ComputerUseEnvironment {
           result: null,
         };
       }
-      if (this.failNextAction) {
-        this.failNextAction = false;
+      if (this.failNextActionFlag) {
+        this.failNextActionFlag = false;
         return {
           outcome: "failed",
           failure: {
