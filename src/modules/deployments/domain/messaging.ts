@@ -126,17 +126,11 @@ export function isMessagingOrderingMarker(value: string): value is MessagingOrde
 /**
  * The message-ledger row kinds. `user-message` = inbound end-user
  * message (the idempotency ledger rows); `agent-reply` = the governed
- * outbound reply (the send ledger rows); `escalation-notice` = the
- * outbound human-escalation notice; `system-marker` = bounded
+ * outbound reply (the send ledger rows); `system-marker` = bounded
  * internal evidence rows (denials, close markers) — never a second
  * event authority (canonical provenance rides the executions ledger).
  */
-export const MESSAGING_MESSAGE_KINDS = [
-  "user-message",
-  "agent-reply",
-  "escalation-notice",
-  "system-marker",
-] as const;
+export const MESSAGING_MESSAGE_KINDS = ["user-message", "agent-reply", "system-marker"] as const;
 export type MessagingMessageKind = (typeof MESSAGING_MESSAGE_KINDS)[number];
 
 export function isMessagingMessageKind(value: string): value is MessagingMessageKind {
