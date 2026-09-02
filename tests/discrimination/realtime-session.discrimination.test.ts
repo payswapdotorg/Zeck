@@ -767,7 +767,7 @@ describe("discrimination: realtime voice sessions (WORK-024)", () => {
     const mutated = mutateService((content) =>
       content.replace(
         '      const applied = await store.applyGuardedSessionMutation({\n        applicationId: actor.applicationId,\n        sessionId: session.id,\n        expectedStatus: session.status,\n        toStatus: "live",',
-        '      const second = await ledger.openExecution({\n        applicationId: actor.applicationId,\n        tenantId: actor.tenantId,\n        actorId: actor.actorId,\n        environmentId: ENV_REF,\n        task: {},\n      }, `reattach:${idempotencyKey}`);\n      void second;\n      const applied = await store.applyGuardedSessionMutation({\n        applicationId: actor.applicationId,\n        sessionId: session.id,\n        expectedStatus: session.status,\n        toStatus: "live",',
+        '      const second = await ledger.openExecution({\n        applicationId: actor.applicationId,\n        tenantId: actor.tenantId,\n        actorId: actor.actorId,\n        environmentId: ENV_REF,\n        task: {},\n      }, "reattach-second-key");\n      void second;\n      const applied = await store.applyGuardedSessionMutation({\n        applicationId: actor.applicationId,\n        sessionId: session.id,\n        expectedStatus: session.status,\n        toStatus: "live",',
       ),
     );
     expect(violationsOf(mutated)).toContain("reattach-second-execution");
@@ -876,7 +876,7 @@ describe("discrimination: realtime voice sessions (WORK-024)", () => {
         ACTOR,
       ),
     ).rejects.toMatchObject({ code: "INVALID_STATE_TRANSITION" });
-    expect(
+    await expect(
       world.service.ingestInboundEvent(
         userTurn(
           reattached.sessionId,
