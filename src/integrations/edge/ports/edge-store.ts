@@ -381,6 +381,18 @@ export interface EdgeStore {
   insertApproval(input: EdgeApprovalInsertInput): Promise<EdgeApprovalInsertOutcome>;
   findApproval(applicationId: string, approvalId: string): Promise<EdgeApprovalRecord | null>;
   findApprovalByKey(applicationId: string, approvalKey: string): Promise<EdgeApprovalRecord | null>;
+  /**
+   * The PENDING approvals gating one execution (optionally excluding one
+   * id). The multi-gate discipline: an execution may hold SEVERAL live
+   * human gates at once and the executions lifecycle holds a single
+   * WAITING_HUMAN state for all of them — resume fires only when the
+   * LAST live gate closes (service-side liveness filter on expiresAt).
+   */
+  listPendingApprovalsForExecution(
+    applicationId: string,
+    executionId: string,
+    excludeApprovalId?: string,
+  ): Promise<readonly EdgeApprovalRecord[]>;
   applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord>;
   /** The write-once ledger-sequence bindings (NULL -> value; never moved). */
   bindApprovalLedgerSequences(

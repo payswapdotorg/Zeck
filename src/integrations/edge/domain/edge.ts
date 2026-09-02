@@ -363,10 +363,10 @@ export function isEdgeDisconnectedPolicy(value: string): value is EdgeDisconnect
 export interface EdgeSafetyEnvelopeContent {
   /** The actuator channels the envelope authorizes (>= 1). */
   readonly channels: readonly EdgeActuatorChannel[];
-  /** Per-channel signed magnitude bounds on the normalized scale. */
-  readonly magnitudeBounds: Readonly<Record<EdgeActuatorChannel, [number, number]>>;
-  /** Per-channel actuation rate bound (actuations per minute). */
-  readonly rateBoundsPerMinute: Readonly<Record<EdgeActuatorChannel, number>>;
+  /** Per-channel signed magnitude bounds on the normalized scale (REQUIRED for every listed channel). */
+  readonly magnitudeBounds: Readonly<Partial<Record<EdgeActuatorChannel, [number, number]>>>;
+  /** Per-channel actuation rate bound (actuations per minute; REQUIRED for every listed channel). */
+  readonly rateBoundsPerMinute: Readonly<Partial<Record<EdgeActuatorChannel, number>>>;
   /** The window in which commands under this envelope are valid. */
   readonly notBefore: string;
   readonly notAfter: string;
@@ -1408,17 +1408,27 @@ export function edgeDeviceFingerprint(request: EdgeDeviceRegistrationRequest): s
 }
 
 export function edgeEnvelopeFingerprint(request: EdgeEnvelopeAdmissionRequest): string {
+  // NOTE: the approval id is deliberately NOT part of the subject
+  // fingerprint — the approval BINDS to the subject shape; including the
+  // approval's own identity would make the binding circular (the
+  // approval id is generated at approval-insert time, after the caller
+  // computed the subject fingerprint it binds to). The full binding
+  // chain is re-validated at admission (kind + fingerprint + execution
+  // + device).
   return fingerprintOf({
     executionId: request.executionId,
     deviceId: request.deviceId,
     content: request.content,
     costCeilingMicroUsd: request.costCeilingMicroUsd,
-    approvalId: request.approvalId,
     supersedesEnvelopeId: request.supersedesEnvelopeId,
   });
 }
 
 export function edgeCommandFingerprint(request: EdgeCommandRequest): string {
+  // NOTE: the approval id is deliberately NOT part of the subject
+  // fingerprint (same circularity note as the envelope fingerprint): the
+  // approval binds to the FULL command shape + execution + device; the
+  // command row records which approval authorized it.
   return fingerprintOf({
     executionId: request.executionId,
     deviceId: request.deviceId,
@@ -1430,7 +1440,6 @@ export function edgeCommandFingerprint(request: EdgeCommandRequest): string {
     notBefore: request.notBefore,
     notAfter: request.notAfter,
     estimatedMicroUsd: request.estimatedMicroUsd,
-    approvalId: request.approvalId,
   });
 }
 

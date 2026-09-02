@@ -209,6 +209,22 @@ export class InMemoryEdgeStore implements EdgeStore {
     return row === undefined ? null : { ...row };
   }
 
+  async listPendingApprovalsForExecution(
+    applicationId: string,
+    executionId: string,
+    excludeApprovalId?: string,
+  ): Promise<readonly EdgeApprovalRecord[]> {
+    return this.approvals
+      .filter(
+        (row) =>
+          row.applicationId === applicationId &&
+          row.executionId === executionId &&
+          row.status === "pending" &&
+          row.id !== excludeApprovalId,
+      )
+      .map((row) => ({ ...row }));
+  }
+
   async applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord> {
     const row = this.approvals.find(
       (entry) => entry.applicationId === input.applicationId && entry.id === input.approvalId,

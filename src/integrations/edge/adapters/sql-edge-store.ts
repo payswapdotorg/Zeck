@@ -764,6 +764,20 @@ RETURNING ${APPROVAL_COLUMNS}`,
     ]);
   }
 
+  async listPendingApprovalsForExecution(
+    applicationId: string,
+    executionId: string,
+    excludeApprovalId?: string,
+  ): Promise<readonly EdgeApprovalRecord[]> {
+    const result = await this.db.execute<ApprovalRow>({
+      sql: `SELECT ${APPROVAL_COLUMNS} FROM edge.approvals WHERE application_id = $1 AND execution_id = $2 AND status = 'pending'`,
+      parameters: [applicationId, executionId],
+    });
+    return result.rows
+      .filter((row) => row.id !== excludeApprovalId)
+      .map((row) => toApprovalRecord(row));
+  }
+
   async applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord> {
     try {
       const result = await this.db.execute<ApprovalRow>({

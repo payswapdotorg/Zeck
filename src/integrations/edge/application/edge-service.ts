@@ -481,6 +481,44 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     return { ok: true };
   };
 
+  /**
+   * The multi-gate discipline for the executions human-gate lifecycle.
+   * An execution may hold SEVERAL live edge approvals at once (an
+   * envelope admission AND a commanded physical write, or a re-request
+   * after a denial); the executions lifecycle holds a single
+   * WAITING_HUMAN state for ALL of them:
+   *
+   *   - `waitHuman` is applied only when the execution is NOT already
+   *     waiting (a sibling gate already holds the state, or a crashed
+   *     request already applied this very transition — both replay as a
+   *     skip, never as a second illegal WAITING_HUMAN -> WAITING_HUMAN
+   *     transition);
+   *   - `resume` fires only when the decision being applied closed the
+   *     LAST live gate: with any sibling live pending gate still open the
+   *     execution STAYS WAITING_HUMAN (a partial resume would bypass a
+   *     still-open human approval, which AC-4 forbids).
+   */
+  const shouldApplyWaitHuman = (execution: {
+    readonly status: string;
+  }): "apply" | "already-waiting" =>
+    execution.status === "WAITING_HUMAN" ? "already-waiting" : "apply";
+
+  const hasLiveSiblingGates = async (
+    applicationId: string,
+    executionId: string,
+    excludeApprovalId: string,
+  ): Promise<boolean> => {
+    const pending = await store.listPendingApprovalsForExecution(
+      applicationId,
+      executionId,
+      excludeApprovalId,
+    );
+    const now = iso();
+    return pending.some(
+      (approval) => approval.expiresAt === null || Date.parse(approval.expiresAt) > Date.parse(now),
+    );
+  };
+
   const policyAdmit = async (request: {
     readonly tenantId: string;
     readonly applicationId: string;
@@ -667,6 +705,67 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     };
   };
 
+  /**
+   * The envelope fail-safe of a revoked device identity: withdraw the
+   * still-admitted envelope (fail-safe), invalidate every in-flight
+   * authorized command under it (release the wallet holds) and project
+   * the withdrawal to the local controller (keyed exactly-once).
+   */
+  const failSafeEnvelopeOfRevokedDevice = async (
+    input: {
+      readonly applicationId: string;
+      readonly actor: { readonly actorId: string; readonly tenantId: string };
+      readonly deviceId: string;
+      readonly reason: string;
+    },
+    active: EdgeEnvelopeRecord,
+  ): Promise<void> => {
+    const envelopeRevoked = await store.applyGuardedEnvelopeRevocation({
+      applicationId: input.applicationId,
+      envelopeId: active.id,
+      expectedStatus: "admitted",
+      reason: `device revoked: ${input.reason}`.slice(0, 500),
+      revokedAt: iso(),
+    });
+    if (envelopeRevoked.status === "rejected") {
+      return;
+    }
+    const inFlight = await store.listCommandsByEnvelope(input.applicationId, active.id);
+    for (const command of inFlight) {
+      if (command.status === "authorized") {
+        const invalidated = await store.finalizeCommand({
+          applicationId: input.applicationId,
+          commandId: command.id,
+          status: "invalidated",
+          failureClass: "device-revoked",
+          failureMessage: `the device identity was revoked before dispatch: ${input.reason}`.slice(
+            0,
+            512,
+          ),
+          dispatchDigest: null,
+          usageMicroUsd: null,
+          ledgerResultSequence: null,
+          dispatchedAt: null,
+          settledAt: null,
+          reconciledAt: null,
+        });
+        await releaseCommandBudget(invalidated);
+      }
+    }
+    await controller.applyEnvelope(
+      {
+        applicationId: input.applicationId,
+        tenantId: active.tenantId,
+        deviceId: active.deviceId,
+        envelopeId: active.id,
+        status: "revoked",
+        contentDigest: active.contentDigest,
+        content: active.content,
+      },
+      edgeEnvelopeProjectExternalKey(active.id, "revoked"),
+    );
+  };
+
   // -----------------------------------------------------------------------
   // revokeDevice
   // -----------------------------------------------------------------------
@@ -682,9 +781,54 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
   ): Promise<EdgeDeviceReceipt> => {
     requireReason(input.reason, "edge device revocation");
     requireKey(idempotencyKey, "edge device revocation");
-    const device = await boundDevice(input.applicationId, input.deviceId, input.actor.tenantId);
+    const found = await store.findDevice(input.applicationId, input.deviceId);
+    if (found === null) {
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message:
+          "edge device not found in this application (missing or owned by another application)",
+        details: { deviceId: input.deviceId },
+      });
+    }
+    if (found.tenantId !== input.actor.tenantId) {
+      throw new PlatformError({
+        code: "TENANT_SCOPE_VIOLATION",
+        message: "edge device belongs to a different tenant",
+        details: { deviceId: input.deviceId },
+      });
+    }
 
     const operationKey = edgeDeviceRevokeOperationKey(idempotencyKey);
+    if (found.status === "revoked") {
+      // Converged replay (or the crash window between the device
+      // revocation and the envelope fail-safe): withdraw any still-active
+      // envelope — keyed, idempotent — and complete the operation.
+      const active = await store.findActiveEnvelopeForDevice(input.applicationId, found.id);
+      if (active !== null) {
+        await failSafeEnvelopeOfRevokedDevice(input, active);
+      }
+      await store.beginEdgeOperation({
+        operationId: deps.generateId(),
+        applicationId: input.applicationId,
+        tenantId: input.actor.tenantId,
+        deviceId: found.id,
+        executionId: null,
+        operationKind: "device-revoke",
+        operationKey,
+        requestFingerprint: deps.digest(`${found.id}:${input.reason}`),
+        createdAt: iso(),
+      });
+      await completeClaim(input.applicationId, operationKey);
+      return {
+        deviceId: found.id,
+        applicationId: found.applicationId,
+        tenantId: found.tenantId,
+        status: found.status,
+        replayed: true,
+      };
+    }
+    const device = found;
+
     await store.beginEdgeOperation({
       operationId: deps.generateId(),
       applicationId: input.applicationId,
@@ -729,47 +873,7 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     // could ever dispatch — its wallet hold released).
     const active = await store.findActiveEnvelopeForDevice(input.applicationId, device.id);
     if (active !== null) {
-      const envelopeRevoked = await store.applyGuardedEnvelopeRevocation({
-        applicationId: input.applicationId,
-        envelopeId: active.id,
-        expectedStatus: "admitted",
-        reason: `device revoked: ${input.reason}`.slice(0, 500),
-        revokedAt: iso(),
-      });
-      if (envelopeRevoked.status !== "rejected") {
-        const inFlight = await store.listCommandsByEnvelope(input.applicationId, active.id);
-        for (const command of inFlight) {
-          if (command.status === "authorized") {
-            const invalidated = await store.finalizeCommand({
-              applicationId: input.applicationId,
-              commandId: command.id,
-              status: "invalidated",
-              failureClass: "device-revoked",
-              failureMessage:
-                `the device identity was revoked before dispatch: ${input.reason}`.slice(0, 512),
-              dispatchDigest: null,
-              usageMicroUsd: null,
-              ledgerResultSequence: null,
-              dispatchedAt: null,
-              settledAt: null,
-              reconciledAt: null,
-            });
-            await releaseCommandBudget(invalidated);
-          }
-        }
-        await controller.applyEnvelope(
-          {
-            applicationId: input.applicationId,
-            tenantId: device.tenantId,
-            deviceId: device.id,
-            envelopeId: active.id,
-            status: "revoked",
-            contentDigest: active.contentDigest,
-            content: active.content,
-          },
-          edgeEnvelopeProjectExternalKey(active.id, "revoked"),
-        );
-      }
+      await failSafeEnvelopeOfRevokedDevice(input, active);
     }
 
     await completeClaim(input.applicationId, operationKey);
@@ -844,22 +948,32 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
     const existing = await store.findApprovalByKey(request.applicationId, idempotencyKey);
     if (existing !== null) {
       // Crash-window convergence: a process that died between the insert
-      // and the wait-human transition converges it here (keyed).
+      // and the wait-human transition converges it here (keyed). The
+      // multi-gate discipline: the transition is applied only when the
+      // execution is NOT already waiting (this very wait already
+      // happened, or a sibling gate holds the state — both replay as a
+      // skip; the unbound sequence stays NULL and re-converges stably).
       if (existing.ledgerWaitSequence === null) {
-        const wait = await ledger.waitHuman(
-          {
-            applicationId: existing.applicationId,
-            tenantId: existing.tenantId,
-            actorId: request.actor.actorId,
-            executionId: existing.executionId,
-            reason: `edge ${existing.subjectKind} approval ${existing.id}`,
-            reference: { approvalId: existing.id, subjectKind: existing.subjectKind },
-          },
-          edgeLedgerEventKey(existing.id, "approval-wait-human"),
+        const executionNow = await ledger.getExecution(
+          existing.applicationId,
+          existing.executionId,
         );
-        await store.bindApprovalLedgerSequences(existing.applicationId, existing.id, {
-          waitSequence: wait.sequence,
-        });
+        if (executionNow !== null && shouldApplyWaitHuman(executionNow) === "apply") {
+          const wait = await ledger.waitHuman(
+            {
+              applicationId: existing.applicationId,
+              tenantId: existing.tenantId,
+              actorId: request.actor.actorId,
+              executionId: existing.executionId,
+              reason: `edge ${existing.subjectKind} approval ${existing.id}`,
+              reference: { approvalId: existing.id, subjectKind: existing.subjectKind },
+            },
+            edgeLedgerEventKey(existing.id, "approval-wait-human"),
+          );
+          await store.bindApprovalLedgerSequences(existing.applicationId, existing.id, {
+            waitSequence: wait.sequence,
+          });
+        }
       }
       return {
         approvalId: existing.id,
@@ -871,7 +985,11 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       };
     }
 
-    await boundExecution(request.applicationId, request.executionId, request.actor.tenantId);
+    const execution = await boundExecution(
+      request.applicationId,
+      request.executionId,
+      request.actor.tenantId,
+    );
     const device = await boundDevice(
       request.applicationId,
       request.deviceId,
@@ -910,21 +1028,27 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
 
     // The human gate manifests on the executions lifecycle through the
     // PUBLIC transition surface (wait-human) — the ONLY way this
-    // integration touches execution status.
-    const wait = await ledger.waitHuman(
-      {
-        applicationId: request.applicationId,
-        tenantId: request.actor.tenantId,
-        actorId: request.actor.actorId,
-        executionId: request.executionId,
-        reason: `edge ${request.subjectKind} approval ${record.id}`,
-        reference: { approvalId: record.id, subjectKind: request.subjectKind },
-      },
-      edgeLedgerEventKey(record.id, "approval-wait-human"),
-    );
-    await store.bindApprovalLedgerSequences(request.applicationId, record.id, {
-      waitSequence: wait.sequence,
-    });
+    // integration touches execution status. Multi-gate discipline: an
+    // execution that is ALREADY waiting (a sibling gate, or this very
+    // transition applied before a crash) holds the gated state for this
+    // approval too — no second WAITING_HUMAN -> WAITING_HUMAN
+    // transition is attempted.
+    if (shouldApplyWaitHuman(execution) === "apply") {
+      const wait = await ledger.waitHuman(
+        {
+          applicationId: request.applicationId,
+          tenantId: request.actor.tenantId,
+          actorId: request.actor.actorId,
+          executionId: request.executionId,
+          reason: `edge ${request.subjectKind} approval ${record.id}`,
+          reference: { approvalId: record.id, subjectKind: request.subjectKind },
+        },
+        edgeLedgerEventKey(record.id, "approval-wait-human"),
+      );
+      await store.bindApprovalLedgerSequences(request.applicationId, record.id, {
+        waitSequence: wait.sequence,
+      });
+    }
 
     await appendEvent(
       record.applicationId,
@@ -977,21 +1101,34 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       if (approval.decision === input.decision && approval.approverId === input.approverId) {
         // Crash-window convergence: a process that died between the
         // decision and the resume transition converges it here (keyed).
-        if (approval.ledgerResumeSequence === null) {
-          const resume = await ledger.resume(
-            {
-              applicationId: approval.applicationId,
-              tenantId: approval.tenantId,
-              actorId: input.actor.actorId,
-              executionId: approval.executionId,
-              reason: `edge ${approval.subjectKind} approval ${approval.id} ${approval.decision}`,
-              reference: { approvalId: approval.id, decision: approval.decision },
-            },
-            edgeLedgerEventKey(approval.id, "approval-resume"),
+        // Multi-gate discipline: the resume fires only when THIS
+        // decision closed the last live gate AND the execution is still
+        // waiting (a converged resume, a sibling gate still open, or a
+        // terminal execution all replay as a stable skip).
+        if (
+          approval.ledgerResumeSequence === null &&
+          !(await hasLiveSiblingGates(approval.applicationId, approval.executionId, approval.id))
+        ) {
+          const executionNow = await ledger.getExecution(
+            approval.applicationId,
+            approval.executionId,
           );
-          await store.bindApprovalLedgerSequences(approval.applicationId, approval.id, {
-            resumeSequence: resume.sequence,
-          });
+          if (executionNow !== null && executionNow.status === "WAITING_HUMAN") {
+            const resume = await ledger.resume(
+              {
+                applicationId: approval.applicationId,
+                tenantId: approval.tenantId,
+                actorId: input.actor.actorId,
+                executionId: approval.executionId,
+                reason: `edge ${approval.subjectKind} approval ${approval.id} ${approval.decision}`,
+                reference: { approvalId: approval.id, decision: approval.decision },
+              },
+              edgeLedgerEventKey(approval.id, "approval-resume"),
+            );
+            await store.bindApprovalLedgerSequences(approval.applicationId, approval.id, {
+              resumeSequence: resume.sequence,
+            });
+          }
           await appendEvent(
             approval.applicationId,
             approval.executionId,
@@ -1052,21 +1189,39 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       decidedAt: iso(),
     });
 
-    // Resume the gated execution through the PUBLIC transition surface.
-    const resume = await ledger.resume(
-      {
-        applicationId: input.applicationId,
-        tenantId: input.actor.tenantId,
-        actorId: input.actor.actorId,
-        executionId: approval.executionId,
-        reason: `edge ${approval.subjectKind} approval ${approval.id} ${input.decision}`,
-        reference: { approvalId: approval.id, decision: input.decision },
-      },
-      edgeLedgerEventKey(approval.id, "approval-resume"),
+    // Resume the gated execution through the PUBLIC transition surface —
+    // but ONLY when this decision closed the LAST live gate on the
+    // execution (multi-gate discipline): with a sibling live pending
+    // approval still open the execution STAYS WAITING_HUMAN (a partial
+    // resume would bypass a still-open human approval, which AC-4
+    // forbids); and only when the execution is actually waiting (a
+    // converged or terminal execution resumes nothing).
+    const siblingGatesOpen = await hasLiveSiblingGates(
+      input.applicationId,
+      approval.executionId,
+      approval.id,
     );
-    await store.bindApprovalLedgerSequences(input.applicationId, approval.id, {
-      resumeSequence: resume.sequence,
-    });
+    const executionForResume = await ledger.getExecution(input.applicationId, approval.executionId);
+    if (
+      !siblingGatesOpen &&
+      executionForResume !== null &&
+      executionForResume.status === "WAITING_HUMAN"
+    ) {
+      const resume = await ledger.resume(
+        {
+          applicationId: input.applicationId,
+          tenantId: input.actor.tenantId,
+          actorId: input.actor.actorId,
+          executionId: approval.executionId,
+          reason: `edge ${approval.subjectKind} approval ${approval.id} ${input.decision}`,
+          reference: { approvalId: approval.id, decision: input.decision },
+        },
+        edgeLedgerEventKey(approval.id, "approval-resume"),
+      );
+      await store.bindApprovalLedgerSequences(input.applicationId, approval.id, {
+        resumeSequence: resume.sequence,
+      });
+    }
 
     await appendEvent(
       input.applicationId,
@@ -2584,7 +2739,11 @@ export function createEdgeService(deps: EdgeServiceDeps): EdgeService {
       violationKind,
       executionId: command?.executionId ?? null,
     });
-    if (command !== null) {
+    if (command !== null && command.status === "dispatched") {
+      // Only a dispatched row may conflict; terminal rows (denied /
+      // settled / invalidated / conflicted) are immutable — the violation
+      // evidence is the append-only actuation event + the conflict
+      // reconciliation, never a row mutation.
       await store.conflictCommand(command.applicationId, command.id, iso());
       await releaseCommandBudget(command);
     }
