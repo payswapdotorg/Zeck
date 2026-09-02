@@ -128,26 +128,6 @@ function sectionOf(source: string, startMarker: string, endMarker: string): stri
   return source.slice(start, end === -1 ? source.length : end);
 }
 
-const SUBMIT_BODY = sectionOf(
-  SERVICE_SOURCE,
-  "const submitJobInternal = async (",
-  "  // -------------------------------------------------------------------------",
-);
-const DISPATCH_BODY = sectionOf(
-  SERVICE_SOURCE,
-  "const ensureDispatched = async (",
-  "  // -------------------------------------------------------------------------",
-);
-const COMPLETION_BODY = sectionOf(
-  SERVICE_SOURCE,
-  "const completeJob = async (",
-  "  // -------------------------------------------------------------------------",
-);
-const CALLBACK_BODY = methodBody(SERVICE_SOURCE, "async applyCallback(");
-const DERIVE_BODY = methodBody(SERVICE_SOURCE, "async deriveVariant(");
-const CANCEL_BODY = methodBody(SERVICE_SOURCE, "async cancelJob(");
-const RESOLVE_JOB_BODY = sectionOf(SERVICE_SOURCE, "const resolveJob = async (", "  /**");
-
 interface MediaRules {
   readonly service: string;
   readonly submitBody: string;
@@ -1198,6 +1178,7 @@ describe("discrimination: the provider-neutral media generation boundaries (WORK
     const mutated = mutateService((content) =>
       content.replace(
         "idempotencyKey: mediaRailDispatchKey(job.id),",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: the mutant text embeds a template placeholder by design
         "idempotencyKey: `${job.id}:${Date.now()}`,",
       ),
     );
@@ -1208,6 +1189,7 @@ describe("discrimination: the provider-neutral media generation boundaries (WORK
     const mutated = mutateService((content) =>
       content.replace(
         "idempotencyKey: mediaRailCancelKey(job.id),",
+        // biome-ignore lint/suspicious/noTemplateCurlyInString: the mutant text embeds a template placeholder by design
         "idempotencyKey: `${job.id}:${Date.now()}`,",
       ),
     );
