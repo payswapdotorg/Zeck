@@ -773,6 +773,14 @@ WHERE application_id = $1 AND conversation_id = $2 ORDER BY event_seq`,
     readonly deliveredAt: string | null;
   }) {
     try {
+      // STRICTLY-FORWARD projection move: the UPDATE matches a row only
+      // when the target status is a legal FORWARD move from the current
+      // one (NULL → any, pending → sent|terminal, sent → terminal). A
+      // same-value re-apply or a move touching an ALREADY-TERMINAL row
+      // does not match — it converges through the re-read below (the
+      // in-memory store's exact semantics; this is what makes a
+      // crash-resume after the projection move CONVERGE instead of
+      // tripping the terminal-immutability trigger on a no-op).
       const result = await this.db.execute<MessageRow>({
         sql: `UPDATE deployments.messaging_messages
 SET delivery_status = $1,
@@ -780,7 +788,7 @@ SET delivery_status = $1,
     ledger_sequence = COALESCE($3, ledger_sequence)
 WHERE application_id = $4 AND conversation_id = $5 AND id = $6 AND kind = 'agent-reply'
   AND ($7::text IS NULL OR channel_message_ref = $7)
-  AND (delivery_status IS NULL OR delivery_status = $1
+  AND ((delivery_status IS NULL AND $1 IN ('pending','sent','delivered','undelivered'))
        OR (delivery_status = 'pending' AND $1 IN ('sent','delivered','undelivered'))
        OR (delivery_status = 'sent' AND $1 IN ('delivered','undelivered')))
 RETURNING ${MESSAGE_COLUMNS}`,

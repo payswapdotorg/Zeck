@@ -203,6 +203,8 @@ export interface MessagingPgWorld {
   readonly service: MessagingConversationService;
   readonly rail: ReturnType<typeof createInProcessMessagingRail>;
   readonly admissions: MessagingAdmissions;
+  /** The REAL policies authority behind the policy admission seam. */
+  readonly policyAuthority: ReturnType<typeof createPolicyAuthority>;
   readonly actor: () => MessagingActor;
   /**
    * Boot (or re-boot) the messaging conversation service over the
@@ -412,6 +414,7 @@ export async function seedMessagingWorld(db: DatabasePort): Promise<MessagingPgW
     service: boot().service,
     rail,
     admissions,
+    policyAuthority: authority,
     actor: () => ({
       actorId: base.actor().actorId,
       applicationId: base.applicationId,
