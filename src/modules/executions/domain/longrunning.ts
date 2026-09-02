@@ -34,6 +34,7 @@ export const LONG_RUNNING_OPERATION_KINDS = [
   "resume",
   "interrupt",
   "terminate",
+  "wakeup-schedule",
   "wakeup-apply",
 ] as const;
 
