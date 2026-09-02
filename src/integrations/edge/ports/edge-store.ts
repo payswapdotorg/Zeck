@@ -211,6 +211,7 @@ export interface EdgeCommandInsertInput {
   readonly channel: string;
   readonly magnitude: number;
   readonly payloadDigest: string;
+  readonly estimatedMicroUsd: string;
   readonly notBefore: string;
   readonly notAfter: string;
   readonly approvalId: string | null;
@@ -333,6 +334,7 @@ export interface EdgeOperationBeginInput {
   readonly operationKind:
     | "device-register"
     | "device-revoke"
+    | "health-report"
     | "envelope-admit"
     | "envelope-revoke"
     | "command-submit"
@@ -386,6 +388,15 @@ export interface EdgeStore {
     approvalKey: string,
   ): Promise<EdgeApprovalRecord | null>;
   applyApprovalDecision(input: EdgeApprovalDecisionOutcome): Promise<EdgeApprovalRecord>;
+  /** The write-once ledger-sequence bindings (NULL -> value; never moved). */
+  bindApprovalLedgerSequences(
+    applicationId: string,
+    approvalId: string,
+    sequences: {
+      readonly waitSequence?: number;
+      readonly resumeSequence?: number;
+    },
+  ): Promise<EdgeApprovalRecord>;
 
   // -- envelopes ---------------------------------------------------------------
   insertEnvelope(input: EdgeEnvelopeInsertInput): Promise<EdgeEnvelopeInsertOutcome>;
@@ -398,6 +409,11 @@ export interface EdgeStore {
     applicationId: string,
     deviceId: string,
   ): Promise<EdgeEnvelopeRecord | null>;
+  /** Every envelope that ever governed the device (reconciliation classification). */
+  listEnvelopesByDevice(
+    applicationId: string,
+    deviceId: string,
+  ): Promise<readonly EdgeEnvelopeRecord[]>;
   applyEnvelopeSupersede(input: EdgeEnvelopeSupersedeInput): Promise<EdgeEnvelopeRecord>;
   applyGuardedEnvelopeRevocation(
     input: EdgeEnvelopeRevokeInput,
@@ -448,6 +464,12 @@ export interface EdgeStore {
   insertSensorObservation(
     input: EdgeSensorObservationInsertInput,
   ): Promise<EdgeSensorObservationInsertOutcome>;
+  /** The write-once ledger-sequence binding (NULL -> value; never moved). */
+  bindSensorObservationLedgerSequence(
+    applicationId: string,
+    observationId: string,
+    ledgerSequence: number,
+  ): Promise<EdgeSensorObservationRecord>;
   listSensorObservations(
     applicationId: string,
     deviceId: string,

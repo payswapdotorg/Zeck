@@ -541,6 +541,8 @@ export interface EdgeCommandRecord {
   readonly channel: EdgeActuatorChannel;
   readonly magnitude: number;
   readonly payloadDigest: string;
+  /** The declared spend estimate (integer micro-USD string; "0" = uncosted). */
+  readonly estimatedMicroUsd: string;
   readonly notBefore: string;
   readonly notAfter: string;
   readonly status: EdgeCommandStatus;
@@ -1265,6 +1267,7 @@ export function edgeCommandFreshness(
 export const EDGE_OPERATION_KINDS = [
   "device-register",
   "device-revoke",
+  "health-report",
   "envelope-admit",
   "envelope-revoke",
   "command-submit",
