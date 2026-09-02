@@ -2060,6 +2060,16 @@ export function createMediaGenerationService(deps: MediaGenerationServiceDeps) {
     ): Promise<MediaJobCancelOutcome> {
       const boundedCause = requireCause(cause);
       const job = await resolveJob(actor, jobId);
+      if (job.status === "cancelled") {
+        // Idempotent convergence: the cancellation already happened —
+        // the repeated call replays the terminal outcome.
+        return {
+          jobId: job.id,
+          status: job.status,
+          executionId: job.executionId,
+          replayed: true,
+        };
+      }
       if (isTerminalMediaJobStatus(job.status)) {
         throw new PlatformError({
           code: "INVALID_STATE_TRANSITION",
