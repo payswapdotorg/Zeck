@@ -124,6 +124,17 @@ export interface TrainingServiceDeps {
   readonly now: () => Date;
   /** The run lease duration (default 15 minutes). */
   readonly leaseDurationMs?: number;
+  /**
+   * The per-PROCESS worker identity discriminator (the lease's mutual
+   * exclusion across processes): when provided, the deterministic
+   * run-worker id of one workload is suffixed with it, so two live
+   * processes driving the same workload contend on the lease — one
+   * owns the run, the others fail closed typed (the P13/P14
+   * same-key-convergence proofs found the unsuffixed owner let every
+   * process claim to be "the same worker", defeating the exclusion and
+   * racing the checkpoint sequence allocation).
+   */
+  readonly workerInstanceId?: string;
 }
 
 export interface TrainingActor {
@@ -210,8 +221,19 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
   } = deps;
   const iso = () => deps.now().toISOString();
   const leaseDurationMs = deps.leaseDurationMs ?? 15 * 60 * 1000;
-  /** The deterministic run-worker identity of one workload. */
+  const workerSuffix = deps.workerInstanceId === undefined ? "" : `:${deps.workerInstanceId}`;
+  /**
+   * The STABLE run-worker identity of one workload (the checkpoint
+   * provenance writer `recordedBy` — it MUST NOT vary per process or
+   * the material checkpoint identity would diverge across re-drives).
+   */
   const workerIdOf = (workloadKey: string): string => `training-worker:${workloadKey}`;
+  /**
+   * The LEASE OWNER identity (per process — the mutual-exclusion
+   * discriminator; the stable worker id plus this process's suffix).
+   */
+  const leaseOwnerOf = (workloadKey: string): string =>
+    `training-worker:${workloadKey}${workerSuffix}`;
 
   /**
    * Release the run lease ONLY when a lease row exists (a workload
@@ -916,7 +938,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       applicationId: record.applicationId,
       workloadId: record.id,
       tenantId: record.tenantId,
-      ownerId: workerIdOf(record.workloadKey),
+      ownerId: leaseOwnerOf(record.workloadKey),
       now: iso(),
       leaseDurationMs,
     });
@@ -1566,7 +1588,7 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       applicationId: found.applicationId,
       workloadId: found.id,
       tenantId: found.tenantId,
-      ownerId: workerIdOf(found.workloadKey),
+      ownerId: leaseOwnerOf(found.workloadKey),
       now: iso(),
       leaseDurationMs,
     });
@@ -1773,7 +1795,20 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       });
     }
     if (found.verifiedReleaseAt !== null) {
-      return found; // the release binding is write-once: replay it
+      // The release binding is write-once: replay it — AND reconcile the
+      // release operation row (a crash between the binding and the
+      // operation completion — the P12 window — left it PENDING; the
+      // terminal replay completes it idempotently per its stable key).
+      const replayKey = trainingOperationKey("release", `${found.workloadKey}:${idempotencyKey}`);
+      const existingOp = await store.findTrainingOperation(found.applicationId, replayKey);
+      if (existingOp !== null && existingOp.status === "pending") {
+        await store.completeTrainingOperation({
+          applicationId: found.applicationId,
+          operationKey: replayKey,
+          now: iso(),
+        });
+      }
+      return found;
     }
 
     // The release operation is keyed per CALLER REQUEST (workload key +

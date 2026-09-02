@@ -488,7 +488,10 @@ export async function seedTrainingWorld(
     // A NEW training service instance over the SURVIVING SQL store +
     // the frozen executions/budgets/verification authorities (the
     // process-local composition of the durable modules), wrapped by
-    // the injector.
+    // the injector. The instance carries a FRESH worker identity
+    // (the lease's mutual exclusion across processes: concurrent
+    // processes driving the same workload contend — one owns the run,
+    // the others fail closed typed).
     const storeProcess = crashableSeam(store, "store", point);
     const executionsProcess = crashableSeam(executionService, "executions", point);
     const budgetsProcess = crashableSeam(budgets, "budgets", point);
@@ -506,6 +509,7 @@ export async function seedTrainingWorld(
       generateId,
       now,
       leaseDurationMs: 60_000,
+      workerInstanceId: generateId(),
     });
     return {
       service,
