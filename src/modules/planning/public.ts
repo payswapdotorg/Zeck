@@ -282,6 +282,7 @@ export type {
 // Adapters: node digest + in-memory catalog + composition-fed route table.
 export {
   buildCompositionConsultation,
+  buildDeterministicizationConsultation,
   buildLearnedPolicyConsultation,
   buildLearningConsultation,
   buildOpportunityConsultation,
@@ -297,7 +298,6 @@ export {
   CONSULTED_OPPORTUNITY_CLASS,
   CONSULTED_SIGNAL_CLASS,
   canonicalDecisionForm,
-  buildDeterministicizationConsultation,
   canonicalPlanForm,
   compareCheapFirst,
   compositionAllowedByPolicy,
