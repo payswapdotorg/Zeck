@@ -33,6 +33,12 @@ import type {
   FactsCheck,
 } from "./domain/admission";
 import { evaluateDispatchFacts, evaluateExecutionFacts } from "./domain/admission";
+import {
+  assertLearnedOutputFreeOfRestrictions,
+  learnedOutputRestrictionViolations,
+  RESTRICTION_DIMENSION_VOCABULARY,
+  RESTRICTION_FIELD_VOCABULARY,
+} from "./domain/learned-output-boundary";
 import type {
   AutonomyMode,
   AutonomyRestriction,
@@ -143,6 +149,7 @@ export type {
 };
 export {
   AUTONOMY_MODES,
+  assertLearnedOutputFreeOfRestrictions,
   canonicalPolicyJson,
   checkMonotonicTightening,
   createDispatchAdmission,
@@ -156,9 +163,12 @@ export {
   InMemoryPolicyStore,
   ISOLATION_LEVELS,
   isEmptyRestrictionSet,
+  learnedOutputRestrictionViolations,
   nodePolicyHasher,
   POLICY_DIMENSIONS,
   POLICY_SCOPES,
+  RESTRICTION_DIMENSION_VOCABULARY,
+  RESTRICTION_FIELD_VOCABULARY,
   resolvePolicy,
   SECRET_ACCESS_MODES,
   scopeRank,

@@ -107,7 +107,7 @@ export const TELEMETRY_COLUMNS = `id, execution_id, application_id, tenant_id, t
     environments, verification, cost_micro_usd, latency_ms, outcome, evidence_refs, subgraphs,
     recorded_at, schema_version, fingerprint`;
 
-interface ScorecardRow {
+export interface ScorecardRow {
   readonly id: string;
   readonly application_id: string;
   readonly tenant_id: string;
@@ -141,7 +141,7 @@ function toScorecard(row: ScorecardRow): Scorecard {
   };
 }
 
-const SCORECARD_COLUMNS = `id, application_id, tenant_id, definition_id, definition_version,
+export const SCORECARD_COLUMNS = `id, application_id, tenant_id, definition_id, definition_version,
     scorecard_version, telemetry_schema_version, population_from, population_to,
     total_population, entries, computed_at, digest`;
 

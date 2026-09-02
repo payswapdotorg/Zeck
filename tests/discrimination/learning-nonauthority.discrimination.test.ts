@@ -286,9 +286,14 @@ describe("discrimination: planner learning consumption (static mutants)", () => 
   });
 
   test("M8: moving the consultation BEFORE the governed selection is detected", () => {
+    // WORK-020 note: the planner now computes TWO selections — the
+    // learning-free governed anchor (`governedSelection`) and the live
+    // selection. The M8 mutant inserts the WORK-014 learning-signal
+    // consultation before the GOVERNED selection; the shared ordering
+    // scanner must flag it (the consultation belongs after selection).
     const mutated = plannerSource.replace(
-      "      const selection = selectStrategy(admissibleCandidates, sufficiency, profile.qualityTarget);",
-      "      if (deps.learningSignals !== undefined) {\n        await deps.learningSignals.consult({\n          applicationId: input.applicationId,\n          tenantId: input.tenantId,\n          taskClass: profile.kind,\n          subjectKeys: [],\n        });\n      }\n      const selection = selectStrategy(admissibleCandidates, sufficiency, profile.qualityTarget);",
+      "      const governedSelection = selectStrategy(",
+      "      if (deps.learningSignals !== undefined) {\n        await deps.learningSignals.consult({\n          applicationId: input.applicationId,\n          tenantId: input.tenantId,\n          taskClass: profile.kind,\n          subjectKeys: [],\n        });\n      }\n      const governedSelection = selectStrategy(",
     );
     expect(mutated).not.toBe(plannerSource);
     const violations = plannerLearningViolations(mutated, adapterSource);

@@ -34,8 +34,10 @@ import type { PolicyRequestContext } from "../../policies/public";
 import type {
   CandidateStrategy,
   CompositionConsultation,
+  ConsultedLearnedPolicy,
   DeterministicSufficiencyDecision,
   ExecutionPlan,
+  LearnedPolicyConsultation,
   LearningConsultation,
   OpportunityConsultation,
   PlanningDecisionRecord,
@@ -45,6 +47,7 @@ import type {
 } from "../domain";
 import {
   buildCompositionConsultation,
+  buildLearnedPolicyConsultation,
   buildLearningConsultation,
   buildOpportunityConsultation,
   buildPlan,
@@ -54,6 +57,7 @@ import {
   emitSubgraphEvidence,
   evaluateDeterministicSufficiency,
   filterAdmissibility,
+  learnedOrderingSubjects,
   PLANNER_VERSION,
   selectStrategy,
   validatePlanningDecision,
@@ -65,6 +69,7 @@ import type { PlanningCapabilityAuthority } from "../ports/capability-authority"
 import type { CompositionRecommendations } from "../ports/composition-recommendations";
 import type { DeterministicCatalogEntry } from "../ports/deterministic-catalog";
 import type { DigestPort } from "../ports/digest";
+import type { LearnedPolicySource } from "../ports/learned-policy";
 import type { LearningSignals } from "../ports/learning-signals";
 import type { ModelRouteCandidate, ModelRouteExplorer } from "../ports/model-routes";
 import type { OpportunitySignals } from "../ports/opportunity-signals";
@@ -105,6 +110,23 @@ export interface PlannerServiceDeps {
    * interaction (planning works without recommendation history).
    */
   readonly compositionRecommendations?: CompositionRecommendations;
+  /**
+   * OPTIONAL learned-planning-policy READ seam (WORK-020 / LRN-002):
+   * when wired, the planner consults the ACTIVE learned-policy
+   * publication AFTER every hard authority has spoken (policy inputs,
+   * capability resolution, deterministic sufficiency, candidate
+   * composition and the HARD policy admissibility filter) and BEFORE
+   * the cascade selection — because a PUBLISHED learned policy (mode
+   * 'promoted' only) may refine the ORDERING among already-admissible
+   * candidates. A canary publication (or no publication at all)
+   * records its preference as divergence evidence and NEVER changes
+   * the live selection. The consulted record is validated and
+   * restriction-vocabulary-scanned at the adapter seam; the planner
+   * re-checks every ranked subject against the CURRENT effective
+   * policy at consultation time (forbidden subjects are dropped and
+   * recorded). Unwired ⇒ zero learned-policy interaction.
+   */
+  readonly learnedPolicy?: LearnedPolicySource;
   /**
    * OPTIONAL codebase-opportunity READ seam (WORK-022 / DTR-005): when
    * wired, the planner consults the application's advisory
@@ -266,7 +288,68 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       const admissibleCandidates = candidates.map((candidate) =>
         filterAdmissibility(candidate, effective),
       );
-      const selection = selectStrategy(admissibleCandidates, sufficiency, profile.qualityTarget);
+
+      // 6.2 The learning-free governed selection (the audit anchor):
+      //     computed WITHOUT any learned-policy ordering — the
+      //     WORK-020 consultation below may refine the cascade
+      //     ordering, and this anchor records exactly what the
+      //     refinement changed (appliedToSelection is honest by
+      //     construction: it compares against THIS selection).
+      const governedSelection = selectStrategy(
+        admissibleCandidates,
+        sufficiency,
+        profile.qualityTarget,
+      );
+
+      // 6.3 OPTIONAL learned-policy consultation (WORK-020 / LRN-002)
+      //     — READ ONLY, AFTER every hard authority has spoken: the
+      //     policy inputs (step 2), the capability resolution (step 3),
+      //     the deterministic-sufficiency decision (step 4), the
+      //     candidate composition (step 5) and the HARD policy
+      //     admissibility filter (step 6) all PRECEDE the consultation,
+      //     so a learned preference can never widen, bypass or override
+      //     a prohibition, never re-classify sufficiency and never
+      //     revive an inadmissible candidate — the consultation output
+      //     is structurally an ORDERING KEY over the already-admissible
+      //     pool. ONLY a 'promoted' publication produces an ordering
+      //     input: a 'canary' publication (or none) records its
+      //     preference as divergence evidence and never orders the
+      //     cascade. Every ranked subject is re-checked against the
+      //     CURRENT effective policy at consultation time; forbidden
+      //     subjects are dropped from the ordering and recorded as
+      //     rejected. A consultation failure fails the planning request
+      //     closed — a malformed/unversioned record NEVER reaches the
+      //     selection or a decision record.
+      let learnedOrdering: readonly string[] | undefined;
+      let consultedPolicy: ConsultedLearnedPolicy | undefined;
+      if (deps.learnedPolicy !== undefined) {
+        const view = await deps.learnedPolicy.consult({
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+          taskClass: profile.kind,
+        });
+        if (view !== null) {
+          consultedPolicy = view;
+          if (view.publicationMode === "promoted") {
+            const preference = view.preferences.find(
+              (candidate) => candidate.taskClass === profile.kind,
+            );
+            if (preference !== undefined) {
+              const ordering = learnedOrderingSubjects(preference, effective);
+              if (ordering.length > 0) {
+                learnedOrdering = ordering;
+              }
+            }
+          }
+        }
+      }
+
+      const selection = selectStrategy(
+        admissibleCandidates,
+        sufficiency,
+        profile.qualityTarget,
+        learnedOrdering,
+      );
       if (selection.kind === "none") {
         throw new PlatformError({
           code: "NO_ELIGIBLE_ROUTE",
@@ -283,6 +366,29 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         });
       }
       const selected = selection.selected;
+
+      // 6.4 Build the learned-policy consultation capture (WORK-020) —
+      //     the recorded evidence: the consulted policy with its full
+      //     anchors, the policy re-check verdicts (rejected subjects,
+      //     unmatched subjects — a learned preference cannot introduce
+      //     anything), the learned preference among ADMISSIBLE
+      //     candidates, and the honest appliedToSelection verdict
+      //     (true ONLY when a 'promoted' ordering refined the live
+      //     selection away from the governed default; canary/shadow
+      //     never set it).
+      let learnedPolicyConsultation: LearnedPolicyConsultation | undefined;
+      if (consultedPolicy !== undefined && governedSelection.kind === "selected") {
+        learnedPolicyConsultation = buildLearnedPolicyConsultation({
+          candidates: admissibleCandidates,
+          consultedPolicy,
+          taskClass: profile.kind,
+          policy: effective,
+          governedStrategyId: governedSelection.selected.strategyId,
+          selectedStrategyId: selected.strategyId,
+          appliedToSelection: governedSelection.selected.strategyId !== selected.strategyId,
+          consultedAt: iso(),
+        });
+      }
 
       // 7. Subgraph-level evidence (DTR-001/DTR-004).
       const routeCosts: Record<string, { costMicroUsd: string; quality: number }> = {};
@@ -558,6 +664,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         subgraphEvidence,
         ...(learningConsultation === undefined ? {} : { learningConsultation }),
         ...(compositionConsultation === undefined ? {} : { compositionConsultation }),
+        ...(learnedPolicyConsultation === undefined ? {} : { learnedPolicyConsultation }),
         ...(substrateSelection === undefined ? {} : { substrateSelection }),
         ...(opportunityConsultation === undefined ? {} : { opportunityConsultation }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),

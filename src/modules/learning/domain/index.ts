@@ -19,6 +19,7 @@ export * from "./evaluation-rating";
 export * from "./execution-graph";
 export * from "./finding-transitions";
 export * from "./human-evaluation";
+export * from "./learned-planning-policy";
 export * from "./opportunity-analysis";
 export * from "./rating";
 export * from "./scorecard";

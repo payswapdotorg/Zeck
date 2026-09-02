@@ -16,6 +16,12 @@ export type {
 } from "./composition-store";
 export type { DigestPort } from "./digest";
 export type {
+  EvaluationAppendOutcome,
+  LearnedPolicyScope,
+  LearnedPolicyStore,
+  PublicationAppendOutcome,
+} from "./learned-policy-store";
+export type {
   LearningStore,
   RatingIngestionOutcome,
   ScorecardScope,

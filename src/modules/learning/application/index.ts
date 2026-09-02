@@ -1,8 +1,10 @@
 /**
- * `learning` application layer (WORK-014): the observational substrate
- * services — telemetry ingestion, scorecard building, signal
- * consultation, rating recording and the side-effect-free shadow
- * evaluator.
+ * `learning` application layer (WORK-014/WORK-020): the observational
+ * substrate services — telemetry ingestion, scorecard building, signal
+ * consultation, rating recording, the side-effect-free shadow evaluator
+ * and the WORK-020 learned planning-policy lifecycle service
+ * (generation → shadow/canary evaluation → explicit publication →
+ * deterministic rollback; the non-authority quartet of deps).
  */
 export type {
   ActivateRecommendationSetRequest,
@@ -12,6 +14,17 @@ export type {
   GenerateRecommendationSetRequest,
 } from "./composition-advisor";
 export { createCompositionAdvisor } from "./composition-advisor";
+export type {
+  ActiveLearnedPolicyView,
+  ConsultLearnedPolicyRequest,
+  EvaluateLearnedPolicyRequest,
+  GenerateLearnedPolicyRequest,
+  LearnedPolicyService,
+  LearnedPolicyServiceDeps,
+  PublishLearnedPolicyRequest,
+  RollbackLearnedPolicyRequest,
+} from "./learned-policy-service";
+export { createLearnedPolicyService } from "./learned-policy-service";
 export type {
   BuildScorecardRequest,
   ConsultSignalsRequest,
