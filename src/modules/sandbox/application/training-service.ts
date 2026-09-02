@@ -682,19 +682,27 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
         `training-reserve:${budgetOperationId}`,
       );
     } catch (error) {
-      if (error instanceof PlatformError && error.code === "BUDGET_EXCEEDED") {
-        await denyWorkload(
-          actor.applicationId,
-          execution.tenantId,
-          input.executionId,
-          spec,
-          fingerprint,
-          idempotencyKey,
-          "budget",
-          "BUDGET_EXCEEDED",
-          error.message,
-          substrate,
-        );
+      // EVERY typed budget-admission denial from the REAL authority is
+      // journaled fail-closed (BUDGET_EXCEEDED = the overspend denial;
+      // POLICY_DENIED = the funding-policy denial the real budgets
+      // authority raises for an unconfigured application — a re-review
+      // defect found over real PG: the unfunded-application denial was
+      // previously propagated raw, leaving NO durable denied row).
+      if (error instanceof PlatformError) {
+        if (error.code === "BUDGET_EXCEEDED" || error.code === "POLICY_DENIED") {
+          await denyWorkload(
+            actor.applicationId,
+            execution.tenantId,
+            input.executionId,
+            spec,
+            fingerprint,
+            idempotencyKey,
+            "budget",
+            error.code === "BUDGET_EXCEEDED" ? "BUDGET_EXCEEDED" : "POLICY_DENIED",
+            error.message,
+            substrate,
+          );
+        }
       }
       throw error;
     }

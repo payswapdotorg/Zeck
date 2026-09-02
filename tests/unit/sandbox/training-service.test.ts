@@ -168,7 +168,7 @@ function world(
   substrates.offer(
     options.offer === "none"
       ? null
-      : substrateSelectionOf("accelerator-fabric-f1", "accelerator-fabric:f1"),
+      : substrateSelectionOf("accelerator-fabric-f1", "accelerator-fabric-f1"),
   );
   const service = createTrainingService({
     store,
@@ -860,7 +860,7 @@ describe("provider/accelerator substitution (ACC-002/AC-6)", () => {
       const runtimes = createAcceleratorRuntimeRegistry();
       runtimes.register(createAcceleratorSubstrateRuntime(fleet));
       substrates.offer(
-        substrateSelectionOf(`accelerator-fabric-${fabricId}`, `accelerator-fabric:${fabricId}`),
+        substrateSelectionOf(`accelerator-fabric-${fabricId}`, `accelerator-fabric-${fabricId}`),
       );
       const service = createTrainingService({
         store,

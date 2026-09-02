@@ -30,7 +30,7 @@ export function createAcceleratorSubstrateRuntime(
   fleet: AcceleratorFleet,
 ): AcceleratorSubstrateRuntime {
   return {
-    adapterRef: `accelerator-fabric:${fleet.fabricId}`,
+    adapterRef: `accelerator-fabric-${fleet.fabricId}`,
     async allocate(request, allocationKey, context): Promise<AcceleratorAllocation> {
       const record = await fleet.allocate({
         allocationKey,

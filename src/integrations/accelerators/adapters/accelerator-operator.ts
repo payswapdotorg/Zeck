@@ -53,7 +53,7 @@ export function createAcceleratorOperator(
     isolation: "container",
     sideEffectClasses: ["none"],
     executionCapability: { id: `accelerator-${deviceClass}` },
-    adapterRef: `accelerator-fabric:${fleet.fabricId}`,
+    adapterRef: `accelerator-fabric-${fleet.fabricId}`,
     description: `the simulated accelerator fabric ${fleet.fabricId} (${deviceClass} devices)`,
   };
   return {

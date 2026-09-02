@@ -143,6 +143,10 @@ CREATE TABLE sandbox.training_workloads (
     CONSTRAINT tw_metadata_shape CHECK (jsonb_typeof(runtime_metadata) = 'object'),
     CONSTRAINT tw_descriptor_shape CHECK (output_descriptor IS NULL OR jsonb_typeof(output_descriptor) = 'object'),
     CONSTRAINT tw_key_unique UNIQUE (application_id, workload_key),
+    -- The composite FK identity target (the house pattern: every table
+    -- referenced by (id, application_id) carries this UNIQUE — the
+    -- training_* children reference the workload through it).
+    CONSTRAINT tw_identity_unique UNIQUE (id, application_id),
     CONSTRAINT tw_tenant_fk
         FOREIGN KEY (application_id, tenant_id)
         REFERENCES applications.applications (id, tenant_id),
@@ -161,55 +165,12 @@ CREATE INDEX tw_by_status
 -- immutability, the IMMUTABLE admitted snapshot, and the write-once
 -- monotonic bindings. (Failed rows are immutable EXCEPT the guarded
 -- retry re-arm into 'allocating' — the stable-identity retry ladder.)
-CREATE OR REPLACE FUNCTION sandbox.tw_lifecycle_guard() RETURNS trigger AS $$ BEGIN
-    IF NEW.id <> OLD.id OR NEW.application_id <> OLD.application_id OR NEW.tenant_id <> OLD.tenant_id OR NEW.execution_id <> OLD.execution_id OR NEW.workload_key <> OLD.workload_key OR NEW.request_fingerprint <> OLD.request_fingerprint OR NEW.workload_kind <> OLD.workload_kind OR NEW.runtime_metadata <> OLD.runtime_metadata OR NEW.created_at <> OLD.created_at THEN
-        RAISE EXCEPTION 'training workload % identity core (incl. runtime_metadata) is immutable', OLD.id;
-    END IF;
-    IF OLD.status IN ('denied','completed','cancelled') AND NEW.status <> OLD.status THEN
-        RAISE EXCEPTION 'training workload % is terminal-immutable in status %', OLD.id, OLD.status;
-    END IF;
-    IF OLD.status = 'denied' AND (NEW.denial_class, NEW.denial_code, NEW.denial_reason) IS DISTINCT FROM (OLD.denial_class, OLD.denial_code, OLD.denial_reason) THEN
-        RAISE EXCEPTION 'denied training workload % is insert-only', OLD.id;
-    END IF;
-    IF NOT (
-        (OLD.status = 'admitted' AND NEW.status IN ('admitted','allocating','cancelled'))
-        OR (OLD.status = 'allocating' AND NEW.status IN ('allocating','running','failed','cancelled'))
-        OR (OLD.status = 'running' AND NEW.status IN ('running','completed','failed','cancelled'))
-        OR (OLD.status = 'failed' AND NEW.status IN ('failed','allocating'))
-        OR (OLD.status = 'completed' AND NEW.status = 'completed')
-        OR (OLD.status = 'cancelled' AND NEW.status = 'cancelled')
-    ) THEN
-        RAISE EXCEPTION 'training workload % cannot move from status % to %', OLD.id, OLD.status, NEW.status;
-    END IF;
-    IF NEW.attempts < OLD.attempts THEN
-        RAISE EXCEPTION 'training workload % attempt ledger is monotonic (% -> %)', OLD.id, OLD.attempts, NEW.attempts;
-    END IF;
-    IF (OLD.status = 'failed' AND NEW.status = 'allocating' AND NEW.attempts <> OLD.attempts) THEN
-        RAISE EXCEPTION 'training workload % retry re-arm requires the attempt ledger to advance', OLD.id;
-    END IF;
-    IF NEW.ledger_admitted_sequence IS DISTINCT FROM OLD.ledger_admitted_sequence AND (OLD.ledger_admitted_sequence IS NOT NULL OR NEW.ledger_admitted_sequence IS NULL) THEN
-        RAISE EXCEPTION 'training workload % admitted ledger binding is write-once', OLD.id;
-    END IF;
-    IF NEW.ledger_completed_sequence IS DISTINCT FROM OLD.ledger_completed_sequence AND (OLD.ledger_completed_sequence IS NOT NULL OR NEW.ledger_completed_sequence IS NULL) THEN
-        RAISE EXCEPTION 'training workload % completed ledger binding is write-once', OLD.id;
-    END IF;
-    IF NEW.allocation_id IS NOT NULL AND NEW.allocation_id <> coalesce(OLD.allocation_id, NEW.allocation_id) THEN
-        RAISE EXCEPTION 'training workload % allocation binding is write-once (first allocation wins)', OLD.id;
-    END IF;
-    IF OLD.output_artifact_digest IS NOT NULL AND NEW.output_artifact_digest <> OLD.output_artifact_digest THEN
-        RAISE EXCEPTION 'training workload % output adoption is write-once', OLD.id;
-    END IF;
-    IF OLD.verified_release_at IS NOT NULL AND (NEW.verified_release_at <> OLD.verified_release_at OR NEW.verification_evaluation_id <> OLD.verification_evaluation_id) THEN
-        RAISE EXCEPTION 'training workload % verification-release binding is write-once (never re-bound)', OLD.id;
-    END IF;
-    IF OLD.completed_at IS NOT NULL AND NEW.completed_at <> OLD.completed_at THEN
-        RAISE EXCEPTION 'training workload % completion timestamp is write-once', OLD.id;
-    END IF;
-    IF OLD.cancelled_at IS NOT NULL AND NEW.cancelled_at <> OLD.cancelled_at THEN
-        RAISE EXCEPTION 'training workload % cancellation timestamp is write-once', OLD.id;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
+-- NOTE (house style): trigger bodies are SINGLE-LINE `$$ ... $$`
+-- statements — the shipped migration runner splits statements on
+-- `;` + newline, so multi-line function bodies would be truncated
+-- mid-body (a defect this wave's PG tier found and fixed by
+-- reformatting; zero semantic change).
+CREATE OR REPLACE FUNCTION sandbox.tw_lifecycle_guard() RETURNS trigger AS $$ BEGIN IF NEW.id <> OLD.id OR NEW.application_id <> OLD.application_id OR NEW.tenant_id <> OLD.tenant_id OR NEW.execution_id <> OLD.execution_id OR NEW.workload_key <> OLD.workload_key OR NEW.request_fingerprint <> OLD.request_fingerprint OR NEW.workload_kind <> OLD.workload_kind OR NEW.runtime_metadata <> OLD.runtime_metadata OR NEW.created_at <> OLD.created_at THEN RAISE EXCEPTION 'training workload % identity core (incl. runtime_metadata) is immutable', OLD.id; END IF; IF OLD.status IN ('denied','completed','cancelled') AND NEW.status <> OLD.status THEN RAISE EXCEPTION 'training workload % is terminal-immutable in status %', OLD.id, OLD.status; END IF; IF OLD.status = 'denied' AND (NEW.denial_class, NEW.denial_code, NEW.denial_reason) IS DISTINCT FROM (OLD.denial_class, OLD.denial_code, OLD.denial_reason) THEN RAISE EXCEPTION 'denied training workload % is insert-only', OLD.id; END IF; IF NOT ((OLD.status = 'admitted' AND NEW.status IN ('admitted','allocating','cancelled')) OR (OLD.status = 'allocating' AND NEW.status IN ('allocating','running','failed','cancelled')) OR (OLD.status = 'running' AND NEW.status IN ('running','completed','failed','cancelled')) OR (OLD.status = 'failed' AND NEW.status IN ('failed','allocating')) OR (OLD.status = 'completed' AND NEW.status = 'completed') OR (OLD.status = 'cancelled' AND NEW.status = 'cancelled')) THEN RAISE EXCEPTION 'training workload % cannot move from status % to %', OLD.id, OLD.status, NEW.status; END IF; IF NEW.attempts < OLD.attempts THEN RAISE EXCEPTION 'training workload % attempt ledger is monotonic (% -> %)', OLD.id, OLD.attempts, NEW.attempts; END IF; IF (OLD.status = 'failed' AND NEW.status = 'allocating' AND NEW.attempts <> OLD.attempts) THEN RAISE EXCEPTION 'training workload % retry re-arm requires the attempt ledger to advance', OLD.id; END IF; IF NEW.ledger_admitted_sequence IS DISTINCT FROM OLD.ledger_admitted_sequence AND (OLD.ledger_admitted_sequence IS NOT NULL OR NEW.ledger_admitted_sequence IS NULL) THEN RAISE EXCEPTION 'training workload % admitted ledger binding is write-once', OLD.id; END IF; IF NEW.ledger_completed_sequence IS DISTINCT FROM OLD.ledger_completed_sequence AND (OLD.ledger_completed_sequence IS NOT NULL OR NEW.ledger_completed_sequence IS NULL) THEN RAISE EXCEPTION 'training workload % completed ledger binding is write-once', OLD.id; END IF; IF NEW.allocation_id IS NOT NULL AND NEW.allocation_id <> coalesce(OLD.allocation_id, NEW.allocation_id) THEN RAISE EXCEPTION 'training workload % allocation binding is write-once (first allocation wins)', OLD.id; END IF; IF OLD.output_artifact_digest IS NOT NULL AND NEW.output_artifact_digest <> OLD.output_artifact_digest THEN RAISE EXCEPTION 'training workload % output adoption is write-once', OLD.id; END IF; IF OLD.verified_release_at IS NOT NULL AND (NEW.verified_release_at <> OLD.verified_release_at OR NEW.verification_evaluation_id <> OLD.verification_evaluation_id) THEN RAISE EXCEPTION 'training workload % verification-release binding is write-once (never re-bound)', OLD.id; END IF; IF OLD.completed_at IS NOT NULL AND NEW.completed_at <> OLD.completed_at THEN RAISE EXCEPTION 'training workload % completion timestamp is write-once', OLD.id; END IF; IF OLD.cancelled_at IS NOT NULL AND NEW.cancelled_at <> OLD.cancelled_at THEN RAISE EXCEPTION 'training workload % cancellation timestamp is write-once', OLD.id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER tw_lifecycle_guard
     BEFORE UPDATE ON sandbox.training_workloads
@@ -223,19 +184,7 @@ CREATE TRIGGER tw_no_delete_guard
 
 -- The workload insert gate: an admitted workload binds to a
 -- NON-TERMINAL execution, and denied rows carry no outcome columns.
-CREATE OR REPLACE FUNCTION sandbox.tw_insert_gate() RETURNS trigger AS $$ DECLARE terminal boolean; BEGIN
-    IF NEW.status NOT IN ('denied','admitted') THEN
-        RAISE EXCEPTION 'training workloads are inserted in denied|admitted only (got %)', NEW.status;
-    END IF;
-    SELECT status IN ('COMPLETED','FAILED','CANCELLED','EXPIRED') INTO terminal FROM executions.executions WHERE id = NEW.execution_id AND application_id = NEW.application_id;
-    IF terminal IS NULL THEN
-        RAISE EXCEPTION 'execution % does not exist in application %', NEW.execution_id, NEW.application_id;
-    END IF;
-    IF terminal AND NEW.status <> 'denied' THEN
-        RAISE EXCEPTION 'execution % is terminal; no training workload may be admitted on it', NEW.execution_id;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION sandbox.tw_insert_gate() RETURNS trigger AS $$ DECLARE terminal boolean; BEGIN IF NEW.status NOT IN ('denied','admitted') THEN RAISE EXCEPTION 'training workloads are inserted in denied|admitted only (got %)', NEW.status; END IF; SELECT status IN ('COMPLETED','FAILED','CANCELLED','EXPIRED') INTO terminal FROM executions.executions WHERE id = NEW.execution_id AND application_id = NEW.application_id; IF terminal IS NULL THEN RAISE EXCEPTION 'execution % does not exist in application %', NEW.execution_id, NEW.application_id; END IF; IF terminal AND NEW.status <> 'denied' THEN RAISE EXCEPTION 'execution % is terminal; no training workload may be admitted on it', NEW.execution_id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER tw_insert_gate
     BEFORE INSERT ON sandbox.training_workloads
@@ -299,25 +248,7 @@ CREATE TRIGGER tc_no_mutation
 -- it and the same-content duplicate passes through to the arbiter; if
 -- it is in flight, nothing is visible and COUNT validates the next
 -- sequence — the insert then waits on the unique arbiter and converges.
-CREATE OR REPLACE FUNCTION sandbox.tc_sequence_gate() RETURNS trigger AS $$
-DECLARE
-    existing_digest text;
-    total integer;
-BEGIN
-    SELECT (SELECT tc.content_digest FROM sandbox.training_checkpoints tc WHERE tc.application_id = NEW.application_id AND tc.workload_id = NEW.workload_id AND tc.checkpoint_sequence = NEW.checkpoint_sequence),
-           (SELECT COUNT(*) FROM sandbox.training_checkpoints tc WHERE tc.application_id = NEW.application_id AND tc.workload_id = NEW.workload_id)
-    INTO existing_digest, total;
-    IF existing_digest IS NOT NULL THEN
-        IF existing_digest = NEW.content_digest THEN
-            RETURN NEW;
-        END IF;
-        RAISE EXCEPTION 'training workload % checkpoint sequence % already exists with a different content identity', NEW.workload_id, NEW.checkpoint_sequence;
-    END IF;
-    IF NEW.checkpoint_sequence IS DISTINCT FROM total + 1 THEN
-        RAISE EXCEPTION 'training workload % checkpoint sequence must be gapless (expected %, got %)', NEW.workload_id, total + 1, NEW.checkpoint_sequence;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION sandbox.tc_sequence_gate() RETURNS trigger AS $$ DECLARE existing_digest text; total integer; BEGIN SELECT (SELECT tc.content_digest FROM sandbox.training_checkpoints tc WHERE tc.application_id = NEW.application_id AND tc.workload_id = NEW.workload_id AND tc.checkpoint_sequence = NEW.checkpoint_sequence), (SELECT COUNT(*) FROM sandbox.training_checkpoints tc WHERE tc.application_id = NEW.application_id AND tc.workload_id = NEW.workload_id) INTO existing_digest, total; IF existing_digest IS NOT NULL THEN IF existing_digest = NEW.content_digest THEN RETURN NEW; END IF; RAISE EXCEPTION 'training workload % checkpoint sequence % already exists with a different content identity', NEW.workload_id, NEW.checkpoint_sequence; END IF; IF NEW.checkpoint_sequence IS DISTINCT FROM total + 1 THEN RAISE EXCEPTION 'training workload % checkpoint sequence must be gapless (expected %, got %)', NEW.workload_id, total + 1, NEW.checkpoint_sequence; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER tc_sequence_gate
     BEFORE INSERT ON sandbox.training_checkpoints
@@ -349,8 +280,9 @@ CREATE TABLE sandbox.training_operations (
     CONSTRAINT to_attempts_positive CHECK (attempts >= 1),
     CONSTRAINT to_stage_shape CHECK (stage IS NULL OR jsonb_typeof(stage) = 'object'),
     CONSTRAINT to_completed_shape CHECK (status <> 'completed' OR (completed_at IS NOT NULL AND failure_reason IS NULL)),
-    CONSTRAINT to_failed_shape CHECK (status <> 'failed' OR (completed_at IS NOT NULL AND failure_reason IS NOT NULL)),
+    CONSTRAINT to_failed_shape CHECK (status <> 'failed' OR failure_reason IS NOT NULL),
     CONSTRAINT to_pending_shape CHECK (status <> 'pending' OR (completed_at IS NULL AND failure_reason IS NULL)),
+    CONSTRAINT to_outcome_exclusive CHECK (completed_at IS NULL OR failure_reason IS NULL),
     CONSTRAINT to_key_unique UNIQUE (application_id, operation_key),
     CONSTRAINT to_tenant_fk
         FOREIGN KEY (application_id, tenant_id)
@@ -453,51 +385,7 @@ CREATE TRIGGER tl_lease_no_delete_guard
 -- converges via ON CONFLICT DO NOTHING.
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION edge.ec_commands_sequence_gate() RETURNS trigger AS $$
-DECLARE
-    existing_key text;
-    existing_fingerprint text;
-    total integer;
-BEGIN
-    SELECT (SELECT command_key FROM edge.commands WHERE application_id = NEW.application_id AND device_id = NEW.device_id AND sequence = NEW.sequence),
-           (SELECT request_fingerprint FROM edge.commands WHERE application_id = NEW.application_id AND command_key = NEW.command_key),
-           (SELECT COUNT(*) FROM edge.commands WHERE application_id = NEW.application_id AND device_id = NEW.device_id)
-    INTO existing_key, existing_fingerprint, total;
-    IF existing_key IS NOT NULL THEN
-        IF existing_key = NEW.command_key THEN
-            RETURN NEW;
-        END IF;
-        RAISE EXCEPTION 'edge device % command sequence % already exists with a different key', NEW.device_id, NEW.sequence;
-    END IF;
-    IF existing_fingerprint IS NOT NULL THEN
-        IF existing_fingerprint = NEW.request_fingerprint THEN
-            RETURN NEW;
-        END IF;
-        RAISE EXCEPTION 'edge command key % was already used with a different request (key reuse)', NEW.command_key;
-    END IF;
-    IF NEW.sequence IS DISTINCT FROM total + 1 THEN
-        RAISE EXCEPTION 'edge device % command sequence must be gapless (expected %, got %)', NEW.device_id, total + 1, NEW.sequence;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION edge.ec_commands_sequence_gate() RETURNS trigger AS $$ DECLARE existing_key text; existing_fingerprint text; total integer; BEGIN SELECT (SELECT command_key FROM edge.commands WHERE application_id = NEW.application_id AND device_id = NEW.device_id AND sequence = NEW.sequence), (SELECT request_fingerprint FROM edge.commands WHERE application_id = NEW.application_id AND command_key = NEW.command_key), (SELECT COUNT(*) FROM edge.commands WHERE application_id = NEW.application_id AND device_id = NEW.device_id) INTO existing_key, existing_fingerprint, total; IF existing_key IS NOT NULL THEN IF existing_key = NEW.command_key THEN RETURN NEW; END IF; RAISE EXCEPTION 'edge device % command sequence % already exists with a different key', NEW.device_id, NEW.sequence; END IF; IF existing_fingerprint IS NOT NULL THEN IF existing_fingerprint = NEW.request_fingerprint THEN RETURN NEW; END IF; RAISE EXCEPTION 'edge command key % was already used with a different request (key reuse)', NEW.command_key; END IF; IF NEW.sequence IS DISTINCT FROM total + 1 THEN RAISE EXCEPTION 'edge device % command sequence must be gapless (expected %, got %)', NEW.device_id, total + 1, NEW.sequence; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION edge.es_observations_sequence_gate() RETURNS trigger AS $$
-DECLARE
-    existing_digest text;
-    total integer;
-BEGIN
-    SELECT (SELECT content_digest FROM edge.sensor_observations WHERE application_id = NEW.application_id AND observation_key = NEW.observation_key),
-           (SELECT COUNT(*) FROM edge.sensor_observations WHERE application_id = NEW.application_id AND device_id = NEW.device_id)
-    INTO existing_digest, total;
-    IF existing_digest IS NOT NULL THEN
-        IF existing_digest = NEW.content_digest THEN
-            RETURN NEW;
-        END IF;
-        RAISE EXCEPTION 'edge sensor observation key % was already used with different content (key reuse)', NEW.observation_key;
-    END IF;
-    IF NEW.sequence IS DISTINCT FROM total + 1 THEN
-        RAISE EXCEPTION 'edge device % sensor observation sequence must be gapless (expected %, got %)', NEW.device_id, total + 1, NEW.sequence;
-    END IF;
-    RETURN NEW;
-END; $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION edge.es_observations_sequence_gate() RETURNS trigger AS $$ DECLARE existing_digest text; total integer; BEGIN SELECT (SELECT content_digest FROM edge.sensor_observations WHERE application_id = NEW.application_id AND observation_key = NEW.observation_key), (SELECT COUNT(*) FROM edge.sensor_observations WHERE application_id = NEW.application_id AND device_id = NEW.device_id) INTO existing_digest, total; IF existing_digest IS NOT NULL THEN IF existing_digest = NEW.content_digest THEN RETURN NEW; END IF; RAISE EXCEPTION 'edge sensor observation key % was already used with different content (key reuse)', NEW.observation_key; END IF; IF NEW.sequence IS DISTINCT FROM total + 1 THEN RAISE EXCEPTION 'edge device % sensor observation sequence must be gapless (expected %, got %)', NEW.device_id, total + 1, NEW.sequence; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 

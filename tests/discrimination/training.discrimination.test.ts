@@ -290,7 +290,7 @@ function wiringWorld(fabricId = "f1"): WiringWorld {
     runtimes.register(createAcceleratorSubstrateRuntime(fleet));
     const substrates = new FakeSubstrateCatalog();
     substrates.offer(
-      substrateSelectionOf(`accelerator-fabric-${fabricId}`, `accelerator-fabric:${fabricId}`),
+      substrateSelectionOf(`accelerator-fabric-${fabricId}`, `accelerator-fabric-${fabricId}`),
     );
     return createTrainingService({
       store,

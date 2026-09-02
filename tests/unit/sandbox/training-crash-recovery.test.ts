@@ -243,7 +243,7 @@ function survivingWorld(
     const runtime = createAcceleratorSubstrateRuntime(fleetProcess.proxy);
     const runtimes = createAcceleratorRuntimeRegistry();
     runtimes.register(runtime);
-    substrates.offer(substrateSelectionOf("accelerator-fabric-f1", "accelerator-fabric:f1"));
+    substrates.offer(substrateSelectionOf("accelerator-fabric-f1", "accelerator-fabric-f1"));
     const storeProcess = crashableSeam(store, "store", point);
     const ledgerProcess = crashableSeam(ledger, "ledger", point);
     const budgetProcess = crashableSeam(budget, "budget", point);

@@ -455,12 +455,17 @@ RETURNING ${WORKLOAD_COLUMNS}`,
   async bindWorkloadAllocation(
     input: BindWorkloadAllocationInput,
   ): Promise<TrainingWorkloadRecord> {
+    // The binding is write-once (first allocation wins — the migration
+    // guard). A retried workload's attempt-2+ allocation evidence lives
+    // in the per-attempt operation rows + the substrate's keyed ledger;
+    // the row converges on the FIRST allocation (the in-memory twin's
+    // contract — a PG-tier review found the divergence).
     try {
       const result = await this.db.execute<WorkloadRow>({
         sql: `UPDATE sandbox.training_workloads
 SET allocation_id = $3, substrate_id = $4, adapter_ref = $5,
     allocated_at = COALESCE(allocated_at, $6::timestamptz)
-WHERE application_id = $1 AND workload_key = $2
+WHERE application_id = $1 AND workload_key = $2 AND allocation_id IS NULL
 RETURNING ${WORKLOAD_COLUMNS}`,
         parameters: [
           input.applicationId,
@@ -472,14 +477,21 @@ RETURNING ${WORKLOAD_COLUMNS}`,
         ],
       });
       const row = first(result.rows);
-      if (row === undefined) {
+      if (row !== undefined) {
+        return toWorkload(row);
+      }
+      const current = await this.findWorkloadByKey(input.applicationId, input.workloadKey);
+      if (current === null) {
         throw new PlatformError({
           code: "SANDBOX_ERROR",
           message: "training workload allocation binding found no row",
           details: { workloadKey: input.workloadKey },
         });
       }
-      return toWorkload(row);
+      if (current.allocationId !== null) {
+        return current; // already bound: the FIRST allocation stands
+      }
+      return current;
     } catch (error) {
       toTypedGuardError(error);
     }
@@ -788,13 +800,17 @@ WHERE application_id = $1 AND operation_key = $2`,
   async completeTrainingOperation(
     input: CompleteTrainingOperationInput,
   ): Promise<TrainingOperationRecord> {
+    // The house (edge-0024) outcome semantics: `completed` carries
+    // completed_at and NO failure_reason; `failed` carries
+    // failure_reason and NO completed_at (mutually exclusive outcome
+    // fields — the migration's to_outcome_exclusive guard).
     try {
       const result = await this.db.execute<OperationRow>({
         sql: `UPDATE sandbox.training_operations
 SET status = CASE WHEN $3::text IS NULL THEN 'completed' ELSE 'failed' END,
     stage = COALESCE(stage, $4::jsonb),
     failure_reason = $3,
-    completed_at = $5::timestamptz,
+    completed_at = CASE WHEN $3::text IS NULL THEN $5::timestamptz ELSE NULL END,
     updated_at = $5::timestamptz
 WHERE application_id = $1 AND operation_key = $2 AND status = 'pending'
 RETURNING ${OPERATION_COLUMNS}`,

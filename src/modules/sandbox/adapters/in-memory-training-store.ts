@@ -406,13 +406,18 @@ export class InMemoryTrainingStore implements TrainingStore {
     if (record.status !== "pending") {
       return record; // terminal rows are immutable — replay
     }
+    const failed = input.failureReason !== undefined;
     const updated: TrainingOperationRecord = {
       ...record,
-      status: input.failureReason === undefined ? "completed" : "failed",
+      status: failed ? "failed" : "completed",
       ...(input.stage === undefined ? {} : { stage: input.stage }),
-      ...(input.failureReason === undefined ? {} : { failureReason: input.failureReason }),
+      ...(failed ? { failureReason: input.failureReason } : { failureReason: null }),
+      // The house (edge-0024) outcome semantics: completed_at ONLY on
+      // completion; the failed outcome carries failure_reason — the
+      // outcome fields are mutually exclusive (store parity with the
+      // migration's to_outcome_exclusive guard).
+      completedAt: failed ? null : input.now,
       updatedAt: input.now,
-      completedAt: input.now,
     };
     this.operations.set(`${input.applicationId}:${input.operationKey}`, updated);
     return updated;
