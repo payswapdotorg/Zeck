@@ -20,12 +20,23 @@
  * SECRET SAFETY (M5): no SDK type carries secret material. Credentials
  * are BYOK references handled server-side by the platform; the SDK
  * surface has no field where a plaintext secret could even appear.
+ *
+ * APPLICATION SCOPE (WORK-034): every scoped client method sends the
+ * canonical X-Zeck-Application selector (`ZECK_APPLICATION_HEADER`) from
+ * the client's `applicationId` scope — the real API derives the effective
+ * scope server-side and rejects scoped requests without it. A client
+ * without a scope fails fast client-side on scoped calls. Creation keeps
+ * its per-request `applicationId` in the request body.
  */
 
 export * from "../src/shared/wire";
 
 import type { ExecutionReceipt, ExecutionRequest, PublicError } from "../src/shared/wire";
-import { FORBIDDEN_REQUEST_KEYS, webhookSignatureBasis } from "../src/shared/wire";
+import {
+  FORBIDDEN_REQUEST_KEYS,
+  webhookSignatureBasis,
+  ZECK_APPLICATION_HEADER,
+} from "../src/shared/wire";
 
 // ---------------------------------------------------------------------------
 // Execution-centric client (fetch-based, provider-neutral)
@@ -36,6 +47,17 @@ export interface ZeckClientOptions {
   readonly baseUrl: string;
   /** Bearer credential for the Zeck transport (never a provider key). */
   readonly token: string;
+  /**
+   * The application whose scope authorizes scoped reads and governed
+   * commands (WORK-034): sent as the canonical X-Zeck-Application header
+   * on every scoped client method — the real API derives the effective
+   * tenant/application scope server-side from that selector and rejects
+   * scoped requests without it. Optional only at construction: a scoped
+   * method called on a client without an application scope fails fast
+   * client-side (the wire contract is pinned, never discovered).
+   * Creation keeps its per-request `applicationId` in the request body.
+   */
+  readonly applicationId?: string;
   readonly fetchImpl?: typeof fetch;
   /** Default idempotency key generator for create-style calls. */
   readonly generateIdempotencyKey?: () => string;
@@ -84,6 +106,27 @@ export function createZeckClient(options: ZeckClientOptions): ZeckClient {
   const fetchImpl = options.fetchImpl ?? fetch;
   const generateKey =
     options.generateIdempotencyKey ?? (() => `sdk-${globalThis.crypto.randomUUID()}`);
+  const applicationScope = options.applicationId;
+  if (applicationScope !== undefined && applicationScope.trim().length === 0) {
+    throw new Error(
+      "ZeckClientOptions.applicationId must be a non-empty string (the application whose scope authorizes scoped reads)",
+    );
+  }
+  /**
+   * The application-scope selector for the next scoped call: fails fast
+   * client-side when the client carries no scope (WORK-034) — mirroring
+   * the server-side requirement, the same way provider-selection attempts
+   * are rejected before the wire (API-001). Never a wire failure: the
+   * request is not issued.
+   */
+  const requireApplicationScope = (): string => {
+    if (applicationScope === undefined) {
+      throw new Error(
+        "this client has no application scope: construct it with ZeckClientOptions.applicationId (every scoped read and governed command sends it as the X-Zeck-Application header the API requires)",
+      );
+    }
+    return applicationScope;
+  };
 
   const request = async <T>(
     method: string,
@@ -132,6 +175,8 @@ export function createZeckClient(options: ZeckClientOptions): ZeckClient {
       return request<import("../src/shared/wire").Execution>(
         "GET",
         `/executions/${encodeURIComponent(executionId)}`,
+        undefined,
+        { [ZECK_APPLICATION_HEADER]: requireApplicationScope() },
       );
     },
     async cancelExecution(executionId, idempotencyKey) {
@@ -140,34 +185,52 @@ export function createZeckClient(options: ZeckClientOptions): ZeckClient {
         "POST",
         `/executions/${encodeURIComponent(executionId)}/cancel`,
         {},
-        { "idempotency-key": key },
+        {
+          "idempotency-key": key,
+          [ZECK_APPLICATION_HEADER]: requireApplicationScope(),
+        },
       );
     },
     async getResult(executionId) {
       return request<import("../src/shared/wire").ExecutionResult>(
         "GET",
         `/executions/${encodeURIComponent(executionId)}/results`,
+        undefined,
+        { [ZECK_APPLICATION_HEADER]: requireApplicationScope() },
       );
     },
     async listEvents(executionId) {
       return request<readonly import("../src/shared/wire").ExecutionEvent[]>(
         "GET",
         `/executions/${encodeURIComponent(executionId)}/events`,
+        undefined,
+        { [ZECK_APPLICATION_HEADER]: requireApplicationScope() },
       );
     },
     async listVerification(executionId) {
       return request<readonly import("../src/shared/wire").VerificationResult[]>(
         "GET",
         `/executions/${encodeURIComponent(executionId)}/verification`,
+        undefined,
+        { [ZECK_APPLICATION_HEADER]: requireApplicationScope() },
       );
     },
     async listAgents() {
-      return request<readonly import("../src/shared/wire").AgentSummary[]>("GET", "/agents");
+      return request<readonly import("../src/shared/wire").AgentSummary[]>(
+        "GET",
+        "/agents",
+        undefined,
+        {
+          [ZECK_APPLICATION_HEADER]: requireApplicationScope(),
+        },
+      );
     },
     async getAgentStatus(agentId) {
       return request<import("../src/shared/wire").AgentStatusView>(
         "GET",
         `/agents/${encodeURIComponent(agentId)}/status`,
+        undefined,
+        { [ZECK_APPLICATION_HEADER]: requireApplicationScope() },
       );
     },
   };

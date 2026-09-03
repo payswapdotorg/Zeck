@@ -56,7 +56,11 @@ import type {
 } from "../../shared/wire";
 import { mapErrorToResponse, PublicValidationError } from "../error-mapper";
 import type { Authenticate, RequestIdentity } from "../request-identity";
-import { requireStringField, resolveRequestIdentity } from "../request-identity";
+import {
+  applicationScopeOf,
+  requireStringField,
+  resolveRequestIdentity,
+} from "../request-identity";
 import {
   toWireCodebaseAnalysisReport,
   toWireCodebaseFindingTransitionReceipt,
@@ -77,17 +81,6 @@ function requireIdempotencyKey(request: { readonly headers: Record<string, unkno
     throw new PublicValidationError(
       "CAPABILITY_UNAVAILABLE",
       "POST routes require an Idempotency-Key header (1..256 chars)",
-    );
-  }
-  return value;
-}
-
-function applicationHeaderOf(request: { readonly headers: Record<string, unknown> }): string {
-  const value = request.headers["x-zeck-application"];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new PublicValidationError(
-      "CAPABILITY_UNAVAILABLE",
-      "codebase-analysis routes require the X-Zeck-Application header (the application whose scope authorizes the operation)",
     );
   }
   return value;
@@ -391,7 +384,7 @@ export function registerCodebaseAnalysisRoutes(
     request: FastifyRequest,
     reply: FastifyReply,
   ): Promise<CodebaseAnalysisReport> => {
-    const applicationId = applicationHeaderOf(request);
+    const applicationId = applicationScopeOf(request, "codebase-analysis routes");
     const { report } = await scopeCheckedAnalysis(request, reply, applicationId);
     return toWireCodebaseAnalysisReport({
       analysis: report.analysis,

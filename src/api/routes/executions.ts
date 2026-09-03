@@ -42,7 +42,11 @@ import type {
 } from "../../shared/wire";
 import { mapErrorToResponse, PublicValidationError } from "../error-mapper";
 import type { Authenticate, RequestIdentity } from "../request-identity";
-import { requireStringField, resolveRequestIdentity } from "../request-identity";
+import {
+  applicationScopeOf,
+  requireStringField,
+  resolveRequestIdentity,
+} from "../request-identity";
 import { toWireEvent, toWireExecution, toWireReceipt, toWireVerification } from "../serialization";
 
 export interface ExecutionRoutesDeps {
@@ -148,7 +152,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
     identity: RequestIdentity,
   ): Promise<Execution> => {
     const executionId = requireStringField(request.params as Record<string, unknown>, "id");
-    const applicationId = applicationHeaderOf(request);
+    const applicationId = applicationScopeOf(request, "execution reads");
     const record = await deps.executions.getExecution(applicationId, executionId);
     if (record === null) {
       // Scope-checked miss: another application's execution is
@@ -173,7 +177,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
       reply,
       deps.authenticate,
       deps.scopeResolver,
-      applicationHeaderOf(request),
+      applicationScopeOf(request, "execution reads"),
     );
 
   app.get("/executions/:id", async (request, reply) => {
@@ -189,7 +193,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
   app.post("/executions/:id/cancel", async (request, reply) => {
     try {
       const idempotencyKey = requireIdempotencyKey(request);
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "execution commands");
       const identity = await resolveRequestIdentity(
         request,
         reply,
@@ -237,7 +241,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
 
   app.get("/executions/:id/events", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "execution reads");
       const identity = await resolveRequestIdentity(
         request,
         reply,
@@ -256,7 +260,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
 
   app.get("/executions/:id/verification", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "execution reads");
       const identity = await resolveRequestIdentity(
         request,
         reply,
@@ -275,7 +279,7 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
 
   app.get("/executions/:id/results", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "execution reads");
       const identity = await resolveRequestIdentity(
         request,
         reply,
@@ -313,18 +317,6 @@ export function registerExecutionRoutes(app: FastifyInstance, deps: ExecutionRou
       return mapErrorToResponse(reply, error);
     }
   });
-}
-
-/** The application selector header for /executions/:id reads. */
-function applicationHeaderOf(request: { readonly headers: Record<string, unknown> }): string {
-  const value = request.headers["x-zeck-application"];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new PublicValidationError(
-      "CAPABILITY_UNAVAILABLE",
-      "execution reads require the X-Zeck-Application header (the application whose scope authorizes the read)",
-    );
-  }
-  return value;
 }
 
 // ---------------------------------------------------------------------------

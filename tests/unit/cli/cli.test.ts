@@ -1,5 +1,5 @@
 /**
- * CLI tests (WORK-015; acceptance criterion 3, M6, M17/M18).
+ * CLI tests (WORK-015; acceptance criterion 3, M6, M17/M18; WORK-034).
  *
  * Required-test mapping:
  *  - submit/inspect/result/events/cost/verify/cancel/agents/agent
@@ -7,7 +7,9 @@
  *  - M6: the CLI never prints secret material (error paths included);
  *    credentials come from the environment (never flags);
  *  - M17/M18: there is no provider-flavored command;
- *  - the usage text documents the environment contract.
+ *  - the usage text documents the environment contract;
+ *  - WORK-034: every scoped command sends the application argument as
+ *    the X-Zeck-Application client scope (creation keeps its body scope).
  */
 
 import { describe, expect, test } from "vitest";
@@ -229,6 +231,96 @@ describe("zeck CLI (execution-centric primitives)", () => {
     } finally {
       restore();
     }
+  });
+
+  test("WORK-034: every scoped command sends the application argument as the X-Zeck-Application scope", async () => {
+    const restore = withTransport((url) => {
+      if (url.endsWith("/events") || url.endsWith("/verification") || url.endsWith("/agents")) {
+        return { status: 200, body: [] };
+      }
+      if (url.endsWith("/cancel")) {
+        return {
+          status: 200,
+          body: {
+            executionId: EXECUTION.id,
+            applicationId: EXECUTION.applicationId,
+            status: "CANCELLED",
+            createdAt: EXECUTION.createdAt,
+            replayed: false,
+            lastEventSequence: 5,
+          },
+        };
+      }
+      if (url.endsWith("/status")) {
+        return {
+          status: 200,
+          body: {
+            agent: {
+              id: "00000000-0000-7000-a000-000000000001",
+              slug: "support-bot",
+              status: "active",
+            },
+            latestSelection: null,
+            availableVersions: [],
+          },
+        };
+      }
+      if (url.endsWith("/results")) {
+        return { status: 200, body: RESULT };
+      }
+      return { status: 200, body: EXECUTION };
+    });
+    try {
+      for (const argv of [
+        ["inspect", "app-1", EXECUTION.id],
+        ["result", "app-1", EXECUTION.id],
+        ["events", "app-1", EXECUTION.id],
+        ["cost", "app-1", EXECUTION.id],
+        ["verify", "app-1", EXECUTION.id],
+        ["cancel", "app-1", EXECUTION.id],
+        ["agents", "app-1"],
+        ["agent", "app-1", "00000000-0000-7000-a000-000000000001"],
+      ]) {
+        const code = await runCli(argv);
+        expect(code, `zeck ${argv[0]}`).toBe(0);
+      }
+    } finally {
+      restore();
+    }
+    const { calls } = restore();
+    expect(calls).toHaveLength(8);
+    for (const call of calls) {
+      const headers = call.init?.headers as Record<string, string>;
+      expect(headers["x-zeck-application"]).toBe("app-1");
+    }
+  });
+
+  test("WORK-034: submit keeps its scope in the request body (no application header on creation)", async () => {
+    const restore = withTransport(() => ({
+      status: 201,
+      body: {
+        executionId: EXECUTION.id,
+        applicationId: EXECUTION.applicationId,
+        status: "CREATED",
+        createdAt: EXECUTION.createdAt,
+        replayed: false,
+        lastEventSequence: 1,
+      },
+    }));
+    try {
+      const code = await runCli(["submit", "app-1", '{"kind":"summarize","input":"doc"}']);
+      expect(code).toBe(0);
+    } finally {
+      restore();
+    }
+    const { calls } = restore();
+    expect(calls).toHaveLength(1);
+    const headers = calls[0]?.init?.headers as Record<string, string>;
+    expect(headers["x-zeck-application"]).toBeUndefined();
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+      applicationId: "app-1",
+      task: { kind: "summarize", input: "doc" },
+    });
   });
 
   test("M6: an API error prints the public code only (never secret material)", async () => {

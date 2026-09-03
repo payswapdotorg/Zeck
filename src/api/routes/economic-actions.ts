@@ -43,7 +43,11 @@ import type { ScopeResolver } from "../../modules/auth/public";
 import type { EconomicActionService } from "../../modules/economics/public";
 import { mapErrorToResponse, PublicValidationError } from "../error-mapper";
 import type { Authenticate, RequestIdentity } from "../request-identity";
-import { requireStringField, resolveRequestIdentity } from "../request-identity";
+import {
+  applicationScopeOf,
+  requireStringField,
+  resolveRequestIdentity,
+} from "../request-identity";
 import {
   toWireEconomicAction,
   toWireEconomicActionEvent,
@@ -255,17 +259,6 @@ function parseOptionalFields(record: Record<string, unknown>): {
 }
 
 /** The application selector header for /economic-actions/:id reads. */
-function applicationHeaderOf(request: { readonly headers: Record<string, unknown> }): string {
-  const value = request.headers["x-zeck-application"];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new PublicValidationError(
-      "CAPABILITY_UNAVAILABLE",
-      "economic action reads require the X-Zeck-Application header (the application whose scope authorizes the read)",
-    );
-  }
-  return value;
-}
-
 export function registerEconomicActionRoutes(
   app: FastifyInstance,
   deps: EconomicActionRoutesDeps,
@@ -342,7 +335,7 @@ export function registerEconomicActionRoutes(
   // GET /economic-actions/:id — the durable intent record (status read).
   app.get("/economic-actions/:id", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "economic action reads");
       const identity = await identityFor(request, reply, applicationId);
       const action = await loadAction(request, identity, applicationId);
       return reply.send(action);
@@ -355,7 +348,7 @@ export function registerEconomicActionRoutes(
   // provenance ledger (ECO-007).
   app.get("/economic-actions/:id/events", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "economic action reads");
       const identity = await identityFor(request, reply, applicationId);
       await loadAction(request, identity, applicationId);
       const actionId = requireStringField(request.params as Record<string, unknown>, "id");
@@ -372,7 +365,7 @@ export function registerEconomicActionRoutes(
   // the verification authority alone decides delivery).
   app.get("/economic-actions/:id/outcome", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "economic action reads");
       const identity = await identityFor(request, reply, applicationId);
       await loadAction(request, identity, applicationId);
       const actionId = requireStringField(request.params as Record<string, unknown>, "id");
