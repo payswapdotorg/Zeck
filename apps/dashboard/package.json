@@ -1,7 +1,7 @@
 {
   "name": "@pectoraux/zeck-dashboard",
   "version": "0.1.0",
-  "description": "Zeck developer dashboard — a read/compose projection surface over the public API",
+  "description": "Zeck dashboard — the outcome-first experience shell and execution work surface over the governed public API",
   "type": "module",
   "private": true
 }
