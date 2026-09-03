@@ -1,10 +1,20 @@
 /**
- * Zeck dashboard design tokens — the ONE stylesheet (WORK-033).
+ * Zeck dashboard design tokens — the ONE stylesheet (WORK-033, extended
+ * as the WORK-035 experience foundation).
  *
  * A semantic token system (UX-IMPLEMENTATION-PLAN "Visual system"):
  * spacing, radius, surface, text, border, focus, status, attention,
  * success, warning, error, shadow and motion are expressed as CSS custom
  * properties; every component consumes the semantics, never raw values.
+ *
+ * WORK-035 foundation layer (UX-EXPERIENCE-ARCHITECTURE-V2): adds the
+ * overlay/sheet/dialog surface tokens, the sidebar and touch-target size
+ * tokens, the attention-kind vocabulary (decision / approval / failed /
+ * recommendation), the breadcrumb + page-title treatment, the experience
+ * mode selector, the header attention indicator, the global command
+ * dialog (the Cmd/Ctrl+K second front door) and the confirmation
+ * (consequence preview) presentation. All rules consume the SAME semantic
+ * tokens — no component-specific one-off hierarchy.
  *
  * Appearance: light is the default root palette; dark applies through
  * `[data-theme="dark"]` (the explicit user choice) or through the system
@@ -57,6 +67,10 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
   --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
   --space-5: 1.5rem; --space-6: 2rem; --space-7: 3rem;
   --radius-sm: 0.25rem; --radius-md: 0.5rem; --radius-lg: 0.75rem;
+  /* WORK-035 foundation size tokens: the persistent sidebar width and the */
+  /* minimum touch target (UX v2 §27–28) are semantic, not one-off values. */
+  --sidebar-width: 16rem;
+  --touch-target: 2.75rem;
   --surface-page: #f6f6f3;
   --surface-raised: #ffffff;
   --surface-sunken: #ebebe7;
@@ -76,7 +90,14 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
   --success-bg: #e9f3ea;
   --warning-bg: #fbf1d5;
   --error-bg: #fbe6e6;
+  /* WORK-035: the overlay family (dialog/sheet/command surfaces) and the */
+  /* decision/approval/recommendation attention-kind accents. */
+  --overlay-scrim: rgba(20, 24, 28, 0.45);
+  --attention-decision: #0b62c4;
+  --attention-approval: #96590b;
+  --attention-recommendation: #1a7f37;
   --shadow-card: 0 1px 2px rgba(20, 24, 28, 0.06), 0 1px 3px rgba(20, 24, 28, 0.04);
+  --shadow-overlay: 0 8px 30px rgba(20, 24, 28, 0.18);
   --motion-fast: 120ms;
   --motion-slow: 240ms;
   --ease: cubic-bezier(0.2, 0, 0.1, 1);
@@ -100,10 +121,15 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
   --status-error: #ee7b7b;
   --attention-bg: #33290f;
   --attention-border: #7a6324;
+  --attention-decision: #6cb2f5;
+  --attention-approval: #d9a848;
+  --attention-recommendation: #57c072;
   --success-bg: #12291a;
   --warning-bg: #2d2612;
   --error-bg: #331a1a;
+  --overlay-scrim: rgba(0, 0, 0, 0.55);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, 0.55);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
@@ -124,10 +150,15 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
     --status-error: #ee7b7b;
     --attention-bg: #33290f;
     --attention-border: #7a6324;
+    --attention-decision: #6cb2f5;
+    --attention-approval: #d9a848;
+    --attention-recommendation: #57c072;
     --success-bg: #12291a;
     --warning-bg: #2d2612;
     --error-bg: #331a1a;
+    --overlay-scrim: rgba(0, 0, 0, 0.55);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-overlay: 0 8px 30px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -439,9 +470,202 @@ pre.raw {
 .runs-list .run-line { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
 .runs-list .run-title { font-weight: 600; }
 
+/* ===========================================================================
+ * WORK-035 experience foundation (UX-EXPERIENCE-ARCHITECTURE-V2)
+ * All rules below consume the SAME semantic tokens as the WORK-033 layer.
+ * =========================================================================== */
+
+/* --- Attention kinds (v2 §23): decision / approval / failed /
+ * recommendation. Color is per-kind but NEVER the only signal — the markup
+ * always pairs a symbol + kind label with the text. */
+.attention-card.attention-decision {
+  border-color: var(--attention-decision);
+  border-left-color: var(--attention-decision);
+}
+.attention-card.attention-approval {
+  border-color: var(--attention-approval);
+  border-left-color: var(--attention-approval);
+  background: var(--warning-bg);
+}
+.attention-card.attention-recommendation {
+  border-color: var(--attention-recommendation);
+  border-left-color: var(--attention-recommendation);
+  background: var(--success-bg);
+}
+.attention-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.attention-summary { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: var(--space-1); }
+.attention-summary li { display: flex; gap: var(--space-2); align-items: baseline; }
+.attention-summary .kind-count { font-weight: 700; min-width: 1.5rem; }
+
+/* --- Header attention indicator (v2 §2): visible only when action is
+ * required; symbol + text, never color alone. */
+.attention-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--attention-border);
+  border-radius: 999px;
+  background: var(--attention-bg);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+}
+.attention-indicator:hover { text-decoration: underline; }
+.attention-indicator .count {
+  display: inline-block;
+  min-width: 1.25rem;
+  text-align: center;
+  background: var(--attention-border);
+  color: var(--surface-raised);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  padding: 0 var(--space-1);
+}
+
+/* --- Header utilities: the experience-mode selector (v2 §25 — a
+ * presentation preference, exactly like appearance). */
+.header-utilities { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-left: auto; }
+.mode-form { display: flex; gap: var(--space-2); align-items: center; }
+.mode-form select { min-width: 9rem; }
+
+/* --- Command trigger + kbd hint (v2 §7). */
+.command-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-1);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+}
+
+/* --- Native dialog family: the command surface and the sheet primitive.
+ * The UA owns modal focus and Escape; the client script owns focus
+ * restore (data-focus-return). Backdrop uses the scrim token. */
+dialog.command-dialog,
+dialog.sheet {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-overlay);
+  padding: 0;
+  max-width: min(36rem, calc(100vw - 2 * var(--space-4)));
+}
+dialog.command-dialog { width: 36rem; margin: 10vh auto auto auto; }
+dialog.command-dialog::backdrop,
+dialog.sheet::backdrop { background: var(--overlay-scrim); }
+dialog.command-dialog .dialog-body { padding: var(--space-4); display: grid; gap: var(--space-3); }
+dialog.command-dialog .dialog-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+dialog.command-dialog .dialog-title kbd { flex: none; }
+dialog.command-dialog input[type="text"] { width: 100%; }
+dialog.command-dialog .dialog-actions { display: flex; gap: var(--space-3); justify-content: flex-end; }
+.command-suggestions { list-style: none; margin: 0; padding: 0; max-height: 16rem; overflow-y: auto; }
+.command-suggestions li { border-bottom: 1px solid var(--border-subtle); }
+.command-suggestions li[hidden] { display: none; }
+.command-suggestions a {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  text-decoration: none;
+}
+.command-suggestions a:hover { background: var(--surface-sunken); text-decoration: underline; }
+.command-suggestions .suggestion-kind {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  flex: none;
+}
+.command-suggestion-empty { margin: 0; padding: var(--space-3); color: var(--text-muted); }
+
+/* --- Sheet primitive: the tablet/mobile focused panel (v2 §27). Desktop
+ * docks right; mobile docks bottom full-width with touch-safe padding. */
+dialog.sheet { width: min(28rem, calc(100vw - 2 * var(--space-3))); margin: auto 0 auto auto; height: 100dvh; max-height: 100dvh; border-radius: 0; border-right: none; }
+dialog.sheet .sheet-body { padding: var(--space-4); display: grid; gap: var(--space-3); overflow-y: auto; height: 100%; }
+dialog.sheet .sheet-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+dialog.sheet .sheet-head h2 { margin: 0; font-size: 1.125rem; }
+dialog.sheet form.dialog-close { display: flex; justify-content: flex-end; }
+dialog.sheet form.dialog-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: flex-end; }
+
+/* --- Breadcrumb + page-title treatment (v2 §2, spec §2): contextual
+ * orientation above the one h1, with room for one dominant primary
+ * action. */
+.page-head { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.breadcrumb { font-size: 0.875rem; }
+.breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; align-items: baseline; }
+.breadcrumb li { display: flex; gap: var(--space-2); align-items: baseline; }
+.breadcrumb li + li::before { content: "\\203a"; color: var(--text-muted); }
+.breadcrumb a { text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.breadcrumb [aria-current="page"] { color: var(--text-primary); font-weight: 600; }
+.page-head .title-line { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.page-head .title-line h1 { margin: 0; }
+.page-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.page-actions .primary { background: var(--focus-ring); color: #ffffff; border-color: var(--focus-ring); }
+a.button-link {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  background: var(--surface-raised);
+}
+a.button-link:hover { border-color: var(--focus-ring); text-decoration: underline; }
+a.button-link.danger { color: var(--status-error); border-color: var(--status-error); }
+
+/* --- Loading state (spec §19): preserves page hierarchy — it renders
+ * INSIDE main as a region with stage text and the retained context note;
+ * it never replaces the shell. No spinner animation (calm + reduced
+ * motion by construction). */
+.state.state-loading { border-style: solid; border-color: var(--status-info); background: var(--surface-raised); }
+.state.state-loading .state-stage { display: flex; gap: var(--space-2); align-items: baseline; font-weight: 600; color: var(--text-primary); }
+
+/* --- Confirmation primitive (v2 §26, spec §5): the universal consequence
+ * preview. Consequence, authorization, cost, reversibility and the
+ * idempotency handling are stated BEFORE the single confirm button. */
+.confirmation {
+  border: 1px solid var(--status-warn);
+  border-left: 4px solid var(--status-warn);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  box-shadow: var(--shadow-card);
+}
+.confirmation .confirmation-title { margin: 0 0 var(--space-1); font-size: 1.125rem; font-weight: 700; }
+.confirmation .confirmation-warning { color: var(--status-warn); font-weight: 600; margin: 0 0 var(--space-3); }
+.confirmation .form-actions { margin-top: var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.confirmation button.primary { background: var(--status-error); border-color: var(--status-error); color: #ffffff; }
+
 @media (min-width: 1025px) {
   .app-shell {
-    grid-template-columns: 16rem 1fr;
+    grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-areas:
       "nav header"
       "nav main"
@@ -476,10 +700,22 @@ pre.raw {
   .app-nav > a, .app-nav summary, .app-nav ul li a,
   .app-header button, .app-header input, .app-header select,
   .app-main button, .app-main input, .app-main select, .app-main textarea, .app-main summary,
-  .tabs a, .command-results a, .actions a, .actions button, .suggested a {
-    min-height: 2.75rem;
+  .tabs a, .command-results a, .actions a, .actions button, .suggested a,
+  .command-suggestions a, .page-actions a, .page-actions button,
+  .attention-indicator, a.button-link {
+    min-height: var(--touch-target);
   }
   .app-nav > ul li a { display: flex; align-items: center; }
+  dialog.command-dialog { margin: var(--space-3) auto; }
+  dialog.sheet {
+    width: 100vw;
+    margin: auto 0 0 0;
+    height: 90dvh;
+    max-height: 90dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+  }
+  dialog.sheet .sheet-body { padding-bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
