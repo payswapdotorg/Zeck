@@ -164,6 +164,24 @@ describe("confirmationCard (v2 §26 — the universal consequence preview)", () 
     expect(html).toContain("<td>Yes</td>");
   });
 
+  test("WORK-036 AC9: a caller-supplied reversibleDetail replaces the default wording (the honest contract fact)", () => {
+    const html = confirmationCard({
+      ...view,
+      reversible: false,
+      reversibleDetail:
+        "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel.",
+    });
+    expect(html).toContain(
+      "No — a committed execution cannot be undone through the public contract.",
+    );
+    // The default vocabulary is replaced, not appended alongside.
+    expect(html).not.toContain("No — this is a terminal change");
+  });
+
+  test("WORK-036 AC9: the default Yes/No vocabulary renders unchanged when no detail is supplied (the substrate is not redefined)", () => {
+    expect(confirmationCard(view)).toContain("No — this is a terminal change");
+  });
+
   test("D3: hostile values in every field are escaped (never an injection surface)", () => {
     const hostile: ConfirmationView = {
       ...view,

@@ -101,6 +101,14 @@ export interface ConfirmationView {
   readonly cost: string | null;
   readonly whyAllowed: string | null;
   readonly reversible: boolean;
+  /**
+   * Optional caller-supplied reversibility statement (WORK-036 AC9): the
+   * honest, contract-specific wording for the "Can it be undone" row —
+   * for example the create commitment's "not exposed by the public
+   * contract" fact. When absent, the primitive's default Yes/No
+   * vocabulary renders exactly as before (the WORK-035 behavior).
+   */
+  readonly reversibleDetail?: string;
   readonly approvalNote: string | null;
   readonly idempotencyNote: string | null;
   /** The confirm form's hidden inputs (idempotency key, application id…). */
@@ -118,7 +126,10 @@ export function confirmationCard(view: ConfirmationView): string {
     ["Who or what is affected", view.affected ?? "—"],
     ["What it costs", view.cost ?? "—"],
     ["Why it is allowed", view.whyAllowed ?? "—"],
-    ["Can it be undone", view.reversible ? "Yes" : "No — this is a terminal change"],
+    [
+      "Can it be undone",
+      view.reversibleDetail ?? (view.reversible ? "Yes" : "No — this is a terminal change"),
+    ],
     ["Approval required", view.approvalNote ?? "—"],
     ["Idempotency", view.idempotencyNote ?? "—"],
   ];

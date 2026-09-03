@@ -492,6 +492,10 @@ const FAILED_ID = "00000000-0000-7000-8000-0000000000c2";
 const WAITING_ID = "00000000-0000-7000-8000-0000000000c3";
 const RUNNING_ID = "00000000-0000-7000-8000-0000000000c4";
 const RECENTS_ID = "00000000-0000-7000-8000-0000000000c5";
+const QUALITY_ID = "00000000-0000-7000-8000-0000000000c7";
+const WAITING2_ID = "00000000-0000-7000-8000-0000000000c8";
+const RETRYABLE_ID = "00000000-0000-7000-8000-0000000000c9";
+const NONRETRY_ID = "00000000-0000-7000-8000-0000000000ca";
 const AGENT_ID = "00000000-0000-7000-8000-0000000000b1";
 
 let world: FakeWorld;
@@ -559,6 +563,71 @@ beforeAll(async () => {
     description: "Summarize the support queue",
     eventTypes: ["execution.created", "execution.authorize", "execution.pass"],
   });
+  // WORK-036 (q): the quality-failure fixture — the work completed, one
+  // check failed (a distinct dimension from an execution failure).
+  seedExecution(world, {
+    id: QUALITY_ID,
+    status: "COMPLETED",
+    description: "Reconcile the vendor invoices",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+    verification: [check(QUALITY_ID, 1, "PASS", 0.91), check(QUALITY_ID, 2, "FAIL", null)],
+  });
+  // WORK-036 (q, AC10 amendment): FAILED fixtures whose event streams
+  // carry PLATFORM-TYPED recoverability facts (the platform's own
+  // vocabulary — failureClass + retryable, mirroring the tools runtime's
+  // real retryable mapping: timeout → retryable, output-contract → not
+  // retryable). The dashboard surfaces such facts verbatim; it never
+  // infers one from free text.
+  seedExecution(world, {
+    id: RETRYABLE_ID,
+    status: "FAILED",
+    description: "Rebuild the search index",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.tool-result",
+      "execution.fail",
+    ],
+  });
+  {
+    const evs = world.events.get(RETRYABLE_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.tool-result") {
+        evs[index] = {
+          ...entry,
+          payload: { outcomeClass: "tool-failure", failureClass: "timeout", retryable: true },
+        };
+      }
+    });
+  }
+  seedExecution(world, {
+    id: NONRETRY_ID,
+    status: "FAILED",
+    description: "Normalize the invoice exports",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.tool-result",
+      "execution.fail",
+    ],
+  });
+  {
+    const evs = world.events.get(NONRETRY_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.tool-result") {
+        evs[index] = {
+          ...entry,
+          payload: {
+            outcomeClass: "tool-failure",
+            failureClass: "output-contract",
+            retryable: false,
+          },
+        };
+      }
+    });
+  }
 
   const agent: AgentSummary = {
     id: AGENT_ID,
@@ -830,8 +899,13 @@ describe("(a) the first-execution journey: Home → review → execute → resul
     expect(page).toContain("Understood task");
     expect(page).toContain("capability detail is not exposed by this projection");
     expect(page).toContain("Compute");
-    expect(page).toContain("Why this route");
+    expect(page).toContain("Route — why was this route selected?");
     expect(page).toContain("4180000 micro-USD");
+    // WORK-036 AC7: the panel answers the v2 §11 questions.
+    expect(page).toContain("Why was that approach permitted?");
+    expect(page).toContain("What did Zeck deliberately avoid?");
+    expect(page).toContain("How was the result verified?");
+    expect(page).toContain("Admitted by policy");
     // Route is secondary: the provider/model render only inside the
     // advanced disclosure nested in the panel.
     const routeStart = page.indexOf("Route detail (advanced)");
@@ -1439,5 +1513,227 @@ describe("(o) the attention journey (WORK-035: consequential aggregation, honest
     expect(evidence).toContain("not yet exposed by the public API");
     const lineage = await html(await get("/trust/lineage"));
     expect(lineage).toContain("Lineage");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (p) the WORK-036 composer journey: Home → attachments → review envelope →
+//     Run → the wire request carries inputArtifactRefs
+// ---------------------------------------------------------------------------
+
+describe("(p) the WORK-036 outcome-composer journey (attachments through the closed create contract)", () => {
+  test("Home carries the secondary affordances: attachments live, competences/templates honest", async () => {
+    const page = await html(await get("/"));
+    expect(page).toContain("What would you like Zeck to accomplish?");
+    expect(page).toContain("Attachments, competences and templates");
+    expect(page).toContain('name="attachments"');
+    expect(page).toContain("Saved competences");
+    expect(page).toContain("not exposed by the public API yet");
+    // No provider/model selection exists anywhere in the composer.
+    expect(page).not.toMatch(/name="(provider|model|providerId|modelId)"/);
+  });
+
+  test("the review renders the proposed-approach envelope with Run as the primary action", async () => {
+    const review = await html(
+      await get(
+        `/build/execution?outcome=${encodeURIComponent("Analyze the files and summarize the findings")}` +
+          `&applicationId=${APP_ID}&attachments=${encodeURIComponent("art-9\nart-10")}` +
+          `&spendLimitDollars=2.50&idempotencyKey=dash-journey-p`,
+      ),
+    );
+    expect(review).toContain("Review the proposed execution");
+    expect(review).toContain("Proposed approach");
+    expect(review).toContain("Permission and risk envelope");
+    expect(review).toContain("Proposed verification approach");
+    expect(review).toContain(">Run</button>");
+    expect(review).toContain("Input artifacts");
+    expect(review).toContain("art-9 · art-10");
+    // The declared limits, honestly framed — never platform estimates.
+    expect(review).toContain("not platform estimates");
+    // WORK-036 AC9 (amendment): the consequence/commitment block immediately
+    // before Run — the five pre-commit facts through the WORK-035
+    // confirmation primitive (no parallel confirmation pattern).
+    expect(review).toContain("Run this work?");
+    expect(review).toContain("What will happen");
+    expect(review).toContain("Who or what is affected");
+    expect(review).toContain("with 2 attached input artifacts read as inputs");
+    expect(review).toContain("No pre-run estimate");
+    expect(review).toContain("What it costs");
+    expect(review).toContain(
+      "Your declared spend limit ($2.50) is enforced as the request&#39;s cost constraint.",
+    );
+    expect(review).toContain("Why it is allowed");
+    expect(review).toContain("Can it be undone");
+    expect(review).toContain("cannot be undone through the public contract");
+    expect(review).toContain("Approval required");
+    expect(review).toContain("No user pre-approval is part of the public create contract");
+    expect(review).toContain("Idempotency");
+    expect(review).toContain("The idempotency key dash-journey-p is carried");
+    // The block sits between the envelope and Run (DOM order).
+    const envelopeAt = review.indexOf("Proposed approach");
+    const commitmentAt = review.indexOf("Run this work?");
+    const runAt = review.indexOf(">Run</button>");
+    expect(commitmentAt).toBeGreaterThan(envelopeAt);
+    expect(runAt).toBeGreaterThan(commitmentAt);
+  });
+
+  test("POST with attachments creates through the SDK with inputArtifactRefs on the wire", async () => {
+    const key = "dash-journey-p-run";
+    const body = new URLSearchParams({
+      applicationId: APP_ID,
+      environmentId: "",
+      outcome: "Analyze the files and summarize the findings",
+      attachments: "art-9\nart-10",
+      spendLimitDollars: "",
+      quality: "",
+      latencySeconds: "",
+      userId: "",
+      idempotencyKey: key,
+    }).toString();
+    const response = await postForm("/build/execution", body);
+    expect(response.status).toBe(303);
+    const location = response.headers.get("location") ?? "";
+    const createdId = location.replace("/runs/", "");
+    expect(createdId).not.toBe("");
+    // The durable world row's create fingerprint carries the artifact refs.
+    const established = world.createIndex.get(key);
+    expect(established).toBeDefined();
+    const fingerprint = JSON.parse(established?.fingerprint ?? "{}") as Record<string, unknown>;
+    expect(fingerprint.inputArtifactRefs).toEqual(["art-9", "art-10"]);
+    // The Result view renders from the live row.
+    const page = await html(await get(`/runs/${createdId}`));
+    expect(page).toContain("Analyze the files and summarize the findings");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (q) the WORK-036 trust + failure-distinction journey: the header trust
+//     strip (four separate facts) and the quality-failure notice
+// ---------------------------------------------------------------------------
+
+describe("(q) the WORK-036 trust-state and failure-distinction journey", () => {
+  test("the execution header renders the four trust axes as separate facts", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).toContain('class="trust-strip"');
+    const stripStart = page.indexOf('class="trust-strip"');
+    const strip = page.slice(stripStart, page.indexOf("</ul>", stripStart));
+    expect(strip.match(/<li>/g)?.length).toBe(4);
+    for (const axis of [
+      "Provider success",
+      "Execution success",
+      "Quality success",
+      "Policy success",
+    ]) {
+      expect(page).toContain(axis);
+    }
+    expect(page).not.toMatch(/trust score|overall confidence/i);
+  });
+
+  test("a completed execution with a failed check renders the QUALITY-failure notice (not the execution-failure surface)", async () => {
+    const page = await html(await get(`/runs/${QUALITY_ID}`));
+    expect(page).toContain("The work completed, but 1 verification check failed");
+    expect(page).toContain("quality failure");
+    expect(page).toContain("different fact from an execution failure");
+    expect(page).toContain("Review the evidence");
+    expect(page).not.toContain("Zeck could not complete this execution");
+  });
+
+  test("a FAILED execution renders the EXECUTION-failure surface with the honest recoverability limitation", async () => {
+    const page = await html(await get(`/runs/${FAILED_ID}`));
+    expect(page).toContain("Zeck could not complete this execution");
+    expect(page).toContain("execution failure");
+    expect(page).toContain("the tool rejected the request after three attempts");
+    // AC10 amendment: the limitation is explicit — no authoritative
+    // recoverability/provider classification exists on this stream, and
+    // the dashboard does not classify the recorded reason.
+    expect(page).toContain(
+      "no authoritative recoverability or provider/infrastructure classification",
+    );
+    expect(page).toContain("does not classify the recorded reason");
+    // The rejected heuristic prose is gone.
+    expect(page).not.toContain("When the recorded reason describes");
+    expect(page).toContain("Start a new attempt");
+    expect(page).not.toContain("The work completed, but");
+  });
+
+  test("a platform-recorded retryable fact is surfaced verbatim and makes the governed retry primary", async () => {
+    const page = await html(await get(`/runs/${RETRYABLE_ID}`));
+    expect(page).toContain("Recoverability (platform-recorded)");
+    expect(page).toContain("recorded this failure as <strong>retryable</strong>");
+    expect(page).toContain("failure class timeout");
+    expect(page).toContain("A new attempt is the governed path");
+    expect(page).toContain(
+      'class="button-link" href="/build/execution?outcome=' +
+        encodeURIComponent("Rebuild the search index"),
+    );
+    expect(page).toContain("distinct from a quality failure");
+  });
+
+  test("a platform-recorded not-retryable fact states the honest consequence (no blind-retry push)", async () => {
+    const page = await html(await get(`/runs/${NONRETRY_ID}`));
+    expect(page).toContain("recorded this failure as <strong>not retryable</strong>");
+    expect(page).toContain("expected to fail the same way");
+    expect(page).toContain("Refine the request before starting a new attempt");
+    expect(page).not.toContain("A new attempt is the governed path");
+    expect(page).not.toContain(
+      "Recoverability (platform-recorded):</strong> the platform recorded this failure as <strong>retryable</strong>",
+    );
+  });
+
+  test("the wait question renders with the consequence framing (the (d) companion)", async () => {
+    // A fresh waiting row: the shared world's WAITING_ID was already
+    // cancelled by the (d) journey.
+    seedExecution(world, {
+      id: WAITING2_ID,
+      status: "WAITING_USER",
+      description: "Draft the vendor renewal",
+      eventTypes: [
+        "execution.created",
+        "execution.authorize",
+        "execution.start",
+        "execution.wait-user",
+      ],
+      lastEventPayload: { question: "Approve the external side effect?" },
+    });
+    const page = await html(await get(`/runs/${WAITING2_ID}`));
+    expect(page).toContain("Approve the external side effect?");
+    expect(page).toContain("What deciding means");
+    expect(page).toContain("What cancelling means");
+    expect(page).toContain("Return to your work");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (r) the WORK-036 activity journey: the timeline is the default; Graph,
+//     Events and Raw are advanced views inside the disclosure
+// ---------------------------------------------------------------------------
+
+describe("(r) the WORK-036 activity-view journey (timeline default, advanced disclosure)", () => {
+  test("the default Activity view renders the timeline FIRST with the advanced views inside the disclosure", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}?tab=activity`));
+    const timeline = page.indexOf('<ol class="timeline">');
+    const disclosure = page.indexOf("Advanced views: Graph, Events, Raw");
+    expect(timeline).toBeGreaterThan(-1);
+    expect(disclosure).toBeGreaterThan(timeline);
+    // The advanced links + the honest graph absence live inside the
+    // disclosure body, after its summary.
+    const body = page.slice(disclosure);
+    expect(body).toContain("The execution graph view is an expert surface");
+    expect(body).toContain("view=events");
+    expect(body).toContain("view=raw");
+    // Nothing graph-shaped renders before the timeline (graph-first is
+    // the rejected anti-pattern).
+    expect(page.slice(0, timeline)).not.toContain("view=events");
+  });
+
+  test("the events and raw views are labeled advanced with a return-to-timeline link", async () => {
+    const events = await html(await get(`/runs/${COMPLETED_ID}?tab=activity&view=events`));
+    expect(events).toContain("Advanced view — raw events");
+    expect(events).toContain("Return to the timeline");
+    expect(events).toContain('<th scope="col">Event id</th>');
+    const raw = await html(await get(`/runs/${COMPLETED_ID}?tab=activity&view=raw`));
+    expect(raw).toContain("Advanced view — raw payloads");
+    expect(raw).toContain("Return to the timeline");
+    expect(raw).toContain("<pre class=");
   });
 });

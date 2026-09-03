@@ -91,12 +91,20 @@ function events(...types: string[]): ExecutionEvent[] {
 }
 
 describe("ExecutionHeader (UX v2 §9 — the facts header; the title+badge line lives in pageHead)", () => {
+  const axes = (kind: string, label: string) => ({ kind, label });
+
   test("renders the facts: duration, cost, the verification chip and the identity", () => {
     const html = executionHeader({
       execution: execution("COMPLETED"),
       durationMs: 222_000,
       costMicroUsd: "4180000",
       verificationChip: "4/4 checks passed",
+      trustAxes: [
+        axes("Provider success", "Provider calls completed (3)"),
+        axes("Execution success", "Execution completed"),
+        axes("Quality success", "4 of 4 checks passed"),
+        axes("Policy success", "Admitted by policy"),
+      ],
     });
     expect(html).toContain("3m 42s");
     expect(html).toContain("$4.18");
@@ -107,12 +115,40 @@ describe("ExecutionHeader (UX v2 §9 — the facts header; the title+badge line 
     expect(html).not.toContain("<h1");
   });
 
+  test("WORK-036 AC5: the trust strip renders the FOUR axes as separate facts (never one score)", () => {
+    const html = executionHeader({
+      execution: execution("COMPLETED"),
+      durationMs: 222_000,
+      costMicroUsd: "4180000",
+      verificationChip: "4/4 checks passed",
+      trustAxes: [
+        axes("Provider success", "Provider calls completed (3)"),
+        axes("Execution success", "Execution completed"),
+        axes("Quality success", "No verification results recorded"),
+        axes("Policy success", "Admitted by policy"),
+      ],
+    });
+    expect(html).toContain('class="trust-strip"');
+    expect(html).toContain('aria-label="Trust state — four separate facts"');
+    for (const axis of [
+      "Provider success",
+      "Execution success",
+      "Quality success",
+      "Policy success",
+    ]) {
+      expect(html).toContain(axis);
+    }
+    // The four facts stay separate — there is no merged verdict anywhere.
+    expect(html).not.toMatch(/confidence:|trust score|overall/i);
+  });
+
   test("falls back to the honest id when the task carries no summary field", () => {
     const html = executionHeader({
       execution: execution("RUNNING", { kind: "opaque" }),
       durationMs: 1000,
       costMicroUsd: null,
       verificationChip: "No verification results",
+      trustAxes: [],
     });
     expect(html).toContain("00000000-0000-7000-8000-0000000000e1");
     expect(html).not.toContain("$");

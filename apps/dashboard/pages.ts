@@ -61,6 +61,7 @@ import {
   executionTitle,
   isTerminal,
   looksLikeExecutionId,
+  parseAttachmentRefs,
   parseRecents,
   QUALITY_OPTIONS,
   RECENTS_COOKIE,
@@ -189,6 +190,25 @@ function suggestedActions(): string {
 </div>`;
 }
 
+/**
+ * WORK-036 AC2: the secondary composer affordances — attachments (live:
+ * input artifact references on the create contract), saved competences
+ * and templates (honest not-exposed states, never fabricated pickers).
+ * No provider/model selection exists anywhere in the composer.
+ */
+function composerSecondaryAffordances(): string {
+  return `<details class="composer-secondary">
+  <summary>Attachments, competences and templates</summary>
+  <div class="form-field">
+    <label for="home-attachments">Attach input artifacts (optional)</label>
+    <textarea id="home-attachments" name="attachments" rows="2" placeholder="one artifact reference per line — optional"></textarea>
+    <p class="form-hint">Input artifact references Zeck's plan can build on. Zeck owns the route — no provider, model or connection is selected here.</p>
+  </div>
+  <p class="composer-affordance"><a href="/assets/competences">Saved competences</a> — not exposed by the public API yet; when the competence authority ships, its facts will feed this composer.</p>
+  <p class="composer-affordance">Templates — not exposed by the public API yet; a governed template surface will pre-fill this composer without changing the create contract.</p>
+</details>`;
+}
+
 function homeOutcomeForm(idempotencyKey: string): string {
   return `<form class="flow card" method="get" action="/build/execution">
   <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
@@ -196,6 +216,7 @@ function homeOutcomeForm(idempotencyKey: string): string {
     <label for="home-outcome">What would you like Zeck to accomplish?</label>
     <textarea id="home-outcome" name="outcome" placeholder="Describe the outcome — Zeck plans, executes and verifies it under policy"></textarea>
   </div>
+  ${composerSecondaryAffordances()}
   <div class="form-field">
     <label for="home-application">Application id</label>
     <input id="home-application" name="applicationId" placeholder="00000000-0000-7000-8000-0000000000aa">
@@ -334,6 +355,15 @@ function executionFormFields(
       errors.outcome,
     ),
     executionFormField(
+      "f-attachments",
+      "Attach input artifacts (optional)",
+      `<textarea id="f-attachments" name="attachments" rows="2" placeholder="one artifact reference per line — optional">${esc(
+        values.attachments ?? "",
+      )}</textarea>`,
+      "Input artifact references the plan can build on. No provider, model or connection is selected here — Zeck owns the route.",
+      errors.attachments,
+    ),
+    executionFormField(
       "f-spend",
       "Spend limit (dollars, optional)",
       `<input id="f-spend" name="spendLimitDollars" value="${esc(
@@ -384,18 +414,13 @@ const FORM_KEYS: readonly string[] = [
   "applicationId",
   "environmentId",
   "outcome",
+  "attachments",
   "spendLimitDollars",
   "quality",
   "latencySeconds",
   "userId",
   "idempotencyKey",
 ];
-
-function hiddenFields(values: Record<string, string>): string {
-  return FORM_KEYS.filter((key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0)
-    .map((key) => `<input type="hidden" name="${key}" value="${esc(values[key] ?? "")}">`)
-    .join("\n    ");
-}
 
 function constraintSummary(values: Record<string, string>): string[] {
   const lines: string[] = [];
@@ -409,6 +434,120 @@ function constraintSummary(values: Record<string, string>): string[] {
     lines.push(`Latency limit: ${esc(values.latencySeconds ?? "")} seconds`);
   }
   return lines;
+}
+
+/**
+ * WORK-036 AC3: the proposed-approach envelope — everything the user can
+ * understand BEFORE running: purpose, estimated cost/time (the declared
+ * envelope — the platform exposes no pre-run estimate, so none is
+ * fabricated), the permission/risk envelope (in user language, honest
+ * about what the platform decides) and the proposed verification
+ * approach (platform-recorded results, honest about pre-run detail).
+ */
+function proposedApproachEnvelope(values: Record<string, string>): string {
+  const constraints = constraintSummary(values);
+  const artifactRefs = (values.attachments ?? "").trim().length > 0;
+  const costTime =
+    constraints.length === 0
+      ? '<p class="muted">No explicit cost or time envelope was set — Zeck will route within the governing policy, and the settled cost and duration are recorded per execution.</p>'
+      : `<ul>${constraints.map((line) => `<li>${line}</li>`).join("")}</ul>
+  <p class="muted">These are the limits you set, not platform estimates — the platform exposes no pre-run cost or time estimate, so none is shown. The settled cost and duration appear on the execution's header facts.</p>`;
+  return `<div class="card review-envelope">
+  <h2>Proposed approach</h2>
+  <h3>Purpose</h3>
+  <p>${esc(values.outcome ?? "")}</p>
+  <h3>Estimated cost and time</h3>
+  ${costTime}
+  <h3>Permission and risk envelope</h3>
+  <p>This request selects no provider, model, rail, connection or agent — the frozen create contract forbids provider selection, and Zeck owns the route. Policy admission is decided platform-side at dispatch: if policy denies the request, the denial is surfaced honestly on the execution (never silently retried). External side effects, where the governing policy requires approval, surface as attention items before they proceed.</p>
+  <h3>Proposed verification approach</h3>
+  <p>Zeck records verification results per execution — they appear on the Result view's trust summary and the Evidence view. The verification approach itself is chosen by the platform and is not exposed before the run; the dashboard never invents a confidence claim.</p>
+  <h3>Inputs and scope</h3>
+  ${keyValueTable([
+    ["Application", values.applicationId ?? ""],
+    [
+      "Compute environment",
+      (values.environmentId ?? "").length > 0 ? (values.environmentId ?? "") : "default",
+    ],
+    ["End user", (values.userId ?? "").length > 0 ? (values.userId ?? "") : "—"],
+    [
+      "Input artifacts",
+      artifactRefs
+        ? "attached — the references below are sent on the create request"
+        : "none attached",
+    ],
+  ])}
+  ${
+    artifactRefs
+      ? `<p class="muted mono">${esc((values.attachments ?? "").trim().replaceAll("\n", " · "))}</p>`
+      : ""
+  }
+</div>`;
+}
+
+/**
+ * WORK-036 AC9: the hidden field pairs the Run commitment form carries
+ * (the same FORM_KEYS the composer round-trips, idempotency key included).
+ */
+function commitmentHiddenFields(
+  values: Record<string, string>,
+): readonly (readonly [string, string])[] {
+  return FORM_KEYS.filter((key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0).map(
+    (key) => [key, values[key] ?? ""] as const,
+  );
+}
+
+/**
+ * WORK-036 AC9: the consequence/commitment block immediately before Run —
+ * the five pre-commit consequence facts (what will happen, affected
+ * resource, authorization requirement, cost estimate status,
+ * reversibility), each a public-contract fact or an honest absence,
+ * rendered through the WORK-035 confirmation primitive (never a parallel
+ * confirmation pattern). The confirm button is Run itself; "Not now"
+ * returns to editing the same details.
+ */
+function runCommitmentCard(
+  values: Record<string, string>,
+  idempotencyKey: string,
+  confirmLabel: string,
+): string {
+  const environment =
+    (values.environmentId ?? "").length > 0
+      ? `environment ${values.environmentId ?? ""}`
+      : "the default environment";
+  const userId = (values.userId ?? "").length > 0 ? (values.userId ?? "") : null;
+  const artifactRefs = parseAttachmentRefs(values.attachments ?? "") ?? [];
+  const spendLimit = (values.spendLimitDollars ?? "").trim();
+  const costStatus = `No pre-run estimate — the platform's public contract exposes none, so none is shown; the settled cost is recorded per execution on the run's header facts.${
+    spendLimit.length > 0
+      ? ` Your declared spend limit ($${spendLimit}) is enforced as the request's cost constraint.`
+      : ""
+  }`;
+  return confirmationCard({
+    title: "Run this work?",
+    consequence:
+      "Run submits the governed create request: exactly one execution is created for this outcome, Zeck plans the route and executes the work within the governing policy, and the events, verification results, output artifacts and settled cost are recorded platform-side — you follow the run on its execution page.",
+    affected: `A governed execution record in application ${values.applicationId ?? ""} (${environment})${
+      userId === null ? "" : `, attributed to end user ${userId}`
+    }${
+      artifactRefs.length > 0
+        ? `, with ${artifactRefs.length} attached input artifact${artifactRefs.length === 1 ? "" : "s"} read as inputs`
+        : ""
+    }. External side effects, if any, are admitted by policy and surface as attention before they proceed.`,
+    cost: costStatus,
+    whyAllowed:
+      "The create request is valid against the frozen create contract — it selects no provider, model, rail, connection or agent (selection is forbidden; the platform plans the route), and policy admission is decided platform-side at dispatch: a denial is surfaced on the execution, never silently retried.",
+    reversible: false,
+    reversibleDetail:
+      "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel (its own consequence preview); work already performed and its evidence stay recorded and inspectable.",
+    approvalNote:
+      "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary. Where the governing policy requires approval for external side effects, they surface as waiting states before they proceed.",
+    idempotencyNote: `The idempotency key ${idempotencyKey} is carried: reloading this review or submitting again converges on ONE execution rather than creating duplicates.`,
+    hiddenFields: commitmentHiddenFields({ ...values, idempotencyKey }),
+    confirmAction: "/build/execution",
+    confirmLabel,
+    cancelHref: editLink(values, idempotencyKey),
+  });
 }
 
 function editLink(values: Record<string, string>, idempotencyKey: string): string {
@@ -469,40 +608,13 @@ async function buildExecutionPage(client: ZeckClient, ctx: HttpContext): Promise
       ctx,
     );
   }
-  const constraints = constraintSummary(query);
   const content = `${pageHead({
     title: "Review the proposed execution",
     path: "/build/execution",
     primaryActionHtml: `<a class="button-link" href="${esc(editLink(query, idempotencyKey))}">Edit these details</a>`,
   })}
-<div class="card">
-  <h2>What you want</h2>
-  <p>${esc(query.outcome ?? "")}</p>
-  <h2>Scope</h2>
-  ${keyValueTable([
-    ["Application", query.applicationId ?? ""],
-    [
-      "Compute environment",
-      (query.environmentId ?? "").length > 0 ? (query.environmentId ?? "") : "default",
-    ],
-    ["End user", (query.userId ?? "").length > 0 ? (query.userId ?? "") : "—"],
-  ])}
-  <h2>Targets</h2>
-  ${
-    constraints.length === 0
-      ? '<p class="muted">No explicit constraints — Zeck will route within the governing policy.</p>'
-      : `<ul>${constraints.map((line) => `<li>${line}</li>`).join("")}</ul>`
-  }
-  <p>Zeck will plan the route, run the work under the governing policy, verify it, and record the evidence. The route and plan are chosen by the platform — you review the request here before it runs.</p>
-</div>
-<form class="flow card" method="post" action="/build/execution">
-    ${hiddenFields({ ...query, idempotencyKey })}
-  <div class="form-actions">
-    <button type="submit" class="primary">Execute</button>
-    <a href="${esc(editLink(query, idempotencyKey))}">Edit these details</a>
-  </div>
-</form>
-<p class="muted">Retrying this review (reloading, or submitting again) reuses the same idempotency key, so the platform converges on ONE execution rather than creating duplicates.</p>`;
+${proposedApproachEnvelope(query)}
+${runCommitmentCard(query, idempotencyKey, "Run")}`;
   return page(
     {
       title: "Zeck — Review the proposed execution",
@@ -551,7 +663,6 @@ async function createExecutionHandler(
     return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
   } catch (error) {
     if (error instanceof ZeckApiError && error.status < 500) {
-      const constraints = constraintSummary(ctx.form);
       const content = `${pageHead({
         title: "Review the proposed execution",
         path: "/build/execution",
@@ -560,32 +671,8 @@ async function createExecutionHandler(
 <div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this request: ${esc(
         error.body.message,
       )} (${esc(error.body.code)})</div>
-<div class="card">
-  <h2>What you want</h2>
-  <p>${esc(ctx.form.outcome ?? "")}</p>
-  <h2>Scope</h2>
-  ${keyValueTable([
-    ["Application", ctx.form.applicationId ?? ""],
-    [
-      "Compute environment",
-      (ctx.form.environmentId ?? "").length > 0 ? (ctx.form.environmentId ?? "") : "default",
-    ],
-  ])}
-  <h2>Targets</h2>
-  ${
-    constraints.length === 0
-      ? '<p class="muted">No explicit constraints.</p>'
-      : `<ul>${constraints.map((line) => `<li>${line}</li>`).join("")}</ul>`
-  }
-</div>
-<form class="flow card" method="post" action="/build/execution">
-    ${hiddenFields({ ...ctx.form, idempotencyKey })}
-  <div class="form-actions">
-    <button type="submit" class="primary">Try again</button>
-    <a href="${esc(editLink(ctx.form, idempotencyKey))}">Edit these details</a>
-  </div>
-</form>
-<p class="muted">The same idempotency key is kept, so a retry converges on the governed outcome rather than creating a duplicate.</p>`;
+${proposedApproachEnvelope(ctx.form)}
+${runCommitmentCard(ctx.form, idempotencyKey, "Try again")}`;
       return htmlStatusResult(
         422,
         appShell({
@@ -814,7 +901,20 @@ function activityView(
   view: string,
 ): string {
   const id = encodeURIComponent(execution.id);
-  const viewLinks = `<p class="muted">Advanced views: <a href="/runs/${id}?tab=activity&amp;view=events">raw events</a> · <a href="/runs/${id}?tab=activity&amp;view=raw">raw payloads</a> · <a href="/runs/${id}?tab=activity">timeline</a></p>`;
+  /**
+   * WORK-036 AC6: the advanced inspection views (Events, Raw — the Graph is
+   * an honest not-exposed expert surface) live INSIDE the advanced
+   * disclosure; the chronological timeline is the default presentation.
+   */
+  const advancedActivity = advancedDisclosure(
+    "Advanced views: Graph, Events, Raw",
+    `<p class="muted">The chronological timeline above is the default progress presentation. Graph, raw events and raw payloads are advanced inspection views.</p>
+${emptyState(
+  "Graph view",
+  "The execution graph view is an expert surface; the public projection exposes the chronological timeline and raw events.",
+)}
+<p>Advanced views: <a href="/runs/${id}?tab=activity&amp;view=events">raw events</a> · <a href="/runs/${id}?tab=activity&amp;view=raw">raw payloads</a> · <a href="/runs/${id}?tab=activity">timeline</a></p>`,
+  );
   if (view === "events") {
     const rows = [...events]
       .sort((a, b) => a.sequence - b.sequence)
@@ -828,7 +928,7 @@ function activityView(
       )
       .join("");
     return `<h2>Activity</h2>
-${viewLinks}
+<p class="muted">Advanced view — raw events. <a href="/runs/${id}?tab=activity">Return to the timeline</a> · <a href="/runs/${id}?tab=activity&amp;view=raw">raw payloads</a></p>
 <table class="data">
   <thead><tr><th scope="col">#</th><th scope="col">Type</th><th scope="col">Event id</th><th scope="col">Occurred</th></tr></thead>
   <tbody>${rows}</tbody>
@@ -845,7 +945,7 @@ ${viewLinks}
       )
       .join("\n");
     return `<h2>Activity</h2>
-${viewLinks}
+<p class="muted">Advanced view — raw payloads. <a href="/runs/${id}?tab=activity">Return to the timeline</a> · <a href="/runs/${id}?tab=activity&amp;view=events">raw events</a></p>
 ${
   events.length === 0
     ? emptyState("No events", "The public event stream is empty for this execution.")
@@ -854,14 +954,7 @@ ${
   }
   return `<h2>Activity</h2>
 ${progressTimeline(events)}
-${advancedDisclosure(
-  "Advanced activity views",
-  `${viewLinks}
-${emptyState(
-  "Graph view",
-  "The execution graph view is an expert surface; the public projection exposes the chronological timeline and raw events.",
-)}`,
-)}`;
+${advancedActivity}`;
 }
 
 async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
@@ -888,6 +981,10 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
     durationMs: durationMs(execution.createdAt, execution.terminalAt, Date.now()),
     costMicroUsd: result.cost === null ? null : result.cost.totalMicroUsd,
     verificationChip: deriveVerificationChip(result.verification),
+    trustAxes: deriveTrustAxes(execution, result, events).map((axis) => ({
+      kind: axisLabel(axis.kind),
+      label: axis.label,
+    })),
   });
   const title = executionTitle(execution.task, execution.id);
   const head = pageHead({
