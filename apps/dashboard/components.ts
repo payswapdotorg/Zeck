@@ -19,17 +19,23 @@ import type { Execution, ExecutionEvent, ExecutionResult, VerificationResult } f
 import { advancedDisclosure, sheetDialog } from "./disclosure";
 import {
   classifyFailure,
+  declaredBudgetMicroUsd,
   deriveConfidenceChip,
   derivePolicyAxis,
   deriveQualityAxis,
   deriveRecoverability,
   eventStageLabel,
   executionTitle,
+  type GlanceFact,
   isSecretShapedKey,
   redactSecretShaped,
   safeTaskPairs,
   statusLabel,
   statusSymbol,
+  type TrainingStateRow,
+  trainingStateRows,
+  type WorkloadFacts,
+  type WorkloadRecoveryKind,
   waitQuestion,
 } from "./projection";
 import { emptyState } from "./states";
@@ -636,3 +642,124 @@ export function resultSurface(view: WhyPanelView): string {
 
 /** Secret-shape guard re-export for component-level tests. */
 export const secretGuard = { isSecretShapedKey, redactSecretShaped };
+
+// ---------------------------------------------------------------------------
+// WORK-037: the Build-experience components — the at-a-glance grids, the
+// training/evaluation/release distinction list and the long-running
+// workload section. Every fact is a platform fact or an explicit honest
+// absence (the same discipline as every component above).
+// ---------------------------------------------------------------------------
+
+/**
+ * The at-a-glance grid (AC3/AC4): a definition-style grid of labeled
+ * cells, each marked whether a platform fact backs it ("Platform fact")
+ * or the cell states the explicit absence ("Not exposed by the public
+ * API"). The marker is text, never color alone.
+ */
+export function glanceGrid(cells: readonly GlanceFact[]): string {
+  const items = cells
+    .map(
+      (cell) => `<div class="glance-cell">
+  <h4>${esc(cell.label)}</h4>
+  <p>${esc(cell.fact)}</p>
+  <p class="glance-kind">${cell.backed ? "Platform fact" : "Not exposed by the public API"}</p>
+</div>`,
+    )
+    .join("\n  ");
+  return `<div class="glance-grid">
+  ${items}
+</div>`;
+}
+
+/**
+ * The four-state distinction list (AC7): compute complete / training
+ * complete / evaluation passed / release approved — each row its own
+ * fact, never merged, the release row always the explicit absence.
+ */
+export function trainingStateList(rows: readonly TrainingStateRow[]): string {
+  const items = rows
+    .map(
+      (row) => `<li>
+  <span class="distinction-state">${esc(row.label)}</span>
+  <span class="distinction-fact">${esc(row.fact)}</span>
+  <span class="glance-kind">${row.backed ? "Platform fact" : "Explicit absence"}</span>
+</li>`,
+    )
+    .join("\n  ");
+  return `<ul class="distinction-list">
+  ${items}
+</ul>`;
+}
+
+const RECOVERY_LABELS: Readonly<Record<WorkloadRecoveryKind, string>> = {
+  recovered:
+    "Recovered — the platform recorded a resume of this already-running execution (resume-recorded event).",
+  "resume-denied":
+    "A resume was denied by the platform's re-admission authority (resume-denied event) — the governed stop remains Cancel.",
+  interrupted: "A human interruption was requested (interruption-requested event).",
+  woken: "A scheduled wake-up was applied (wake-up-applied event).",
+};
+
+export interface WorkloadSectionView {
+  readonly execution: Execution;
+  readonly result: ExecutionResult;
+  readonly workload: WorkloadFacts;
+}
+
+/**
+ * The long-running workload section (AC8): progress, checkpoint recency,
+ * spend and recovery state — derived ONLY from the platform's typed
+ * event facts and the recorded cost facts. Lease/heartbeat mechanics are
+ * platform-internal and are never exposed here (stated explicitly). The
+ * training/evaluation/release distinction (AC7) renders inside, so a
+ * workload's completion vocabulary is always the four distinct states.
+ */
+export function longRunningWorkloadSection(view: WorkloadSectionView): string {
+  const { execution, result, workload } = view;
+  const id = encodeURIComponent(execution.id);
+  const progress = `<p>The chronological timeline is this workload's progress view — <a href="/runs/${id}?tab=activity">open the activity timeline</a>.</p>`;
+  const checkpoint =
+    workload.lastCheckpoint === null
+      ? '<p class="muted">No checkpoint events are recorded on the public stream.</p>'
+      : `<p>Checkpoint ${workload.lastCheckpoint.sequence} of ${workload.checkpointCount} recorded at ${esc(
+          workload.lastCheckpoint.occurredAt,
+        )}${
+          workload.lastCheckpoint.lastEventPosition === null
+            ? ""
+            : ` (position ${workload.lastCheckpoint.lastEventPosition})`
+        } — the platform's own checkpoint ledger fact.</p>`;
+  const budget = declaredBudgetMicroUsd(execution);
+  const spend =
+    result.cost === null
+      ? `<p class="muted">No settled cost is recorded yet.${
+          budget === null
+            ? ""
+            : ` The declared budget constraint on the request is ${esc(formatMicroUsd(budget))}.`
+        }</p>`
+      : `<p>Settled cost: ${esc(formatMicroUsd(result.cost.totalMicroUsd))}.${
+          budget === null
+            ? ""
+            : ` The declared budget constraint on the request is ${esc(formatMicroUsd(budget))}.`
+        }</p>`;
+  const recovery =
+    workload.recovery === null
+      ? '<p class="muted">No recovery events (resume, interruption, wake-up) are recorded on the public stream.</p>'
+      : `<p>${esc(RECOVERY_LABELS[workload.recovery.kind])} Recorded at ${esc(
+          workload.recovery.occurredAt,
+        )}.</p>`;
+  return `<section class="workload-facts" aria-labelledby="workload-facts-title">
+  <h2 id="workload-facts-title">Long-running workload</h2>
+  <p class="muted">This run's public event stream carries long-running workload facts. A workload is governed work through the execution authority — every fact below is the platform's own record; lease and heartbeat mechanics are platform-internal and are never shown here.</p>
+  <h3>Progress</h3>
+  ${progress}
+  <h3>Checkpoint recency</h3>
+  ${checkpoint}
+  <h3>Spend</h3>
+  ${spend}
+  <h3>Recovery state</h3>
+  ${recovery}
+  <h3>Training, evaluation and release states</h3>
+  <p class="muted">Four distinct states — never merged, and none implied by another.</p>
+  ${trainingStateList(trainingStateRows(execution, result.verification))}
+</section>`;
+}

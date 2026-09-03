@@ -15,6 +15,7 @@
  */
 
 import {
+  type AgentStatusView,
   EXECUTION_STATUSES,
   type Execution,
   type ExecutionEvent,
@@ -209,6 +210,21 @@ export function eventStageLabel(eventType: string): string {
       return "Policy denied admission";
     case "planning.decision-recorded":
       return "Planning decision recorded";
+    // WORK-028's long-running ledger vocabulary (public on the event
+    // stream): the platform's OWN observation events, labeled with its
+    // own vocabulary — the lease/heartbeat mechanics stay internal.
+    case "checkpoint-recorded":
+      return "Checkpoint recorded";
+    case "interruption-requested":
+      return "Interruption requested";
+    case "wake-up-scheduled":
+      return "Wake-up scheduled";
+    case "wake-up-applied":
+      return "Wake-up applied";
+    case "resume-recorded":
+      return "Recovered (resume recorded)";
+    case "resume-denied":
+      return "Resume denied";
     default:
       return eventType;
   }
@@ -772,3 +788,431 @@ export function waitQuestion(events: readonly ExecutionEvent[]): string | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// WORK-037: the Build experience — workload creation (through the ONE
+// governed execution create contract), long-running workload facts, the
+// training/evaluation/release distinction, and the agent/deployment
+// at-a-glance fact grids. Everything here is a pure derivation from the
+// public wire shapes ONLY (the same honesty rules as the rest of this
+// file: a typed platform fact or an explicit absence, never an invention).
+// ---------------------------------------------------------------------------
+
+/** The workload composer's round-trip keys (hidden fields + query params). */
+export const WORKLOAD_FORM_KEYS: readonly string[] = [
+  "applicationId",
+  "purpose",
+  "budgetDollars",
+  "datasets",
+  "userId",
+  "idempotencyKey",
+];
+
+export interface WorkloadFormValues {
+  readonly applicationId: string;
+  readonly purpose: string;
+  readonly budgetDollars: string;
+  readonly datasets: string;
+  readonly userId: string;
+}
+
+export type WorkloadFormErrors = Partial<Record<keyof WorkloadFormValues, string>>;
+
+/**
+ * Validate the workload composer. The workload is governed work: it maps
+ * onto the SAME closed `ExecutionRequest` vocabulary (the budget becomes
+ * the request's cost constraint; the datasets become input artifact
+ * references) — never a second create contract.
+ */
+export function validateWorkloadForm(form: Readonly<Record<string, string>>): {
+  readonly values: WorkloadFormValues | null;
+  readonly errors: WorkloadFormErrors;
+} {
+  const values: WorkloadFormValues = {
+    applicationId: (form.applicationId ?? "").trim(),
+    purpose: form.purpose ?? "",
+    budgetDollars: (form.budgetDollars ?? "").trim(),
+    datasets: form.datasets ?? "",
+    userId: (form.userId ?? "").trim(),
+  };
+  const errors: WorkloadFormErrors = {};
+  if (values.applicationId.length === 0) {
+    errors.applicationId =
+      "The application id is required (the governed scope of the workload and its budget).";
+  }
+  if (values.purpose.trim().length === 0) {
+    errors.purpose = "Describe what the workload should accomplish.";
+  }
+  if (values.budgetDollars.length > 0 && dollarsToMicroUsd(values.budgetDollars) === null) {
+    errors.budgetDollars = "Enter the budget as a dollar amount, e.g. 50.00.";
+  }
+  if (values.datasets.trim().length > 0 && parseAttachmentRefs(values.datasets) === null) {
+    errors.datasets =
+      "Enter dataset artifact references — one id per line or comma-separated (letters, digits, dots, dashes, underscores).";
+  }
+  return { values: Object.keys(errors).length === 0 ? values : null, errors };
+}
+
+/**
+ * Map validated workload values to the ExecutionRequest (the closed public
+ * vocabulary — the same builder guarantees as the execution composer: a
+ * forbidden key can never be emitted).
+ */
+export function buildWorkloadRequest(values: WorkloadFormValues): ExecutionRequest {
+  const datasetRefs = parseAttachmentRefs(values.datasets) ?? [];
+  const micro = dollarsToMicroUsd(values.budgetDollars);
+  return {
+    applicationId: values.applicationId,
+    task: { kind: "outcome", description: values.purpose },
+    ...(datasetRefs.length > 0 ? { inputArtifactRefs: datasetRefs } : {}),
+    ...(micro !== null && values.budgetDollars.length > 0
+      ? { constraints: { maxCostMicroUsd: micro } }
+      : {}),
+    ...(values.userId.length > 0 ? { userId: values.userId } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Long-running workload facts (AC8) — typed event facts ONLY
+// ---------------------------------------------------------------------------
+
+export interface WorkloadCheckpointFact {
+  /** The platform's own checkpoint sequence number (typed payload field). */
+  readonly sequence: number;
+  readonly occurredAt: string;
+  /** The platform's own position marker (typed payload field). */
+  readonly lastEventPosition: number | null;
+  readonly source: string;
+}
+
+export type WorkloadRecoveryKind = "recovered" | "resume-denied" | "interrupted" | "woken";
+
+export interface WorkloadRecoveryFact {
+  readonly kind: WorkloadRecoveryKind;
+  readonly occurredAt: string;
+  readonly source: string;
+}
+
+export interface WorkloadFacts {
+  readonly checkpointCount: number;
+  readonly lastCheckpoint: WorkloadCheckpointFact | null;
+  readonly recovery: WorkloadRecoveryFact | null;
+  /** True when ANY long-running fact exists (the section renders then). */
+  readonly present: boolean;
+}
+
+/**
+ * The recovery event vocabulary — the platform's OWN long-running event
+ * types (WORK-028's additive ledger vocabulary, public on the event
+ * stream). Lease/heartbeat events are NOT in this map: their mechanics
+ * are platform-internal and are never surfaced (AC8).
+ */
+const WORKLOAD_RECOVERY_EVENT_KINDS: Readonly<Record<string, WorkloadRecoveryKind>> = {
+  "resume-recorded": "recovered",
+  "resume-denied": "resume-denied",
+  "interruption-requested": "interrupted",
+  "wake-up-applied": "woken",
+};
+
+/**
+ * Derive the long-running workload facts from the PUBLIC event stream:
+ * checkpoint events (`checkpoint-recorded`, the platform's own typed
+ * payload: checkpointSequence + lastEventPosition) and the recovery
+ * events (resume/interruption/wake-up). Free-text fields are never
+ * consulted; lease/worker/epoch fields are never read (they do not cross
+ * the public payload — and the dashboard would not show them anyway).
+ */
+export function deriveWorkloadFacts(events: readonly ExecutionEvent[]): WorkloadFacts {
+  const ordered = chronologicalEvents(events);
+  let checkpointCount = 0;
+  let lastCheckpoint: WorkloadCheckpointFact | null = null;
+  let recovery: WorkloadRecoveryFact | null = null;
+  for (const event of ordered) {
+    if (event.type === "checkpoint-recorded") {
+      checkpointCount += 1;
+      const payload = event.payload as Record<string, unknown>;
+      const sequence =
+        typeof payload.checkpointSequence === "number"
+          ? payload.checkpointSequence
+          : checkpointCount;
+      const position =
+        typeof payload.lastEventPosition === "number" ? payload.lastEventPosition : null;
+      lastCheckpoint = {
+        sequence,
+        occurredAt: event.occurredAt,
+        lastEventPosition: position,
+        source: event.type,
+      };
+      continue;
+    }
+    const kind = WORKLOAD_RECOVERY_EVENT_KINDS[event.type];
+    if (kind !== undefined) {
+      recovery = { kind, occurredAt: event.occurredAt, source: event.type };
+    }
+  }
+  return {
+    checkpointCount,
+    lastCheckpoint,
+    recovery,
+    present: checkpointCount > 0 || recovery !== null,
+  };
+}
+
+/**
+ * The declared budget constraint recorded on the execution record (a
+ * public wire fact — `Execution.constraints.maxCostMicroUsd`), read as an
+ * integer micro-USD string. Null when no cost constraint is recorded.
+ */
+export function declaredBudgetMicroUsd(execution: Execution): string | null {
+  const constraints = execution.constraints as Record<string, unknown> | null;
+  const value = constraints?.maxCostMicroUsd;
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+// ---------------------------------------------------------------------------
+// The training/evaluation/release distinction (AC7) — the four states are
+// NAMED and DISTINCT; none is ever derived from another; the release state
+// is never presented (no public fact exists for it, and this surface never
+// claims one).
+// ---------------------------------------------------------------------------
+
+export type TrainingReleaseStateKind =
+  | "compute-complete"
+  | "training-complete"
+  | "evaluation-passed"
+  | "release-approved";
+
+export interface TrainingStateRow {
+  readonly kind: TrainingReleaseStateKind;
+  readonly label: string;
+  /**
+   * The row's answer: a live platform fact, or the explicit honest
+   * absence ("not exposed by the public contract" — never a guess).
+   */
+  readonly fact: string;
+  /** True when a live platform fact backs the row (drives the marker). */
+  readonly backed: boolean;
+}
+
+/**
+ * The four-state distinction, derived from the run's public facts:
+ *  - compute complete: the terminal status (the one public completion fact);
+ *  - training complete: the SAME terminal status — stated explicitly as
+ *    NOT separately distinguished by the public contract (the training
+ *    authority's workload states are not public);
+ *  - evaluation passed: the verification results (the public evaluation
+ *    facts — pass counts, never a fabricated verdict);
+ *  - release approved: the explicit absence — no release state exists on
+ *    the public execution contract, and completing or evaluating never
+ *    implies one.
+ */
+export function trainingStateRows(
+  execution: Execution,
+  verification: readonly VerificationResult[],
+): readonly TrainingStateRow[] {
+  const completed = execution.status === "COMPLETED";
+  const passed = verification.filter((check) => check.status === "PASS").length;
+  return [
+    {
+      kind: "compute-complete",
+      label: "Compute complete",
+      fact: completed
+        ? `Yes — the execution reached the terminal state ${statusLabel(execution.status)}.`
+        : `Not yet — the live status is ${execution.status} (${statusLabel(execution.status)}).`,
+      backed: true,
+    },
+    {
+      kind: "training-complete",
+      label: "Training complete",
+      fact: completed
+        ? "The public contract exposes exactly one completion fact — the terminal status above. It does not separately distinguish training completion from compute completion; the training authority's own workload states are not public."
+        : "Not yet — and when the run completes, the public contract will still expose only the terminal status (the training authority's own workload states are not public).",
+      backed: true,
+    },
+    {
+      kind: "evaluation-passed",
+      label: "Evaluation passed",
+      fact:
+        verification.length === 0
+          ? "No verification results are recorded — evaluation has no public facts on this run yet."
+          : `${passed} of ${verification.length} verification checks passed — the run's verification results are the public evaluation facts (see the Evidence view).`,
+      backed: verification.length > 0,
+    },
+    {
+      kind: "release-approved",
+      label: "Release approved",
+      fact: "No release state exists on the public execution contract — this page never presents one. Release decisions belong to a platform authority that is not exposed here, and training completion or evaluation outcomes never imply release approval.",
+      backed: false,
+    },
+  ];
+}
+
+/**
+ * The static completion explainer for the workload PROPOSAL (before any
+ * run exists): what each of the four states WILL be, as facts or explicit
+ * absences — the same vocabulary as `trainingStateRows`, stated ahead of
+ * commitment so the user knows what completion will and will not mean.
+ */
+export function completionExplainerRows(): readonly TrainingStateRow[] {
+  return [
+    {
+      kind: "compute-complete",
+      label: "Compute complete",
+      fact: "Will show as the run's terminal Completed status — the one public completion fact.",
+      backed: false,
+    },
+    {
+      kind: "training-complete",
+      label: "Training complete",
+      fact: "The public contract will not separately distinguish training completion from compute completion (the training authority's own workload states are not public) — the run's status is the fact.",
+      backed: false,
+    },
+    {
+      kind: "evaluation-passed",
+      label: "Evaluation passed",
+      fact: "Will show from the run's verification results (the Evidence view) — evaluation is a separate fact from completion and is never implied by it.",
+      backed: false,
+    },
+    {
+      kind: "release-approved",
+      label: "Release approved",
+      fact: "Never claimed: no release state exists on the public execution contract. Completion and evaluation never imply release approval.",
+      backed: false,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// At-a-glance fact grids (AC3/AC4) — every cell a platform fact or an
+// explicit honest absence, so the glance never invents health, quality,
+// cost or deployment facts the API does not carry.
+// ---------------------------------------------------------------------------
+
+export interface GlanceFact {
+  readonly label: string;
+  /** The platform fact, or the honest absence statement. */
+  readonly fact: string;
+  /** True when a live platform fact backs the cell. */
+  readonly backed: boolean;
+}
+
+/**
+ * The agent at-a-glance grid (AC3): purpose, capabilities,
+ * tools/integrations, autonomy, approvals, quality, cost, version and
+ * current deployment — each either a fact from the public agent
+ * projection (description, active version + its validation state) or the
+ * explicit absence (the projection carries no such facts; deployment
+ * availability is a distinct authority and is never presented as an
+ * execution status).
+ */
+export function agentGlanceFacts(status: AgentStatusView): readonly GlanceFact[] {
+  const active = status.activeVersion;
+  return [
+    {
+      label: "Purpose",
+      fact:
+        status.agent.description ??
+        "No description is recorded on the agent record — the inventory projection carries only what the platform recorded.",
+      backed: status.agent.description !== null,
+    },
+    {
+      label: "Capabilities",
+      fact: "The public agent projection carries no capability facts — capabilities are governed platform-side and are not exposed per agent.",
+      backed: false,
+    },
+    {
+      label: "Tools and integrations",
+      fact: "The public agent projection carries no tool or integration facts.",
+      backed: false,
+    },
+    {
+      label: "Autonomy",
+      fact: "Autonomy is governed by policy at dispatch, not by the agent record — the public agent projection carries no autonomy facts.",
+      backed: false,
+    },
+    {
+      label: "Approvals",
+      fact: "Approval requirements live in the governing policy; when a run needs an approval it surfaces as a waiting state on that execution — the agent record carries no approval facts.",
+      backed: false,
+    },
+    {
+      label: "Quality",
+      fact:
+        active === null
+          ? "No active version is selected — no validation state to show."
+          : `Active version validation state: ${active.validationState}${
+              active.validationNotes === null ? "" : ` (${active.validationNotes})`
+            }.`,
+      backed: active !== null,
+    },
+    {
+      label: "Cost",
+      fact: "The public API exposes no per-agent cost facts — costs are recorded per execution on each run's header facts.",
+      backed: false,
+    },
+    {
+      label: "Version",
+      fact:
+        active === null
+          ? "No active version is selected."
+          : `${active.version} (definition digest ${active.definitionDigest}).`,
+      backed: active !== null,
+    },
+    {
+      label: "Current deployment",
+      fact: "The public agent projection carries no deployment facts — deployment availability is a separate authority, not yet exposed, and is never represented as an execution status.",
+      backed: false,
+    },
+  ];
+}
+
+/**
+ * The deployment at-a-glance grid (AC4): availability, version, health,
+ * channels/endpoints, activity and operational controls. The public API
+ * exposes NO deployment authority, so every cell states the explicit
+ * absence — never a fabricated availability, health or version fact
+ * (Implementation Requirement 4: operational statistics only when backed
+ * by API facts).
+ */
+export function deploymentGlanceFacts(): readonly GlanceFact[] {
+  return [
+    {
+      label: "Availability",
+      fact: "Not exposed by the public API — no deployment authority is public yet, so no availability fact can be shown (and availability is never represented as an execution status).",
+      backed: false,
+    },
+    {
+      label: "Version",
+      fact: "Not exposed by the public API — the deployed version would come from the deployment authority's own projection when it ships.",
+      backed: false,
+    },
+    {
+      label: "Health",
+      fact: "Not exposed by the public API — no health metric is invented here; health facts will come from the deployment authority.",
+      backed: false,
+    },
+    {
+      label: "Channels and endpoints",
+      fact: "Not exposed by the public API — channels and endpoints are deployment-authority facts; none are rendered.",
+      backed: false,
+    },
+    {
+      label: "Activity",
+      fact: "Not exposed by the public API — the closest live record today is each execution's own event stream (open a run to see its activity).",
+      backed: false,
+    },
+    {
+      label: "Operational controls",
+      fact: "Not exposed by the public API — pause, rollback and version change have no governed deployment-command route yet, so this dashboard renders no action buttons for them; when the authority ships, each action routes through its governed API with a consequence preview before commitment.",
+      backed: false,
+    },
+  ];
+}
+
+/**
+ * The deployment/execution distinction statement (the Work Order's key
+ * invariant, rendered on every deployment surface): a Deployment is
+ * persistent availability; an Execution is one governed unit of work.
+ */
+export const DEPLOYMENT_EXECUTION_DISTINCTION =
+  "A Deployment is persistent availability of an agent or program. An Execution is one governed unit of work. Deployment availability is never an execution status, and an execution's status never describes a deployment.";

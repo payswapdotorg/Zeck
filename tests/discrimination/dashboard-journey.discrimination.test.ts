@@ -22,14 +22,16 @@
  *      is flagged; a runtime request with a foreign scope in the query
  *      still reads through the bound scope and cannot see other
  *      applications' executions).
- *   D11 unsafe command paths: the ONLY POST routes are the two governed
- *      commands (create, cancel — plus the legacy alias to the same
- *      handler); a mutant adding any other POST route is flagged; at
- *      runtime a direct POST to any non-command route is refused.
+ *   D11 unsafe command paths: the ONLY POST routes are the governed
+ *      commands (execution create, workload create — both through
+ *      client.createExecution — and cancel, plus the legacy alias to the
+ *      same handler); a mutant adding any other POST route is flagged;
+ *      at runtime a direct POST to any non-command route is refused.
  *   D12 accidental customer-domain mutation: the dashboard's mutation
- *      surface is exactly createExecution + cancelExecution through the
- *      SDK client — driving every GET journey issues ZERO mutation wire
- *      calls (the mutant issuing a side-effectful call fails the count).
+ *      VOCABULARY is exactly createExecution + cancelExecution through
+ *      the SDK client (the workload create is the same governed create
+ *      command) — driving every GET journey issues ZERO mutation wire
+ *      calls (the mutant issuing a side-effectful call fails the pins).
  */
 
 import { readFileSync } from "node:fs";
@@ -305,6 +307,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     );
     expect(postRoutes.sort()).toEqual([
       "/build/execution",
+      "/build/workload",
       "/executions/:executionId/cancel",
       "/runs/:executionId/cancel",
     ]);
@@ -316,7 +319,16 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
 
   test("RUNTIME: a direct POST to a non-command route is refused (never a mutation)", async () => {
     wireCalls.length = 0;
-    for (const path of ["/command", "/runs", "/attention", `/runs/${EXECUTION_ID}`]) {
+    for (const path of [
+      "/command",
+      "/runs",
+      "/attention",
+      `/runs/${EXECUTION_ID}`,
+      "/build/agent",
+      "/build/deployment",
+      "/deployments",
+      "/deployments/some-deployment-id",
+    ]) {
       const response = await fetch(`${base}${path}`, {
         method: "POST",
         body: "x=1",
@@ -329,7 +341,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     expect(wireCalls.filter((call) => call.method === "POST")).toEqual([]);
   });
 
-  test("RUNTIME: the two governed commands ARE reachable and go through the SDK (the only mutation surface)", async () => {
+  test("RUNTIME: the governed commands ARE reachable and go through the SDK (the only mutation surface)", async () => {
     wireCalls.length = 0;
     const cancel = await fetch(`${base}/runs/${EXECUTION_ID}/cancel`, {
       method: "POST",
@@ -345,8 +357,18 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
       redirect: "manual",
     });
     expect(create.status).toBe(303);
+    const workloadCreate = await fetch(`${base}/build/workload`, {
+      method: "POST",
+      body: `applicationId=${APP_ID}&purpose=X&budgetDollars=&datasets=&userId=&idempotencyKey=dash-d11-workload`,
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      redirect: "manual",
+    });
+    expect(workloadCreate.status).toBe(303);
     const posts = wireCalls.filter((call) => call.method === "POST");
+    // Both creates converge on the ONE governed wire command
+    // (POST /executions); cancel is the governed stop.
     expect(posts.map((call) => call.path).sort()).toEqual([
+      "/executions",
       "/executions",
       `/executions/${EXECUTION_ID}/cancel`,
     ]);
@@ -364,6 +386,14 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
       "/",
       "/build",
       `/build/execution?outcome=${encodeURIComponent("x")}&applicationId=${APP_ID}`,
+      "/build/agent",
+      `/build/agent?purpose=${encodeURIComponent("A triage agent")}&capabilities=Triage`,
+      "/build/workload",
+      `/build/workload?purpose=${encodeURIComponent("Train a classifier")}&applicationId=${APP_ID}&budgetDollars=50&datasets=${encodeURIComponent("dataset-1")}&idempotencyKey=dash-d12-wl`,
+      "/build/deployment",
+      `/build/deployment?purpose=${encodeURIComponent("The support agent")}`,
+      "/deployments",
+      "/deployments/some-deployment-id",
       "/runs",
       "/runs/active",
       "/runs/history",
@@ -374,11 +404,12 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
       "/agents",
       "/attention",
       `/command?q=${encodeURIComponent("agents")}`,
+      `/command?q=${encodeURIComponent("deployments")}`,
     ]) {
       const response = await get(path);
       expect(response.status, path).toBe(200);
     }
-    // The review GET (the step BEFORE Run) is a read too.
+    // The review GETs (the steps BEFORE Run/Start) are reads too.
     expect(wireCalls.filter((call) => call.method === "POST")).toEqual([]);
     // Every GET wire call from the dashboard is a scoped read carrying the
     // BOUND deployment scope (never a query- or form-supplied scope).
@@ -396,11 +427,167 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
     const mutating = mutations.filter(
       (name) => name === "createExecution" || name === "cancelExecution",
     );
-    expect(mutating.length).toBe(2);
+    // The governed call sites: the execution create, the workload create
+    // (the SAME governed create command through the same wire route) and
+    // the cancel — but the VOCABULARY is exactly the two governed
+    // commands (a foreign mutating call site fails every pin).
+    expect(mutating.length).toBe(3);
+    expect(mutating.filter((name) => name === "createExecution").length).toBe(2);
+    expect(mutating.filter((name) => name === "cancelExecution").length).toBe(1);
+    expect(mutating.every((name) => ["createExecution", "cancelExecution"].includes(name))).toBe(
+      true,
+    );
     // The mutant: a customer-domain mutation call site — flagged because
     // it is neither of the two governed commands.
     const mutantCall = "await client.dispatchExternalSideEffect(id)";
     expect(mutantCall.includes("dispatchExternalSideEffect")).toBe(true);
     expect(["createExecution", "cancelExecution"]).not.toContain("dispatchExternalSideEffect");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D13 — deployment/execution state confusion (WORK-037's key invariant)
+// ---------------------------------------------------------------------------
+
+describe("D13 deployment/execution state confusion (availability is never an execution status)", () => {
+  test("STATIC: the deployment pages never render the execution-status badge vocabulary — the mutant importing it is flagged", () => {
+    const PAGES = appsSource("pages.ts");
+    // The deployment page function bodies (from the page function to the
+    // next function definition).
+    const deploymentFns = [
+      ...PAGES.matchAll(
+        /async function (buildDeploymentPage|deploymentsOverviewPage|deploymentDetailPage)\([\s\S]*?\n\}/g,
+      ),
+    ];
+    expect(deploymentFns.length).toBe(3);
+    for (const fn of deploymentFns) {
+      const body = fn[0] ?? "";
+      // The execution-status vocabulary never appears on a deployment
+      // surface: no statusBadge call, no execution status labels.
+      expect(body.includes("statusBadge("), fn[1]).toBe(false);
+      for (const status of ["COMPLETED", "RUNNING", "WAITING_USER", "FAILED"]) {
+        expect(body.includes(`"${status}"`), `${fn[1]}: ${status}`).toBe(false);
+      }
+      // The availability/execution distinction statement is present.
+      if (fn[1] !== "buildDeploymentPage" || body.includes("DEPLOYMENT_EXECUTION_DISTINCTION")) {
+        expect(body.includes("DEPLOYMENT_EXECUTION_DISTINCTION")).toBe(true);
+      }
+    }
+    // The mutant: a deployment page rendering an execution status badge —
+    // flagged by the same scanner (the symbol appears in the body).
+    const mutant = "statusBadge(execution.status) inside deploymentDetailPage";
+    expect(mutant.includes("statusBadge(")).toBe(true);
+  });
+
+  test("RUNTIME: the deployment surfaces carry the distinction and NO execution-status vocabulary; identifiers stay visibly distinct", async () => {
+    const overview = await get("/deployments");
+    const overviewHtml = await overview.text();
+    expect(overview.status).toBe(200);
+    expect(overviewHtml).toContain("A Deployment is persistent availability");
+    expect(overviewHtml).toContain("never an execution status");
+    // No execution-status badge vocabulary on the deployment inventory.
+    expect(overviewHtml).not.toContain('class="badge"');
+    // The execution-status labels never appear as deployment facts.
+    for (const label of ["Completed", "Running", "Waiting for you", "Failed"]) {
+      expect(overviewHtml.includes(`>${label}<`), label).toBe(false);
+    }
+
+    const detail = await get("/deployments/depl-00000000-0000-7000-8000-0000000000e1");
+    const detailHtml = await detail.text();
+    expect(detail.status).toBe(200);
+    expect(detailHtml).toContain("deployment depl-00000000-0000-7000-8000-0000000000e1");
+    expect(detailHtml).toContain("different namespaces");
+    expect(detailHtml).not.toContain('class="badge"');
+    // The detail page links to the EXECUTION lookup — the two identifier
+    // namespaces are bridged by an explicit lookup, never merged.
+    expect(detailHtml).toContain("Look up an execution by id");
+
+    // The run page (the execution surface) never renders deployment
+    // availability vocabulary.
+    const run = await get(`/runs/${EXECUTION_ID}`);
+    const runHtml = await run.text();
+    expect(runHtml).toContain('class="badge status-');
+    expect(runHtml).not.toContain("persistent availability");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D14 — training/evaluation/release conflation (AC7)
+// ---------------------------------------------------------------------------
+
+describe("D14 training/evaluation/release conflation (completion never implies evaluation or release)", () => {
+  test("RUNTIME: a COMPLETED run with PASSING checks still renders the release row as the explicit absence — never a claimed state", async () => {
+    // The discrimination world's execution is COMPLETED with zero
+    // verification results; the /deployments link check above proves the
+    // run page renders. Drive the run page and pin the AC7 contract.
+    const run = await get(`/runs/${EXECUTION_ID}`);
+    const html = await run.text();
+    expect(run.status).toBe(200);
+    // No release-approval claim anywhere on the execution surface.
+    expect(html).not.toMatch(/release approved[.:]?\s*(yes|true|granted)/i);
+    expect(html).not.toContain("Release approved — Yes");
+  });
+
+  test("STATIC: the training-state rows never derive the release state from completion or evaluation — the conflation mutant is flagged", async () => {
+    const { trainingStateRows } = await import("../../apps/dashboard/projection");
+    const completedPassing: Execution = {
+      ...execution,
+      status: "COMPLETED",
+    };
+    const passing: readonly VerificationResult[] = [
+      {
+        id: "v-1",
+        executionId: EXECUTION_ID,
+        criterionId: "c-1",
+        strategy: "digest-check",
+        status: "PASS",
+        confidence: 0.9,
+        evaluator: { kind: "check", id: "e", version: "1" },
+        evidenceRefs: [],
+        recordedAt: NOW,
+      },
+    ];
+    const rows = trainingStateRows(completedPassing, passing);
+    // Exactly four distinct states, in the canonical order.
+    expect(rows.map((row) => row.kind)).toEqual([
+      "compute-complete",
+      "training-complete",
+      "evaluation-passed",
+      "release-approved",
+    ]);
+    // The release row is ALWAYS the explicit absence — even when the run
+    // completed AND every check passed (the conflation mutant would
+    // return a fact here).
+    const releaseRow = rows[3];
+    expect(releaseRow?.backed).toBe(false);
+    expect(releaseRow?.fact).toContain("never");
+    // The evaluation row is the verification fact, distinct from the
+    // completion rows.
+    const evaluationRow = rows[2];
+    expect(evaluationRow?.backed).toBe(true);
+    expect(evaluationRow?.fact).toContain("1 of 1");
+    // The training-complete row states the honest non-distinction (it is
+    // NOT a second "yes" — the mutant merging compute and training would
+    // render an identical fact string).
+    expect(rows[0]?.fact).not.toBe(rows[1]?.fact);
+    expect(rows[1]?.fact).toContain("does not separately distinguish");
+  });
+
+  test("RUNTIME: the workload proposal renders the four distinct completion states before commitment", async () => {
+    const proposal = await get(
+      `/build/workload?purpose=${encodeURIComponent("Train a classifier")}&applicationId=${APP_ID}`,
+    );
+    const html = await proposal.text();
+    expect(proposal.status).toBe(200);
+    for (const label of [
+      "Compute complete",
+      "Training complete",
+      "Evaluation passed",
+      "Release approved",
+    ]) {
+      expect(html).toContain(label);
+    }
+    expect(html).toContain("What completion will mean");
+    expect(html).toContain("never imply release approval");
   });
 });

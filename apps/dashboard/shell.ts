@@ -111,15 +111,16 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       },
       {
         label: "Deployments",
-        path: "/build#deployments",
+        path: "/deployments",
         description: "Persistent availability surfaces (not exposed by the public API yet).",
-        keywords: ["deployment", "availability", "version"],
+        keywords: ["deployment", "availability", "version", "channels"],
         modes: PROFESSIONAL,
       },
       {
         label: "Workloads",
         path: "/build/workload",
-        description: "Training and batch compute as governed executions (not exposed yet).",
+        description:
+          "Training and batch compute as governed executions (creation is live through the execution authority).",
         keywords: ["workload", "training", "batch", "compute"],
         modes: PROFESSIONAL,
       },

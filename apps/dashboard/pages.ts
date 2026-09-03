@@ -30,10 +30,13 @@ import { CLIENT_SCRIPT } from "./client";
 import {
   esc,
   executionHeader,
+  glanceGrid,
   keyValueTable,
+  longRunningWorkloadSection,
   progressTimeline,
   resultSurface,
   statusBadge,
+  trainingStateList,
   verificationSummary,
   whyPanel,
 } from "./components";
@@ -52,11 +55,17 @@ import { type ExperienceMode, modeCookieHeader, modeOf } from "./modes";
 import {
   APPEARANCE_COOKIE,
   addRecent,
+  agentGlanceFacts,
   buildExecutionRequest,
+  buildWorkloadRequest,
+  completionExplainerRows,
   currentStageLabel,
+  DEPLOYMENT_EXECUTION_DISTINCTION,
+  deploymentGlanceFacts,
   deriveAttention,
   deriveTrustAxes,
   deriveVerificationChip,
+  deriveWorkloadFacts,
   durationMs,
   executionTitle,
   isTerminal,
@@ -68,6 +77,8 @@ import {
   redactSecretShaped,
   serializeRecents,
   validateExecutionForm,
+  validateWorkloadForm,
+  WORKLOAD_FORM_KEYS,
 } from "./projection";
 import { type Appearance, type AppShellInput, appShell, navIndex, pageHead } from "./shell";
 import { confirmationCard, emptyState, errorState, unavailableState } from "./states";
@@ -301,17 +312,17 @@ async function buildOverviewPage(client: ZeckClient, ctx: HttpContext): Promise<
   <section class="tile">
     <h3><a href="/build/agent">Agent</a></h3>
     <p>Propose a reusable execution system with guardrails and verification.</p>
-    <p class="muted">Agent creation is not exposed by the public API — the agents surface is read-only.</p>
+    <p class="muted">Proposal flow live; committing the design is not exposed by the public API — the agents surface is read-only.</p>
   </section>
   <section class="tile">
-    <h3><a href="/build/workload">Workload / Training</a></h3>
+    <h3><a href="/build/workload">Workload / Training / Batch</a></h3>
     <p>Training and batch compute as governed executions with budget and checkpoints.</p>
-    <p class="muted">No public workload API yet.</p>
+    <p class="muted">Live today — outcome-first creation through the governed execution authority; the workload/training authorities' own states are not public.</p>
   </section>
-  <section class="tile" id="deployments">
-    <h3>Deployment</h3>
+  <section class="tile">
+    <h3><a href="/build/deployment">Deployment</a></h3>
     <p>Persistent availability of an agent or program — distinct from individual executions.</p>
-    <p class="muted">Deployment surfaces are not exposed by the public API yet.</p>
+    <p class="muted">Not exposed by the public API yet; the proposal flow states what a deployment is and is not.</p>
   </section>
 </div>`;
   return page({ title: "Zeck — Build", activePath: "/build", mainContent: content }, ctx);
@@ -690,82 +701,540 @@ ${runCommitmentCard(ctx.form, idempotencyKey, "Try again")}`;
 }
 
 // ---------------------------------------------------------------------------
-// Build: agent and workload (outcome-first entries, honest terminal states)
+// Build: agent proposal (AC2), workload creation (AC6) and deployment
+// proposal (AC1/AC4/AC5) — outcome-first, honest terminal states
 // ---------------------------------------------------------------------------
 
-async function buildAgentPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
-  void client;
-  const purpose = ctx.query.get("purpose") ?? "";
-  const proposal =
-    purpose.trim().length === 0
-      ? ""
-      : `<h2>Proposed design</h2>
-<div class="card">
-  ${keyValueTable([
-    ["Purpose", purpose],
-    ["Capabilities", "— described by you in the next step"],
-    ["Tools", "— chosen after the capability set"],
-    ["Guardrails", "— approval requirements set with policy"],
-    ["Verification", "— checks the agent must pass"],
-  ])}
-  <p class="muted">This is the shape of the proposal Zeck will formalize when agent authoring ships.</p>
-</div>`;
-  const content = `${pageHead({ title: "Build an agent", path: "/build/agent" })}
-<p>Agents are reusable execution systems. Start from the purpose; the design comes back as a proposal you can accept.</p>
-<form class="flow card" method="get" action="/build/agent">
+/**
+ * WORK-037 AC2: the agent proposal descriptors — outcome-level inputs the
+ * user describes in their own words. No provider, model, rail or
+ * connection field exists anywhere (the frozen create contract forbids
+ * provider selection; detailed configuration is a disclosure, never a
+ * prerequisite).
+ */
+function agentProposalForm(values: Record<string, string>): string {
+  return `<form class="flow card" method="get" action="/build/agent">
   <div class="form-field">
     <label for="agent-purpose">What are you building?</label>
     <textarea id="agent-purpose" name="purpose" placeholder="A support agent that handles incoming tickets and escalates billing disputes.">${esc(
-      purpose,
+      values.purpose ?? "",
+    )}</textarea>
+    <p class="form-hint">The purpose in your words — the design comes back as a readable proposal.</p>
+  </div>
+  <div class="form-field">
+    <label for="agent-capabilities">What must it be able to do? (optional)</label>
+    <textarea id="agent-capabilities" name="capabilities" rows="3" placeholder="Triage incoming tickets, look up orders, draft replies.">${esc(
+      values.capabilities ?? "",
     )}</textarea>
   </div>
-  <div class="form-actions"><button type="submit">Propose the design</button></div>
-</form>
-${proposal}
-${unavailableState(
-  "Agent creation",
-  "Agent creation is not exposed by the public API — the agents surface is read-only by design; create agents through your governed application path.",
-  "an agent authoring surface over the agents authority",
-)}
-<p><a href="/agents">View the agent inventory (read-only)</a></p>`;
+  <div class="form-field">
+    <label for="agent-integrations">What must it connect to? (optional)</label>
+    <textarea id="agent-integrations" name="integrations" rows="2" placeholder="The ticket system and the orders database.">${esc(
+      values.integrations ?? "",
+    )}</textarea>
+    <p class="form-hint">Connections are governed server-side (BYOK); no credential is ever entered or rendered here.</p>
+  </div>
+  <div class="form-field">
+    <label for="agent-guardrails">What limits apply? (optional)</label>
+    <textarea id="agent-guardrails" name="guardrails" rows="2" placeholder="Escalate billing disputes to a human; no external side effects without approval.">${esc(
+      values.guardrails ?? "",
+    )}</textarea>
+  </div>
+  <div class="form-field">
+    <label for="agent-verification">What checks must it pass? (optional)</label>
+    <textarea id="agent-verification" name="verification" rows="2" placeholder="Reply drafts match the escalation policy.">${esc(
+      values.verification ?? "",
+    )}</textarea>
+  </div>
+  <div class="form-actions"><button type="submit" class="primary">Review the proposed design</button></div>
+</form>`;
+}
+
+function descriptorOrAbsent(value: string, what: string): string {
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? `Not described yet — ${what}.` : trimmed;
+}
+
+/**
+ * WORK-037 AC2: the human-readable agent proposal — six sections
+ * (purpose, capabilities, integrations, guardrails, verification,
+ * expected cost), each the user's stated intent plus the honest platform
+ * fact, BEFORE any detailed configuration. The proposal is a readable
+ * summary; committing it is honestly unavailable (no public
+ * agent-authoring route).
+ */
+function agentProposalEnvelope(values: Record<string, string>): string {
+  return `<div class="card review-envelope">
+  <h2>Proposed agent design</h2>
+  <h3>Purpose</h3>
+  <p>${esc(descriptorOrAbsent(values.purpose ?? "", "describe what you are building"))}</p>
+  <h3>Capabilities</h3>
+  <p>${esc(descriptorOrAbsent(values.capabilities ?? "", "describe what the agent must be able to do"))}</p>
+  <p class="muted">Capabilities are governed platform-side; the public contract carries no per-agent capability facts to pre-fill here.</p>
+  <h3>Integrations</h3>
+  <p>${esc(descriptorOrAbsent(values.integrations ?? "", "describe what it must connect to"))}</p>
+  <p class="muted">Connections are governed server-side with your own credentials (BYOK) — no credential is ever entered, stored or rendered in this dashboard.</p>
+  <h3>Guardrails</h3>
+  <p>${esc(descriptorOrAbsent(values.guardrails ?? "", "describe the limits and approval requirements"))}</p>
+  <p class="muted">Guardrails are enforced by the governing policy at dispatch; approval-gated side effects surface as waiting states on each execution.</p>
+  <h3>Verification</h3>
+  <p>${esc(descriptorOrAbsent(values.verification ?? "", "describe the checks the agent must pass"))}</p>
+  <p class="muted">Verification results are recorded per execution; the public contract exposes no per-agent-definition verification approach before a run.</p>
+  <h3>Expected cost</h3>
+  <p>No pre-creation estimate exists — the public contract exposes none, so none is shown. Costs are recorded per execution once the agent runs, on each run's header facts.</p>
+</div>`;
+}
+
+async function buildAgentPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const values: Record<string, string> = {
+    purpose: ctx.query.get("purpose") ?? "",
+    capabilities: ctx.query.get("capabilities") ?? "",
+    integrations: ctx.query.get("integrations") ?? "",
+    guardrails: ctx.query.get("guardrails") ?? "",
+    verification: ctx.query.get("verification") ?? "",
+  };
+  const purpose = values.purpose ?? "";
+  const content = `${pageHead({
+    title: "Build an agent",
+    path: "/build/agent",
+    primaryActionHtml: '<a class="button-link" href="/agents">View the agent inventory</a>',
+  })}
+<p>Agents are reusable execution systems. Start from the purpose; the design comes back as a readable proposal you review before any detailed configuration.</p>
+${agentProposalForm(values)}
+${
+  purpose.trim().length === 0
+    ? ""
+    : agentProposalEnvelope(values) +
+      unavailableState(
+        "Committing this design",
+        "Agent creation is not exposed by the public API — no governed agent-authoring route exists, so this proposal cannot be committed from here (the dashboard renders no create action for it). The agents surface is a read-only projection; create agents through your governed application path.",
+        "a public agent-authoring authority whose create route this proposal will formalize through",
+      ) +
+      advancedDisclosure(
+        "Advanced configuration (the governed authoring vocabulary)",
+        `<p class="muted">Detailed configuration is a disclosure, never a prerequisite. The read-side facts the public agents projection DOES carry today: versioned definitions with a definition digest, a validation state per version (${["pending", "validated", "invalid"].join(" / ")}), and a recorded selection history (promotion or rollback of a version, with who selected it and when). When agent authoring ships as a public authority, these are the facts your accepted proposal will produce — versions, validation, and governed selections.</p>`,
+      )
+}
+<p><a href="/agents">View the agent inventory (read-only)</a> · <a href="/build">Back to Build</a></p>`;
   return page(
     { title: "Zeck — Build an agent", activePath: "/build/agent", mainContent: content },
     ctx,
   );
 }
 
+// ---------------------------------------------------------------------------
+// Build: workload/training/batch creation — outcome-first, budget-visible,
+// committed through the ONE governed execution create (AC6/AC7)
+// ---------------------------------------------------------------------------
+
+function workloadFormField(
+  id: string,
+  label: string,
+  input: string,
+  hint?: string,
+  error?: string,
+): string {
+  const describedBy = error === undefined ? "" : ` aria-describedby="${id}-error"`;
+  return `<div class="form-field">
+  <label for="${id}"${describedBy}>${esc(label)}</label>
+  ${input}
+  ${hint === undefined ? "" : `<p class="form-hint">${esc(hint)}</p>`}
+  ${error === undefined ? "" : `<p class="field-error" id="${id}-error">${esc(error)}</p>`}
+</div>`;
+}
+
+function workloadFormFields(
+  values: Record<string, string>,
+  errors: Record<string, string | undefined>,
+): string {
+  return [
+    workloadFormField(
+      "wl-application",
+      "Application id",
+      `<input id="wl-application" name="applicationId" value="${esc(
+        values.applicationId ?? "",
+      )}" required>`,
+      "The governed application scope the workload (and any spend) belongs to.",
+      errors.applicationId,
+    ),
+    workloadFormField(
+      "wl-purpose",
+      "What should the workload do?",
+      `<textarea id="wl-purpose" name="purpose" required>${esc(values.purpose ?? "")}</textarea>`,
+      "Training, batch compute or any long-running job — described as the outcome, in your words.",
+      errors.purpose,
+    ),
+    workloadFormField(
+      "wl-budget",
+      "Budget (dollars, optional)",
+      `<input id="wl-budget" name="budgetDollars" value="${esc(
+        values.budgetDollars ?? "",
+      )}" inputmode="decimal" placeholder="50.00">`,
+      "Sent to the platform as an integer micro-USD cost constraint — the budget the workload must stay within.",
+      errors.budgetDollars,
+    ),
+    workloadFormField(
+      "wl-datasets",
+      "Dataset artifacts (optional)",
+      `<textarea id="wl-datasets" name="datasets" rows="2" placeholder="one artifact reference per line — optional">${esc(
+        values.datasets ?? "",
+      )}</textarea>`,
+      "Input artifact references the plan can build on (datasets, source data). No provider, model or connection is selected here.",
+      errors.datasets,
+    ),
+    workloadFormField(
+      "wl-user",
+      "End user (optional)",
+      `<input id="wl-user" name="userId" value="${esc(values.userId ?? "")}">`,
+      "The end user the workload and any spend is attributed to.",
+      errors.userId,
+    ),
+  ].join("\n");
+}
+
+/**
+ * WORK-037 AC6: the workload proposal — purpose, budget and cost (the
+ * declared budget as the enforced constraint; the honest no-pre-run
+ * estimate), inputs, and what this creates (ONE governed execution — the
+ * honest statement that the workload/training authorities' own states are
+ * not public). AC7: the completion explainer — the four distinct states.
+ */
+function workloadProposalEnvelope(values: Record<string, string>): string {
+  const datasetRefs = parseAttachmentRefs(values.datasets ?? "") ?? [];
+  const budget = (values.budgetDollars ?? "").trim();
+  return `<div class="card review-envelope">
+  <h2>Proposed workload</h2>
+  <h3>Purpose</h3>
+  <p>${esc(values.purpose ?? "")}</p>
+  <h3>Budget and cost</h3>
+  ${
+    budget.length === 0
+      ? `<p class="muted">No budget was set — the workload runs within the governing policy. You can set a budget to bound it.</p>`
+      : `<ul><li>Declared budget: $${esc(budget)} — sent as the request's integer micro-USD cost constraint and enforced by the platform.</li></ul>`
+  }
+  <p class="muted">The platform exposes no pre-run cost or time estimate, so none is shown. Costs are recorded per execution and visible throughout the lifecycle — on the run's header facts and the long-running workload view (when the platform records checkpoints or recovery events).</p>
+  <h3>Inputs</h3>
+  ${keyValueTable([
+    ["Application", values.applicationId ?? ""],
+    [
+      "Dataset artifacts",
+      datasetRefs.length > 0
+        ? `attached — ${datasetRefs.length} reference${datasetRefs.length === 1 ? "" : "s"} sent on the create request`
+        : "none attached",
+    ],
+    ["End user", (values.userId ?? "").length > 0 ? (values.userId ?? "") : "—"],
+  ])}
+  <h3>What this creates</h3>
+  <p>Exactly one governed execution. A workload — training, batch compute or any long-running job — is governed work through the execution authority: the run page is its lifecycle view (progress, checkpoints, spend, recovery state). The workload and training authorities' own state machines (workload status, release gates) are not exposed by the public API; this surface never presents them.</p>
+  <h3>What completion will mean</h3>
+  ${trainingStateList(completionExplainerRows())}
+</div>`;
+}
+
+function workloadEditLink(values: Record<string, string>, idempotencyKey: string): string {
+  const params = new URLSearchParams();
+  for (const key of WORKLOAD_FORM_KEYS) {
+    params.set(key, values[key] ?? "");
+  }
+  params.set("edit", "1");
+  params.set("idempotencyKey", idempotencyKey);
+  return `/build/workload?${params.toString()}`;
+}
+
+/**
+ * WORK-037 AC6: the workload commitment — the full consequence block
+ * immediately before Start, through the WORK-035 confirmationCard (the
+ * same primitive and vocabulary as the execution commitment; the
+ * workload-specific facts: the budget constraint, the dataset inputs).
+ */
+function workloadCommitmentCard(
+  values: Record<string, string>,
+  idempotencyKey: string,
+  confirmLabel: string,
+): string {
+  const datasetRefs = parseAttachmentRefs(values.datasets ?? "") ?? [];
+  const budget = (values.budgetDollars ?? "").trim();
+  const userId = (values.userId ?? "").trim();
+  const costStatus = `No pre-run estimate — the platform's public contract exposes none, so none is shown; the settled cost is recorded per execution on the run's header facts.${
+    budget.length > 0
+      ? ` Your declared budget ($${budget}) is enforced as the request's cost constraint.`
+      : " No budget was set — spend stays within the governing policy."
+  }`;
+  return confirmationCard({
+    title: "Start this workload?",
+    consequence:
+      "Start submits the governed create request: exactly one execution is created for this workload, Zeck plans the route and executes the work within the governing policy and the declared budget, and the events, checkpoints (when the platform records them), verification results, output artifacts and settled cost are recorded platform-side — you follow the workload on its run page.",
+    affected: `A governed execution record in application ${values.applicationId ?? ""}${
+      userId.length > 0 ? `, attributed to end user ${userId}` : ""
+    }${
+      datasetRefs.length > 0
+        ? `, with ${datasetRefs.length} dataset artifact${datasetRefs.length === 1 ? "" : "s"} read as inputs`
+        : ""
+    }${
+      budget.length > 0
+        ? `, bounded by the declared budget ($${budget}) as the cost constraint`
+        : ""
+    }. External side effects, if any, are admitted by policy and surface as attention before they proceed.`,
+    cost: costStatus,
+    whyAllowed:
+      "The create request is valid against the frozen create contract — it selects no provider, model, rail, connection or agent (selection is forbidden; the platform plans the route), and policy admission is decided platform-side at dispatch: a denial is surfaced on the execution, never silently retried.",
+    reversible: false,
+    reversibleDetail:
+      "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel (its own consequence preview); work already performed, its checkpoints and its evidence stay recorded and inspectable.",
+    approvalNote:
+      "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary. Where the governing policy requires approval for external side effects, they surface as waiting states before they proceed.",
+    idempotencyNote: `The idempotency key ${idempotencyKey} is carried: reloading this review or submitting again converges on ONE execution rather than creating duplicates.`,
+    hiddenFields: WORKLOAD_FORM_KEYS.map(
+      (key) => [key, key === "idempotencyKey" ? idempotencyKey : (values[key] ?? "")] as const,
+    ),
+    confirmAction: "/build/workload",
+    confirmLabel,
+    cancelHref: workloadEditLink(values, idempotencyKey),
+  });
+}
+
 async function buildWorkloadPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const purpose = ctx.query.get("purpose") ?? "";
-  const content = `${pageHead({ title: "Build a workload", path: "/build/workload" })}
-<p>Training and batch compute are governed executions in Zeck — budgeted, checkpointed and verified.</p>
+  const query: Record<string, string> = {};
+  for (const key of [...WORKLOAD_FORM_KEYS, "edit"]) {
+    const value = ctx.query.get(key);
+    if (value !== null) {
+      query[key] = value;
+    }
+  }
+  const idempotencyKey =
+    (query.idempotencyKey ?? "").length > 0
+      ? (query.idempotencyKey ?? "")
+      : `dash-${crypto.randomUUID()}`;
+  const reviewable =
+    (query.purpose ?? "").trim().length > 0 &&
+    (query.applicationId ?? "").trim().length > 0 &&
+    query.edit !== "1";
+  if (!reviewable) {
+    const content = `${pageHead({
+      title: "Build a workload",
+      path: "/build/workload",
+      primaryActionHtml:
+        '<a class="button-link" href="/build/execution">Run a one-off execution instead</a>',
+    })}
+<p>Training and batch compute are governed work in Zeck — budgeted, checkpointed and verified through the execution authority. Start from what the workload should accomplish.</p>
 <form class="flow card" method="get" action="/build/workload">
+  <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
+  ${workloadFormFields(query, {})}
+  <div class="form-actions"><button type="submit" class="primary">Review the proposal</button></div>
+</form>`;
+    return page(
+      { title: "Zeck — Build a workload", activePath: "/build/workload", mainContent: content },
+      ctx,
+    );
+  }
+  const validation = validateWorkloadForm(query);
+  if (validation.values === null) {
+    const content = `${pageHead({ title: "Build a workload", path: "/build/workload" })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The request could not be reviewed — fix the highlighted fields.</div>
+<form class="flow card" method="get" action="/build/workload">
+  <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
+  ${workloadFormFields(query, validation.errors)}
+  <div class="form-actions"><button type="submit" class="primary">Review the proposal</button></div>
+</form>`;
+    return page(
+      { title: "Zeck — Build a workload", activePath: "/build/workload", mainContent: content },
+      ctx,
+    );
+  }
+  const content = `${pageHead({
+    title: "Review the proposed workload",
+    path: "/build/workload",
+    primaryActionHtml: `<a class="button-link" href="${esc(
+      workloadEditLink(query, idempotencyKey),
+    )}">Edit these details</a>`,
+  })}
+${workloadProposalEnvelope(query)}
+${workloadCommitmentCard(query, idempotencyKey, "Start this workload")}`;
+  return page(
+    {
+      title: "Zeck — Review the proposed workload",
+      activePath: "/build/workload",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+/**
+ * WORK-037: the workload create handler — the SECOND governed create
+ * surface, through the SAME wire command as the execution create
+ * (`client.createExecution` over POST /executions with an idempotency
+ * key). The workload surface is presentation over the one execution
+ * authority — never a second mutation authority.
+ */
+async function createWorkloadHandler(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const validation = validateWorkloadForm(ctx.form);
+  const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
+  if (validation.values === null || idempotencyKey.length === 0) {
+    const errors: Record<string, string | undefined> = { ...validation.errors };
+    if (idempotencyKey.length === 0) {
+      errors.purpose = "The form state was lost — fill the purpose again and resubmit.";
+    }
+    const content = `${pageHead({ title: "Build a workload", path: "/build/workload" })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The request could not be submitted — fix the highlighted fields.</div>
+<form class="flow card" method="get" action="/build/workload">
+  <input type="hidden" name="idempotencyKey" value="${esc(
+    idempotencyKey.length > 0 ? idempotencyKey : `dash-${crypto.randomUUID()}`,
+  )}">
+  ${workloadFormFields(ctx.form, errors)}
+  <div class="form-actions"><button type="submit" class="primary">Review the proposal</button></div>
+</form>`;
+    return htmlStatusResult(
+      422,
+      appShell({
+        title: "Zeck — Build a workload",
+        activePath: "/build/workload",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  try {
+    const request = buildWorkloadRequest(validation.values);
+    const { receipt } = await client.createExecution(request, idempotencyKey);
+    return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const content = `${pageHead({
+        title: "Review the proposed workload",
+        path: "/build/workload",
+        primaryActionHtml: `<a class="button-link" href="${esc(
+          workloadEditLink(ctx.form, idempotencyKey),
+        )}">Edit these details</a>`,
+      })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this request: ${esc(
+        error.body.message,
+      )} (${esc(error.body.code)})</div>
+${workloadProposalEnvelope(ctx.form)}
+${workloadCommitmentCard(ctx.form, idempotencyKey, "Try again")}`;
+      return htmlStatusResult(
+        422,
+        appShell({
+          title: "Zeck — Review the proposed workload",
+          activePath: "/build/workload",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Build: deployment proposal (AC1/AC4/AC5) and the deployment surfaces —
+// the availability/execution distinction, honest absences everywhere
+// ---------------------------------------------------------------------------
+
+async function buildDeploymentPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const purpose = ctx.query.get("purpose") ?? "";
+  const proposal =
+    purpose.trim().length === 0
+      ? ""
+      : `<div class="card review-envelope">
+  <h2>Proposed deployment design</h2>
+  <h3>What stays available</h3>
+  <p>${esc(purpose)}</p>
+  <h3>Availability</h3>
+  <p class="muted">The availability intent is yours to state; the platform's availability facts (when the deployment authority ships) will come from its own projection — never invented here.</p>
+  <h3>Version policy</h3>
+  <p class="muted">Which version runs and how changes are selected — governed selections with rollback facts, when the authority is public. Today the public API exposes no deployment version facts.</p>
+  <h3>Health and channels</h3>
+  <p class="muted">Health facts and channel/endpoint bindings are deployment-authority facts; the public API exposes none, so no health metric or endpoint is rendered.</p>
+</div>`;
+  const content = `${pageHead({
+    title: "Build a deployment",
+    path: "/build/deployment",
+    primaryActionHtml: '<a class="button-link" href="/deployments">View deployments</a>',
+  })}
+<p>Deployments are persistent availability. ${esc(DEPLOYMENT_EXECUTION_DISTINCTION)}</p>
+<form class="flow card" method="get" action="/build/deployment">
   <div class="form-field">
-    <label for="workload-purpose">What should the workload do?</label>
-    <textarea id="workload-purpose" name="purpose" placeholder="Train a classifier on this dataset with a $50 budget.">${esc(
+    <label for="deployment-purpose">What should stay available?</label>
+    <textarea id="deployment-purpose" name="purpose" placeholder="The support agent, reachable on the ticket channel around the clock.">${esc(
       purpose,
     )}</textarea>
+    <p class="form-hint">The availability intent in your words — the design review is honest about what the platform exposes today.</p>
   </div>
-  <div class="form-actions"><button type="submit">Sketch the workload</button></div>
+  <div class="form-actions"><button type="submit">Review the design</button></div>
 </form>
-${
-  purpose.trim().length === 0
-    ? ""
-    : `<div class="card"><h2>Sketch</h2>${keyValueTable([
-        ["Purpose", purpose],
-        ["Dataset", "— attached when the surface ships"],
-        ["Compute + budget", "— reserved before any paid step"],
-        ["Checkpoints", "— content-addressed and resumable"],
-      ])}</div>`
-}
+${proposal}
 ${unavailableState(
-  "Workloads and training",
-  "Training and batch compute run as governed executions, but no public workload API is exposed yet.",
-  "a workload surface over governed executions",
+  "Deployment creation and commands",
+  "No public deployment authority exists — creating a deployment, and the operational controls (pause, rollback, version change), have no governed routes on the public contract. This dashboard renders NO action buttons for them: each control will route through its governed API with a consequence preview before commitment when the authority ships. Meanwhile, availability is never represented as an execution status, and executions remain the live governed work you can follow.",
+  "a public deployment authority (create, commands and projections)",
 )}
-<p><a href="/build/execution">Run a one-off execution instead</a></p>`;
+<p><a href="/deployments">View the deployments surface</a> · <a href="/agents">Agent inventory (live, read-only)</a> · <a href="/runs">Executions (live)</a></p>`;
   return page(
-    { title: "Zeck — Build a workload", activePath: "/build/workload", mainContent: content },
+    { title: "Zeck — Build a deployment", activePath: "/build/deployment", mainContent: content },
+    ctx,
+  );
+}
+
+async function deploymentsOverviewPage(
+  client: ZeckClient,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  void client;
+  const content = `${pageHead({
+    title: "Deployments",
+    path: "/deployments",
+    primaryActionHtml: '<a class="button-link" href="/build/deployment">Propose a deployment</a>',
+  })}
+<p>${esc(DEPLOYMENT_EXECUTION_DISTINCTION)}</p>
+${unavailableState(
+  "Deployment inventory",
+  "The public API exposes no deployment authority — no deployment inventory, availability, health, version or channel facts. Nothing is fabricated here: when the deployment authority ships, this page projects its facts live (availability, version, health, channels/endpoints, activity) — never an execution status in their place.",
+  "a public deployment authority projection (inventory and detail)",
+)}
+<h2>The live governed work today</h2>
+<p>Executions are live: <a href="/runs">open the runs surface</a> or look one up by id. Agents are live and read-only: <a href="/agents">open the agent inventory</a>.</p>
+${lookupForm()}`;
+  return page(
+    { title: "Zeck — Deployments", activePath: "/deployments", mainContent: content },
+    ctx,
+  );
+}
+
+async function deploymentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const deploymentId = ctx.params.deploymentId ?? "";
+  const content = `${pageHead({
+    title: "Deployment",
+    path: "/deployments",
+    currentLabel: deploymentId,
+  })}
+<p class="muted mono">deployment ${esc(deploymentId)}</p>
+<p>${esc(DEPLOYMENT_EXECUTION_DISTINCTION)}</p>
+<p class="muted">A deployment id and an execution id are different namespaces — this page never renders an execution's status vocabulary, and an execution page never renders a deployment's availability vocabulary.</p>
+<h2>At a glance</h2>
+${glanceGrid(deploymentGlanceFacts())}
+${unavailableState(
+  "Deployment detail",
+  "The public API exposes no deployment authority, so no deployment record can be read for this id — no availability, version, health, channel or activity facts exist on the public wire, and none are invented.",
+  "the deployment authority's own detail projection",
+)}
+<h2>The governed work behind availability</h2>
+<p>When the deployment authority ships, its activity view will link each execution that served this deployment. Today the live record is each execution's own event stream — <a href="/runs">open the runs surface</a> or look one up by id.</p>
+${lookupForm()}`;
+  return page(
+    {
+      title: `Zeck — Deployment ${deploymentId}`,
+      activePath: `/deployments/${deploymentId}`,
+      mainContent: content,
+    },
     ctx,
   );
 }
@@ -976,6 +1445,16 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
   const setCookies = [
     recentsCookieHeader(addRecent(parseRecents(ctx.cookies[RECENTS_COOKIE]), execution.id)),
   ];
+  /**
+   * WORK-037 AC8: the long-running workload view — rendered ONLY when the
+   * run's public event stream carries long-running facts (checkpoints or
+   * recovery events). Progress, checkpoint recency, spend, recovery state
+   * and the AC7 four-state distinction — never lease/heartbeat mechanics.
+   */
+  const workload = deriveWorkloadFacts(events);
+  const workloadBlock = workload.present
+    ? longRunningWorkloadSection({ execution, result, workload })
+    : "";
   const header = executionHeader({
     execution,
     durationMs: durationMs(execution.createdAt, execution.terminalAt, Date.now()),
@@ -996,6 +1475,7 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
   if (ctx.query.get("action") === "cancel" && !isTerminal(execution.status)) {
     const content = `${head}
 ${header}
+${workloadBlock}
 ${confirmationCard({
   title: "Cancel this execution?",
   consequence:
@@ -1086,6 +1566,7 @@ ${resultSurface({ execution, result, events })}`;
   }
   const content = `${head}
 ${header}
+${workloadBlock}
 ${whyPanel({ execution, result, events })}
 ${tabNav(execution.id, tab)}
 ${panel}`;
@@ -1188,10 +1669,18 @@ async function agentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
           ["selected by", status.latestSelection.selectedBy],
           ["selected at", status.latestSelection.selectedAt],
         ]);
+  /**
+   * WORK-037 AC3: the at-a-glance grid — purpose, capabilities,
+   * tools/integrations, autonomy, approvals, quality, cost, version and
+   * current deployment, each a platform fact (from the public agent
+   * projection) or the explicit honest absence. AC9: the executions
+   * cross-link section right below it.
+   */
   const content = `${pageHead({
     title: status.agent.name,
     path: `/agents/${agentId}`,
     currentLabel: status.agent.name,
+    primaryActionHtml: `<a class="button-link" href="/build/agent">Propose an agent</a>`,
   })}
 <p>${
     status.agent.description === null
@@ -1199,26 +1688,12 @@ async function agentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
       : esc(status.agent.description)
   }</p>
 <p>${agentStatusBadge(status.agent.status)}</p>
-<h2>Facts</h2>
-${keyValueTable([
-  ["slug", status.agent.slug],
-  ["id", status.agent.id],
-  ["active version", status.agent.activeVersion ?? "—"],
-  ["created", status.agent.createdAt],
-  ["updated", status.agent.updatedAt],
-])}
-<h3>Active version</h3>
-${
-  status.activeVersion === null
-    ? '<p class="muted">No active version is selected.</p>'
-    : keyValueTable([
-        ["version", status.activeVersion.version],
-        ["definition digest", status.activeVersion.definitionDigest],
-        ["validation state", status.activeVersion.validationState],
-        ["validation notes", status.activeVersion.validationNotes ?? "—"],
-        ["created", status.activeVersion.createdAt],
-      ])
-}
+<h2>At a glance</h2>
+${glanceGrid(agentGlanceFacts(status))}
+<h2>Runs and evidence</h2>
+<p class="muted">The public execution contract carries no agent attribution — the create contract forbids agent selection (the platform routes work to agents), so no per-agent execution listing can exist on the public wire. Executions are discoverable by id, and each run's Evidence view carries its verification results.</p>
+${lookupForm()}
+<p><a href="/runs">Open the runs surface</a> · <a href="/assets/artifacts">Artifacts from executions opened in this browser</a></p>
 ${advancedDisclosure(
   "Versions and selection history (advanced)",
   `<h4>Available versions</h4>
@@ -1231,7 +1706,8 @@ ${
 </table>`
 }
 <h4>Latest selection</h4>
-${selection}`,
+${selection}
+<p class="muted">Promotion and rollback are governed selections recorded platform-side (the selection kind and who made it are the public facts); no selection command is exposed by the public API — this dashboard renders no version-change action.</p>`,
 )}`;
   return page(
     {
@@ -1610,6 +2086,13 @@ function proposedActionMatches(query: string, agents: readonly AgentSummary[]): 
   if (lower.includes("training") || lower.includes("workload") || lower.includes("batch")) {
     matches.push({ kind: "Proposed action", label: "Run a workload", href: "/build/workload" });
   }
+  if (lower.includes("deploy")) {
+    matches.push({
+      kind: "Proposed action",
+      label: "Open deployments (persistent availability — not exposed by the public API yet)",
+      href: "/deployments",
+    });
+  }
   if (lower.includes("failed") || lower.includes("failure")) {
     matches.push({
       kind: "Proposed action",
@@ -1783,6 +2266,10 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
     wrap("POST", "/build/execution", (ctx) => createExecutionHandler(client, ctx)),
     wrap("GET", "/build/agent", (ctx) => buildAgentPage(client, ctx)),
     wrap("GET", "/build/workload", (ctx) => buildWorkloadPage(client, ctx)),
+    wrap("POST", "/build/workload", (ctx) => createWorkloadHandler(client, ctx)),
+    wrap("GET", "/build/deployment", (ctx) => buildDeploymentPage(client, ctx)),
+    wrap("GET", "/deployments", (ctx) => deploymentsOverviewPage(client, ctx)),
+    wrap("GET", "/deployments/:deploymentId", (ctx) => deploymentDetailPage(client, ctx)),
     wrap("GET", "/runs", (ctx) => runsOverviewPage(client, ctx)),
     wrap("GET", "/runs/active", (ctx) => runsActivePage(client, ctx)),
     wrap("GET", "/runs/history", (ctx) => runsHistoryPage(client, ctx)),

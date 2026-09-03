@@ -87,6 +87,8 @@ interface FakeWorld {
   failAgentList: boolean;
   /** Every scoped wire call's application selector (the (l) proof). */
   readonly scopedCalls: { path: string; application: string }[];
+  /** Every create request body (the (s)/(x) proofs: budget, datasets, task). */
+  readonly createCalls: Record<string, unknown>[];
 }
 
 function event(
@@ -247,6 +249,7 @@ function createFakeApi(world: FakeWorld): typeof fetch {
         );
       }
       const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      world.createCalls.push(body);
       for (const keyName of Object.keys(body)) {
         if (!CREATE_REQUEST_KEYS.includes(keyName)) {
           return publicError(
@@ -497,6 +500,12 @@ const WAITING2_ID = "00000000-0000-7000-8000-0000000000c8";
 const RETRYABLE_ID = "00000000-0000-7000-8000-0000000000c9";
 const NONRETRY_ID = "00000000-0000-7000-8000-0000000000ca";
 const AGENT_ID = "00000000-0000-7000-8000-0000000000b1";
+// WORK-037 (t): the long-running workload fixture — a RUNNING execution
+// whose public event stream carries the platform's own typed long-running
+// facts (checkpoints + a resume), with settled cost recorded.
+const LONGRUN_ID = "00000000-0000-7000-8000-0000000000cb";
+// (u): the completed long-running workload fixture.
+const LONGRUN_DONE_ID = "00000000-0000-7000-8000-0000000000cc";
 
 let world: FakeWorld;
 let base = "";
@@ -514,6 +523,7 @@ beforeAll(async () => {
     durableCreates: 0,
     failAgentList: false,
     scopedCalls: [],
+    createCalls: [],
   };
 
   seedExecution(world, {
@@ -623,6 +633,86 @@ beforeAll(async () => {
             outcomeClass: "tool-failure",
             failureClass: "output-contract",
             retryable: false,
+          },
+        };
+      }
+    });
+  }
+  // WORK-037 (t)/(u): the long-running workload fixture — checkpoints (the
+  // platform's own typed payloads: checkpointSequence + lastEventPosition,
+  // exactly the real long-running service's public payload shape) plus a
+  // resume-recorded recovery event, settled cost, and PASS verification.
+  const longrun = seedExecution(world, {
+    id: LONGRUN_ID,
+    status: "RUNNING",
+    description: "Train the classifier on the ticket dataset",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "checkpoint-recorded",
+      "checkpoint-recorded",
+      "resume-recorded",
+    ],
+    verification: [check(LONGRUN_ID, 1, "PASS", 0.91)],
+    cost: { totalMicroUsd: "1811000", currency: "usd" },
+  });
+  world.executions.set(LONGRUN_ID, {
+    ...longrun,
+    constraints: { maxCostMicroUsd: "50000000" },
+  });
+  {
+    const evs = world.events.get(LONGRUN_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "checkpoint-recorded") {
+        const seq = evs.slice(0, index + 1).filter((e) => e.type === "checkpoint-recorded").length;
+        evs[index] = {
+          ...entry,
+          payload: {
+            checkpointSequence: seq,
+            lastEventPosition: seq * 4800,
+            planId: "plan-lr-1",
+            planRevision: 2,
+            resourceClass: "accelerated",
+          },
+        };
+      }
+    });
+  }
+  // (u): the COMPLETED workload fixture — the same long-running facts,
+  // terminal, every verification check passing. The four-state
+  // distinction must still render the release row as the explicit
+  // absence (training completion and evaluation never imply release).
+  const longrunDone = seedExecution(world, {
+    id: LONGRUN_DONE_ID,
+    status: "COMPLETED",
+    description: "Batch the nightly exports",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "checkpoint-recorded",
+      "execution.pass",
+    ],
+    verification: [check(LONGRUN_DONE_ID, 1, "PASS", 0.95)],
+    cost: { totalMicroUsd: "900000", currency: "usd" },
+  });
+  world.executions.set(LONGRUN_DONE_ID, {
+    ...longrunDone,
+    constraints: { maxCostMicroUsd: "5000000" },
+  });
+  {
+    const evs = world.events.get(LONGRUN_DONE_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "checkpoint-recorded") {
+        evs[index] = {
+          ...entry,
+          payload: {
+            checkpointSequence: 1,
+            lastEventPosition: 2200,
+            planId: "plan-done-1",
+            planRevision: 1,
+            resourceClass: "standard",
           },
         };
       }
@@ -1250,6 +1340,9 @@ describe("(k) every page: one h1, the landmarks, the skip link first", () => {
     "/build/execution",
     "/build/agent",
     "/build/workload",
+    "/build/deployment",
+    "/deployments",
+    "/deployments/00000000-0000-7000-8000-0000000000e1",
     "/runs",
     "/runs/active",
     "/runs/history",
@@ -1735,5 +1828,370 @@ describe("(r) the WORK-036 activity-view journey (timeline default, advanced dis
     expect(raw).toContain("Advanced view — raw payloads");
     expect(raw).toContain("Return to the timeline");
     expect(raw).toContain("<pre class=");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WORK-037: the Build-experience journeys
+//   (s) the workload creation journey: outcome-first form → proposal
+//       (budget + the four-state completion preview) → the commitment
+//       block (full consequence facts before Start) → POST → 303 → the
+//       run page — with the wire request proven to carry the budget
+//       constraint, the dataset refs and the task;
+//   (t) the long-running workload view: the checkpoint/resume fixture
+//       renders the section (progress, checkpoint recency, spend,
+//       recovery state, the four-state distinction, no lease/heartbeat
+//       mechanics) and an ordinary execution does NOT render it;
+//   (u) the training-state distinction: the four states on the live run
+//       page, the release row always the explicit absence;
+//   (v) the deployment journeys: inventory/detail/proposal carry the
+//       availability/execution distinction, no execution-status
+//       vocabulary, and NO POST routes (operational controls are not
+//       actionable — no governed route exists);
+//   (w) the agent at-a-glance journey: the nine AC3 dimensions with the
+//       honest absences, the version/selection disclosure, the
+//       execution cross-link;
+//   (x) the workload create authority: the same-key resubmit converges on
+//       ONE execution (idempotency), and the created execution reads
+//       through the bound application scope (tenancy).
+// ---------------------------------------------------------------------------
+
+describe("(s) the WORK-037 workload-creation journey (outcome-first, budget-visible, governed create)", () => {
+  test("the form is purpose-first: the outcome field leads, no provider/model selection exists", async () => {
+    const page = await html(await get("/build/workload"));
+    expect(page).toContain("What should the workload do?");
+    expect(page).toContain("Budget (dollars, optional)");
+    expect(page).toContain("Dataset artifacts (optional)");
+    expect(page.indexOf("wl-purpose")).toBeLessThan(page.indexOf("wl-budget"));
+    // No provider/model/connection SELECTION fields exist anywhere (the
+    // honest no-provider note is the only place those words appear).
+    expect(page).not.toMatch(/name="(provider|model|connectionId|connection|agent|agentId|rail)"/i);
+    expect(page).not.toMatch(/<select[^>]*name="(provider|model|connection)"/i);
+  });
+
+  test("the review step renders the proposal AND the full commitment block before Start", async () => {
+    const review = await html(
+      await get(
+        `/build/workload?purpose=${encodeURIComponent(
+          "Train a classifier on the ticket dataset",
+        )}&applicationId=${APP_ID}&budgetDollars=50.25&datasets=${encodeURIComponent(
+          "dataset-1\ndataset-2",
+        )}&userId=user-9&idempotencyKey=dash-journey-s`,
+      ),
+    );
+    expect(review).toContain("Review the proposed workload");
+    // The proposal: budget, inputs, what this creates, the completion preview.
+    expect(review).toContain("Proposed workload");
+    expect(review).toContain("Declared budget: $50.25");
+    expect(review).toContain("integer micro-USD cost constraint");
+    expect(review).toContain("2 references sent on the create request");
+    expect(review).toContain("Exactly one governed execution");
+    expect(review).toContain("What completion will mean");
+    for (const label of [
+      "Compute complete",
+      "Training complete",
+      "Evaluation passed",
+      "Release approved",
+    ]) {
+      expect(review).toContain(label);
+    }
+    // The commitment block: all the consequence facts before Start.
+    expect(review).toContain("Start this workload?");
+    expect(review).toContain("What will happen");
+    expect(review).toContain("Who or what is affected");
+    expect(review).toContain("What it costs");
+    expect(review).toContain("Why it is allowed");
+    expect(review).toContain("Can it be undone");
+    expect(review).toContain("Approval required");
+    expect(review).toContain("Idempotency");
+    expect(review).toContain("dash-journey-s");
+    expect(review).toContain('method="post" action="/build/workload"');
+    expect(review).toContain(">Start this workload</button>");
+    // Not now returns to editing with the key preserved.
+    expect(review).toMatch(/href="\/build\/workload\?[^"]*edit=1[^"]*"/);
+  });
+
+  test("POST /build/workload creates through the governed create and 303-redirects to the run", async () => {
+    world.createCalls.length = 0;
+    const body = new URLSearchParams({
+      applicationId: APP_ID,
+      purpose: "Train a classifier on the ticket dataset",
+      budgetDollars: "50.25",
+      datasets: "dataset-1\ndataset-2",
+      userId: "user-9",
+      idempotencyKey: "dash-journey-s-create",
+    }).toString();
+    const response = await postForm("/build/workload", body);
+    expect(response.status).toBe(303);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toMatch(/^\/runs\//);
+    // The wire request carried the workload facts through the ONE create
+    // contract: the task, the budget constraint (integer micro-USD), the
+    // dataset refs and the end-user attribution.
+    expect(world.createCalls.length).toBe(1);
+    const request = world.createCalls[0] as Record<string, unknown>;
+    expect(request.applicationId).toBe(APP_ID);
+    expect(request.task).toEqual({
+      kind: "outcome",
+      description: "Train a classifier on the ticket dataset",
+    });
+    expect(request.constraints).toEqual({ maxCostMicroUsd: "50250000" });
+    expect(request.inputArtifactRefs).toEqual(["dataset-1", "dataset-2"]);
+    expect(request.userId).toBe("user-9");
+    // The run page renders for the created workload.
+    const run = await html(await get(location));
+    expect(run).toContain("Train a classifier on the ticket dataset");
+  });
+
+  test("an invalid form re-renders with per-field errors (422, never a silent drop)", async () => {
+    const body = new URLSearchParams({
+      applicationId: "",
+      purpose: "",
+      budgetDollars: "fifty",
+      datasets: "dataset-1, BAD REF!;",
+      idempotencyKey: "dash-journey-s-invalid",
+    }).toString();
+    const response = await postForm("/build/workload", body);
+    expect(response.status).toBe(422);
+    const page = await response.text();
+    expect(page).toContain("The request could not be submitted");
+    expect(page).toContain("The application id is required");
+    expect(page).toContain("Describe what the workload should accomplish");
+    expect(page).toContain("dollar amount");
+    expect(page).toContain("one id per line");
+  });
+});
+
+describe("(t) the WORK-037 long-running workload view (AC8: facts, never mechanics)", () => {
+  test("the checkpoint/resume fixture renders the section with every fact", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_ID}`));
+    expect(page).toContain("Long-running workload");
+    expect(page).toContain("open the activity timeline");
+    // Checkpoint recency: the platform's own typed facts.
+    expect(page).toContain("Checkpoint 2 of 2 recorded");
+    expect(page).toContain("position 9600");
+    // Spend: the settled cost + the declared budget constraint.
+    expect(page).toContain("Settled cost: $1.81");
+    expect(page).toContain("budget constraint on the request is $50.00");
+    // Recovery state: the recorded resume.
+    expect(page).toContain("Recovered");
+    expect(page).toContain("resume-recorded");
+    // The lease/heartbeat mechanics note (never exposed).
+    expect(page).toContain("lease and heartbeat mechanics are platform-internal");
+    expect(page).not.toMatch(/worker epoch|lease epoch/i);
+  });
+
+  test("an ordinary execution does NOT render the long-running section", async () => {
+    const page = await html(await get(`/runs/${RUNNING_ID}`));
+    expect(page).not.toContain("Long-running workload");
+    const completed = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(completed).not.toContain("Long-running workload");
+  });
+
+  test("the timeline still renders the checkpoint events as the progress view (default)", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_ID}?tab=activity`));
+    expect(page).toContain("Checkpoint recorded");
+  });
+});
+
+describe("(u) the WORK-037 training-state distinction (AC7: four states, never merged)", () => {
+  test("the live run page renders the four distinct states with live facts and the release absence", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_ID}`));
+    expect(page).toContain("Training, evaluation and release states");
+    expect(page).toContain("Four distinct states");
+    // Compute: the live status fact.
+    expect(page).toContain("Not yet — the live status is RUNNING");
+    // Training: the honest non-distinction (the running variant; the
+    // apostrophe crosses the escape boundary as &#39;).
+    expect(page).toContain("own workload states are not public");
+    // Evaluation: the verification facts.
+    expect(page).toContain("1 of 1 verification checks passed");
+    // Release: the explicit absence, never a claim.
+    expect(page).toContain("No release state exists on the public execution contract");
+    expect(page).not.toMatch(/release approved[.:]?\s*(yes|true|granted)/i);
+  });
+
+  test("a COMPLETED workload with passing checks still never claims release approval", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_DONE_ID}`));
+    // The completed variants: compute is the terminal fact, training is
+    // the honest non-distinction, evaluation is the checks, release is
+    // the absence.
+    expect(page).toContain("the terminal state Completed");
+    expect(page).toContain("does not separately distinguish");
+    expect(page).toContain("1 of 1 verification checks passed");
+    expect(page).toContain("never imply release approval");
+    expect(page).not.toMatch(/release approved[.:]?\s*(yes|true|granted)/i);
+  });
+
+  test("an ordinary execution carries no training-state vocabulary (the distinction stays in the workload view)", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).not.toContain("Training, evaluation and release states");
+    expect(page).not.toContain("Release approved");
+    // The ordinary surface's own facts (status + verification) stay.
+    expect(page).toContain("Completed");
+  });
+});
+
+describe("(v) the WORK-037 deployment journeys (the availability/execution distinction)", () => {
+  test("the inventory states the distinction and the honest absence, and links the live surfaces", async () => {
+    const page = await html(await get("/deployments"));
+    expect(page).toContain("A Deployment is persistent availability");
+    expect(page).toContain("never an execution status");
+    expect(page).toContain("not yet exposed by the public API");
+    expect(page).toContain('href="/build/deployment"');
+    expect(page).toContain('href="/runs"');
+    expect(page).toContain('href="/agents"');
+    // No execution-status badge vocabulary on the deployment surface.
+    expect(page).not.toContain('class="badge status-');
+  });
+
+  test("the detail page carries the identifier-namespace distinction and the six-dimension glance grid", async () => {
+    const page = await html(await get("/deployments/00000000-0000-7000-8000-0000000000e1"));
+    expect(page).toContain("deployment 00000000-0000-7000-8000-0000000000e1");
+    expect(page).toContain("different namespaces");
+    expect(page).toContain("At a glance");
+    for (const label of [
+      "Availability",
+      "Version",
+      "Health",
+      "Channels and endpoints",
+      "Activity",
+      "Operational controls",
+    ]) {
+      expect(page).toContain(label);
+    }
+    expect((page.match(/class="glance-cell"/g) ?? []).length).toBe(6);
+    expect(page).not.toContain('class="badge status-');
+    // The AC5 consequence vocabulary: governed path + no action buttons.
+    expect(page).toContain("consequence preview before commitment");
+    expect(page).toContain("no action buttons");
+  });
+
+  test("the proposal page is purpose-first and honestly unavailable (no create action)", async () => {
+    const page = await html(
+      await get(
+        `/build/deployment?purpose=${encodeURIComponent("The support agent, always reachable")}`,
+      ),
+    );
+    expect(page).toContain("What should stay available?");
+    expect(page).toContain("The support agent, always reachable");
+    expect(page).toContain("Proposed deployment design");
+    expect(page).toContain("not yet exposed by the public API");
+    // No POST form exists on the deployment proposal (no governed route).
+    expect(page).not.toContain('method="post"');
+  });
+
+  test("no deployment command route exists (a direct POST is refused, zero wire mutations)", async () => {
+    world.scopedCalls.length = 0;
+    const before = world.durableCreates;
+    for (const path of [
+      "/deployments",
+      "/deployments/00000000-0000-7000-8000-0000000000e1",
+      "/build/deployment",
+    ]) {
+      const response = await fetch(`${base}${path}`, {
+        method: "POST",
+        body: "x=1",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        redirect: "manual",
+      });
+      expect([404, 405].includes(response.status), path).toBe(true);
+    }
+    expect(world.durableCreates).toBe(before);
+  });
+});
+
+describe("(w) the WORK-037 agent at-a-glance journey (AC3 + AC9)", () => {
+  test("the detail renders the nine dimensions: the live facts and the honest absences", async () => {
+    const page = await html(await get(`/agents/${AGENT_ID}`));
+    expect(page).toContain("At a glance");
+    expect((page.match(/class="glance-cell"/g) ?? []).length).toBe(9);
+    // The facts the agent projection carries.
+    expect(page).toContain("Handles incoming tickets and escalates billing disputes.");
+    expect(page).toContain("Active version validation state: validated");
+    expect(page).toContain("1.1.0");
+    // The honest absences.
+    expect(page).toContain("no per-agent cost facts");
+    expect(page).toContain("never represented as an execution status");
+    expect(page).toContain("no capability facts");
+    expect(page).toContain("no tool or integration facts");
+    expect(page).toContain("no approval facts");
+  });
+
+  test("the versions and selection history stay under the advanced disclosure with the no-command note", async () => {
+    const page = await html(await get(`/agents/${AGENT_ID}`));
+    const advanced = page.indexOf("Versions and selection history (advanced)");
+    expect(advanced).toBeGreaterThan(-1);
+    const disclosureBody = page.slice(advanced, advanced + 2500);
+    expect(disclosureBody).toContain("1.0.0");
+    expect(disclosureBody).toContain("promotion");
+    expect(disclosureBody).toContain("architect@example.test");
+    expect(disclosureBody).toContain("no selection command is exposed");
+  });
+
+  test("the execution cross-link is honest (no agent attribution on the public execution contract)", async () => {
+    const page = await html(await get(`/agents/${AGENT_ID}`));
+    expect(page).toContain("Runs and evidence");
+    expect(page).toContain("no agent attribution");
+    expect(page).toContain("Look up an execution by id");
+    expect(page).toContain('href="/runs"');
+  });
+});
+
+describe("(x) the WORK-037 workload create authority (idempotency + tenancy)", () => {
+  test("the same idempotency key with the same payload converges on ONE execution", async () => {
+    world.createCalls.length = 0;
+    const body = new URLSearchParams({
+      applicationId: APP_ID,
+      purpose: "Batch the nightly exports",
+      budgetDollars: "5",
+      datasets: "",
+      userId: "",
+      idempotencyKey: "dash-journey-x",
+    }).toString();
+    const first = await postForm("/build/workload", body);
+    expect(first.status).toBe(303);
+    const firstLocation = first.headers.get("location") ?? "";
+    const second = await postForm("/build/workload", body);
+    expect(second.status).toBe(303);
+    const secondLocation = second.headers.get("location") ?? "";
+    // ONE durable execution: both submits converge on the same run.
+    expect(firstLocation).toBe(secondLocation);
+    expect(world.createCalls.length).toBe(2);
+    const created = world.executions.get(
+      firstLocation.replaceAll("/runs/", "").replaceAll("/", ""),
+    );
+    expect(created).toBeDefined();
+    expect(world.executions.size).toBeGreaterThanOrEqual(1);
+  });
+
+  test("the created workload's execution reads through the bound application scope (tenancy)", async () => {
+    world.scopedCalls.length = 0;
+    const body = new URLSearchParams({
+      applicationId: APP_ID,
+      purpose: "Scope-proof workload",
+      budgetDollars: "",
+      datasets: "",
+      userId: "",
+      idempotencyKey: "dash-journey-x-scope",
+    }).toString();
+    const created = await postForm("/build/workload", body);
+    const location = created.headers.get("location") ?? "";
+    expect(created.status).toBe(303);
+    await html(await get(location));
+    // Every scoped read carried the deployment's BOUND scope.
+    const reads = world.scopedCalls.filter((call) =>
+      call.path.startsWith(`/executions/${location.replaceAll("/runs/", "")}`),
+    );
+    expect(reads.length).toBeGreaterThan(0);
+    for (const call of reads) {
+      expect(call.application).toBe(APP_ID);
+    }
+    // A foreign scope in the URL query cannot widen the read scope.
+    world.scopedCalls.length = 0;
+    await html(await get(`${location}?applicationId=${OTHER_APP_ID}`));
+    for (const call of world.scopedCalls) {
+      expect(call.application).toBe(APP_ID);
+    }
   });
 });
