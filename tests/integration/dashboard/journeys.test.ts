@@ -492,6 +492,8 @@ const FAILED_ID = "00000000-0000-7000-8000-0000000000c2";
 const WAITING_ID = "00000000-0000-7000-8000-0000000000c3";
 const RUNNING_ID = "00000000-0000-7000-8000-0000000000c4";
 const RECENTS_ID = "00000000-0000-7000-8000-0000000000c5";
+const QUALITY_ID = "00000000-0000-7000-8000-0000000000c7";
+const WAITING2_ID = "00000000-0000-7000-8000-0000000000c8";
 const AGENT_ID = "00000000-0000-7000-8000-0000000000b1";
 
 let world: FakeWorld;
@@ -558,6 +560,15 @@ beforeAll(async () => {
     status: "COMPLETED",
     description: "Summarize the support queue",
     eventTypes: ["execution.created", "execution.authorize", "execution.pass"],
+  });
+  // WORK-036 (q): the quality-failure fixture — the work completed, one
+  // check failed (a distinct dimension from an execution failure).
+  seedExecution(world, {
+    id: QUALITY_ID,
+    status: "COMPLETED",
+    description: "Reconcile the vendor invoices",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+    verification: [check(QUALITY_ID, 1, "PASS", 0.91), check(QUALITY_ID, 2, "FAIL", null)],
   });
 
   const agent: AgentSummary = {
@@ -1444,5 +1455,170 @@ describe("(o) the attention journey (WORK-035: consequential aggregation, honest
     expect(evidence).toContain("not yet exposed by the public API");
     const lineage = await html(await get("/trust/lineage"));
     expect(lineage).toContain("Lineage");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (p) the WORK-036 composer journey: Home → attachments → review envelope →
+//     Run → the wire request carries inputArtifactRefs
+// ---------------------------------------------------------------------------
+
+describe("(p) the WORK-036 outcome-composer journey (attachments through the closed create contract)", () => {
+  test("Home carries the secondary affordances: attachments live, competences/templates honest", async () => {
+    const page = await html(await get("/"));
+    expect(page).toContain("What would you like Zeck to accomplish?");
+    expect(page).toContain("Attachments, competences and templates");
+    expect(page).toContain('name="attachments"');
+    expect(page).toContain("Saved competences");
+    expect(page).toContain("not exposed by the public API yet");
+    // No provider/model selection exists anywhere in the composer.
+    expect(page).not.toMatch(/name="(provider|model|providerId|modelId)"/);
+  });
+
+  test("the review renders the proposed-approach envelope with Run as the primary action", async () => {
+    const review = await html(
+      await get(
+        `/build/execution?outcome=${encodeURIComponent("Analyze the files and summarize the findings")}` +
+          `&applicationId=${APP_ID}&attachments=${encodeURIComponent("art-9\nart-10")}` +
+          `&spendLimitDollars=2.50&idempotencyKey=dash-journey-p`,
+      ),
+    );
+    expect(review).toContain("Review the proposed execution");
+    expect(review).toContain("Proposed approach");
+    expect(review).toContain("Permission and risk envelope");
+    expect(review).toContain("Proposed verification approach");
+    expect(review).toContain(">Run</button>");
+    expect(review).toContain("Input artifacts");
+    expect(review).toContain("art-9 · art-10");
+    // The declared limits, honestly framed — never platform estimates.
+    expect(review).toContain("not platform estimates");
+  });
+
+  test("POST with attachments creates through the SDK with inputArtifactRefs on the wire", async () => {
+    const key = "dash-journey-p-run";
+    const body = new URLSearchParams({
+      applicationId: APP_ID,
+      environmentId: "",
+      outcome: "Analyze the files and summarize the findings",
+      attachments: "art-9\nart-10",
+      spendLimitDollars: "",
+      quality: "",
+      latencySeconds: "",
+      userId: "",
+      idempotencyKey: key,
+    }).toString();
+    const response = await postForm("/build/execution", body);
+    expect(response.status).toBe(303);
+    const location = response.headers.get("location") ?? "";
+    const createdId = location.replace("/runs/", "");
+    expect(createdId).not.toBe("");
+    // The durable world row's create fingerprint carries the artifact refs.
+    const established = world.createIndex.get(key);
+    expect(established).toBeDefined();
+    const fingerprint = JSON.parse(established?.fingerprint ?? "{}") as Record<string, unknown>;
+    expect(fingerprint.inputArtifactRefs).toEqual(["art-9", "art-10"]);
+    // The Result view renders from the live row.
+    const page = await html(await get(`/runs/${createdId}`));
+    expect(page).toContain("Analyze the files and summarize the findings");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (q) the WORK-036 trust + failure-distinction journey: the header trust
+//     strip (four separate facts) and the quality-failure notice
+// ---------------------------------------------------------------------------
+
+describe("(q) the WORK-036 trust-state and failure-distinction journey", () => {
+  test("the execution header renders the four trust axes as separate facts", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).toContain('class="trust-strip"');
+    const stripStart = page.indexOf('class="trust-strip"');
+    const strip = page.slice(stripStart, page.indexOf("</ul>", stripStart));
+    expect(strip.match(/<li>/g)?.length).toBe(4);
+    for (const axis of [
+      "Provider success",
+      "Execution success",
+      "Quality success",
+      "Policy success",
+    ]) {
+      expect(page).toContain(axis);
+    }
+    expect(page).not.toMatch(/trust score|overall confidence/i);
+  });
+
+  test("a completed execution with a failed check renders the QUALITY-failure notice (not the execution-failure surface)", async () => {
+    const page = await html(await get(`/runs/${QUALITY_ID}`));
+    expect(page).toContain("The work completed, but 1 verification check failed");
+    expect(page).toContain("quality failure");
+    expect(page).toContain("different fact from an execution failure");
+    expect(page).toContain("Review the evidence");
+    expect(page).not.toContain("Zeck could not complete this execution");
+  });
+
+  test("a FAILED execution renders the EXECUTION-failure surface with the honest non-classification", async () => {
+    const page = await html(await get(`/runs/${FAILED_ID}`));
+    expect(page).toContain("Zeck could not complete this execution");
+    expect(page).toContain("execution failure");
+    expect(page).toContain("the dashboard does not add its own classification");
+    expect(page).toContain("the tool rejected the request after three attempts");
+    expect(page).toContain("Start a new attempt");
+    expect(page).not.toContain("The work completed, but");
+  });
+
+  test("the wait question renders with the consequence framing (the (d) companion)", async () => {
+    // A fresh waiting row: the shared world's WAITING_ID was already
+    // cancelled by the (d) journey.
+    seedExecution(world, {
+      id: WAITING2_ID,
+      status: "WAITING_USER",
+      description: "Draft the vendor renewal",
+      eventTypes: [
+        "execution.created",
+        "execution.authorize",
+        "execution.start",
+        "execution.wait-user",
+      ],
+      lastEventPayload: { question: "Approve the external side effect?" },
+    });
+    const page = await html(await get(`/runs/${WAITING2_ID}`));
+    expect(page).toContain("Approve the external side effect?");
+    expect(page).toContain("What deciding means");
+    expect(page).toContain("What cancelling means");
+    expect(page).toContain("Return to your work");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (r) the WORK-036 activity journey: the timeline is the default; Graph,
+//     Events and Raw are advanced views inside the disclosure
+// ---------------------------------------------------------------------------
+
+describe("(r) the WORK-036 activity-view journey (timeline default, advanced disclosure)", () => {
+  test("the default Activity view renders the timeline FIRST with the advanced views inside the disclosure", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}?tab=activity`));
+    const timeline = page.indexOf('<ol class="timeline">');
+    const disclosure = page.indexOf("Advanced views: Graph, Events, Raw");
+    expect(timeline).toBeGreaterThan(-1);
+    expect(disclosure).toBeGreaterThan(timeline);
+    // The advanced links + the honest graph absence live inside the
+    // disclosure body, after its summary.
+    const body = page.slice(disclosure);
+    expect(body).toContain("The execution graph view is an expert surface");
+    expect(body).toContain("view=events");
+    expect(body).toContain("view=raw");
+    // Nothing graph-shaped renders before the timeline (graph-first is
+    // the rejected anti-pattern).
+    expect(page.slice(0, timeline)).not.toContain("view=events");
+  });
+
+  test("the events and raw views are labeled advanced with a return-to-timeline link", async () => {
+    const events = await html(await get(`/runs/${COMPLETED_ID}?tab=activity&view=events`));
+    expect(events).toContain("Advanced view — raw events");
+    expect(events).toContain("Return to the timeline");
+    expect(events).toContain('<th scope="col">Event id</th>');
+    const raw = await html(await get(`/runs/${COMPLETED_ID}?tab=activity&view=raw`));
+    expect(raw).toContain("Advanced view — raw payloads");
+    expect(raw).toContain("Return to the timeline");
+    expect(raw).toContain("<pre class=");
   });
 });

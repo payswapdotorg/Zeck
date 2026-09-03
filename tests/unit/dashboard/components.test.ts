@@ -130,7 +130,12 @@ describe("ExecutionHeader (UX v2 §9 — the facts header; the title+badge line 
     });
     expect(html).toContain('class="trust-strip"');
     expect(html).toContain('aria-label="Trust state — four separate facts"');
-    for (const axis of ["Provider success", "Execution success", "Quality success", "Policy success"]) {
+    for (const axis of [
+      "Provider success",
+      "Execution success",
+      "Quality success",
+      "Policy success",
+    ]) {
       expect(html).toContain(axis);
     }
     // The four facts stay separate — there is no merged verdict anywhere.
