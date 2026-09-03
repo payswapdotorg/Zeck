@@ -93,7 +93,7 @@ function resolveSpecifier(fromFile: string, specifier: string): string {
 }
 
 describe("architecture: the WORK-016 integration boundary", () => {
-  test("src/integrations imports ONLY the executions/agents public barrels + src/shared (payment-rails may additionally import the economics barrel; substrate-federation the capabilities barrel)", () => {
+  test("src/integrations imports ONLY the executions/agents public barrels + src/shared (payment-rails may additionally import the economics barrel; substrate-federation the capabilities barrel; accelerators the sandbox port barrel)", () => {
     const violations: string[] = [];
     for (const file of INTEGRATION_FILES) {
       const text = readFileSync(file, "utf8");
@@ -174,6 +174,24 @@ describe("architecture: the WORK-016 integration boundary", () => {
           segments[2] === "budgets" &&
           segments[3] === "public";
         const isPlatformDbPort = resolved === "src/platform/db/port";
+        // WORK-030 (ACC-002): the accelerators integration implements
+        // the sandbox module's PUBLIC AcceleratorSubstrateRuntime port —
+        // the provider-neutral GPU/accelerator execution seam. The
+        // payment-rails precedent (an integration implementing a module's
+        // port contract imports the owning module's public barrel; the
+        // imports are TYPE-ONLY — the port shape makes duplicate
+        // authorities unrepresentable). The allowance is import-rule-
+        // scoped to src/integrations/accelerators/ ONLY; every other
+        // namespace keeps the original allowlist.
+        const isAcceleratorsNamespace = file
+          .slice(REPO_ROOT.length + 1)
+          .startsWith("src/integrations/accelerators/");
+        const isSandboxBarrel =
+          segments.length === 4 &&
+          segments[0] === "src" &&
+          segments[1] === "modules" &&
+          segments[2] === "sandbox" &&
+          segments[3] === "public";
         if (
           !isExecutionBarrel &&
           !isAgentsBarrel &&
@@ -184,7 +202,8 @@ describe("architecture: the WORK-016 integration boundary", () => {
           !(
             isEdgeNamespace &&
             (isCapabilitiesBarrel || isPoliciesBarrel || isBudgetsBarrel || isPlatformDbPort)
-          )
+          ) &&
+          !(isAcceleratorsNamespace && isSandboxBarrel)
         ) {
           violations.push(`${file}: ${specifier} -> ${resolved}`);
         }
