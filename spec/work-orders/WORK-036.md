@@ -1,6 +1,6 @@
 # WORK-036 — Home, Work creation and execution experience
 
-Status: PENDING
+Status: COMPLETE
 
 Owner: Architect-assigned implementation worker
 
@@ -127,4 +127,4 @@ Evidence must identify exact revisions, changed surfaces, Home/execution routes,
 
 # Completion
 
-Worker opens a PR but does not merge. Completion requires architect acceptance, exact-head verification and post-merge finalization.
+Architect acceptance: complete. Merged as PR #64 at merge commit `2731522ec1f6a2704656380849985d712c1ee7b1` from implementation head `caf5fc897a6272e0334a095f6d0eb065ec93cd23`, base `5131e70c9ad694fb49ad14afb4035af8b6caed4f`. Exact-head gates and CI were green before merge; post-merge finalization is recorded in repository development state.
