@@ -81,6 +81,19 @@ Forbidden:
 11. Expert views can expose plans, capabilities, provider/model route, compute, events, lineage and audit without polluting the default experience.
 12. The dashboard preserves the existing public API mental model and does not create a second execution semantics.
 
+# Implementation Requirements
+
+The implementation follows the phase shape of `docs/UX-IMPLEMENTATION-PLAN.md` within this Work Order's declared surfaces:
+
+1. Experience shell: persistent desktop sidebar, responsive tablet/mobile navigation, global command/search surface, global page frame, `Attention` area, keyboard navigation and focus management, light/dark/system appearance support, accessible typography/states/hit targets, and loading/empty/error/permission-denied primitives — working with real API data and remaining useful when some modules return no data.
+2. Home and execution experience: Home becomes the default outcome-first entry point (describe outcome → proposed execution → cost/time/permission summary → execute → result → evidence); execution detail becomes the canonical work surface with `Result | Evidence | Activity` tabs, status/header facts, result rendering, verification/confidence strip, artifact links, chronological activity, human/user decision surfaces, cancellation through the existing governed API command, `How Zeck did it` progressive disclosure, and advanced timeline/graph/events/raw views; provider success, execution success, quality success and policy success remain distinguished.
+3. Build surfaces: outcome-first creation flows for executions, agents, workloads, deployments and training/batch jobs, each starting with purpose/outcome and presenting the proposed plan before detailed controls; advanced graph editing remains secondary.
+4. Operational surfaces: active/history/scheduled runs, agent inventory and details, deployment and version/health views, artifacts and lineage, connections, and workload/training status, preserving the distinction between a persistent deployment and an individual execution.
+5. Trust, control and improvement: evidence and provenance views, confidence/check explanations, policy/rules summaries, budget/spend summaries, approval/review experiences, Improve recommendations, learning/evaluation detail, and advanced route/provider/compute disclosures; consequential actions display consequence, authorization requirements and cost/risk before commitment.
+6. Expert mode: plans, capabilities, effective policies, providers, model strategy, compute substrate, execution events, artifact lineage, audit and raw execution graph exposed as inspection/authoring surfaces without changing the default experience.
+
+The implementation plan's core component contracts, data and state rules, accessibility gate and verification gates apply to every phase.
+
 # Required Checkpoint Contracts
 
 - `SELF-HOSTING-BOUNDARY`
