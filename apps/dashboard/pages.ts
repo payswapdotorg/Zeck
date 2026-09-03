@@ -61,6 +61,7 @@ import {
   executionTitle,
   isTerminal,
   looksLikeExecutionId,
+  parseAttachmentRefs,
   parseRecents,
   QUALITY_OPTIONS,
   RECENTS_COOKIE,
@@ -421,12 +422,6 @@ const FORM_KEYS: readonly string[] = [
   "idempotencyKey",
 ];
 
-function hiddenFields(values: Record<string, string>): string {
-  return FORM_KEYS.filter((key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0)
-    .map((key) => `<input type="hidden" name="${key}" value="${esc(values[key] ?? "")}">`)
-    .join("\n    ");
-}
-
 function constraintSummary(values: Record<string, string>): string[] {
   const lines: string[] = [];
   if ((values.spendLimitDollars ?? "").length > 0) {
@@ -488,6 +483,71 @@ function proposedApproachEnvelope(values: Record<string, string>): string {
       : ""
   }
 </div>`;
+}
+
+/**
+ * WORK-036 AC9: the hidden field pairs the Run commitment form carries
+ * (the same FORM_KEYS the composer round-trips, idempotency key included).
+ */
+function commitmentHiddenFields(
+  values: Record<string, string>,
+): readonly (readonly [string, string])[] {
+  return FORM_KEYS.filter((key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0).map(
+    (key) => [key, values[key] ?? ""] as const,
+  );
+}
+
+/**
+ * WORK-036 AC9: the consequence/commitment block immediately before Run —
+ * the five pre-commit consequence facts (what will happen, affected
+ * resource, authorization requirement, cost estimate status,
+ * reversibility), each a public-contract fact or an honest absence,
+ * rendered through the WORK-035 confirmation primitive (never a parallel
+ * confirmation pattern). The confirm button is Run itself; "Not now"
+ * returns to editing the same details.
+ */
+function runCommitmentCard(
+  values: Record<string, string>,
+  idempotencyKey: string,
+  confirmLabel: string,
+): string {
+  const environment =
+    (values.environmentId ?? "").length > 0
+      ? `environment ${values.environmentId ?? ""}`
+      : "the default environment";
+  const userId = (values.userId ?? "").length > 0 ? (values.userId ?? "") : null;
+  const artifactRefs = parseAttachmentRefs(values.attachments ?? "") ?? [];
+  const spendLimit = (values.spendLimitDollars ?? "").trim();
+  const costStatus = `No pre-run estimate — the platform's public contract exposes none, so none is shown; the settled cost is recorded per execution on the run's header facts.${
+    spendLimit.length > 0
+      ? ` Your declared spend limit ($${spendLimit}) is enforced as the request's cost constraint.`
+      : ""
+  }`;
+  return confirmationCard({
+    title: "Run this work?",
+    consequence:
+      "Run submits the governed create request: exactly one execution is created for this outcome, Zeck plans the route and executes the work within the governing policy, and the events, verification results, output artifacts and settled cost are recorded platform-side — you follow the run on its execution page.",
+    affected: `A governed execution record in application ${values.applicationId ?? ""} (${environment})${
+      userId === null ? "" : `, attributed to end user ${userId}`
+    }${
+      artifactRefs.length > 0
+        ? `, with ${artifactRefs.length} attached input artifact${artifactRefs.length === 1 ? "" : "s"} read as inputs`
+        : ""
+    }. External side effects, if any, are admitted by policy and surface as attention before they proceed.`,
+    cost: costStatus,
+    whyAllowed:
+      "The create request is valid against the frozen create contract — it selects no provider, model, rail, connection or agent (selection is forbidden; the platform plans the route), and policy admission is decided platform-side at dispatch: a denial is surfaced on the execution, never silently retried.",
+    reversible: false,
+    reversibleDetail:
+      "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel (its own consequence preview); work already performed and its evidence stay recorded and inspectable.",
+    approvalNote:
+      "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary. Where the governing policy requires approval for external side effects, they surface as waiting states before they proceed.",
+    idempotencyNote: `The idempotency key ${idempotencyKey} is carried: reloading this review or submitting again converges on ONE execution rather than creating duplicates.`,
+    hiddenFields: commitmentHiddenFields({ ...values, idempotencyKey }),
+    confirmAction: "/build/execution",
+    confirmLabel,
+    cancelHref: editLink(values, idempotencyKey),
+  });
 }
 
 function editLink(values: Record<string, string>, idempotencyKey: string): string {
@@ -554,14 +614,7 @@ async function buildExecutionPage(client: ZeckClient, ctx: HttpContext): Promise
     primaryActionHtml: `<a class="button-link" href="${esc(editLink(query, idempotencyKey))}">Edit these details</a>`,
   })}
 ${proposedApproachEnvelope(query)}
-<form class="flow card" method="post" action="/build/execution">
-    ${hiddenFields({ ...query, idempotencyKey })}
-  <div class="form-actions">
-    <button type="submit" class="primary">Run</button>
-    <a href="${esc(editLink(query, idempotencyKey))}">Edit these details</a>
-  </div>
-</form>
-<p class="muted">Retrying this review (reloading, or submitting again) reuses the same idempotency key, so the platform converges on ONE execution rather than creating duplicates.</p>`;
+${runCommitmentCard(query, idempotencyKey, "Run")}`;
   return page(
     {
       title: "Zeck — Review the proposed execution",
@@ -619,14 +672,7 @@ async function createExecutionHandler(
         error.body.message,
       )} (${esc(error.body.code)})</div>
 ${proposedApproachEnvelope(ctx.form)}
-<form class="flow card" method="post" action="/build/execution">
-    ${hiddenFields({ ...ctx.form, idempotencyKey })}
-  <div class="form-actions">
-    <button type="submit" class="primary">Try again</button>
-    <a href="${esc(editLink(ctx.form, idempotencyKey))}">Edit these details</a>
-  </div>
-</form>
-<p class="muted">The same idempotency key is kept, so a retry converges on the governed outcome rather than creating a duplicate.</p>`;
+${runCommitmentCard(ctx.form, idempotencyKey, "Try again")}`;
       return htmlStatusResult(
         422,
         appShell({

@@ -691,6 +691,64 @@ export function classifyFailure(
 }
 
 /**
+ * The authoritative recoverability facts for a failed run (AC10) —
+ * derived ONLY from platform-typed fields on the public event stream:
+ *  - a literal `retryable` boolean (the platform's own recoverability
+ *    bit, as its failure records carry it);
+ *  - the platform's own failure/outcome class vocabulary (`failureClass` /
+ *    `outcomeClass` strings recorded by the platform's producers).
+ *
+ * This is a STRICTLY TYPED field read on the platform's own vocabulary
+ * keys — NEVER a heuristic over free-text reasons. The recorded message
+ * is displayed verbatim; it is never classified by the dashboard. When no
+ * typed fact exists, the honest limitation is represented explicitly
+ * (retryable === null && failureClass === null) — never a guessed
+ * "recoverable" badge.
+ */
+export interface RecoverabilityFacts {
+  /** The platform's literal retryable bit, when an event recorded one. */
+  readonly retryable: boolean | null;
+  /** The platform's own failure/outcome class, when an event recorded one. */
+  readonly failureClass: string | null;
+  /** The event type that carried the most recently recorded fact. */
+  readonly source: string | null;
+}
+
+/**
+ * Scan the public event stream chronologically for typed recoverability
+ * facts. The MOST RECENT recorded fact wins per fact (the same last-event
+ * precedent as `classifyFailure`'s recorded reason); `source` reports the
+ * event that carried the retryable bit when one exists, else the event
+ * that carried the class. Free-text fields (message/error/reason/detail)
+ * are never consulted here.
+ */
+export function deriveRecoverability(events: readonly ExecutionEvent[]): RecoverabilityFacts {
+  const ordered = chronologicalEvents(events);
+  let retryable: boolean | null = null;
+  let failureClass: string | null = null;
+  let retryableSource: string | null = null;
+  let classSource: string | null = null;
+  for (const event of ordered) {
+    const payload = event.payload as Record<string, unknown>;
+    if (typeof payload.retryable === "boolean") {
+      retryable = payload.retryable;
+      retryableSource = event.type;
+    }
+    const classValue =
+      typeof payload.failureClass === "string" && payload.failureClass.trim().length > 0
+        ? payload.failureClass
+        : typeof payload.outcomeClass === "string" && payload.outcomeClass.trim().length > 0
+          ? payload.outcomeClass
+          : null;
+    if (classValue !== null) {
+      failureClass = classValue;
+      classSource = event.type;
+    }
+  }
+  return { retryable, failureClass, source: retryableSource ?? classSource };
+}
+
+/**
  * The recorded wait question (AC8): the last wait event's question/message
  * payload in plain language, or null when the event carries none. Never
  * fabricated — a missing question renders the honest "no detail recorded"

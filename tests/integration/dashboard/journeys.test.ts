@@ -494,6 +494,8 @@ const RUNNING_ID = "00000000-0000-7000-8000-0000000000c4";
 const RECENTS_ID = "00000000-0000-7000-8000-0000000000c5";
 const QUALITY_ID = "00000000-0000-7000-8000-0000000000c7";
 const WAITING2_ID = "00000000-0000-7000-8000-0000000000c8";
+const RETRYABLE_ID = "00000000-0000-7000-8000-0000000000c9";
+const NONRETRY_ID = "00000000-0000-7000-8000-0000000000ca";
 const AGENT_ID = "00000000-0000-7000-8000-0000000000b1";
 
 let world: FakeWorld;
@@ -570,6 +572,62 @@ beforeAll(async () => {
     eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
     verification: [check(QUALITY_ID, 1, "PASS", 0.91), check(QUALITY_ID, 2, "FAIL", null)],
   });
+  // WORK-036 (q, AC10 amendment): FAILED fixtures whose event streams
+  // carry PLATFORM-TYPED recoverability facts (the platform's own
+  // vocabulary — failureClass + retryable, mirroring the tools runtime's
+  // real retryable mapping: timeout → retryable, output-contract → not
+  // retryable). The dashboard surfaces such facts verbatim; it never
+  // infers one from free text.
+  seedExecution(world, {
+    id: RETRYABLE_ID,
+    status: "FAILED",
+    description: "Rebuild the search index",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.tool-result",
+      "execution.fail",
+    ],
+  });
+  {
+    const evs = world.events.get(RETRYABLE_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.tool-result") {
+        evs[index] = {
+          ...entry,
+          payload: { outcomeClass: "tool-failure", failureClass: "timeout", retryable: true },
+        };
+      }
+    });
+  }
+  seedExecution(world, {
+    id: NONRETRY_ID,
+    status: "FAILED",
+    description: "Normalize the invoice exports",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.tool-result",
+      "execution.fail",
+    ],
+  });
+  {
+    const evs = world.events.get(NONRETRY_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.tool-result") {
+        evs[index] = {
+          ...entry,
+          payload: {
+            outcomeClass: "tool-failure",
+            failureClass: "output-contract",
+            retryable: false,
+          },
+        };
+      }
+    });
+  }
 
   const agent: AgentSummary = {
     id: AGENT_ID,
@@ -1492,6 +1550,31 @@ describe("(p) the WORK-036 outcome-composer journey (attachments through the clo
     expect(review).toContain("art-9 · art-10");
     // The declared limits, honestly framed — never platform estimates.
     expect(review).toContain("not platform estimates");
+    // WORK-036 AC9 (amendment): the consequence/commitment block immediately
+    // before Run — the five pre-commit facts through the WORK-035
+    // confirmation primitive (no parallel confirmation pattern).
+    expect(review).toContain("Run this work?");
+    expect(review).toContain("What will happen");
+    expect(review).toContain("Who or what is affected");
+    expect(review).toContain("with 2 attached input artifacts read as inputs");
+    expect(review).toContain("No pre-run estimate");
+    expect(review).toContain("What it costs");
+    expect(review).toContain(
+      "Your declared spend limit ($2.50) is enforced as the request&#39;s cost constraint.",
+    );
+    expect(review).toContain("Why it is allowed");
+    expect(review).toContain("Can it be undone");
+    expect(review).toContain("cannot be undone through the public contract");
+    expect(review).toContain("Approval required");
+    expect(review).toContain("No user pre-approval is part of the public create contract");
+    expect(review).toContain("Idempotency");
+    expect(review).toContain("The idempotency key dash-journey-p is carried");
+    // The block sits between the envelope and Run (DOM order).
+    const envelopeAt = review.indexOf("Proposed approach");
+    const commitmentAt = review.indexOf("Run this work?");
+    const runAt = review.indexOf(">Run</button>");
+    expect(commitmentAt).toBeGreaterThan(envelopeAt);
+    expect(runAt).toBeGreaterThan(commitmentAt);
   });
 
   test("POST with attachments creates through the SDK with inputArtifactRefs on the wire", async () => {
@@ -1555,14 +1638,46 @@ describe("(q) the WORK-036 trust-state and failure-distinction journey", () => {
     expect(page).not.toContain("Zeck could not complete this execution");
   });
 
-  test("a FAILED execution renders the EXECUTION-failure surface with the honest non-classification", async () => {
+  test("a FAILED execution renders the EXECUTION-failure surface with the honest recoverability limitation", async () => {
     const page = await html(await get(`/runs/${FAILED_ID}`));
     expect(page).toContain("Zeck could not complete this execution");
     expect(page).toContain("execution failure");
-    expect(page).toContain("the dashboard does not add its own classification");
     expect(page).toContain("the tool rejected the request after three attempts");
+    // AC10 amendment: the limitation is explicit — no authoritative
+    // recoverability/provider classification exists on this stream, and
+    // the dashboard does not classify the recorded reason.
+    expect(page).toContain(
+      "no authoritative recoverability or provider/infrastructure classification",
+    );
+    expect(page).toContain("does not classify the recorded reason");
+    // The rejected heuristic prose is gone.
+    expect(page).not.toContain("When the recorded reason describes");
     expect(page).toContain("Start a new attempt");
     expect(page).not.toContain("The work completed, but");
+  });
+
+  test("a platform-recorded retryable fact is surfaced verbatim and makes the governed retry primary", async () => {
+    const page = await html(await get(`/runs/${RETRYABLE_ID}`));
+    expect(page).toContain("Recoverability (platform-recorded)");
+    expect(page).toContain("recorded this failure as <strong>retryable</strong>");
+    expect(page).toContain("failure class timeout");
+    expect(page).toContain("A new attempt is the governed path");
+    expect(page).toContain(
+      'class="button-link" href="/build/execution?outcome=' +
+        encodeURIComponent("Rebuild the search index"),
+    );
+    expect(page).toContain("distinct from a quality failure");
+  });
+
+  test("a platform-recorded not-retryable fact states the honest consequence (no blind-retry push)", async () => {
+    const page = await html(await get(`/runs/${NONRETRY_ID}`));
+    expect(page).toContain("recorded this failure as <strong>not retryable</strong>");
+    expect(page).toContain("expected to fail the same way");
+    expect(page).toContain("Refine the request before starting a new attempt");
+    expect(page).not.toContain("A new attempt is the governed path");
+    expect(page).not.toContain(
+      "Recoverability (platform-recorded):</strong> the platform recorded this failure as <strong>retryable</strong>",
+    );
   });
 
   test("the wait question renders with the consequence framing (the (d) companion)", async () => {

@@ -22,6 +22,7 @@ import {
   deriveConfidenceChip,
   derivePolicyAxis,
   deriveQualityAxis,
+  deriveRecoverability,
   eventStageLabel,
   executionTitle,
   isSecretShapedKey,
@@ -476,6 +477,7 @@ function failedSurface(
   events: readonly ExecutionEvent[],
 ): string {
   const classification = classifyFailure(execution, result, events);
+  const facts = deriveRecoverability(events);
   const failEvent = lastEventOfType(events, (type) => type.includes("fail"));
   const stage = failEvent === undefined ? null : eventStageLabel(failEvent.type);
   const message = payloadMessage(failEvent);
@@ -488,16 +490,41 @@ function failedSurface(
       ? '<p class="muted">No failure-bearing event is recorded in the public event stream — the terminal state alone is the fact.</p>'
       : `<p>Last recorded failure event: <strong>${esc(stage ?? "Failed")}</strong>${
           message === null ? "" : ` — ${esc(message)}`
-        }</p>
-  <p class="recovery-note">The platform records the failure reason; the dashboard does not add its own classification. When the recorded reason describes a connection, tool or provider rejection, the work itself may still be achievable — a new attempt is a fresh governed run with its own idempotency key. When the reason describes the task, refine the request before retrying.</p>`;
+        }</p>`;
+  // AC10: the recoverability block — a platform-recorded fact when one
+  // exists, the explicit limitation otherwise. NEVER prose that asks the
+  // user to classify the recorded reason by what it "describes".
+  const recoverabilityBlock =
+    facts.retryable === true
+      ? `<p class="recovery-fact"><strong>Recoverability (platform-recorded):</strong> the platform recorded this failure as <strong>retryable</strong>${
+          facts.failureClass === null ? "" : ` — failure class ${esc(facts.failureClass)}`
+        }${
+          facts.source === null ? "" : ` (on the ${esc(facts.source)} event)`
+        }. A new attempt is the governed path — a fresh run with its own idempotency key.</p>`
+      : facts.retryable === false
+        ? `<p class="recovery-fact"><strong>Recoverability (platform-recorded):</strong> the platform recorded this failure as <strong>not retryable</strong>${
+            facts.failureClass === null ? "" : ` — failure class ${esc(facts.failureClass)}`
+          }${
+            facts.source === null ? "" : ` (on the ${esc(facts.source)} event)`
+          } — repeating the identical request is expected to fail the same way. Refine the request before starting a new attempt.</p>`
+        : facts.failureClass !== null
+          ? `<p class="recovery-fact"><strong>Recoverability:</strong> the platform recorded failure class <strong>${esc(
+              facts.failureClass,
+            )}</strong>${
+              facts.source === null ? "" : ` (on the ${esc(facts.source)} event)`
+            }, and the public event stream carries no retryable classification for this failure — the dashboard does not infer one from the recorded class.</p>`
+          : `<p class="recovery-fact"><strong>Recoverability:</strong> the public contract exposes no authoritative recoverability or provider/infrastructure classification for this execution — only the terminal status and the recorded events are the facts, and the dashboard does not classify the recorded reason. If the platform records a typed retryable or failure-class fact, it is surfaced here verbatim.</p>`;
+  const retryPrimary = facts.retryable === true;
   return `<section class="failure-surface card">
   <h3>Zeck could not complete this execution</h3>
   <p class="failure-dimension">This is an <strong>execution failure</strong> — the run itself did not complete. That is a different fact from a quality failure (checks failing on completed work); the two are never merged.</p>
   ${reasonBlock}
+  ${recoverabilityBlock}
+  <p class="failure-distinction">This is distinct from a quality failure, where the failed verification checks are the platform's authoritative facts — there the run completed, and the recoverability question does not arise.</p>
   <div class="actions">
     <a href="/runs/${encodeURIComponent(execution.id)}?tab=activity">View activity</a>
     <a href="/runs/${encodeURIComponent(execution.id)}?tab=evidence">View evidence</a>
-    <a href="${esc(retryHref)}">Start a new attempt</a>
+    <a${retryPrimary ? ' class="button-link"' : ""} href="${esc(retryHref)}">Start a new attempt</a>
   </div>
 </section>`;
 }
@@ -506,7 +533,9 @@ function failedSurface(
  * The quality-failure notice (WORK-036 AC10): a COMPLETED execution whose
  * verification recorded FAIL checks. The distinction is a platform fact —
  * the execution succeeded; the checks did not pass — and is stated as its
- * own dimension, never merged with the execution-failure surface.
+ * own dimension, never merged with the execution-failure surface. The
+ * failed checks ARE the platform's authoritative facts for this result;
+ * no recoverability/provider classification applies to them.
  */
 function qualityFailureNotice(execution: Execution, failedChecks: number): string {
   const id = encodeURIComponent(execution.id);
@@ -515,8 +544,9 @@ function qualityFailureNotice(execution: Execution, failedChecks: number): strin
     failedChecks === 1 ? "" : "s"
   } failed</h3>
   <p class="failure-dimension">This is a <strong>quality failure</strong> — a different fact from an execution failure. The execution ran to completion; the outcome did not pass its recorded checks, so treat the result as unverified until the evidence is reviewed.</p>
+  <p class="failure-distinction">The failed checks are the platform's authoritative facts here: the recoverability question that an execution failure carries does not arise — there is no provider or infrastructure failure to recover from, only evidence to review.</p>
   <div class="actions">
-    <a href="/runs/${id}?tab=evidence">Review the evidence</a>
+    <a class="button-link" href="/runs/${id}?tab=evidence">Review the evidence</a>
     <a href="/runs/${id}?tab=activity">View activity</a>
   </div>
 </section>`;

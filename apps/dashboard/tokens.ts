@@ -379,7 +379,8 @@ table.data thead th { border-bottom: 2px solid var(--border-strong); }
 .decision-consequences { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--border-strong); }
 .decision-consequences p { margin: var(--space-1) 0; }
 .failure-dimension { margin: var(--space-1) 0; }
-.recovery-note { color: var(--text-secondary); margin: var(--space-1) 0; }
+.recovery-fact { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--border-strong); background: var(--surface-sunken); }
+.failure-distinction { color: var(--text-muted); font-size: 0.875rem; margin: var(--space-2) 0; }
 .quality-failure-surface h3 { margin-top: 0; }
 
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
