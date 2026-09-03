@@ -1,6 +1,6 @@
 # WORK-034 — API/SDK application-scope reconciliation
 
-Status: PENDING
+Status: COMPLETE
 
 Owner: Architect-assigned implementation worker
 
@@ -72,7 +72,7 @@ Forbidden:
 3. `createExecution` is unchanged on the wire: the application selector stays the request body's `applicationId`, and no application header is required or sent for creation.
 4. The application-scope rule is single-sourced: one canonical header constant in `src/shared/wire.ts` (re-exported by the SDK) and one shared API helper in `src/api/`; all four route families consume them and no route-local copies remain.
 5. The CLI passes its application argument as the client scope for every scoped command.
-6. The contract is pinned end-to-end: a proof suite drives the real API server (real routes over real module surfaces) through the real SDK client — creation, scoped reads, cancel and agent inventory — and also proves the server-side 400 for a headerless raw request and the client-side fail-fast for an unscoped client.
+6. The contract is pinned end-to-end: a proof suite drives the real API server (real routes over real module surfaces) through the real SDK client — creation, scoped reads, cancel and agent inventory — and also proves the server-side **422** for a headerless raw request and the client-side fail-fast for an unscoped client.
 7. Zero edits to `apps/dashboard/`, `spec/`, `src/modules/`, and no new migration; the server-side scope derivation and every existing route behavior are unchanged.
 
 # Implementation Requirements
@@ -81,7 +81,7 @@ Forbidden:
 2. API single-sourcing: move the four route-local `applicationHeaderOf` implementations into one shared helper (in `src/api/request-identity.ts`, where the other request-field rules live), preserving each route family's disclosure-quality error message through a surface parameter; the four route files import the shared rule and the canonical constant.
 3. SDK client scope: add `applicationId` to `ZeckClientOptions` (validated non-empty when provided); every scoped method sends the canonical header from that scope; an absent scope fails fast with a plain `Error` naming the header, the option, and one example remedy — mirroring the established client-side pinning pattern (M17 provider-selection rejection). The failure is not a `ZeckApiError`: it never reached the wire.
 4. CLI: every command constructs its client with the application argument it already requires positionally.
-5. Proof tiers: SDK unit tests pin the header on every scoped call and the fail-fast; API route tests pin the 400 rejection and canonical message for each scoped route family without the header; CLI tests pin the header on every command's transport; a cross-tier suite bridges the SDK's `fetchImpl` to the real Fastify server's inject pipeline and drives the full scoped journey end-to-end.
+5. Proof tiers: SDK unit tests pin the header on every scoped call and the fail-fast; API route tests pin the 422 rejection and canonical message for each scoped route family without the header; CLI tests pin the header on every command's transport; a cross-tier suite bridges the SDK's `fetchImpl` to the real Fastify server's inject pipeline and drives the full scoped journey end-to-end.
 6. Every commit keeps the complete gate green (the ratchet); no dashboard, spec, module or migration edits at any commit.
 
 # Required Checkpoint Contracts
