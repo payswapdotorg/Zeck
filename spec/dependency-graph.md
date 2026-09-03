@@ -33,7 +33,8 @@ WORK-012 + WORK-016 + WORK-019 + WORK-031 -> WORK-029
 WORK-012 + WORK-013 + WORK-016 + WORK-019 + WORK-031 -> WORK-030
 WORK-006 + WORK-007 + WORK-008 + WORK-010 + WORK-011 + WORK-012 + WORK-013 + WORK-014 + WORK-016 -> WORK-031
 WORK-004 + WORK-006 + WORK-007 + WORK-013 + WORK-015 + WORK-016 + WORK-017 -> WORK-032
-WORK-015 + WORK-023 + WORK-027 + WORK-028 + WORK-029 + WORK-030 + WORK-032 -> WORK-033
+WORK-015 + WORK-022 + WORK-032 -> WORK-034
+WORK-015 + WORK-023 + WORK-027 + WORK-028 + WORK-029 + WORK-030 + WORK-032 + WORK-034 -> WORK-033
 ```
 
 Initial implementation frontier: `WORK-001`.
@@ -45,3 +46,5 @@ Multimodal deployment is intentionally staged: WORK-023 establishes the common d
 Computational-substrate extensibility is intentionally staged: WORK-031 establishes the common substrate/workload-class contract; WORK-027/028/029/030 specialize computer use, long-running execution, edge/embodied execution and training/accelerator workloads.
 
 UX realization is intentionally staged after the public developer surface and the current runtime specialization foundation: WORK-033 consumes the accepted UX architecture and realizes it in the existing dashboard projection surface without creating a new platform authority.
+
+Application-scope reconciliation is intentionally staged ahead of UX finalization: the Architect review of WORK-033's PR #58 established that the public SDK does not carry the `X-Zeck-Application` selector the real API derives scoped reads from; WORK-034 reconciles that contract under its own surfaces (sdk, wire, api, cli) and WORK-033's verification update is sequenced after it merges.
