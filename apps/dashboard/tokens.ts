@@ -347,6 +347,41 @@ table.data thead th { border-bottom: 2px solid var(--border-strong); }
   letter-spacing: 0.05em;
 }
 
+/* WORK-036 AC5: the four-axis trust strip (separate facts, never a score). */
+.trust-strip {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+.trust-strip li { display: inline-flex; gap: var(--space-1); align-items: baseline; }
+.trust-strip .axis-kind {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.trust-strip .axis-fact { color: var(--text-secondary); }
+
+/* WORK-036 AC2/AC3: the composer's secondary affordances + the review envelope. */
+.composer-secondary { margin-top: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); background: var(--surface-sunken); }
+.composer-secondary > summary { color: var(--text-secondary); font-weight: 600; cursor: pointer; }
+.composer-affordance { color: var(--text-muted); font-size: 0.875rem; margin: var(--space-2) 0 0; }
+.review-envelope h3 { margin: var(--space-4) 0 var(--space-1); }
+.review-envelope p { margin: var(--space-1) 0; }
+
+/* WORK-036 AC8/AC10: the wait decision + the failure distinction surfaces. */
+.wait-question { font-size: 1.05rem; margin: var(--space-1) 0 var(--space-2); }
+.decision-consequences { margin: var(--space-2) 0; padding: var(--space-2) var(--space-3); border-left: 3px solid var(--border-strong); }
+.decision-consequences p { margin: var(--space-1) 0; }
+.failure-dimension { margin: var(--space-1) 0; }
+.recovery-note { color: var(--text-secondary); margin: var(--space-1) 0; }
+.quality-failure-surface h3 { margin-top: 0; }
+
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .timeline li {
   display: grid;

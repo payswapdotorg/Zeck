@@ -18,7 +18,9 @@
 import type { Execution, ExecutionEvent, ExecutionResult, VerificationResult } from "../../sdk";
 import { advancedDisclosure, sheetDialog } from "./disclosure";
 import {
+  classifyFailure,
   deriveConfidenceChip,
+  derivePolicyAxis,
   deriveQualityAxis,
   eventStageLabel,
   executionTitle,
@@ -27,6 +29,7 @@ import {
   safeTaskPairs,
   statusLabel,
   statusSymbol,
+  waitQuestion,
 } from "./projection";
 import { emptyState } from "./states";
 
@@ -109,13 +112,23 @@ export interface ExecutionHeaderView {
   readonly durationMs: number;
   readonly costMicroUsd: string | null;
   readonly verificationChip: string | null;
+  /** WORK-036 AC5: the four-axis trust state from platform facts. */
+  readonly trustAxes: readonly TrustAxisView[];
   readonly now?: number;
+}
+
+/** The compact per-axis view model (kind, label — never merged into one score). */
+export interface TrustAxisView {
+  readonly kind: string;
+  readonly label: string;
 }
 
 /**
  * The execution facts header: duration, cost, checks, created and the id,
  * rendered below the page-head (which owns the single h1 — the execution
- * title + status badge line).
+ * title + status badge line), plus the compact four-axis trust strip
+ * (WORK-036 AC5: status, duration, cost and trust state using platform
+ * facts — each axis a SEPARATE fact, never a single score).
  */
 export function executionHeader(view: ExecutionHeaderView): string {
   const { execution } = view;
@@ -143,8 +156,19 @@ export function executionHeader(view: ExecutionHeaderView): string {
       execution.createdAt,
     )}</span></span>`,
   );
+  const axes = view.trustAxes
+    .map(
+      (axis) =>
+        `<li><span class="axis-kind">${esc(axis.kind)}</span><span class="axis-fact">${esc(
+          axis.label,
+        )}</span></li>`,
+    )
+    .join("\n    ");
   return `<header class="execution-header">
   <div class="facts">${facts.join("\n    ")}</div>
+  <ul class="trust-strip" aria-label="Trust state — four separate facts">
+    ${axes}
+  </ul>
   <p class="muted mono">${esc(execution.id)}</p>
 </header>`;
 }
@@ -276,9 +300,14 @@ export interface WhyPanelView {
 }
 
 /**
- * The persistent `<details>` disclosure above the tabs. Route (provider /
- * model) is SECONDARY detail nested inside its own advanced disclosure —
- * never the primary mental model.
+ * The persistent `<details>` disclosure above the tabs — "How Zeck did it"
+ * (WORK-036 AC7), structured to answer the v2 §11 questions in order:
+ * What did Zeck understand? What capabilities were required? What
+ * approach did Zeck choose? Why was that approach permitted? Why was
+ * this route selected? What did Zeck deliberately avoid? How was the
+ * result verified? Every answer is a platform fact or an honest
+ * not-exposed note — infrastructure (route/provider/compute) stays
+ * inside the advanced disclosure, never the primary mental model.
  */
 export function whyPanel(view: WhyPanelView): string {
   const { execution, result, events } = view;
@@ -312,6 +341,8 @@ export function whyPanel(view: WhyPanelView): string {
           ["strategy class", result.route.strategyClass ?? "—"],
           ["model calls", String(result.route.modelCalls)],
         ]);
+  const policyAxis = derivePolicyAxis(execution, events);
+  const permitted = `<p><strong>${esc(policyAxis.label)}</strong> — ${esc(policyAxis.detail)}</p>`;
   const constraints = execution.constraints as Record<string, unknown> | null;
   const constraintKeys =
     constraints === null
@@ -331,17 +362,24 @@ export function whyPanel(view: WhyPanelView): string {
       : `<p>${esc(formatMicroUsd(result.cost.totalMicroUsd))} <span class="muted">(${esc(
           result.cost.totalMicroUsd,
         )} micro-USD)</span></p>`;
+  const verificationAnswer =
+    result.verification.length === 0
+      ? '<p class="muted">No verification results are recorded yet — no confidence claim is shown.</p>'
+      : `<p>${esc(deriveQualityAxis(result.verification).label)} — each check is a platform verification result; the full table is on the Evidence view.</p>
+<p><a href="/runs/${encodeURIComponent(execution.id)}?tab=evidence">View the evidence</a></p>`;
   return `<details class="why-panel">
   <summary>How Zeck did it</summary>
   <div class="why-body">
-    <h3>Understood task</h3>
+    <h3>Understood task — what did Zeck understand?</h3>
     ${understood}
-    <h3>Plan</h3>
+    <h3>What capabilities were required?</h3>
+    <p class="muted">capability detail is not exposed by this projection</p>
+    <h3>Plan — what approach did Zeck choose?</h3>
     ${planSteps}
     <p class="muted">Strategy class: ${strategy}</p>
-    <h3>Capabilities</h3>
-    <p class="muted">capability detail is not exposed by this projection</p>
-    <h3>Route</h3>
+    <h3>Why was that approach permitted?</h3>
+    ${permitted}
+    <h3>Route — why was this route selected?</h3>
     <p class="muted">Provider and model are secondary details of the governed route.</p>
     ${advancedDisclosure("Route detail (advanced)", route)}
     ${sheetDialog({
@@ -352,12 +390,15 @@ ${route}`,
       closeLabel: "Close panel",
     })}
     <p><button type="button" data-sheet-open="route-detail-sheet">Open route detail in a focused panel</button></p>
+    <h3>What did Zeck deliberately avoid?</h3>
+    <p>The request selected no provider, model, rail, connection or agent (the create contract forbids provider selection — API-001). Deliberately-avoided alternatives are part of the plan rationale, which this projection does not carry.</p>
+    ${whyRoute}
     <h3>Compute</h3>
     <p>${execution.environmentId === null ? "default" : esc(execution.environmentId)}</p>
-    <h3>Why this route</h3>
-    ${whyRoute}
     <h3>Cost</h3>
     ${cost}
+    <h3>How was the result verified?</h3>
+    ${verificationAnswer}
   </div>
 </details>`;
 }
@@ -407,18 +448,34 @@ function waitingSurface(execution: Execution, events: readonly ExecutionEvent[])
     knownPairs.length === 0
       ? '<p class="muted">No detail is recorded on the public wait event.</p>'
       : keyValueTable(knownPairs);
+  const question = waitQuestion(events);
+  const questionBlock =
+    question === null ? "" : `<p class="wait-question"><strong>${esc(question)}</strong></p>`;
   return `<section class="waiting-surface card">
   <h3>Decision needed</h3>
+  ${questionBlock}
   <p>Zeck is waiting: this is a normal governed execution state, not an error.</p>
   ${known}
-  <p class="muted">The public API does not expose a resolve command for this wait. Resolve it through your application's governed path, or cancel the execution.</p>
-  <div class="actions"><a class="button-link" href="/runs/${encodeURIComponent(
-    execution.id,
-  )}?action=cancel">Cancel this execution</a></div>
+  <div class="decision-consequences">
+    <p><strong>What deciding means:</strong> your answer lets the governed work continue. Resolve it through your application's governed path — the public API does not expose a resolve command for this wait.</p>
+    <p><strong>What cancelling means:</strong> the execution moves to the terminal state Cancelled; work already performed stays recorded and inspectable. Cancellation goes through its own consequence preview.</p>
+  </div>
+  <p class="muted">When the wait is resolved, the execution resumes from the recorded state — the status on this page is a live platform fact, refreshed from the governed API.</p>
+  <div class="actions">
+    <a class="button-link" href="/runs/${encodeURIComponent(
+      execution.id,
+    )}?action=cancel">Cancel this execution…</a>
+    <a href="/runs">Return to your work</a>
+  </div>
 </section>`;
 }
 
-function failedSurface(execution: Execution, events: readonly ExecutionEvent[]): string {
+function failedSurface(
+  execution: Execution,
+  result: ExecutionResult,
+  events: readonly ExecutionEvent[],
+): string {
+  const classification = classifyFailure(execution, result, events);
   const failEvent = lastEventOfType(events, (type) => type.includes("fail"));
   const stage = failEvent === undefined ? null : eventStageLabel(failEvent.type);
   const message = payloadMessage(failEvent);
@@ -426,20 +483,41 @@ function failedSurface(execution: Execution, events: readonly ExecutionEvent[]):
   const retryHref = `/build/execution?outcome=${encodeURIComponent(
     title,
   )}&applicationId=${encodeURIComponent(execution.applicationId)}`;
+  const reasonBlock =
+    classification.recordedReason === null
+      ? '<p class="muted">No failure-bearing event is recorded in the public event stream — the terminal state alone is the fact.</p>'
+      : `<p>Last recorded failure event: <strong>${esc(stage ?? "Failed")}</strong>${
+          message === null ? "" : ` — ${esc(message)}`
+        }</p>
+  <p class="recovery-note">The platform records the failure reason; the dashboard does not add its own classification. When the recorded reason describes a connection, tool or provider rejection, the work itself may still be achievable — a new attempt is a fresh governed run with its own idempotency key. When the reason describes the task, refine the request before retrying.</p>`;
   return `<section class="failure-surface card">
   <h3>Zeck could not complete this execution</h3>
-  <p>The execution reached the terminal state Failed.</p>
-  ${
-    stage === null
-      ? '<p class="muted">No failure-bearing event is recorded in the public event stream.</p>'
-      : `<p>Last recorded failure event: <strong>${esc(stage)}</strong>${
-          message === null ? "" : ` — ${esc(message)}`
-        }</p>`
-  }
+  <p class="failure-dimension">This is an <strong>execution failure</strong> — the run itself did not complete. That is a different fact from a quality failure (checks failing on completed work); the two are never merged.</p>
+  ${reasonBlock}
   <div class="actions">
     <a href="/runs/${encodeURIComponent(execution.id)}?tab=activity">View activity</a>
     <a href="/runs/${encodeURIComponent(execution.id)}?tab=evidence">View evidence</a>
     <a href="${esc(retryHref)}">Start a new attempt</a>
+  </div>
+</section>`;
+}
+
+/**
+ * The quality-failure notice (WORK-036 AC10): a COMPLETED execution whose
+ * verification recorded FAIL checks. The distinction is a platform fact —
+ * the execution succeeded; the checks did not pass — and is stated as its
+ * own dimension, never merged with the execution-failure surface.
+ */
+function qualityFailureNotice(execution: Execution, failedChecks: number): string {
+  const id = encodeURIComponent(execution.id);
+  return `<section class="quality-failure-surface card">
+  <h3>The work completed, but ${failedChecks} verification check${
+    failedChecks === 1 ? "" : "s"
+  } failed</h3>
+  <p class="failure-dimension">This is a <strong>quality failure</strong> — a different fact from an execution failure. The execution ran to completion; the outcome did not pass its recorded checks, so treat the result as unverified until the evidence is reviewed.</p>
+  <div class="actions">
+    <a href="/runs/${id}?tab=evidence">Review the evidence</a>
+    <a href="/runs/${id}?tab=activity">View activity</a>
   </div>
 </section>`;
 }
@@ -466,7 +544,8 @@ function nextActions(execution: Execution, result: ExecutionResult): string {
 /**
  * The primary result presentation: what was produced, is it complete, can
  * it be trusted, what to do next. Next actions follow the status family
- * (decision / failure / cancel / completed).
+ * (decision / failure / cancel / completed); a completed run with failed
+ * checks renders the quality-failure notice (AC10's second dimension).
  */
 export function resultSurface(view: WhyPanelView): string {
   const { execution, result, events } = view;
@@ -494,12 +573,15 @@ export function resultSurface(view: WhyPanelView): string {
     result.warnings.length === 0
       ? '<p class="muted">No warnings recorded.</p>'
       : `<ul>${result.warnings.map((warning) => `<li>${esc(warning)}</li>`).join("")}</ul>`;
+  const classification = classifyFailure(execution, result, events);
   const next =
     execution.status === "WAITING_USER" || execution.status === "WAITING_HUMAN"
       ? waitingSurface(execution, events)
       : execution.status === "FAILED"
-        ? failedSurface(execution, events)
-        : nextActions(execution, result);
+        ? failedSurface(execution, result, events)
+        : classification.dimension === "quality"
+          ? qualityFailureNotice(execution, classification.failedChecks)
+          : nextActions(execution, result);
   return `<section class="result-surface">
   <div class="detail-grid">
     <div>

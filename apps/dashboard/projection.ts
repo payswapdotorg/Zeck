@@ -499,11 +499,37 @@ export interface ExecutionFormValues {
   readonly quality: string;
   readonly latencySeconds: string;
   readonly userId: string;
+  /**
+   * WORK-036 (AC2): optional input artifact references (one per line or
+   * comma-separated), mapped to `ExecutionRequest.inputArtifactRefs`.
+   * Parsed/validated into refs at build time.
+   */
+  readonly attachments: string;
 }
 
 export type FormErrors = Partial<Record<keyof ExecutionFormValues, string>>;
 
 const DOLLARS_PATTERN = /^\d+(\.\d{1,2})?$/;
+const ARTIFACT_REF_PATTERN = /^[0-9a-zA-Z][0-9a-zA-Z._-]{0,127}$/;
+
+/**
+ * Parse the composer's attachments field into artifact references
+ * (WORK-036 AC2): whitespace/comma separated ids; empty input ⇒ [].
+ * Returns null when any token is not a plausible artifact reference —
+ * the caller surfaces a per-field error, never a silent drop.
+ */
+export function parseAttachmentRefs(input: string): string[] | null {
+  const tokens = input
+    .split(/[\n,]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+  for (const token of tokens) {
+    if (!ARTIFACT_REF_PATTERN.test(token)) {
+      return null;
+    }
+  }
+  return tokens;
+}
 
 /**
  * Dollars → integer micro-USD string, using integer/BigInt arithmetic
@@ -532,6 +558,7 @@ export function validateExecutionForm(form: Readonly<Record<string, string>>): {
     quality: (form.quality ?? "").trim(),
     latencySeconds: (form.latencySeconds ?? "").trim(),
     userId: (form.userId ?? "").trim(),
+    attachments: form.attachments ?? "",
   };
   const errors: FormErrors = {};
   if (values.applicationId.length === 0) {
@@ -551,6 +578,10 @@ export function validateExecutionForm(form: Readonly<Record<string, string>>): {
   }
   if (!QUALITY_OPTIONS.some(([value]) => value === values.quality)) {
     errors.quality = "Choose one of the listed quality targets.";
+  }
+  if (values.attachments.trim().length > 0 && parseAttachmentRefs(values.attachments) === null) {
+    errors.attachments =
+      "Enter input artifact references — one id per line or comma-separated (letters, digits, dots, dashes, underscores).";
   }
   return { values: Object.keys(errors).length === 0 ? values : null, errors };
 }
@@ -572,10 +603,12 @@ export function buildExecutionRequest(values: ExecutionFormValues): ExecutionReq
   if (values.quality.length > 0) {
     constraints.minQuality = Number(values.quality);
   }
+  const artifactRefs = parseAttachmentRefs(values.attachments) ?? [];
   return {
     applicationId: values.applicationId,
     ...(values.environmentId.length > 0 ? { environmentId: values.environmentId } : {}),
     task: { kind: "outcome", description: values.outcome },
+    ...(artifactRefs.length > 0 ? { inputArtifactRefs: artifactRefs } : {}),
     ...(Object.keys(constraints).length > 0 ? { constraints } : {}),
     ...(values.userId.length > 0 ? { userId: values.userId } : {}),
   };
@@ -596,4 +629,88 @@ export function looksLikeExecutionId(token: string): boolean {
     return false;
   }
   return /^[0-9a-zA-Z][0-9a-zA-Z-]*$/.test(token);
+}
+
+// ---------------------------------------------------------------------------
+// WORK-036: honest failure classification (AC10) and the wait question (AC8)
+// ---------------------------------------------------------------------------
+
+/**
+ * The failure dimension a user is looking at — derived ONLY from platform
+ * facts, never a heuristic guess:
+ *  - "execution": the execution status is FAILED (the run itself did not
+ *    complete — the recoverable/provider/infrastructure vs task question
+ *    is answered by the RECORDED reason, never invented);
+ *  - "quality": the execution COMPLETED but verification recorded FAIL
+ *    checks (the work ran; the outcome did not pass its checks);
+ *  - "none": neither fact exists.
+ * The two are DISTINCT facts and never merged (the four-success-dimension
+ * discipline: execution success ≠ quality success).
+ */
+export type FailureDimension = "execution" | "quality" | "none";
+
+export interface FailureClassification {
+  readonly dimension: FailureDimension;
+  /** The platform-recorded failure reason (last fail event's message), or null. */
+  readonly recordedReason: string | null;
+  /** FAILED verification check count when the dimension is quality. */
+  readonly failedChecks: number;
+}
+
+/** Classify what failed from the public facts (never infers, never merges). */
+export function classifyFailure(
+  execution: Execution,
+  result: ExecutionResult,
+  events: readonly ExecutionEvent[],
+): FailureClassification {
+  const ordered = chronologicalEvents(events);
+  let recordedReason: string | null = null;
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    const event = ordered[index];
+    if (event === undefined || !event.type.includes("fail")) {
+      continue;
+    }
+    const payload = event.payload as Record<string, unknown>;
+    for (const key of ["message", "error", "reason", "detail"]) {
+      const value = payload[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        recordedReason = value;
+        break;
+      }
+    }
+    break;
+  }
+  const failedChecks = result.verification.filter((check) => check.status === "FAIL").length;
+  if (execution.status === "FAILED") {
+    return { dimension: "execution", recordedReason, failedChecks };
+  }
+  if (execution.status === "COMPLETED" && failedChecks > 0) {
+    return { dimension: "quality", recordedReason: null, failedChecks };
+  }
+  return { dimension: "none", recordedReason: null, failedChecks };
+}
+
+/**
+ * The recorded wait question (AC8): the last wait event's question/message
+ * payload in plain language, or null when the event carries none. Never
+ * fabricated — a missing question renders the honest "no detail recorded"
+ * note.
+ */
+export function waitQuestion(events: readonly ExecutionEvent[]): string | null {
+  const ordered = chronologicalEvents(events);
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    const event = ordered[index];
+    if (event === undefined || !event.type.startsWith("execution.wait-")) {
+      continue;
+    }
+    const payload = event.payload as Record<string, unknown>;
+    for (const key of ["question", "message", "prompt", "detail"]) {
+      const value = payload[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value;
+      }
+    }
+    return null;
+  }
+  return null;
 }

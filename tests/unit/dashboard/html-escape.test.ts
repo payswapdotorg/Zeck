@@ -98,6 +98,9 @@ describe("dashboard html-escape boundary (M7)", () => {
       durationMs: 62_000,
       costMicroUsd: "4180000",
       verificationChip: "1/1 checks passed",
+      trustAxes: [
+        { kind: "<script>axis</script>", label: `zeck("x") hostile label` },
+      ],
     });
     assertNoRawPayload(html);
     expect(html).toContain("&lt;script&gt;zeck(");

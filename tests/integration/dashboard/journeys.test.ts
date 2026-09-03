@@ -830,8 +830,13 @@ describe("(a) the first-execution journey: Home → review → execute → resul
     expect(page).toContain("Understood task");
     expect(page).toContain("capability detail is not exposed by this projection");
     expect(page).toContain("Compute");
-    expect(page).toContain("Why this route");
+    expect(page).toContain("Route — why was this route selected?");
     expect(page).toContain("4180000 micro-USD");
+    // WORK-036 AC7: the panel answers the v2 §11 questions.
+    expect(page).toContain("Why was that approach permitted?");
+    expect(page).toContain("What did Zeck deliberately avoid?");
+    expect(page).toContain("How was the result verified?");
+    expect(page).toContain("Admitted by policy");
     // Route is secondary: the provider/model render only inside the
     // advanced disclosure nested in the panel.
     const routeStart = page.indexOf("Route detail (advanced)");

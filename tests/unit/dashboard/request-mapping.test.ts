@@ -62,6 +62,7 @@ function validValues(overrides: Partial<ExecutionFormValues> = {}): ExecutionFor
     applicationId: "00000000-0000-7000-8000-0000000000a1",
     environmentId: "",
     outcome: "Analyze the contract and summarize the risks",
+    attachments: "",
     spendLimitDollars: "",
     quality: "",
     latencySeconds: "",
@@ -121,6 +122,28 @@ describe("buildExecutionRequest (the closed vocabulary)", () => {
     expect(request.environmentId).toBeUndefined();
     expect(request.constraints).toBeUndefined();
     expect(request.userId).toBeUndefined();
+    expect(request.inputArtifactRefs).toBeUndefined();
+  });
+
+  test("WORK-036: attachments map to inputArtifactRefs; blank lines and commas both separate", () => {
+    const request = buildExecutionRequest(
+      validValues({
+        attachments: "art-1\nart-2, art-3\n\n",
+      }),
+    );
+    expect(request.inputArtifactRefs).toEqual(["art-1", "art-2", "art-3"]);
+    const none = buildExecutionRequest(validValues({ attachments: "" }));
+    expect(none.inputArtifactRefs).toBeUndefined();
+  });
+
+  test("WORK-036: invalid attachment tokens are rejected by validation, never silently dropped", () => {
+    const { values, errors } = validateExecutionForm({
+      applicationId: "app-1",
+      outcome: "x",
+      attachments: "good-ref\nbad ref with spaces",
+    });
+    expect(values).toBeNull();
+    expect(errors.attachments).toBeTruthy();
   });
 
   test("dollars map to the integer micro-USD string; quality and latency map too", () => {
@@ -273,11 +296,17 @@ describe("the idempotency key is carried through the review step", () => {
       expect(reviewHtml).toContain(field);
     }
     expect(reviewHtml).toContain('method="post" action="/build/execution"');
-    expect(reviewHtml).toContain(">Execute</button>");
-    // The proposal review summarizes the mapped request.
+    expect(reviewHtml).toContain(">Run</button>");
+    // The proposal review summarizes the mapped request (the envelope's
+    // declared cost/time limits — never a fabricated platform estimate).
     expect(reviewHtml).toContain("Spend limit: $10.50");
     expect(reviewHtml).toContain("Quality target: 0.8");
     expect(reviewHtml).toContain("Latency limit: 120 seconds");
+    // WORK-036 AC3: the proposed-approach envelope's four understandings.
+    expect(reviewHtml).toContain("Proposed approach");
+    expect(reviewHtml).toContain("Permission and risk envelope");
+    expect(reviewHtml).toContain("Proposed verification approach");
+    expect(reviewHtml).toContain("not platform estimates");
   });
 
   test("the edit link preserves the SAME key (retries converge, no duplicate intents)", async () => {
