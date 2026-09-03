@@ -1080,20 +1080,32 @@ export function createTrainingService(deps: TrainingServiceDeps): TrainingServic
       recordedBy,
     };
     const identity = trainingCheckpointIdentity(materialDraft, digest);
-    const recordedIdentity = await store.findTrainingCheckpointByIdentity(
-      record.applicationId,
-      identity,
-    );
+    // The run-emitted position resolution is ONE store statement (ONE
+    // snapshot): the recorded position of this content identity, else
+    // the next gapless per-workload position. The closing-tail defect
+    // fix (found by the P14 same-key convergence proof): the previous
+    // two separate reads (identity lookup, then the workload COUNT)
+    // could TEAR under READ COMMITTED — the identity invisible while
+    // the count was visible — allocating a sequence that belonged to
+    // DIFFERENT content; the seq-keyed checkpoint operation row then
+    // collided on the operation-key unique with a different request
+    // fingerprint (typed IDEMPOTENCY_KEY_REUSED, the racer aborted
+    // mid-drive and the workload never converged). The inherited
+    // edge-gate statement-snapshot-tearing family, in this service's
+    // own allocation — fixed with the same house pattern (one
+    // statement, one snapshot).
+    const position = await store.resolveTrainingCheckpointSequence({
+      applicationId: record.applicationId,
+      workloadKey: record.workloadKey,
+      contentDigest: identity,
+    });
     let durableSequence: number;
     if (options.allocateSequence === true) {
       // Run-emitted: the material checkpoint's existing position when it
       // already recorded (perfect re-drive convergence), else the next
       // gapless per-workload position (the journal CONTINUES across
       // attempts — a retry's checkpoints append, never re-collide).
-      durableSequence =
-        recordedIdentity?.checkpointSequence ??
-        (await store.listTrainingCheckpointsByWorkload(record.applicationId, record.workloadKey))
-          .length + 1;
+      durableSequence = position.existingSequence ?? position.recordedCount + 1;
     } else {
       durableSequence = emitted.checkpointSequence;
     }

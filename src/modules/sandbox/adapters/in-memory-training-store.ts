@@ -31,6 +31,7 @@ import type {
   InsertTrainingOperationInput,
   InsertTrainingWorkloadInput,
   ReleaseTrainingRunLeaseInput,
+  TrainingCheckpointPosition,
   TrainingClaimOutcome,
   TrainingStore,
   TransitionTrainingWorkloadInput,
@@ -342,6 +343,32 @@ export class InMemoryTrainingStore implements TrainingStore {
     contentDigest: string,
   ): Promise<TrainingCheckpointRecord | null> {
     return this.checkpoints.get(`${applicationId}:${contentDigest}`) ?? null;
+  }
+
+  async resolveTrainingCheckpointSequence(input: {
+    readonly applicationId: string;
+    readonly workloadKey: string;
+    readonly contentDigest: string;
+  }): Promise<TrainingCheckpointPosition> {
+    // ONE synchronous pass — the in-memory twin of the SQL adapter's
+    // single-statement snapshot: the identity position and the workload
+    // count resolve together with NO await between them, so the
+    // resolution cannot tear (the closing-tail defect fix; store parity
+    // with the SQL statement's READ COMMITTED snapshot).
+    let existingSequence: number | null = null;
+    let recordedCount = 0;
+    for (const record of this.checkpoints.values()) {
+      if (record.applicationId !== input.applicationId) {
+        continue;
+      }
+      if (record.contentDigest === input.contentDigest) {
+        existingSequence = record.checkpointSequence;
+      }
+      if (record.workloadKey === input.workloadKey) {
+        recordedCount += 1;
+      }
+    }
+    return { existingSequence, recordedCount };
   }
 
   async listTrainingCheckpointsByWorkload(

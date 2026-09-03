@@ -38,6 +38,7 @@ import type {
   InsertTrainingOperationInput,
   InsertTrainingWorkloadInput,
   ReleaseTrainingRunLeaseInput,
+  TrainingCheckpointPosition,
   TrainingClaimOutcome,
   TrainingStore,
   TransitionTrainingWorkloadInput,
@@ -710,6 +711,42 @@ WHERE application_id = $1 AND workload_key = $2 ORDER BY checkpoint_sequence`,
     return result.rows.map(toCheckpoint);
   }
 
+  async resolveTrainingCheckpointSequence(input: {
+    readonly applicationId: string;
+    readonly workloadKey: string;
+    readonly contentDigest: string;
+  }): Promise<TrainingCheckpointPosition> {
+    // ONE statement, ONE snapshot (the 0025 single-snapshot discipline —
+    // the closing-tail defect fix): the identity position and the
+    // workload's recorded count are two scalar subqueries of a single
+    // SELECT, so the resolution can never observe the identity
+    // pre-commit and the count post-commit (the statement-snapshot
+    // tearing that allocated a sequence belonging to different content
+    // and aborted same-key re-drivers with IDEMPOTENCY_KEY_REUSED).
+    const result = await this.db.execute<{
+      existing_sequence: number | null;
+      recorded_count: number | string;
+    }>({
+      sql: `SELECT (SELECT tc.checkpoint_sequence FROM sandbox.training_checkpoints tc
+          WHERE tc.application_id = $1 AND tc.content_digest = $2) AS existing_sequence,
+  (SELECT COUNT(*) FROM sandbox.training_checkpoints tc
+          WHERE tc.application_id = $1 AND tc.workload_key = $3) AS recorded_count`,
+      parameters: [input.applicationId, input.contentDigest, input.workloadKey],
+    });
+    const row = first(result.rows);
+    if (row === undefined) {
+      throw new PlatformError({
+        code: "SANDBOX_ERROR",
+        message: "training checkpoint position resolution returned no row",
+        details: { workloadKey: input.workloadKey, contentDigest: input.contentDigest },
+      });
+    }
+    return {
+      existingSequence: row.existing_sequence === null ? null : Number(row.existing_sequence),
+      recordedCount: Number(row.recorded_count),
+    };
+  }
+
   // ---- durable recoverable operations ---------------------------------------
 
   async insertTrainingOperation(
@@ -846,78 +883,93 @@ RETURNING ${OPERATION_COLUMNS}`,
     input: AcquireTrainingRunLeaseInput,
   ): Promise<TrainingRunLeaseRecord> {
     const expiresAt = new Date(new Date(input.now).getTime() + input.leaseDurationMs).toISOString();
-    // Idempotent re-acquisition by the SAME owner within the live lease
-    // returns the standing lease; a free/expired/released lease takes
-    // epoch+1; a LIVE foreign lease fails closed (the 0022 discipline).
-    try {
-      const result = await this.db.execute<LeaseRow>({
-        sql: `INSERT INTO sandbox.training_run_leases
+    // The single-statement CAS (the 0025 single-snapshot discipline — the
+    // closing-tail defect fix): the INSERT claims an ABSENT lease (epoch
+    // 1); the conflict arm re-acquires ONLY a free (expired or released)
+    // lease at epoch+1 — a LIVE lease never satisfies the conflict arm's
+    // WHERE, so the row is returned to nobody and the acquire fails
+    // closed typed below. The previous shape (read the standing lease,
+    // then an UNCONDITIONAL identity-keyed UPDATE) could tear under READ
+    // COMMITTED: a racer that read the lease free BEFORE a concurrent
+    // re-acquisition committed would then STOMP the live lease (epoch+1,
+    // itself the owner), silently superseding a live foreign owner and
+    // letting multiple processes drive the same run concurrently — the
+    // mutual exclusion is now decided by ONE statement's snapshot, exactly
+    // like the sequence gates. Idempotent re-acquisition by the SAME
+    // owner within the live lease returns the standing lease; a free
+    // lease takes epoch+1; a LIVE foreign lease fails closed (the 0022
+    // discipline).
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const result = await this.db.execute<LeaseRow>({
+          sql: `INSERT INTO sandbox.training_run_leases
   (workload_id, application_id, tenant_id, execution_id, owner_id, epoch, acquired_at, expires_at,
    last_heartbeat_at, heartbeat_count, released_at, release_cause)
 VALUES ($1, $2, $3, (SELECT execution_id FROM sandbox.training_workloads WHERE id = $1 AND application_id = $2), $4, 1, $5, $6, $5, 1, NULL, NULL)
-ON CONFLICT (application_id, workload_id) DO NOTHING
+ON CONFLICT (application_id, workload_id) DO UPDATE
+  SET owner_id = EXCLUDED.owner_id, epoch = sandbox.training_run_leases.epoch + 1,
+      acquired_at = EXCLUDED.acquired_at, expires_at = EXCLUDED.expires_at,
+      last_heartbeat_at = EXCLUDED.acquired_at, heartbeat_count = 1,
+      released_at = NULL, release_cause = NULL
+  WHERE sandbox.training_run_leases.released_at IS NOT NULL
+     OR sandbox.training_run_leases.expires_at <= EXCLUDED.acquired_at
 RETURNING ${LEASE_COLUMNS}`,
-        parameters: [
-          input.workloadId,
-          input.applicationId,
-          input.tenantId,
-          input.ownerId,
-          input.now,
-          expiresAt,
-        ],
-      });
-      const row = first(result.rows);
-      if (row !== undefined) {
-        return toLease(row);
+          parameters: [
+            input.workloadId,
+            input.applicationId,
+            input.tenantId,
+            input.ownerId,
+            input.now,
+            expiresAt,
+          ],
+        });
+        const row = first(result.rows);
+        if (row !== undefined) {
+          return toLease(row);
+        }
+      } catch (error) {
+        toTypedGuardError(error);
       }
-    } catch (error) {
-      toTypedGuardError(error);
-    }
-    const existing = await this.findTrainingRunLease(input.applicationId, input.workloadId);
-    if (existing === null) {
-      throw new PlatformError({
-        code: "SANDBOX_ERROR",
-        message: "training run lease acquire returned no row",
-        details: { workloadId: input.workloadId },
-      });
-    }
-    const live = existing.releasedAt === null && existing.expiresAt > input.now;
-    if (live && existing.ownerId !== input.ownerId) {
-      throw new PlatformError({
-        code: "INVALID_STATE_TRANSITION",
-        message: `the run lease is live and owned by ${existing.ownerId}; lease conflicts fail closed`,
-        details: { workloadId: input.workloadId, ownerId: existing.ownerId },
-      });
-    }
-    if (live && existing.ownerId === input.ownerId) {
-      return existing; // the same worker's live lease stands
-    }
-    // Free (expired or released): re-acquire at epoch+1 (monotonic).
-    try {
-      const result = await this.db.execute<LeaseRow>({
-        sql: `UPDATE sandbox.training_run_leases
-SET owner_id = $3, epoch = epoch + 1, acquired_at = $4, expires_at = $5,
-    last_heartbeat_at = $4, heartbeat_count = 1, released_at = NULL, release_cause = NULL
-WHERE application_id = $1 AND workload_id = $2
-RETURNING ${LEASE_COLUMNS}`,
-        parameters: [input.applicationId, input.workloadId, input.ownerId, input.now, expiresAt],
-      });
-      const row = first(result.rows);
-      if (row !== undefined) {
-        return toLease(row);
+      // No row: the standing lease was LIVE (any owner) at the CAS
+      // statement's snapshot — arbitrate on the current committed state.
+      const existing = await this.findTrainingRunLease(input.applicationId, input.workloadId);
+      if (existing === null) {
+        throw new PlatformError({
+          code: "SANDBOX_ERROR",
+          message: "training run lease acquire returned no row",
+          details: { workloadId: input.workloadId },
+        });
       }
-    } catch (error) {
-      toTypedGuardError(error);
+      const live = existing.releasedAt === null && existing.expiresAt > input.now;
+      if (live) {
+        if (existing.ownerId === input.ownerId) {
+          return existing; // the same worker's live lease stands
+        }
+        throw new PlatformError({
+          code: "INVALID_STATE_TRANSITION",
+          message: `the run lease is live and owned by ${existing.ownerId}; lease conflicts fail closed`,
+          details: { workloadId: input.workloadId, ownerId: existing.ownerId },
+        });
+      }
+      // Free again (released or expired between the CAS snapshot and
+      // this read — e.g. the owning run completed and released): retry
+      // the CAS; the epoch still advances monotonically.
     }
-    const committed = await this.findTrainingRunLease(input.applicationId, input.workloadId);
-    if (committed === null) {
-      throw new PlatformError({
-        code: "SANDBOX_ERROR",
-        message: "training run lease re-acquire returned no row",
-        details: { workloadId: input.workloadId },
-      });
+    const final = await this.findTrainingRunLease(input.applicationId, input.workloadId);
+    if (
+      final !== null &&
+      final.releasedAt === null &&
+      final.expiresAt > input.now &&
+      final.ownerId === input.ownerId
+    ) {
+      return final; // the same worker's live lease stands
     }
-    return committed;
+    throw new PlatformError({
+      code: "SANDBOX_ERROR",
+      message:
+        "training run lease acquire contention did not converge (the lease kept flipping free/live)",
+      details: { workloadId: input.workloadId, ownerId: input.ownerId },
+    });
   }
 
   async findTrainingRunLease(

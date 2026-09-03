@@ -53,6 +53,28 @@ export interface TrainingClaimOutcome<T> {
   readonly record: T;
 }
 
+/**
+ * The run-emitted checkpoint position resolution, resolved in ONE store
+ * statement (ONE snapshot — the 0025 single-snapshot discipline).
+ *
+ * The closing-tail defect disclosure (found by the P14 same-key
+ * convergence proof, fixed with the house pattern): resolving the
+ * identity position and the workload's recorded count in TWO separate
+ * reads can TEAR under READ COMMITTED (the identity invisible, the
+ * count visible), allocating a sequence that belongs to DIFFERENT
+ * content — the seq-keyed checkpoint operation row then collides on
+ * the operation-key unique with a different request fingerprint
+ * (typed IDEMPOTENCY_KEY_REUSED, the racer aborts mid-drive) — the
+ * inherited edge-gate statement-snapshot-tearing family, in the
+ * service's own allocation. The two lookups MUST share one snapshot.
+ */
+export interface TrainingCheckpointPosition {
+  /** The recorded sequence of the content identity (null when unrecorded). */
+  readonly existingSequence: number | null;
+  /** The workload's recorded checkpoint count (the gapless next = count + 1). */
+  readonly recordedCount: number;
+}
+
 export interface InsertTrainingWorkloadInput {
   readonly id: string;
   readonly applicationId: string;
@@ -228,6 +250,17 @@ export interface TrainingStore {
     applicationId: string,
     contentDigest: string,
   ): Promise<TrainingCheckpointRecord | null>;
+  /**
+   * The run-emitted position resolution — ONE statement, ONE snapshot:
+   * the recorded position of the content identity plus the workload's
+   * recorded count (see TrainingCheckpointPosition — the two lookups
+   * must never tear across two READ COMMITTED statements).
+   */
+  resolveTrainingCheckpointSequence(input: {
+    readonly applicationId: string;
+    readonly workloadKey: string;
+    readonly contentDigest: string;
+  }): Promise<TrainingCheckpointPosition>;
   listTrainingCheckpointsByWorkload(
     applicationId: string,
     workloadKey: string,
