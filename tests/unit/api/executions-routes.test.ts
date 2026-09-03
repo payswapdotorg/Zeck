@@ -12,7 +12,9 @@
  *    are rejected, unknown body keys rejected);
  *  - idempotency (M11/M12): same key + same fingerprint replays; same
  *    key + different fingerprint → 409 IDEMPOTENCY_KEY_REUSED;
- *  - the public error model (M25): canonical codes, no internals.
+ *  - the public error model (M25): canonical codes, no internals;
+ *  - WORK-034: every scoped execution route REQUIRES the
+ *    X-Zeck-Application selector (the single-sourced server-side rule).
  */
 
 import { describe, expect, test } from "vitest";
@@ -297,5 +299,48 @@ describe("GET /executions/:id/events + /verification + /results", () => {
     const result = response.json();
     expect(result.status).toBe("FAILED");
     expect(result.warnings.some((warning: string) => warning.includes("failed"))).toBe(true);
+  });
+});
+
+describe("the application-scope selector (WORK-034)", () => {
+  test("execution reads reject a request without the X-Zeck-Application header", async () => {
+    const world = await seedApiWorld();
+    const executionId = await seedExecution(world, "w034-no-header");
+    for (const suffix of ["", "/results", "/events", "/verification"]) {
+      const response = await world.server.app.inject({
+        method: "GET",
+        url: `/executions/${executionId}${suffix}`,
+        headers: { authorization: `Bearer ${world.bearerToken}` },
+      });
+      expect(response.statusCode, `GET ${suffix}`).toBe(422);
+      expect(response.json().code).toBe("CAPABILITY_UNAVAILABLE");
+      expect(response.json().message).toContain("X-Zeck-Application");
+    }
+  });
+
+  test("cancel rejects a request without the X-Zeck-Application header", async () => {
+    const world = await seedApiWorld();
+    const executionId = await seedExecution(world, "w034-cancel-no-header");
+    const response = await world.server.app.inject({
+      method: "POST",
+      url: `/executions/${executionId}/cancel`,
+      headers: { authorization: `Bearer ${world.bearerToken}`, "idempotency-key": "w034-cancel-1" },
+      payload: {},
+    });
+    expect(response.statusCode).toBe(422);
+    expect(response.json().code).toBe("CAPABILITY_UNAVAILABLE");
+    expect(response.json().message).toContain("X-Zeck-Application");
+  });
+
+  test("a blank application selector is rejected like an absent one", async () => {
+    const world = await seedApiWorld();
+    const executionId = await seedExecution(world, "w034-blank-header");
+    const response = await world.server.app.inject({
+      method: "GET",
+      url: `/executions/${executionId}`,
+      headers: { authorization: `Bearer ${world.bearerToken}`, "x-zeck-application": "" },
+    });
+    expect(response.statusCode).toBe(422);
+    expect(response.json().code).toBe("CAPABILITY_UNAVAILABLE");
   });
 });

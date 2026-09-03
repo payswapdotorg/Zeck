@@ -1,5 +1,5 @@
 /**
- * SDK contract tests (WORK-015 / API-002; M5, M17).
+ * SDK contract tests (WORK-015 / API-002; M5, M17; WORK-034).
  *
  * Required-test mapping:
  *  - the SDK surface is execution-centric: every client method operates
@@ -12,7 +12,12 @@
  *    fetch fake asserts headers/payload, including the idempotency key
  *    and bearer scheme);
  *  - public error mapping: API errors surface as ZeckApiError with the
- *    canonical code body.
+ *    canonical code body;
+ *  - WORK-034 application scope: every scoped method sends the canonical
+ *    X-Zeck-Application selector from the client's application scope,
+ *    creation keeps its body applicationId (no header), and an unscoped
+ *    client fails fast client-side — the wire contract is pinned, never
+ *    discovered.
  */
 
 import { describe, expect, test } from "vitest";
@@ -20,6 +25,7 @@ import {
   createZeckClient,
   FORBIDDEN_REQUEST_KEYS,
   type PublicError,
+  ZECK_APPLICATION_HEADER,
   type ZeckApiError,
 } from "../../../sdk";
 import type { ExecutionReceipt } from "../../../src/shared/wire";
@@ -142,7 +148,12 @@ describe("the execution-centric client (API-002)", () => {
         retryable: false,
       } satisfies PublicError,
     }));
-    const client = createZeckClient({ baseUrl: "https://x", token: "t", fetchImpl });
+    const client = createZeckClient({
+      baseUrl: "https://x",
+      token: "t",
+      applicationId: "app-1",
+      fetchImpl,
+    });
     let caught: ZeckApiError | null = null;
     try {
       await client.getExecution("exec-1");
@@ -157,11 +168,111 @@ describe("the execution-centric client (API-002)", () => {
   test("a non-JSON error response maps to the generic transport failure", async () => {
     const impl = (async () =>
       new Response("gateway garbage", { status: 502 })) as unknown as typeof fetch;
-    const client = createZeckClient({ baseUrl: "https://x", token: "t", fetchImpl: impl });
+    const client = createZeckClient({
+      baseUrl: "https://x",
+      token: "t",
+      applicationId: "app-1",
+      fetchImpl: impl,
+    });
     await expect(client.getExecution("exec-1")).rejects.toMatchObject({
       status: 502,
       body: { code: "PROVIDER_ERROR", retryable: true },
     });
+  });
+});
+
+describe("the application-scope contract (WORK-034)", () => {
+  const SCOPE = "00000000-0000-7000-8000-0000000000a1";
+
+  test("every scoped method sends the canonical application-scope header", async () => {
+    const fetchImpl = fakeFetch(() => ({ status: 200, body: {} }));
+    const client = createZeckClient({
+      baseUrl: "https://api.zeck.example",
+      token: "zeck-token-1",
+      applicationId: SCOPE,
+      fetchImpl,
+    });
+    await client.getExecution("exec-1");
+    await client.getResult("exec-1");
+    await client.listEvents("exec-1");
+    await client.listVerification("exec-1");
+    await client.cancelExecution("exec-1", "client-key-2");
+    await client.listAgents();
+    await client.getAgentStatus("agent-1");
+    expect(fetchImpl.calls).toHaveLength(7);
+    for (const call of fetchImpl.calls) {
+      const headers = call.init?.headers as Record<string, string>;
+      expect(headers[ZECK_APPLICATION_HEADER]).toBe(SCOPE);
+      expect(headers.authorization).toBe("Bearer zeck-token-1");
+    }
+    // The governed cancel keeps its idempotency discipline alongside the scope.
+    const cancelHeaders = fetchImpl.calls[4]?.init?.headers as Record<string, string>;
+    expect(cancelHeaders["idempotency-key"]).toBe("client-key-2");
+  });
+
+  test("creation keeps its scope in the body — no application header is sent", async () => {
+    const fetchImpl = fakeFetch(() => ({ status: 201, body: RECEIPT }));
+    const client = createZeckClient({
+      baseUrl: "https://api.zeck.example",
+      token: "zeck-token-1",
+      applicationId: SCOPE,
+      fetchImpl,
+    });
+    await client.createExecution(
+      { applicationId: SCOPE, task: { kind: "summarize", input: "doc-1" } },
+      "client-key-3",
+    );
+    const headers = fetchImpl.calls[0]?.init?.headers as Record<string, string>;
+    expect(headers[ZECK_APPLICATION_HEADER]).toBeUndefined();
+    expect(JSON.parse(String(fetchImpl.calls[0]?.init?.body))).toEqual({
+      applicationId: SCOPE,
+      task: { kind: "summarize", input: "doc-1" },
+    });
+  });
+
+  test("an unscoped client fails fast on every scoped method — no wire request is issued", async () => {
+    const fetchImpl = fakeFetch(() => ({ status: 200, body: {} }));
+    const client = createZeckClient({
+      baseUrl: "https://api.zeck.example",
+      token: "zeck-token-1",
+      fetchImpl,
+    });
+    await expect(client.getExecution("exec-1")).rejects.toThrow(/no application scope/i);
+    await expect(client.getResult("exec-1")).rejects.toThrow(/no application scope/i);
+    await expect(client.listEvents("exec-1")).rejects.toThrow(/no application scope/i);
+    await expect(client.listVerification("exec-1")).rejects.toThrow(/no application scope/i);
+    await expect(client.cancelExecution("exec-1")).rejects.toThrow(/no application scope/i);
+    await expect(client.listAgents()).rejects.toThrow(/no application scope/i);
+    await expect(client.getAgentStatus("agent-1")).rejects.toThrow(/no application scope/i);
+    expect(fetchImpl.calls).toHaveLength(0);
+  });
+
+  test("the fail-fast names the header and the missing client option (not a wire failure)", async () => {
+    const fetchImpl = fakeFetch(() => ({ status: 200, body: {} }));
+    const client = createZeckClient({
+      baseUrl: "https://x",
+      token: "t",
+      fetchImpl,
+    });
+    const error = await client.getExecution("exec-1").then(
+      () => null,
+      (caught: unknown) => caught as Error,
+    );
+    expect(error).not.toBeNull();
+    expect(error?.name).toBe("Error");
+    expect(error?.message).toContain("X-Zeck-Application");
+    expect(error?.message).toContain("applicationId");
+  });
+
+  test("a blank application scope is rejected at construction", () => {
+    expect(() =>
+      createZeckClient({
+        baseUrl: "https://x",
+        token: "t",
+        applicationId: "   ",
+        fetchImpl: fakeFetch(() => ({ status: 200, body: {} })),
+      }),
+    ).toThrow(/non-empty/);
   });
 });
 

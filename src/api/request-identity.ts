@@ -21,6 +21,7 @@
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Principal, ScopeResolver, TenantScope } from "../modules/auth/public";
+import { ZECK_APPLICATION_HEADER } from "../shared/wire";
 import { PublicValidationError } from "./error-mapper";
 
 /** The injected transport-authentication seam (credential → principal). */
@@ -63,6 +64,29 @@ export async function resolveRequestIdentity(
   const scope = await scopeResolver.resolveApplicationScope(principal, applicationId);
   void reply;
   return { principal, scope };
+}
+
+/**
+ * The application-scope selector every scoped route requires (WORK-034,
+ * single-sourced): the canonical header names the application whose
+ * durable membership rows authorize the request — the effective scope is
+ * still resolved SERVER-SIDE by the scope resolver, so the selector never
+ * authorizes by itself. All scoped route families (executions, agents,
+ * codebase analysis, economic actions) consume this one rule; no route
+ * holds a local copy.
+ */
+export function applicationScopeOf(
+  request: { readonly headers: Record<string, unknown> },
+  surface: string,
+): string {
+  const value = request.headers[ZECK_APPLICATION_HEADER];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new PublicValidationError(
+      "CAPABILITY_UNAVAILABLE",
+      `${surface} require the X-Zeck-Application header (the application whose scope authorizes the request)`,
+    );
+  }
+  return value;
 }
 
 /** A non-empty string body field (fail-closed input validation). */

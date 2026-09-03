@@ -33,7 +33,11 @@ import type { AgentRegistry } from "../../modules/agents/public";
 import type { ScopeResolver } from "../../modules/auth/public";
 import { mapErrorToResponse, PublicValidationError } from "../error-mapper";
 import type { Authenticate, RequestIdentity } from "../request-identity";
-import { requireStringField, resolveRequestIdentity } from "../request-identity";
+import {
+  applicationScopeOf,
+  requireStringField,
+  resolveRequestIdentity,
+} from "../request-identity";
 import { toWireAgentStatus, toWireAgentSummary, toWireAgentVersion } from "../serialization";
 
 export interface AgentRoutesDeps {
@@ -46,18 +50,6 @@ export interface AgentRoutesDeps {
    * agents authority's listing surface; injected by the composition).
    */
   readonly listAgentIdsOfApplication: (applicationId: string) => Promise<readonly string[]>;
-}
-
-/** The application selector header (scope is resolved server-side). */
-function applicationHeaderOf(request: FastifyRequest): string {
-  const value = request.headers["x-zeck-application"];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new PublicValidationError(
-      "CAPABILITY_UNAVAILABLE",
-      "agent inventory reads require the X-Zeck-Application header (the application whose membership authorizes the read)",
-    );
-  }
-  return value;
 }
 
 async function resolveIdentity(
@@ -78,7 +70,7 @@ async function resolveIdentity(
 export function registerAgentRoutes(app: FastifyInstance, deps: AgentRoutesDeps): void {
   app.get("/agents", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "agent inventory reads");
       const identity = await resolveIdentity(deps, request, reply, applicationId);
       void identity;
       const agentIds = await deps.listAgentIdsOfApplication(applicationId);
@@ -102,7 +94,7 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentRoutesDeps)
 
   app.get("/agents/:id", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "agent inventory reads");
       const identity = await resolveIdentity(deps, request, reply, applicationId);
       void identity;
       const agentId = requireStringField(request.params as Record<string, unknown>, "id");
@@ -122,7 +114,7 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentRoutesDeps)
 
   app.get("/agents/:id/versions", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "agent inventory reads");
       const identity = await resolveIdentity(deps, request, reply, applicationId);
       void identity;
       const agentId = requireStringField(request.params as Record<string, unknown>, "id");
@@ -139,7 +131,7 @@ export function registerAgentRoutes(app: FastifyInstance, deps: AgentRoutesDeps)
 
   app.get("/agents/:id/status", async (request, reply) => {
     try {
-      const applicationId = applicationHeaderOf(request);
+      const applicationId = applicationScopeOf(request, "agent inventory reads");
       const identity = await resolveIdentity(deps, request, reply, applicationId);
       void identity;
       const agentId = requireStringField(request.params as Record<string, unknown>, "id");

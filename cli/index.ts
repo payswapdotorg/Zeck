@@ -84,10 +84,14 @@ function requireToken(): string {
   return token;
 }
 
-function makeClient() {
+function makeClient(applicationId: string) {
   return createZeckClient({
     baseUrl: process.env.ZECK_API_URL ?? "http://127.0.0.1:3000",
     token: requireToken(),
+    // The application whose scope authorizes every scoped read and
+    // governed command (WORK-034): sent as X-Zeck-Application. Each CLI
+    // command already requires the application id positionally.
+    applicationId,
   });
 }
 
@@ -116,7 +120,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
         }
         const task = JSON.parse(second) as Record<string, unknown>;
         const request: ExecutionRequest = { applicationId: first, task };
-        const { receipt } = await makeClient().createExecution(request, args.flags.key);
+        const { receipt } = await makeClient(first).createExecution(request, args.flags.key);
         console.log(
           `execution ${receipt.executionId} ${receipt.status} (sequence ${receipt.lastEventSequence}${receipt.replayed ? ", replayed" : ""})`,
         );
@@ -127,7 +131,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const execution = await makeClient().getExecution(second);
+        const execution = await makeClient(first).getExecution(second);
         console.log(
           [
             `execution ${execution.id}`,
@@ -146,7 +150,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const result = await makeClient().getResult(second);
+        const result = await makeClient(first).getResult(second);
         console.log(`execution ${result.executionId} — ${result.status}`);
         if (result.route !== null) {
           console.log(
@@ -166,7 +170,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const events = await makeClient().listEvents(second);
+        const events = await makeClient(first).listEvents(second);
         for (const event of events) {
           console.log(`#${event.sequence} ${event.type} @ ${event.occurredAt}`);
         }
@@ -177,7 +181,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const result = await makeClient().getResult(second);
+        const result = await makeClient(first).getResult(second);
         console.log(
           result.cost === null
             ? "no settled cost facts on the execution ledger yet"
@@ -190,7 +194,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const verification = await makeClient().listVerification(second);
+        const verification = await makeClient(first).listVerification(second);
         for (const result of verification) {
           console.log(
             `${result.status.padEnd(13)} ${result.criterionId} via ${result.strategy} (${result.evaluator.kind}:${result.evaluator.id})`,
@@ -203,7 +207,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const receipt = await makeClient().cancelExecution(second, args.flags.key);
+        const receipt = await makeClient(first).cancelExecution(second, args.flags.key);
         console.log(`execution ${receipt.executionId} ${receipt.status}`);
         return 0;
       }
@@ -212,7 +216,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const agents = await makeClient().listAgents();
+        const agents = await makeClient(first).listAgents();
         for (const agent of agents) {
           console.log(
             `${agent.slug.padEnd(24)} ${agent.status.padEnd(10)} active=${agent.activeVersion ?? "-"} ${agent.id}`,
@@ -225,7 +229,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
           console.error(USAGE);
           return 2;
         }
-        const status = await makeClient().getAgentStatus(second);
+        const status = await makeClient(first).getAgentStatus(second);
         console.log(`agent ${status.agent.slug} (${status.agent.id}) — ${status.agent.status}`);
         if (status.latestSelection !== null) {
           console.log(

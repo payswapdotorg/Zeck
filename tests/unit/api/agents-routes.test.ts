@@ -11,7 +11,9 @@
  *  - stale version data is never presented as authoritative (M23: the
  *    status view's active version comes from the CURRENT selection,
  *    not the newest version);
- *  - cross-tenant agent lookups are unreachable (404, no tenant leak).
+ *  - cross-tenant agent lookups are unreachable (404, no tenant leak);
+ *  - WORK-034: every agent route REQUIRES the X-Zeck-Application
+ *    selector (the single-sourced server-side rule).
  */
 
 import { describe, expect, test } from "vitest";
@@ -214,5 +216,22 @@ describe("M15/M21 — the public surface exposes NO agent mutation route", () =>
       const versionRoutes = urls.filter((entry) => entry.endsWith("/versions"));
       expect(versionRoutes).toEqual(["GET /agents/:id/versions"]);
     });
+  });
+});
+
+describe("the application-scope selector (WORK-034)", () => {
+  test("agent inventory reads reject a request without the X-Zeck-Application header", async () => {
+    const world = await seedApiWorld();
+    world.agentRegistry.seedAgent(world.applicationId, world.tenantId, "support-bot");
+    for (const url of ["/agents", "/agents/00000000-0000-7000-a000-000000000001/status"]) {
+      const response = await world.server.app.inject({
+        method: "GET",
+        url,
+        headers: { authorization: `Bearer ${world.bearerToken}` },
+      });
+      expect(response.statusCode, `GET ${url}`).toBe(422);
+      expect(response.json().code).toBe("CAPABILITY_UNAVAILABLE");
+      expect(response.json().message).toContain("X-Zeck-Application");
+    }
   });
 });

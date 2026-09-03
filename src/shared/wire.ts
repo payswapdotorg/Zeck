@@ -20,6 +20,31 @@
 export const WIRE_SCHEMA_VERSION = 1;
 
 // ---------------------------------------------------------------------------
+// Application scope (the selector every scoped operation carries)
+// ---------------------------------------------------------------------------
+
+/**
+ * The application-scope selector header — the canonical wire contract for
+ * every application-scoped public operation (WORK-034).
+ *
+ * THE SPLIT CONTRACT (creation vs scoped access):
+ *  - creation (`POST /executions`) carries the application selector in the
+ *    request body's `applicationId` (the closed create vocabulary);
+ *  - every application-scoped read and governed command — execution
+ *    detail/results/events/verification, cancel, agent inventory — carries
+ *    the selector in THIS header.
+ *
+ * The selector NAMES the application whose durable membership rows
+ * authorize the request; the effective tenant/application scope is always
+ * derived SERVER-SIDE from those rows. The header never authorizes
+ * anything by itself, and a scoped request without it is rejected.
+ *
+ * Shared by the API transport (which enforces the rule) and the SDK
+ * (which emits the header) — one name, one rule, no drift by construction.
+ */
+export const ZECK_APPLICATION_HEADER = "x-zeck-application";
+
+// ---------------------------------------------------------------------------
 // Execution lifecycle (the platform state machine, public projection)
 // ---------------------------------------------------------------------------
 
