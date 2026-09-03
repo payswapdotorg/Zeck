@@ -34,7 +34,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createZeckClient, ZeckApiError, type ZeckClient } from "../../sdk";
-import { errorState, esc, permissionDeniedState } from "./components";
+import { esc } from "./components";
 import {
   FormTooLargeError,
   type HandlerResult,
@@ -45,8 +45,10 @@ import {
   readFormBody,
   sendResult,
 } from "./http";
+import { modeOf } from "./modes";
 import { createDashboardRoutes } from "./pages";
-import { appShell } from "./shell";
+import { appShell, pageHead } from "./shell";
+import { errorState, permissionDeniedState } from "./states";
 
 export interface DashboardOptions {
   /** The Zeck API base URL the dashboard reads through. */
@@ -75,7 +77,8 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
       html: appShell({
         title: "Zeck — Not authorized",
         activePath: ctx.path,
-        mainContent: `<h1>Not authorized</h1>\n${permissionDeniedState(
+        mode: modeOf(ctx.cookies),
+        mainContent: `${pageHead({ title: "Not authorized", path: ctx.path })}\n${permissionDeniedState(
           "The governed API denied this view",
           message,
           `${code}${retryable ? " — retryable" : ""}`,
@@ -90,7 +93,8 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
       html: appShell({
         title: "Zeck — Not found",
         activePath: ctx.path,
-        mainContent: `<h1>Not found</h1>\n${errorState(
+        mode: modeOf(ctx.cookies),
+        mainContent: `${pageHead({ title: "Not found", path: ctx.path })}\n${errorState(
           "Not found through the governed API",
           message,
           `${code}${retryable ? " — retryable" : ""}`,
@@ -104,7 +108,8 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
     html: appShell({
       title: "Zeck — Upstream failure",
       activePath: ctx.path,
-      mainContent: `<h1>Upstream failure</h1>\n${errorState(
+      mode: modeOf(ctx.cookies),
+      mainContent: `${pageHead({ title: "Upstream failure", path: ctx.path })}\n${errorState(
         "The Zeck API could not complete this view",
         message,
         `${code}${retryable ? " — retryable" : ""}`,
@@ -120,7 +125,8 @@ function transportErrorResponse(ctx: HttpContext): HandlerResult {
     html: appShell({
       title: "Zeck — Upstream failure",
       activePath: ctx.path,
-      mainContent: `<h1>Upstream failure</h1>\n${errorState(
+      mode: modeOf(ctx.cookies),
+      mainContent: `${pageHead({ title: "Upstream failure", path: ctx.path })}\n${errorState(
         "The dashboard could not reach the Zeck API",
         "The live read through the governed API failed; no further detail is exposed. Retry, or check the API availability.",
         "Every dashboard view is a live read — there is no cached fallback.",
@@ -136,7 +142,8 @@ function notFoundResponse(ctx: HttpContext): HandlerResult {
     html: appShell({
       title: "Zeck — Not found",
       activePath: ctx.path,
-      mainContent: `<h1>Not found</h1>\n${errorState(
+      mode: modeOf(ctx.cookies),
+      mainContent: `${pageHead({ title: "Not found", path: ctx.path })}\n${errorState(
         "This page does not exist",
         `No route matches "${ctx.path}". Use the navigation or the command bar.`,
       )}`,
@@ -151,7 +158,8 @@ function tooLargeResponse(ctx: HttpContext): HandlerResult {
     html: appShell({
       title: "Zeck — Form too large",
       activePath: ctx.path,
-      mainContent: `<h1>Form too large</h1>\n${errorState(
+      mode: modeOf(ctx.cookies),
+      mainContent: `${pageHead({ title: "Form too large", path: ctx.path })}\n${errorState(
         "The submitted form was too large",
         "The dashboard caps form bodies at 64 KiB; submit a smaller request.",
       )}`,

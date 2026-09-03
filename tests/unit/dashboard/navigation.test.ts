@@ -1,16 +1,20 @@
 /**
- * Dashboard navigation tests (WORK-033).
+ * Dashboard navigation tests (WORK-033; updated to the WORK-035 v2
+ * information architecture).
  *
  * Boots the REAL dashboard server (`createDashboard`) on an ephemeral
  * port with a fake `fetchImpl` implementing the public API wire surface
  * over an in-memory world, then drives it with real `fetch`:
- *  - every route in the UX route map renders (200 HTML or 303);
- *  - the nav hierarchy matches UX-ARCHITECTURE §3 exactly;
+ *  - every route in the v2 route map renders (200 HTML or 303);
+ *  - the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 exactly
+ *    (Work/Build/Library/Trust/Control/Improve under Home);
  *  - the active nav item is marked with `aria-current`;
- *  - the legacy dashboard routes still work (303 preservation, AC10);
+ *  - the legacy dashboard routes still work (303 preservation);
  *  - responsive markup evidence: viewport meta, the 1024px/640px media
  *    queries and the ≥44px touch-target rules in DASHBOARD_CSS;
- *  - appearance tokens (light/dark/system) and reduced-motion rules.
+ *  - appearance tokens (light/dark/system) and reduced-motion rules;
+ *  - the WORK-035 foundation: the page-head/breadcrumb treatment, the
+ *    command dialog, the mode selector and the attention surface.
  */
 
 import type { AddressInfo } from "node:net";
@@ -141,7 +145,16 @@ async function getHtml(path: string): Promise<string> {
   return response.text();
 }
 
-describe("the UX route map: every route renders (AC10 + the new experience)", () => {
+async function getHtmlWithMode(path: string, mode: string): Promise<string> {
+  const response = await fetch(`${base}${path}`, {
+    headers: { cookie: `zeck_mode=${mode}` },
+    redirect: "manual",
+  });
+  expect(response.status).toBe(200);
+  return response.text();
+}
+
+describe("the v2 route map: every route renders", () => {
   const ROUTES: readonly [string, number][] = [
     ["/", 200],
     ["/home", 303],
@@ -166,6 +179,8 @@ describe("the UX route map: every route renders (AC10 + the new experience)", ()
     ["/assets/competences", 200],
     ["/assets/competences/some-competence", 200],
     ["/assets/connections", 200],
+    ["/trust/evidence", 200],
+    ["/trust/lineage", 200],
     ["/improve/evaluations", 200],
     ["/improve/insights", 200],
     ["/improve/learning", 200],
@@ -174,6 +189,7 @@ describe("the UX route map: every route renders (AC10 + the new experience)", ()
     ["/admin/team", 200],
     ["/admin/environments", 200],
     ["/admin/audit", 200],
+    ["/attention", 200],
     ["/command", 200],
     ["/command?q=agents", 200],
     ["/command?q=000000000000000000000000000000deadbeef", 200],
@@ -254,6 +270,8 @@ describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)
     "/assets/artifacts",
     "/assets/competences",
     "/assets/connections",
+    "/trust/evidence",
+    "/trust/lineage",
     "/improve/evaluations",
     "/improve/insights",
     "/improve/learning",
@@ -262,6 +280,7 @@ describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)
     "/admin/team",
     "/admin/environments",
     "/admin/audit",
+    "/attention",
     "/command",
     "/command?q=agents",
   ];
@@ -290,72 +309,89 @@ describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)
   });
 });
 
-describe("the nav hierarchy matches UX-ARCHITECTURE §3", () => {
-  test("the IA tree is exactly Home + the five groups with their items", () => {
+describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5", () => {
+  test("the IA tree is exactly Home + the six groups with their items", () => {
     expect(NAV_GROUPS.map((group) => group.label)).toEqual([
+      "Work",
       "Build",
-      "Runs",
-      "Assets",
+      "Library",
+      "Trust",
+      "Control",
       "Improve",
-      "Admin",
     ]);
     expect(NAV_GROUPS[0]?.items.map((item) => item.label)).toEqual([
-      "Executions",
-      "Agents",
-      "Deployments",
-      "Workloads",
-    ]);
-    expect(NAV_GROUPS[1]?.items.map((item) => item.label)).toEqual([
+      "New",
       "Active",
       "History",
       "Scheduled",
     ]);
-    expect(NAV_GROUPS[2]?.items.map((item) => item.label)).toEqual([
-      "Artifacts",
+    expect(NAV_GROUPS[1]?.items.map((item) => item.label)).toEqual([
+      "Agents",
+      "Deployments",
+      "Workloads",
       "Competences",
-      "Connections",
     ]);
+    expect(NAV_GROUPS[2]?.items.map((item) => item.label)).toEqual(["Artifacts", "Connections"]);
     expect(NAV_GROUPS[3]?.items.map((item) => item.label)).toEqual([
+      "Evidence",
       "Evaluations",
-      "Insights",
-      "Learning",
+      "Lineage",
     ]);
     expect(NAV_GROUPS[4]?.items.map((item) => item.label)).toEqual([
       "Policies",
-      "Budgets",
+      "Spend",
       "Team",
       "Environments",
       "Audit",
     ]);
+    expect(NAV_GROUPS[5]?.items.map((item) => item.label)).toEqual(["Insights", "Learning"]);
   });
 
-  test("the rendered nav carries the full tree with real links", async () => {
+  test("the rendered nav carries the tree with real links (professional: full IA minus expert-only entries)", async () => {
     const html = await getHtml("/build");
     // Group labels are native summaries; item labels are real links.
-    for (const group of ["Build", "Runs", "Assets", "Improve", "Admin"]) {
+    for (const group of ["Work", "Build", "Library", "Trust", "Control", "Improve"]) {
       expect(html).toContain(`<summary>${group}</summary>`);
     }
     for (const label of [
       "Home",
-      "Executions",
-      "Agents",
-      "Deployments",
-      "Workloads",
+      "New",
       "Active",
       "History",
       "Scheduled",
-      "Artifacts",
+      "Agents",
+      "Deployments",
+      "Workloads",
       "Competences",
+      "Artifacts",
       "Connections",
+      "Evidence",
       "Evaluations",
-      "Insights",
-      "Learning",
       "Policies",
-      "Budgets",
+      "Spend",
       "Team",
       "Environments",
-      "Audit",
+      "Insights",
+      "Learning",
     ]) {
+      expect(html).toContain(`>${label}</a>`);
+    }
+    // Expert-only inspection entries are NOT visible in professional mode.
+    expect(html).not.toContain(">Lineage</a>");
+    expect(html).not.toContain(">Audit</a>");
+  });
+
+  test("expert mode reveals the expert-only entries without changing any route", async () => {
+    const response = await fetch(`${base}/build`, {
+      headers: { cookie: "zeck_mode=expert" },
+      redirect: "manual",
+    });
+    const html = await response.text();
+    expect(html).toContain(">Lineage</a>");
+    expect(html).toContain(">Audit</a>");
+    expect(html).toContain('data-mode="expert"');
+    // The same routes exist in every mode (visibility, never semantics).
+    for (const label of ["Home", "New", "Agents", "Policies", "Insights"]) {
       expect(html).toContain(`>${label}</a>`);
     }
   });
@@ -363,7 +399,7 @@ describe("the nav hierarchy matches UX-ARCHITECTURE §3", () => {
   test("nav groups are native details/summary (collapsed, CSS-driven, same DOM everywhere)", async () => {
     const html = await getHtml("/");
     expect(html).toContain('<details class="nav-group"');
-    expect(html).toContain("<summary>Build</summary>");
+    expect(html).toContain("<summary>Work</summary>");
     // Home carries no active group: every group stays collapsed.
     expect((html.match(/<details class="nav-group" open>/g) ?? []).length).toBe(0);
     // A page inside a group opens exactly that one group (progressive disclosure).
@@ -381,6 +417,8 @@ describe("the nav hierarchy matches UX-ARCHITECTURE §3", () => {
     expect(history).toContain('href="/runs/history" aria-current="page"');
     const home = await getHtml("/");
     expect(home).toContain('href="/" aria-current="page"');
+    const lineage = await getHtmlWithMode("/trust/lineage", "expert");
+    expect(lineage).toContain('href="/trust/lineage" aria-current="page"');
   });
 
   test("the execution tab links carry aria-current for the active tab", async () => {
@@ -401,12 +439,12 @@ describe("responsive and appearance evidence in the stylesheet", () => {
     expect(DASHBOARD_CSS).toContain("@media (max-width: 1024px)");
     expect(DASHBOARD_CSS).toContain("@media (max-width: 640px)");
     expect(DASHBOARD_CSS).toContain('grid-template-areas:\n      "nav header"');
-    expect(DASHBOARD_CSS).toContain("grid-template-columns: 16rem 1fr");
+    expect(DASHBOARD_CSS).toContain("grid-template-columns: var(--sidebar-width) 1fr");
   });
 
-  test("mobile touch targets are at least 44px (2.75rem)", () => {
+  test("mobile touch targets are at least 44px (--touch-target)", () => {
     const mobileBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf("@media (max-width: 640px)"));
-    expect(mobileBlock).toContain("min-height: 2.75rem");
+    expect(mobileBlock).toContain("min-height: var(--touch-target)");
   });
 
   test("reduced motion is honored", () => {

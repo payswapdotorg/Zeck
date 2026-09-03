@@ -1,17 +1,23 @@
 /**
  * Zeck dashboard components — typed functions returning escaped HTML
- * (WORK-033). The zero-dependency, server-rendered component system.
+ * (WORK-033, re-homed on the WORK-035 foundation).
  *
- * Every component is a PURE function over public wire shapes and derived
- * view-model values: no state, no network, no caching. All interpolated
- * values pass through `esc` (the one escape boundary). Status is always
- * communicated by symbol + text, never color alone. Money is rendered
- * from integer micro-USD strings with BigInt arithmetic only.
+ * The zero-dependency, server-rendered component system. Every component
+ * is a PURE function over public wire shapes and derived view-model
+ * values: no state, no network, no caching. All interpolated values pass
+ * through `esc` (the one escape boundary). Status is always communicated
+ * by symbol + text, never color alone. Money is rendered from integer
+ * micro-USD strings with BigInt arithmetic only.
+ *
+ * The shared state primitives (loading/empty/error/denied/confirmation),
+ * the attention vocabulary and the disclosure/sheet primitives live in
+ * their own WORK-035 foundation modules (states.ts, attention.ts,
+ * disclosure.ts); this file owns the EXECUTION-SURFACE components.
  */
 
 import type { Execution, ExecutionEvent, ExecutionResult, VerificationResult } from "../../sdk";
+import { advancedDisclosure, sheetDialog } from "./disclosure";
 import {
-  type AttentionItem,
   deriveConfidenceChip,
   deriveQualityAxis,
   eventStageLabel,
@@ -22,6 +28,7 @@ import {
   statusLabel,
   statusSymbol,
 } from "./projection";
+import { emptyState } from "./states";
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -92,59 +99,9 @@ export function keyValueTable(pairs: readonly (readonly [string, string])[]): st
   return `<table class="kv"><tbody>${rows}</tbody></table>`;
 }
 
-/** Reusable collapsed-by-default disclosure for expert fields. */
-export function advancedDisclosure(
-  summary: string,
-  content: string,
-  options: { readonly id?: string } = {},
-): string {
-  return `<details class="advanced"${options.id === undefined ? "" : ` id="${esc(options.id)}"`}><summary>${esc(
-    summary,
-  )}</summary><div class="advanced-body">${content}</div></details>`;
-}
-
 // ---------------------------------------------------------------------------
-// State primitives (loading/empty/error/permission-denied/unavailable family)
-// ---------------------------------------------------------------------------
-
-function stateBlock(className: string, title: string, body: string, source?: string): string {
-  return `<div class="state ${className}">
-  <p class="state-title">${esc(title)}</p>
-  <p class="state-body">${esc(body)}</p>${source === undefined ? "" : `\n  <p class="state-source">${esc(source)}</p>`}
-</div>`;
-}
-
-export function emptyState(title: string, body: string, hint?: string): string {
-  return stateBlock("state-empty", title, body, hint);
-}
-
-export function errorState(title: string, body: string, detail?: string): string {
-  return stateBlock("state-error", title, body, detail);
-}
-
-/**
- * The honest "not yet exposed by the public API" state: a one-line
- * explanation of the concept in user language and a pointer to where its
- * facts WILL come from. NEVER a fabricated placeholder.
- */
-export function unavailableState(
-  concept: string,
-  explanation: string,
-  futureSource: string,
-): string {
-  return `<div class="state state-unavailable">
-  <p class="state-title">${esc(concept)} — not yet exposed by the public API</p>
-  <p class="state-body">${esc(explanation)}</p>
-  <p class="state-source">When this surface ships, its facts will come from ${esc(futureSource)}.</p>
-</div>`;
-}
-
-export function permissionDeniedState(title: string, body: string, detail?: string): string {
-  return stateBlock("state-denied", title, body, detail);
-}
-
-// ---------------------------------------------------------------------------
-// Execution header (UX §6.1)
+// Execution header (UX v2 §9: title + status on one line — the title and
+// badge live in the page-head treatment; this component renders the facts)
 // ---------------------------------------------------------------------------
 
 export interface ExecutionHeaderView {
@@ -155,9 +112,13 @@ export interface ExecutionHeaderView {
   readonly now?: number;
 }
 
+/**
+ * The execution facts header: duration, cost, checks, created and the id,
+ * rendered below the page-head (which owns the single h1 — the execution
+ * title + status badge line).
+ */
 export function executionHeader(view: ExecutionHeaderView): string {
   const { execution } = view;
-  const title = executionTitle(execution.task, execution.id);
   const facts: string[] = [
     `<span class="fact"><span class="fact-label">Duration</span><span>${esc(
       formatDuration(view.durationMs),
@@ -183,10 +144,6 @@ export function executionHeader(view: ExecutionHeaderView): string {
     )}</span></span>`,
   );
   return `<header class="execution-header">
-  <div class="title-line">
-    <h1>${esc(title)}</h1>
-    ${statusBadge(execution.status)}
-  </div>
   <div class="facts">${facts.join("\n    ")}</div>
   <p class="muted mono">${esc(execution.id)}</p>
 </header>`;
@@ -214,8 +171,7 @@ export function verificationSummary(
   options: { readonly compact?: boolean; readonly executionId?: string } = {},
 ): string {
   if (verification.length === 0) {
-    return stateBlock(
-      "state-empty",
+    return emptyState(
       "No verification results recorded",
       "The platform has not recorded verification results for this execution, so no confidence claim is shown.",
       deriveQualityAxis(verification).source,
@@ -388,6 +344,14 @@ export function whyPanel(view: WhyPanelView): string {
     <h3>Route</h3>
     <p class="muted">Provider and model are secondary details of the governed route.</p>
     ${advancedDisclosure("Route detail (advanced)", route)}
+    ${sheetDialog({
+      id: "route-detail-sheet",
+      title: "Route detail — focused panel",
+      bodyHtml: `<p class="muted">The same advanced facts as the inline disclosure, presented in the focused panel (the tablet/mobile inspection surface). Focus returns to the opener when the panel closes.</p>
+${route}`,
+      closeLabel: "Close panel",
+    })}
+    <p><button type="button" data-sheet-open="route-detail-sheet">Open route detail in a focused panel</button></p>
     <h3>Compute</h3>
     <p>${execution.environmentId === null ? "default" : esc(execution.environmentId)}</p>
     <h3>Why this route</h3>
@@ -396,30 +360,6 @@ export function whyPanel(view: WhyPanelView): string {
     ${cost}
   </div>
 </details>`;
-}
-
-// ---------------------------------------------------------------------------
-// Attention card (UX §4, §8)
-// ---------------------------------------------------------------------------
-
-export function attentionCard(item: AttentionItem): string {
-  const links = item.links
-    .map((link) => `<a href="${esc(link.href)}">${esc(link.label)}</a>`)
-    .join(" ");
-  return `<article class="attention-card attention-${esc(item.kind)}">
-  <p class="card-title">${esc(item.title)}</p>
-  <p class="card-body">${esc(item.body)}</p>
-  <p class="card-actions">${links}</p>
-</article>`;
-}
-
-export function attentionArea(items: readonly AttentionItem[]): string {
-  if (items.length === 0) {
-    return "";
-  }
-  return `<section class="attention-area" aria-label="Needs your attention">
-  ${items.map(attentionCard).join("\n  ")}
-</section>`;
 }
 
 // ---------------------------------------------------------------------------

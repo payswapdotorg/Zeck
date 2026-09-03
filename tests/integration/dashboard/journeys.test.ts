@@ -35,7 +35,16 @@
  *   (l) the application-scope reconciliation (WORK-034): the bound
  *       client sends the header, the world rejects a headerless scoped
  *       call, and a different application scope cannot see this world's
- *       executions (indistinguishable 404 — tenant-safe).
+ *       executions (indistinguishable 404 — tenant-safe);
+ *   (m) the experience-mode journey (WORK-035): the mode cookie
+ *       round-trip and the visibility-only nav sets;
+ *   (n) the command-dialog journey (WORK-035): the second front door
+ *       dispatches through GET /command; the sheet primitive is wired on
+ *       the execution surface;
+ *   (o) the attention journey (WORK-035): the attention page aggregates
+ *       the consequential items from the live recents scope, the header
+ *       indicator appears only when attention exists, and the honest
+ *       disclosure of not-yet-exposed sources.
  */
 
 import type { AddressInfo } from "node:net";
@@ -913,8 +922,16 @@ describe("(d) the waiting journey: WAITING_USER → decision → cancel → CANC
   test("the cancel confirmation states the consequence and posts the governed command", async () => {
     const page = await html(await get(`/runs/${WAITING_ID}?action=cancel`));
     expect(page).toContain("Cancel this execution?");
-    expect(page).toContain("Consequence");
-    expect(page).toContain("Authorization");
+    // The WORK-035 universal consequence preview (v2 §26): consequence,
+    // affected, cost, authorization, reversibility and idempotency BEFORE
+    // the single confirm button (a governed POST).
+    expect(page).toContain("Consequential action");
+    expect(page).toContain("What will happen");
+    expect(page).toContain("Who or what is affected");
+    expect(page).toContain("Why it is allowed");
+    expect(page).toContain("Can it be undone");
+    expect(page).toContain("Approval required");
+    expect(page).toContain("Idempotency");
     expect(page).toContain('method="post"');
     const body = hiddenFieldsOf(page);
     expect(body).toContain("idempotencyKey=");
@@ -1322,5 +1339,105 @@ describe("(l) the application-scope reconciliation (WORK-034)", () => {
         fetchImpl: createFakeApi(world),
       }),
     ).toThrow(/DashboardOptions.applicationId/);
+  });
+});
+
+describe("(m) the experience-mode journey (WORK-035: visibility only, never semantics)", () => {
+  test("GET /mode sets the presentation cookie and redirects back", async () => {
+    const response = await get("/mode?level=simple&returnTo=/runs");
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/runs");
+    expect(response.headers.get("set-cookie") ?? "").toContain("zeck_mode=simple");
+  });
+
+  test("simple mode renders the flat four destinations (no grouped tree, same routes)", async () => {
+    const jar = new CookieJar();
+    await get("/mode?level=simple&returnTo=/", jar);
+    const page = await html(await get("/build", jar));
+    expect(page).toContain('data-mode="simple"');
+    expect(page).toContain(">Work</a>");
+    expect(page).toContain(">Results</a>");
+    expect(page).toContain(">Approvals</a>");
+    expect(page).not.toContain("<summary>Build</summary>");
+    // The create route (Work — New in professional) is still reachable:
+    // modes never gate routes.
+    const create = await html(await get("/build/execution", jar));
+    expect(create).toContain("Describe the outcome first");
+  });
+
+  test("expert mode renders the expert-only inspection entries", async () => {
+    const jar = new CookieJar();
+    await get("/mode?level=expert&returnTo=/", jar);
+    const page = await html(await get("/build", jar));
+    expect(page).toContain(">Lineage</a>");
+    expect(page).toContain(">Audit</a>");
+  });
+});
+
+describe("(n) the command-dialog journey (the second front door dispatches through GET /command)", () => {
+  test("every page carries the dialog: native dialog, GET /command form, link-only suggestions", async () => {
+    const page = await html(await get("/"));
+    expect(page).toContain('<dialog class="command-dialog" id="command-dialog"');
+    expect(page).toContain('method="get" action="/command"');
+    // Suggestions are links to real routes — the dispatch path itself.
+    expect(page).toContain('href="/command?q=cancel"');
+    expect(page).toContain(">Proposed action</span>");
+    // No POST anywhere in the dialog.
+    const dialog = page.slice(page.indexOf('id="command-dialog"'), page.indexOf("</dialog>"));
+    expect(dialog).not.toContain('method="post"');
+  });
+
+  test("the dialog's dispatch contract: GET /command?q= executes the governed search (the (f) path)", async () => {
+    const page = await html(await get("/command?q=support"));
+    expect(page).toContain("Agent: Support Triage Agent");
+  });
+
+  test("the sheet primitive is wired on the execution surface (open trigger + native close form)", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).toContain('<dialog class="sheet" id="route-detail-sheet"');
+    expect(page).toContain('data-sheet-open="route-detail-sheet"');
+    expect(page).toContain('<form method="dialog" class="dialog-close">');
+    expect(page).toContain("data-focus-return");
+    // The inline disclosure carries the same facts without any script.
+    expect(page).toContain('<details class="advanced">');
+  });
+});
+
+describe("(o) the attention journey (WORK-035: consequential aggregation, honest about sources)", () => {
+  test("the attention page aggregates the failed execution from the recents scope (live read)", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${FAILED_ID}`, jar);
+    const page = await html(await get("/attention", jar));
+    expect(page).toContain('aria-label="Needs your attention"');
+    expect(page).toContain("attention-failed");
+    expect(page).toContain("Zeck could not complete an execution");
+    expect(page).toContain("1</span>");
+    expect(page).toContain("failed execution");
+  });
+
+  test("the header indicator appears only when attention exists", async () => {
+    const jar = new CookieJar();
+    const clean = await html(await get("/attention", jar));
+    // The CSS rule text appears on every page — assert on the RENDERED
+    // indicator markup (class attribute), not the stylesheet.
+    expect(clean).not.toContain('class="attention-indicator"');
+    await get(`/runs/${FAILED_ID}`, jar);
+    const withItem = await html(await get("/attention", jar));
+    expect(withItem).toContain('class="attention-indicator"');
+    expect(withItem).toContain('<span class="count">1</span>');
+  });
+
+  test("the attention page states honestly that approvals/recommendations are not exposed yet", async () => {
+    const page = await html(await get("/attention"));
+    expect(page).toContain("not yet exposed by the public API");
+    expect(page).toContain("Approvals and improvement recommendations");
+  });
+
+  test("the trust IA routes render their honest unavailable states", async () => {
+    const evidence = await html(await get("/trust/evidence"));
+    expect(evidence).toContain("Evidence");
+    expect(evidence).toContain("not yet exposed by the public API");
+    const lineage = await html(await get("/trust/lineage"));
+    expect(lineage).toContain("Lineage");
   });
 });

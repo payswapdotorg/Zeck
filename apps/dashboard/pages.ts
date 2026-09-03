@@ -1,13 +1,20 @@
 /**
- * Zeck dashboard pages (WORK-033) — page composition per route.
+ * Zeck dashboard pages (WORK-033, re-homed on the WORK-035 foundation).
  *
- * The route map of the accepted UX implementation plan, preserving every
- * legacy dashboard route (AC10). Every page is a live projection through
- * the SDK client; the ONLY mutations are `createExecution` and
- * `cancelExecution`, both through that client. Surfaces the public API
- * does not expose render honest unavailable states (never fabricated
- * data). Form state flows through hidden fields and query params — there
- * is no server-side session state (M24).
+ * The route map of the accepted UX implementation plan, preserved and
+ * re-organized under the v2 information architecture. Every page is a
+ * live projection through the SDK client; the ONLY mutations are
+ * `createExecution` and `cancelExecution`, both through that client.
+ * Surfaces the public API does not expose render honest unavailable
+ * states (never fabricated data). Form state flows through hidden
+ * fields and query params — there is no server-side session state
+ * (M24).
+ *
+ * WORK-035: every page composes the shared foundation — pageHead (the
+ * breadcrumb + contextual title + primary-action treatment), the state
+ * primitives, the attention vocabulary, the disclosure primitives and
+ * the mode-aware shell — instead of defining its own shell semantics
+ * (AC10).
  */
 
 import {
@@ -18,22 +25,19 @@ import {
   ZeckApiError,
   type ZeckClient,
 } from "../../sdk";
+import { attentionArea, attentionSummary } from "./attention";
 import { CLIENT_SCRIPT } from "./client";
 import {
-  advancedDisclosure,
-  attentionCard,
-  emptyState,
-  errorState,
   esc,
   executionHeader,
   keyValueTable,
   progressTimeline,
   resultSurface,
   statusBadge,
-  unavailableState,
   verificationSummary,
   whyPanel,
 } from "./components";
+import { advancedDisclosure } from "./disclosure";
 import {
   assetResult,
   type HandlerResult,
@@ -44,6 +48,7 @@ import {
   redirectResult,
   serializeCookie,
 } from "./http";
+import { type ExperienceMode, modeCookieHeader, modeOf } from "./modes";
 import {
   APPEARANCE_COOKIE,
   addRecent,
@@ -63,7 +68,8 @@ import {
   serializeRecents,
   validateExecutionForm,
 } from "./projection";
-import { type Appearance, type AppShellInput, appShell, navIndex } from "./shell";
+import { type Appearance, type AppShellInput, appShell, navIndex, pageHead } from "./shell";
+import { confirmationCard, emptyState, errorState, unavailableState } from "./states";
 
 const RECENTS_NOTE =
   "recently opened in this browser — navigation only; every view reads live through the governed API";
@@ -78,12 +84,17 @@ function appearanceOf(cookies: Readonly<Record<string, string>>): Appearance {
 }
 
 function page(
-  input: Omit<AppShellInput, "appearance">,
+  input: Omit<AppShellInput, "appearance" | "mode">,
   ctx: HttpContext,
   options: { setCookies?: readonly string[] } = {},
 ): HandlerResult {
   return htmlResult(
-    appShell({ ...input, appearance: appearanceOf(ctx.cookies), returnTo: ctx.path }),
+    appShell({
+      ...input,
+      appearance: appearanceOf(ctx.cookies),
+      mode: modeOf(ctx.cookies),
+      returnTo: ctx.path,
+    }),
     options,
   );
 }
@@ -163,10 +174,6 @@ function runsList(executions: readonly Execution[], emptyText: string): string {
   return `<ul class="runs-list">${rows}</ul>`;
 }
 
-function attentionCards(items: ReturnType<typeof deriveAttention>): string {
-  return items.map((item) => attentionCard(item)).join("\n");
-}
-
 // ---------------------------------------------------------------------------
 // Home (the "Now" surface — AC1)
 // ---------------------------------------------------------------------------
@@ -208,7 +215,11 @@ async function homePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerRe
     (execution) => !isTerminal(execution.status) && execution.status !== "FAILED",
   );
   const terminal = recents.executions.filter((execution) => isTerminal(execution.status));
-  const content = `<h1>Home</h1>
+  const content = `${pageHead({
+    title: "Home",
+    path: "/",
+    primaryActionHtml: '<a class="button-link primary" href="/build/execution">Start new work</a>',
+  })}
 ${homeOutcomeForm(`dash-${crypto.randomUUID()}`)}
 <h2>Needs your attention</h2>
 ${
@@ -218,7 +229,7 @@ ${
         "No executions opened in this browser need a decision or failed — start one above, or look one up by id.",
       )
     : `<p class="muted">${esc(RECENTS_NOTE)}</p>
-${attentionCards(attention)}`
+${attentionArea(attention)}`
 }
 <h2>Happening now</h2>
 ${
@@ -230,7 +241,7 @@ ${
     : `<p class="muted">${esc(RECENTS_NOTE)}</p>
 ${runsList(active, "")}`
 }
-<h2>Recent</h2>
+<h2>Recent results</h2>
 ${
   terminal.length === 0
     ? emptyState(
@@ -242,7 +253,9 @@ ${runsList(terminal, "")}`
 }
 <h2>Find an execution</h2>
 ${lookupForm()}`;
-  return page({ title: "Zeck — Home", activePath: "/", mainContent: content }, ctx, { setCookies });
+  return page({ title: "Zeck — Home", activePath: "/", mainContent: content, attention }, ctx, {
+    setCookies,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -251,7 +264,12 @@ ${lookupForm()}`;
 
 async function buildOverviewPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const content = `<h1>Build</h1>
+  const content = `${pageHead({
+    title: "Build",
+    path: "/build",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/build/execution">Start an execution</a>',
+  })}
 <p>Start from the outcome you want. Zeck proposes how to get there; detailed configuration comes after the proposal.</p>
 <div class="tiles">
   <section class="tile">
@@ -421,7 +439,11 @@ async function buildExecutionPage(client: ZeckClient, ctx: HttpContext): Promise
     (query.applicationId ?? "").trim().length > 0 &&
     query.edit !== "1";
   if (!reviewable) {
-    const content = `<h1>Start an execution</h1>
+    const content = `${pageHead({
+      title: "Start an execution",
+      path: "/build/execution",
+      primaryActionHtml: '<a class="button-link" href="/command?q=examples">Command examples</a>',
+    })}
 <p>Describe the outcome first. Zeck proposes the plan; you review it before anything runs.</p>
 <form class="flow card" method="get" action="/build/execution">
   <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
@@ -435,7 +457,7 @@ async function buildExecutionPage(client: ZeckClient, ctx: HttpContext): Promise
   }
   const validation = validateExecutionForm(query);
   if (validation.values === null) {
-    const content = `<h1>Start an execution</h1>
+    const content = `${pageHead({ title: "Start an execution", path: "/build/execution" })}
 <div id="form-status" role="status" aria-live="polite" class="live-region">The request could not be reviewed — fix the highlighted fields.</div>
 <form class="flow card" method="get" action="/build/execution">
   <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
@@ -448,7 +470,11 @@ async function buildExecutionPage(client: ZeckClient, ctx: HttpContext): Promise
     );
   }
   const constraints = constraintSummary(query);
-  const content = `<h1>Review the proposed execution</h1>
+  const content = `${pageHead({
+    title: "Review the proposed execution",
+    path: "/build/execution",
+    primaryActionHtml: `<a class="button-link" href="${esc(editLink(query, idempotencyKey))}">Edit these details</a>`,
+  })}
 <div class="card">
   <h2>What you want</h2>
   <p>${esc(query.outcome ?? "")}</p>
@@ -498,7 +524,7 @@ async function createExecutionHandler(
     if (idempotencyKey.length === 0) {
       errors.outcome = "The form state was lost — fill the outcome again and resubmit.";
     }
-    const content = `<h1>Start an execution</h1>
+    const content = `${pageHead({ title: "Start an execution", path: "/build/execution" })}
 <div id="form-status" role="status" aria-live="polite" class="live-region">The request could not be submitted — fix the highlighted fields.</div>
 <form class="flow card" method="get" action="/build/execution">
   <input type="hidden" name="idempotencyKey" value="${esc(
@@ -514,6 +540,7 @@ async function createExecutionHandler(
         activePath: "/build/execution",
         mainContent: content,
         appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
         returnTo: ctx.path,
       }),
     );
@@ -525,7 +552,11 @@ async function createExecutionHandler(
   } catch (error) {
     if (error instanceof ZeckApiError && error.status < 500) {
       const constraints = constraintSummary(ctx.form);
-      const content = `<h1>Review the proposed execution</h1>
+      const content = `${pageHead({
+        title: "Review the proposed execution",
+        path: "/build/execution",
+        primaryActionHtml: `<a class="button-link" href="${esc(editLink(ctx.form, idempotencyKey))}">Edit these details</a>`,
+      })}
 <div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this request: ${esc(
         error.body.message,
       )} (${esc(error.body.code)})</div>
@@ -562,6 +593,7 @@ async function createExecutionHandler(
           activePath: "/build/execution",
           mainContent: content,
           appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
           returnTo: ctx.path,
         }),
       );
@@ -591,7 +623,7 @@ async function buildAgentPage(client: ZeckClient, ctx: HttpContext): Promise<Han
   ])}
   <p class="muted">This is the shape of the proposal Zeck will formalize when agent authoring ships.</p>
 </div>`;
-  const content = `<h1>Build an agent</h1>
+  const content = `${pageHead({ title: "Build an agent", path: "/build/agent" })}
 <p>Agents are reusable execution systems. Start from the purpose; the design comes back as a proposal you can accept.</p>
 <form class="flow card" method="get" action="/build/agent">
   <div class="form-field">
@@ -618,7 +650,7 @@ ${unavailableState(
 async function buildWorkloadPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
   const purpose = ctx.query.get("purpose") ?? "";
-  const content = `<h1>Build a workload</h1>
+  const content = `${pageHead({ title: "Build a workload", path: "/build/workload" })}
 <p>Training and batch compute are governed executions in Zeck — budgeted, checkpointed and verified.</p>
 <form class="flow card" method="get" action="/build/workload">
   <div class="form-field">
@@ -660,7 +692,11 @@ async function runsOverviewPage(client: ZeckClient, ctx: HttpContext): Promise<H
   const recents = await readRecentExecutions(client, ids);
   const active = recents.executions.filter((execution) => !isTerminal(execution.status));
   const terminal = recents.executions.filter((execution) => isTerminal(execution.status));
-  const content = `<h1>Runs</h1>
+  const content = `${pageHead({
+    title: "Runs",
+    path: "/runs",
+    primaryActionHtml: '<a class="button-link primary" href="/build/execution">New work</a>',
+  })}
 ${lookupForm()}
 <p class="muted">The public API exposes no execution listing route: runs are discovered by id, or tracked from executions opened in this browser (${esc(
     RECENTS_NOTE,
@@ -678,7 +714,7 @@ async function runsActivePage(client: ZeckClient, ctx: HttpContext): Promise<Han
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const active = recents.executions.filter((execution) => !isTerminal(execution.status));
-  const content = `<h1>Active runs</h1>
+  const content = `${pageHead({ title: "Active runs", path: "/runs/active" })}
 ${lookupForm()}
 <p class="muted">Executions opened in this browser that are not terminal yet — ${esc(RECENTS_NOTE)}.</p>
 ${runsList(active, "No active executions opened in this browser yet — start one from Home, or look one up by id.")}
@@ -693,7 +729,7 @@ async function runsHistoryPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const terminal = recents.executions.filter((execution) => isTerminal(execution.status));
-  const content = `<h1>Run history</h1>
+  const content = `${pageHead({ title: "Run history", path: "/runs/history" })}
 ${lookupForm()}
 <p class="muted">Finished executions opened in this browser — ${esc(RECENTS_NOTE)}.</p>
 ${runsList(terminal, "No finished executions opened in this browser yet.")}
@@ -706,7 +742,7 @@ ${runsList(terminal, "No finished executions opened in this browser yet.")}
 
 async function runsScheduledPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const content = `<h1>Scheduled runs</h1>
+  const content = `${pageHead({ title: "Scheduled runs", path: "/runs/scheduled" })}
 ${lookupForm()}
 ${unavailableState(
   "Scheduled runs",
@@ -737,7 +773,7 @@ function tabNav(executionId: string, activeTab: string): string {
 }
 
 function notFoundExecutionView(executionId: string, ctx: HttpContext): HandlerResult {
-  const content = `<h1>Execution not found</h1>
+  const content = `${pageHead({ title: "Execution not found", path: "/runs" })}
 ${errorState(
   "This execution is not visible through the governed API",
   `No execution "${executionId}" was returned — it may belong to another application or not exist. The dashboard can only see executions the API authorizes for this token.`,
@@ -751,6 +787,7 @@ ${lookupForm()}`;
       activePath: "/runs",
       mainContent: content,
       appearance: appearanceOf(ctx.cookies),
+      mode: modeOf(ctx.cookies),
       returnTo: "/runs",
     }),
   );
@@ -852,23 +889,33 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
     costMicroUsd: result.cost === null ? null : result.cost.totalMicroUsd,
     verificationChip: deriveVerificationChip(result.verification),
   });
+  const title = executionTitle(execution.task, execution.id);
+  const head = pageHead({
+    title,
+    path: `/runs/${execution.id}`,
+    currentLabel: title,
+    headingHtml: `${esc(title)}\n    ${statusBadge(execution.status)}`,
+  });
   if (ctx.query.get("action") === "cancel" && !isTerminal(execution.status)) {
-    const content = `${header}
-${whyPanel({ execution, result, events })}
-<section class="card">
-  <h2>Cancel this execution?</h2>
-  <p><strong>Consequence:</strong> cancelling stops the execution at its current state. Work already performed is kept and stays inspectable; the execution moves to the terminal state Cancelled and cannot be resumed.</p>
-  <p><strong>Authorization:</strong> this is the governed cancel command — it goes through the platform's execution lifecycle authority, which validates it.</p>
-  <p>Current status: ${statusBadge(execution.status)}</p>
-  <form method="post" action="/runs/${encodeURIComponent(execution.id)}/cancel">
-    <input type="hidden" name="idempotencyKey" value="dash-${esc(crypto.randomUUID())}">
-    <div class="form-actions">
-      <button type="submit" class="danger">Cancel execution</button>
-      <a href="/runs/${encodeURIComponent(execution.id)}">Keep it running</a>
-    </div>
-  </form>
-  <p class="muted">The confirmation carries an idempotency key, so a double submit converges on one cancellation.</p>
-</section>`;
+    const content = `${head}
+${header}
+${confirmationCard({
+  title: "Cancel this execution?",
+  consequence:
+    "Cancelling stops the execution at its current state. Work already performed is kept and stays inspectable; the execution moves to the terminal state Cancelled and cannot be resumed.",
+  affected: `The execution "${title}" (${execution.id}).`,
+  cost: "No further spend accrues after cancellation; already-settled cost stays recorded.",
+  whyAllowed:
+    "The governed cancel command — it goes through the platform's execution lifecycle authority, which validates it.",
+  reversible: false,
+  approvalNote: "No separate approval is required for cancellation by this token.",
+  idempotencyNote:
+    "The confirmation carries an idempotency key, so a double submit converges on one cancellation.",
+  hiddenFields: [["idempotencyKey", `dash-${crypto.randomUUID()}`]],
+  confirmAction: `/runs/${encodeURIComponent(execution.id)}/cancel`,
+  confirmLabel: "Cancel execution",
+  cancelHref: `/runs/${encodeURIComponent(execution.id)}`,
+})}`;
     return page(
       {
         title: `Zeck — Cancel ${execution.id}`,
@@ -940,7 +987,8 @@ ${warnings}`,
     panel = `<h2>Result</h2>
 ${resultSurface({ execution, result, events })}`;
   }
-  const content = `${header}
+  const content = `${head}
+${header}
 ${whyPanel({ execution, result, events })}
 ${tabNav(execution.id, tab)}
 ${panel}`;
@@ -999,7 +1047,11 @@ async function agentsPage(client: ZeckClient, ctx: HttpContext): Promise<Handler
   </tr>`,
     )
     .join("");
-  const content = `<h1>Agents</h1>
+  const content = `${pageHead({
+    title: "Agents",
+    path: "/agents",
+    primaryActionHtml: '<a class="button-link" href="/build/agent">Propose an agent</a>',
+  })}
 <p class="muted">A read-only projection over the governed agents authority.</p>
 ${
   agents.length === 0
@@ -1039,7 +1091,11 @@ async function agentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
           ["selected by", status.latestSelection.selectedBy],
           ["selected at", status.latestSelection.selectedAt],
         ]);
-  const content = `<h1>${esc(status.agent.name)}</h1>
+  const content = `${pageHead({
+    title: status.agent.name,
+    path: `/agents/${agentId}`,
+    currentLabel: status.agent.name,
+  })}
 <p>${
     status.agent.description === null
       ? '<span class="muted">No description recorded.</span>'
@@ -1122,7 +1178,7 @@ async function artifactsPage(client: ZeckClient, ctx: HttpContext): Promise<Hand
   <tbody>${rows}</tbody>
 </table>`);
   }
-  const content = `<h1>Artifacts</h1>
+  const content = `${pageHead({ title: "Artifacts", path: "/assets/artifacts" })}
 ${unavailableState(
   "Artifact inventory",
   "The public API exposes artifacts only as per-execution output references — there is no artifact listing route.",
@@ -1174,7 +1230,11 @@ ${errorState(
 )}`;
     }
   }
-  const content = `<h1>Artifact</h1>
+  const content = `${pageHead({
+    title: "Artifact",
+    path: "/assets/artifacts",
+    currentLabel: artifactId,
+  })}
 <p class="muted mono">${esc(artifactId)}</p>
 ${contextBlock}
 ${unavailableState(
@@ -1190,7 +1250,7 @@ ${unavailableState(
 
 async function competencesPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const content = `<h1>Competences</h1>
+  const content = `${pageHead({ title: "Competences", path: "/assets/competences" })}
 ${unavailableState(
   "Competences",
   "A competence is a reusable, evidence-backed way of describing work Zeck knows how to perform — with success rate, typical cost and verification checks. None of that is exposed by the public API yet.",
@@ -1204,7 +1264,11 @@ ${unavailableState(
 
 async function competenceDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const content = `<h1>Competence</h1>
+  const content = `${pageHead({
+    title: "Competence",
+    path: "/assets/competences",
+    currentLabel: ctx.params.competenceId ?? "",
+  })}
 <p class="muted mono">${esc(ctx.params.competenceId ?? "")}</p>
 ${unavailableState(
   "Competence detail",
@@ -1219,7 +1283,7 @@ ${unavailableState(
 
 async function connectionsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
-  const content = `<h1>Connections</h1>
+  const content = `${pageHead({ title: "Connections", path: "/assets/connections" })}
 ${unavailableState(
   "Connections",
   "External tool and data connections are governed server-side; the public API does not expose a connections surface.",
@@ -1246,6 +1310,30 @@ interface StaticPage {
 }
 
 const STATIC_PAGES: readonly (readonly [string, StaticPage])[] = [
+  [
+    "/trust/evidence",
+    {
+      title: "Zeck — Evidence",
+      h1: "Evidence",
+      activePath: "/trust/evidence",
+      concept: "Evidence",
+      explanation:
+        "Evidence is why a result can be trusted — checks, verification records and provenance per execution. The public API exposes evidence per execution today; a cross-work evidence surface is not exposed yet.",
+      futureSource: "an evidence projection over executions and verification records",
+    },
+  ],
+  [
+    "/trust/lineage",
+    {
+      title: "Zeck — Lineage",
+      h1: "Lineage",
+      activePath: "/trust/lineage",
+      concept: "Lineage",
+      explanation:
+        "Lineage connects artifacts to their producing executions, parent artifacts and downstream usage. The public API exposes artifacts only as per-execution output references; a lineage graph is not exposed yet.",
+      futureSource: "a lineage projection over execution artifacts",
+    },
+  ],
   [
     "/improve/evaluations",
     {
@@ -1353,7 +1441,7 @@ function staticPageOf(path: string): StaticPage {
 }
 
 function staticUnavailablePage(pageInfo: StaticPage, ctx: HttpContext): HandlerResult {
-  const content = `<h1>${esc(pageInfo.h1)}</h1>
+  const content = `${pageHead({ title: pageInfo.h1, path: pageInfo.activePath })}
 ${unavailableState(pageInfo.concept, pageInfo.explanation, pageInfo.futureSource)}`;
   return page(
     { title: pageInfo.title, activePath: pageInfo.activePath, mainContent: content },
@@ -1453,13 +1541,13 @@ async function commandPage(client: ZeckClient, ctx: HttpContext): Promise<Handle
     const examples = COMMAND_EXAMPLES.map(
       (example) => `<li><span class="command-example">${esc(example)}</span></li>`,
     ).join("\n  ");
-    const content = `<h1>Command</h1>
+    const content = `${pageHead({ title: "Command", path: "/command" })}
 <p>Search and command Zeck from anywhere: navigation, executions, agents and proposed actions.</p>
 <h2>How it works</h2>
 <ul>
-  <li>Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>⌘</kbd>+<kbd>K</kbd>) to focus the command bar.</li>
+  <li>Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or <kbd>⌘</kbd>+<kbd>K</kbd>) to open the command surface.</li>
   <li>Type an execution id to open it directly.</li>
-  <li>Mutations are never performed from here — they are proposed as links into their confirmation flows.</li>
+  <li>Mutations are never performed from here — they are proposed as links into their confirmation flows (the governed POST path with its own consequence preview).</li>
 </ul>
 <h2>Examples</h2>
 <ul>
@@ -1497,14 +1585,14 @@ async function commandPage(client: ZeckClient, ctx: HttpContext): Promise<Handle
     return true;
   });
   const listItems = unique
-    .map(
-      (match) =>
-        `<li><a href="${esc(match.href)}">${esc(match.label)}</a><span class="result-kind">${esc(
-          match.kind,
-        )}</span></li>`,
-    )
+    .map((match) => {
+      const isProposal = match.kind === "Proposed action";
+      return `<li><a href="${esc(match.href)}">${esc(match.label)}</a><span class="result-kind">${esc(
+        match.kind,
+      )}${isProposal ? " — opens a confirmation flow" : ""}</span></li>`;
+    })
     .join("\n  ");
-  const content = `<h1>Command</h1>
+  const content = `${pageHead({ title: "Command", path: "/command" })}
 ${
   unique.length === 0
     ? `<div class="state state-empty">
@@ -1523,7 +1611,41 @@ ${
 }
 
 // ---------------------------------------------------------------------------
-// Appearance (no-script fallback) and static assets
+// The attention surface (WORK-035 — the Attention primitive's page)
+// ---------------------------------------------------------------------------
+
+async function attentionPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const attention = deriveAttention(recents.executions);
+  const content = `${pageHead({ title: "Attention", path: "/attention" })}
+<p>Attention aggregates only consequential items — decisions, failed work, and (when the public API exposes them) approvals and improvement recommendations. Routine lifecycle events belong to each execution's Activity.</p>
+${attentionSummary(attention)}
+<h2>Items that need you</h2>
+${
+  attention.length === 0
+    ? emptyState(
+        "Nothing needs your attention",
+        "No executions opened in this browser are waiting on a decision or failed. Attention is not a notification feed — routine progress never appears here.",
+      )
+    : `${attentionArea(attention)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>`
+}
+${unavailableState(
+  "Approvals and improvement recommendations",
+  "The public API does not yet expose approval requests or improvement recommendations, so no such items can appear here. When those surfaces ship, their facts will feed this page through the same attention vocabulary — never fabricated in the dashboard.",
+  "the approval and learning authorities through the public API",
+)}`;
+  return page(
+    { title: "Zeck — Attention", activePath: "/attention", mainContent: content, attention },
+    ctx,
+    { setCookies },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Appearance and experience mode (no-script fallbacks) and static assets
 // ---------------------------------------------------------------------------
 
 async function appearancePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
@@ -1533,6 +1655,16 @@ async function appearancePage(client: ZeckClient, ctx: HttpContext): Promise<Han
   const safeMode: Appearance = mode === "light" || mode === "dark" ? mode : "system";
   const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
   return redirectResult(safeReturnTo, { setCookies: [appearanceCookieHeader(safeMode)] });
+}
+
+async function modePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const level = ctx.query.get("level") ?? "professional";
+  const returnTo = ctx.query.get("returnTo") ?? "/";
+  const safeMode: ExperienceMode =
+    level === "simple" || level === "expert" ? level : "professional";
+  const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/";
+  return redirectResult(safeReturnTo, { setCookies: [modeCookieHeader(safeMode)] });
 }
 
 // ---------------------------------------------------------------------------
@@ -1587,7 +1719,15 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
       staticUnavailablePage(staticPageOf("/admin/environments"), ctx),
     ),
     wrap("GET", "/admin/audit", (ctx) => staticUnavailablePage(staticPageOf("/admin/audit"), ctx)),
+    wrap("GET", "/trust/evidence", (ctx) =>
+      staticUnavailablePage(staticPageOf("/trust/evidence"), ctx),
+    ),
+    wrap("GET", "/trust/lineage", (ctx) =>
+      staticUnavailablePage(staticPageOf("/trust/lineage"), ctx),
+    ),
     wrap("GET", "/command", (ctx) => commandPage(client, ctx)),
+    wrap("GET", "/attention", (ctx) => attentionPage(client, ctx)),
+    wrap("GET", "/mode", (ctx) => modePage(client, ctx)),
     wrap("GET", "/appearance", (ctx) => appearancePage(client, ctx)),
     wrap("GET", "/assets/client.js", (ctx) => {
       void ctx;

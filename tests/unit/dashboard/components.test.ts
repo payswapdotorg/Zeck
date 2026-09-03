@@ -13,10 +13,8 @@
  */
 
 import { describe, expect, test } from "vitest";
+import { attentionCard } from "../../../apps/dashboard/attention";
 import {
-  advancedDisclosure,
-  attentionCard,
-  emptyState,
   esc,
   executionHeader,
   formatDuration,
@@ -25,10 +23,11 @@ import {
   progressTimeline,
   resultSurface,
   statusBadge,
-  unavailableState,
   verificationSummary,
   whyPanel,
 } from "../../../apps/dashboard/components";
+import { advancedDisclosure } from "../../../apps/dashboard/disclosure";
+import { emptyState, unavailableState } from "../../../apps/dashboard/states";
 import type { Execution, ExecutionEvent, ExecutionResult, VerificationResult } from "../../../sdk";
 
 function execution(status: string, task: Record<string, unknown> = {}): Execution {
@@ -91,22 +90,21 @@ function events(...types: string[]): ExecutionEvent[] {
   }));
 }
 
-describe("ExecutionHeader (UX §6.1)", () => {
-  test("renders identity, status badge, duration, cost and the verification chip", () => {
+describe("ExecutionHeader (UX v2 §9 — the facts header; the title+badge line lives in pageHead)", () => {
+  test("renders the facts: duration, cost, the verification chip and the identity", () => {
     const html = executionHeader({
       execution: execution("COMPLETED"),
       durationMs: 222_000,
       costMicroUsd: "4180000",
       verificationChip: "4/4 checks passed",
     });
-    expect(html).toContain("Contract risk analysis");
-    expect(html).toContain("status-COMPLETED");
-    expect(html).toContain("✓");
-    expect(html).toContain("Completed");
     expect(html).toContain("3m 42s");
     expect(html).toContain("$4.18");
     expect(html).toContain("4/4 checks passed");
     expect(html).toContain("00000000-0000-7000-8000-0000000000e1");
+    // The title and status badge moved to the page-head heading (v2 §9):
+    // the facts header carries NO h1 of its own.
+    expect(html).not.toContain("<h1");
   });
 
   test("falls back to the honest id when the task carries no summary field", () => {

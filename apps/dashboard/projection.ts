@@ -413,22 +413,13 @@ export function deriveConfidenceChip(verification: readonly VerificationResult[]
 }
 
 // ---------------------------------------------------------------------------
-// Attention derivation (Home "Needs your attention")
+// Attention derivation (Home "Needs your attention"; the Attention
+// primitive's vocabulary lives in attention.ts — WORK-035)
 // ---------------------------------------------------------------------------
 
-export type AttentionKind = "decision" | "failed";
+export type { AttentionItem, AttentionLink } from "./attention";
 
-export interface AttentionLink {
-  readonly label: string;
-  readonly href: string;
-}
-
-export interface AttentionItem {
-  readonly kind: AttentionKind;
-  readonly title: string;
-  readonly body: string;
-  readonly links: readonly AttentionLink[];
-}
+import type { AttentionItem } from "./attention";
 
 /** Derive attention items from LIVE execution records (never cached). */
 export function deriveAttention(executions: readonly Execution[]): AttentionItem[] {
