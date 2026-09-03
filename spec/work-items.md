@@ -36,5 +36,12 @@
 | WORK-032 | Agentic economic actions and provider-neutral payment rails | 004,006,007,013,015,016,017 | CRITICAL | no |
 | WORK-033 | Zeck UX experience shell and dashboard realization | 015,023,027,028,029,030,032,034 | HIGH_ASSURANCE | no |
 | WORK-034 | API/SDK application-scope reconciliation | 015,022,032 | HIGH_ASSURANCE | no |
+| WORK-035 | Zeck experience foundation and interaction system | 033,034 | HIGH_ASSURANCE | no |
+| WORK-036 | Home, Work creation and execution experience | 035 | HIGH_ASSURANCE | no |
+| WORK-037 | Build, agents, deployments and workloads experience | 036 | HIGH_ASSURANCE | no |
+| WORK-038 | Trust, evidence, artifacts and competence experience | 037 | HIGH_ASSURANCE | no |
+| WORK-039 | Control, spend, connections and improvement experience | 038 | HIGH_ASSURANCE | no |
+| WORK-040 | Advanced inspection and multimodal work experience | 039 | HIGH_ASSURANCE | no |
+| WORK-041 | UX integration hardening, usability and release gate | 040 | HIGH_ASSURANCE | no |
 
 Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.
