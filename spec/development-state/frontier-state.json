@@ -1,1 +1,11 @@
-{"schemaVersion":1,"status":"active","governingArchitectureVersion":"v1.0","eligible":[],"inFlight":["WORK-033"],"blocked":[],"rule":"eligible means every dependency is complete, the item is not in flight elsewhere, declared surfaces do not conflict with another in-flight item, and the base revision matches the governance expectation"}
+{
+  "schemaVersion": 1,
+  "status": "active",
+  "governingArchitectureVersion": "v1.0",
+  "eligible": [
+    "WORK-034"
+  ],
+  "inFlight": [],
+  "blocked": [],
+  "rule": "eligible means every dependency is complete, the item is not in flight elsewhere, declared surfaces do not conflict with another in-flight item, and the base revision matches the governance expectation"
+}

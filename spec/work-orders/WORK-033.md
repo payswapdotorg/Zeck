@@ -1,6 +1,6 @@
 # WORK-033 — Zeck UX experience shell and dashboard realization
 
-Status: IN-FLIGHT
+Status: PENDING
 
 Owner: Architect-assigned implementation worker
 
@@ -18,7 +18,7 @@ Realize the accepted Zeck experience architecture in the existing `apps/dashboar
 
 # Dependencies
 
-Requires: WORK-015, WORK-023, WORK-027, WORK-028, WORK-029, WORK-030, WORK-032
+Requires: WORK-015, WORK-023, WORK-027, WORK-028, WORK-029, WORK-030, WORK-032, WORK-034
 
 # Requirement IDs
 
