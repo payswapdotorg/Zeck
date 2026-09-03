@@ -33,6 +33,23 @@
  * suite pins that the observable behavior — every same-key racer
  * converging onto the ONE durable row, ZERO spurious gapless errors —
  * holds under sustained concurrency.
+ *
+ * ROUND 5 (the first complete-gate run at c42c2ff caught a SECOND,
+ * sibling defect — root-caused from the PostgreSQL server log): a
+ * same-key racer that reuses the CRASH-STABLE STAGED COMMAND ID (the
+ * identity checkpointed on the durable operation, so the wallet
+ * reservation keyed by it converges across retries) collides on the
+ * edge.commands PRIMARY KEY before the (application_id, command_key)
+ * arbiter is consulted — ON CONFLICT with an explicit arbiter does not
+ * suppress a non-arbiter unique violation — surfacing the keyed
+ * convergence as a hard `commands_pkey` error. The store's
+ * insertCommand now treats the identity-carrying indexes
+ * (commands_pkey / ec_identity_unique) as the keyed-convergence path
+ * (fall through to the keyed re-read, which arbitrates the
+ * fingerprint); the deterministic fourth test below pins the exact
+ * mechanism, and the N=8 stress loop above exercises it under
+ * sustained concurrency (every post-checkpoint racer reuses the
+ * staged id).
  */
 
 import { expect, test } from "vitest";
@@ -123,6 +140,91 @@ definePgSuite("edge sequence-gate stress regression (WORK-030 inherited fix)", (
         `iteration ${iteration}: the observation journal did not converge`,
       ).toBe(1);
     }
+  });
+
+  test("the crash-stable staged command id converges by key when the same-key row already claimed it (the commands_pkey collision — DETERMINISTIC)", async () => {
+    // The round-5 defect (found by the first complete-gate run at
+    // c42c2ff, root-caused from the PostgreSQL server log): a same-key
+    // racer that reuses the checkpointed command id (the crash-stable
+    // identity staged on the durable operation) collides on the
+    // PRIMARY KEY before the (application_id, command_key) arbiter is
+    // consulted — ON CONFLICT with an explicit arbiter does NOT
+    // suppress a non-arbiter unique violation — so the keyed
+    // convergence surfaced as a hard `commands_pkey` error (mis-typed
+    // as key reuse). This is the DETERMINISTIC pinner of the
+    // mechanism: the staged-id insert shape replayed against the
+    // committed same-key row must converge by key.
+    const w = await freshWorld();
+    const executionId = await w.driveToRunning(w.boot(null).executions);
+    const deviceId = await w.register();
+    const { envelopeId } = await w.approveEnvelope(executionId, deviceId);
+    const request = w.commandRequest(executionId, deviceId, envelopeId);
+    const commandApprovalId = await w.approveCommand(request);
+    await w.service.submitCommand({ ...request, approvalId: commandApprovalId }, "staged-id-1");
+    const committed = await w.store.findCommandByKey(w.applicationId, "staged-id-1");
+    expect(committed).not.toBeNull();
+    if (committed === null) {
+      return;
+    }
+    // The racer's physical insert shape: the SAME staged id, the SAME
+    // key, the SAME fingerprint, AFTER the first insert committed.
+    // The speculative insert checks the unique indexes in index order,
+    // so commands_pkey fires before the key arbiter; the store must
+    // converge by key (the in-memory twin's by-key-first semantics),
+    // never raise.
+    const racerInsert = (overrides: { commandId?: string; requestFingerprint?: string }) => ({
+      commandId: committed.id,
+      applicationId: committed.applicationId,
+      tenantId: committed.tenantId,
+      executionId: committed.executionId,
+      deviceId: committed.deviceId,
+      envelopeId: committed.envelopeId,
+      commandKey: committed.commandKey,
+      requestFingerprint: committed.requestFingerprint,
+      sequence: committed.sequence,
+      commandKind: committed.commandKind,
+      effectClass: committed.effectClass,
+      channel: committed.channel,
+      magnitude: committed.magnitude,
+      payloadDigest: committed.payloadDigest,
+      estimatedMicroUsd: committed.estimatedMicroUsd,
+      notBefore: committed.notBefore,
+      notAfter: committed.notAfter,
+      approvalId: committed.approvalId,
+      denialClass: null,
+      denialReason: null,
+      requestedAt: committed.createdAt,
+      ...overrides,
+    });
+    const replay = await w.store.insertCommand(racerInsert({}));
+    expect(replay.status).toBe("existing");
+    if (replay.status === "existing") {
+      expect(replay.fingerprintMismatch).toBe(false);
+      expect(replay.record.id).toBe(committed.id);
+    }
+    // The convergence catch cannot mask a fingerprint violation. (The
+    // gate's by-sequence branch passes this same-key/same-sequence
+    // shape through before the fingerprint check, so the physical
+    // convergence path — the commands_pkey collision — must surface
+    // the mismatch itself; the SERVICE turns it into the typed
+    // IDEMPOTENCY_KEY_REUSED key-reuse rejection, pinned in the edge
+    // lifecycle suite. The different-SEQUENCE key-reuse shape is
+    // rejected typed by the gate itself — the third test below.)
+    const mismatched = await w.store.insertCommand(
+      racerInsert({ requestFingerprint: `${committed.requestFingerprint}x` }),
+    );
+    expect(mismatched.status).toBe("existing");
+    if (mismatched.status === "existing") {
+      expect(mismatched.fingerprintMismatch).toBe(true);
+    }
+    // A fresh-id same-key racer still converges through the arbiter
+    // (the pre-existing physical discipline, unchanged by the fix).
+    const freshId = await w.store.insertCommand(
+      racerInsert({ commandId: "00000000-0000-7000-8000-0000000000f1" }),
+    );
+    expect(freshId.status).toBe("existing");
+    // And the journal still holds exactly the ONE converged command.
+    expect(await commandsOf(deviceId)).toBe(1);
   });
 
   test("the replacement gates are semantics-preserving: the same decision logic still REJECTS the violations typed (by-sequence, key reuse, gapless)", async () => {

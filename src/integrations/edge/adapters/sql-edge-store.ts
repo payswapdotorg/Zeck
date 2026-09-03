@@ -18,7 +18,14 @@
  *   * device/approval/envelope/command inserts converge on the
  *     (application, *_key) UNIQUE with request-fingerprint arbitration
  *     (a same-key/different-body insert fails closed typed —
- *     IDEMPOTENCY_KEY_REUSED);
+ *     IDEMPOTENCY_KEY_REUSED); the command insert additionally treats a
+ *     violation of the identity-carrying indexes (commands_pkey /
+ *     ec_identity_unique) as the keyed convergence path — the
+ *     crash-stable staged command id (checkpointed on the operation)
+ *     collides on the primary key BEFORE the key arbiter is checked,
+ *     and the row behind that id IS the row behind the key, so the
+ *     insert falls through to the keyed re-read instead of raising
+ *     (the in-memory twin converges by key first by construction);
  *   * guarded status moves are expected-status-gated UPDATEs (first
  *     writer wins, duplicates converge on the committed row); terminal
  *     rows are immutable (the migration's lifecycle guards raise, mapped
@@ -94,6 +101,32 @@ const requireIso = (value: Date | string): string => iso(value) as string;
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The unique indexes that carry the command IDENTITY — the primary key
+ * and the (id, application_id) identity constraint. A violation on one
+ * of these during a keyed insert is the crash-stable staged-commandId
+ * reuse colliding with the SAME-KEY row that already claimed that id
+ * (the stage is checkpointed on the operation, whose operation_key is
+ * derived from the command key): the racer reuses the checkpointed id,
+ * the first insert commits, and PostgreSQL checks a speculative
+ * insert's unique indexes in index order — the primary key fires
+ * BEFORE the (application_id, command_key) arbiter is consulted, so
+ * the convergence that the arbiter WOULD have performed surfaces as a
+ * hard `commands_pkey` violation instead. This is the keyed-convergence
+ * path, not a semantic violation: the caller falls through to the
+ * keyed re-read (which arbitrates the request fingerprint), exactly
+ * the in-memory twin's converge-by-key-first semantics. Every OTHER
+ * unique violation — the gapless sequence arbiter `ec_sequence_unique`
+ * in particular — keeps its typed guard mapping.
+ */
+function isCommandIdentityConflict(error: unknown): boolean {
+  const message = messageOf(error);
+  if (!message.includes("violates unique constraint")) {
+    return false;
+  }
+  return message.includes("commands_pkey") || message.includes("ec_identity_unique");
 }
 
 /** Map physical guard rejections to the typed error taxonomy. */
@@ -1098,7 +1131,18 @@ RETURNING ${COMMAND_COLUMNS}`,
         return { status: "claimed", record: toCommandRecord(row) };
       }
     } catch (error) {
-      throw toTypedGuardError(error);
+      // The staged-commandId reuse (the crash-stable identity above): a
+      // same-key racer reusing the checkpointed command id collides on
+      // the identity indexes BEFORE the (application_id, command_key)
+      // arbiter is checked — that collision IS the same-key convergence
+      // (the row behind the id is the row behind the key), so it falls
+      // through to the keyed re-read below instead of raising. The
+      // sequence-gate trigger has already run (BEFORE INSERT) and the
+      // keyed re-read arbitrates the fingerprint, so no semantic check
+      // is bypassed; every other violation keeps its typed mapping.
+      if (!isCommandIdentityConflict(error)) {
+        throw toTypedGuardError(error);
+      }
     }
     const existing = await this.findCommandByKey(input.applicationId, input.commandKey);
     if (existing === null) {
