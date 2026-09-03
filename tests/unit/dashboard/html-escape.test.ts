@@ -10,8 +10,8 @@
  */
 
 import { describe, expect, test } from "vitest";
+import { attentionCard } from "../../../apps/dashboard/attention";
 import {
-  attentionCard,
   executionHeader,
   keyValueTable,
   progressTimeline,
