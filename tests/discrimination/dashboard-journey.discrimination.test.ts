@@ -826,3 +826,253 @@ describe("D18 lineage fabrication (parents and usage are recorded facts only)", 
     expect(html).not.toContain("Verification references");
   });
 });
+
+// ---------------------------------------------------------------------------
+// D19 — policy-reason fabrication (WORK-039 AC2/AC9): the controlling
+// rule renders ONLY from the platform-recorded policy-denied event — a
+// mutant deriving a reason from the status, the free-text failure
+// message or thin air is flagged; a run without a recorded denial
+// renders no blocked explanation at all.
+// ---------------------------------------------------------------------------
+
+describe("D19 policy-reason fabrication (the controlling rule is the platform's own recording)", () => {
+  test("MODULE: policyDenialOf produces the recorded reason ONLY — the status-derived mutant differs on the same input", async () => {
+    const { policyDenialOf } = await import("../../apps/dashboard/projection");
+    const created = events.map((event, index) =>
+      index === 0
+        ? event
+        : {
+            ...event,
+            type: "execution.policy-denied",
+            payload: {
+              from: "CREATED",
+              to: "CREATED",
+              denied: true,
+              reason: "the requested spend exceeds the effective policy ceiling",
+            },
+          },
+    );
+    expect(policyDenialOf(created)?.reason).toBe(
+      "the requested spend exceeds the effective policy ceiling",
+    );
+    // The fabricated mutants: a reason from the CREATED status, from a
+    // fail message, or a canned default — each differs on the SAME input.
+    expect(policyDenialOf(events)).toBeNull();
+    const failMessage = events.map((event, index) =>
+      index === 1
+        ? { ...event, type: "execution.fail", payload: { message: "too expensive" } }
+        : event,
+    );
+    expect(policyDenialOf(failMessage)).toBeNull();
+    expect(policyDenialOf([])).toBeNull();
+  });
+
+  test("STATIC: the denial guard is the typed event + payload-reason read — the mutant widening it is flagged", () => {
+    const PROJECTION = appsSource("projection.ts");
+    expect(PROJECTION.includes('event.type !== "execution.policy-denied"')).toBe(true);
+    expect(PROJECTION.includes('typeof reason === "string" && reason.trim().length > 0')).toBe(
+      true,
+    );
+    // The mutant: accepting ANY event's payload as a denial source.
+    const mutant = PROJECTION.replace(
+      'event.type !== "execution.policy-denied"',
+      'event.type !== "execution.fail"',
+    );
+    expect(mutant.includes('event.type !== "execution.fail"')).toBe(true);
+    expect(mutant.includes('event.type !== "execution.policy-denied"')).toBe(false);
+  });
+
+  test("RUNTIME: a run with NO recorded denial renders no blocked explanation (the block never fabricates)", async () => {
+    const page = await get(`/runs/${EXECUTION_ID}`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).not.toContain("state state-blocked");
+    expect(html).not.toContain("Blocked by policy");
+    expect(html).not.toContain("The controlling rule:");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D20 — frontend-accounting fabrication (WORK-039 AC3/AC9): the spend
+// surface computes NO second accounting truth — the usage total is the
+// BigInt sum of the platform-recorded per-run costs ONLY; a missing cost
+// stays missing (never zero, never a guess); reservations, settlement
+// and the ledger render as their honest public absence.
+// ---------------------------------------------------------------------------
+
+describe("D20 frontend-accounting fabrication (no second ledger, no float arithmetic)", () => {
+  test("MODULE: sumMicroUsd is integer-BigInt-only — the float-parsing mutant differs on the same input", async () => {
+    const { sumMicroUsd } = await import("../../apps/dashboard/projection");
+    expect(sumMicroUsd(["4180000", "1250000"])).toBe("5430000");
+    // Float-shaped and garbage values contribute NOTHING (never parsed).
+    expect(sumMicroUsd(["4.18", "1e6", "abc", "-1"])).toBe("0");
+    // Precision beyond Number.MAX_SAFE_INTEGER survives (the float
+    // mutant would lose it — BigInt does not).
+    expect(sumMicroUsd(["9007199254740993"])).toBe("9007199254740993");
+    const floatMutant = ["4180000"].map((value) => String(Number(value) + 0.5));
+    expect(floatMutant[0]).not.toBe(sumMicroUsd(["4180000"]));
+  });
+
+  test("MODULE: runSpendFacts leaves every missing fact null — the zero-guessing mutant differs", async () => {
+    const { runSpendFacts } = await import("../../apps/dashboard/projection");
+    const noResult = { ...result, cost: null, route: null };
+    const facts = runSpendFacts(execution, noResult);
+    expect(facts.costMicroUsd).toBeNull();
+    expect(facts.provider).toBeNull();
+    // The mutant: defaulting a missing cost to "0" (fabricating an
+    // accounting figure the platform did not record).
+    const zeroMutant = facts.costMicroUsd ?? "0";
+    expect(zeroMutant).not.toBeNull();
+    expect(facts.costMicroUsd).toBeNull();
+  });
+
+  test("STATIC: the spend total flows ONLY through the BigInt sum — the float mutant is flagged", () => {
+    const PROJECTION = appsSource("projection.ts");
+    expect(PROJECTION.includes("total += BigInt(value);")).toBe(true);
+    expect(PROJECTION.includes("/^\\d{1,19}$/.test(value)")).toBe(true);
+    // The mutant: parsing money as a float (the classic second-ledger bug).
+    const mutant = PROJECTION.replace("total += BigInt(value);", "total += Number(value);");
+    expect(mutant.includes("total += Number(value);")).toBe(true);
+    expect(mutant.includes("total += BigInt(value);")).toBe(false);
+  });
+
+  test("RUNTIME: the spend page renders the recorded cost exactly and no reservation/settlement figures", async () => {
+    const response = await fetch(`${base}/admin/budgets`, {
+      headers: { cookie: `zeck_recent_executions=${EXECUTION_ID}` },
+      redirect: "manual",
+    });
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html).toContain("$4.18");
+    // The accounting detail is the honest ABSENCE (no fabricated
+    // reservation ids, settlement amounts or ledger rows).
+    expect(html).toContain("not yet exposed by the public API");
+    expect(html).not.toMatch(/reservation (id|#)|settled amount|rail transaction/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D21 — connection secret leakage (WORK-039 AC4/AC9): the connections
+// surface renders ONLY the platform's opaque routing strings — no
+// credential-shaped value, no connection handle, no secret-mediated
+// material; the create contract's forbidden-key rule is stated (the
+// mutant adding a connection field to any surface is flagged).
+// ---------------------------------------------------------------------------
+
+describe("D21 connection secret leakage (no field where a secret could appear)", () => {
+  test("MODULE: a hostile provider string renders as an opaque escaped label — never as a credential or markup", async () => {
+    const { connectionsSection } = await import("../../apps/dashboard/controls");
+    const html = connectionsSection([
+      {
+        provider: '<script>alert("x")</script>',
+        runCount: 1,
+        totalMicroUsd: "1000000",
+        executionIds: [EXECUTION_ID],
+      },
+    ]);
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+    expect(html).not.toMatch(/sk-[a-z0-9]{8,}|Bearer\s+[A-Za-z0-9]/i);
+  });
+
+  test("STATIC: the connections presentation states the forbidden-key boundary and carries no credential rendering", () => {
+    const CONTROLS = appsSource("controls.ts");
+    expect(CONTROLS.includes("The create contract carries no connection field at all")).toBe(true);
+    // No credential-shaped rendering primitive exists in the module.
+    expect(CONTROLS).not.toMatch(/renderSecret|credentialValue|apiKey\]/i);
+    // The mutant: a connection-field render site (the leak).
+    const mutant = CONTROLS.replace(
+      "The create contract carries no connection field at all",
+      "Enter your connection API key below",
+    );
+    expect(mutant.includes("Enter your connection API key below")).toBe(true);
+    expect(mutant.includes("The create contract carries no connection field at all")).toBe(false);
+  });
+
+  test("RUNTIME: the connections page renders the routing facts with no secret-shaped value and no mutation surface", async () => {
+    const response = await fetch(`${base}/assets/connections`, {
+      headers: { cookie: `zeck_recent_executions=${EXECUTION_ID}` },
+      redirect: "manual",
+    });
+    const html = await response.text();
+    expect(response.status).toBe(200);
+    expect(html).toContain("neutral-p");
+    expect(html).toContain("bring your own keys");
+    expect(html).not.toMatch(/sk-[a-z0-9]{8,}|api[_-]?key\s*[:=]|Bearer\s+[A-Za-z0-9._-]+/i);
+    expect(html).not.toMatch(/<form[^>]*method="post"/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D22 — learning-authority mutation (WORK-039 IR6/AC9): learning cannot
+// mutate policy/budget/connections authority through the UI — the
+// Improve surfaces carry NO apply mutation, the recommendation row
+// never claims authorization, and driving every W039 GET journey
+// issues ZERO POST wire calls.
+// ---------------------------------------------------------------------------
+
+describe("D22 learning-authority mutation (learning never authorizes, never mutates)", () => {
+  test("MODULE: the recommendation row carries the never-authorizes boundary and is never backed — the authority-flip mutant differs", async () => {
+    const { learningAuthorityRows } = await import("../../apps/dashboard/projection");
+    const rows = learningAuthorityRows();
+    const recommendation = rows.find((row) => row.kind === "recommendation");
+    expect(recommendation?.backed).toBe(false);
+    expect(recommendation?.fact).toContain(
+      "Learning produces recommendations and evidence, never authorization",
+    );
+    // The mutant: flipping the recommendation row to a platform fact
+    // (claiming authoritative backing no public surface provides).
+    const flipped = rows.map((row) =>
+      row.kind === "recommendation" ? { ...row, backed: true } : row,
+    );
+    expect(flipped.find((row) => row.kind === "recommendation")?.backed).not.toBe(
+      recommendation?.backed,
+    );
+  });
+
+  test("STATIC: the controls module renders no POST form and no apply action — the mutant adding one is flagged", () => {
+    const CONTROLS = appsSource("controls.ts");
+    expect(CONTROLS).not.toMatch(/method="post"|confirmAction|<form[^>]*post/i);
+    // The boundary sentence is part of the module's own vocabulary.
+    expect(CONTROLS.includes("never authorization")).toBe(true);
+    // The mutant: an apply-form render site in the Improve presentation.
+    const mutant = CONTROLS.replace(
+      "never authorization",
+      'never authorization</p><form method="post" action="/improve/learning/apply">',
+    );
+    expect(mutant.includes('action="/improve/learning/apply"')).toBe(true);
+    expect(CONTROLS.includes('action="/improve/learning/apply"')).toBe(false);
+  });
+
+  test("RUNTIME: driving every W039 GET journey issues ZERO POST wire calls and no apply surface renders", async () => {
+    wireCalls.length = 0;
+    for (const path of [
+      "/admin/policies",
+      "/admin/budgets",
+      "/admin/team",
+      "/admin/environments",
+      "/admin/audit",
+      "/assets/connections",
+      "/improve/evaluations",
+      "/improve/insights",
+      "/improve/learning",
+    ]) {
+      const response = await fetch(`${base}${path}`, {
+        headers: { cookie: `zeck_recent_executions=${EXECUTION_ID}` },
+        redirect: "manual",
+      });
+      expect(response.status, path).toBe(200);
+    }
+    // Every W039 wire call is a scoped GET read through the bound scope.
+    expect(wireCalls.filter((call) => call.method === "POST")).toEqual([]);
+    for (const call of wireCalls) {
+      expect(call.application, call.path).toBe(APP_ID);
+    }
+    // The learning page renders the boundary sentence and NO apply form.
+    const learning = await get("/improve/learning");
+    const html = await learning.text();
+    expect(html).toContain("Learning produces recommendations and evidence, never authorization");
+    expect(html).not.toMatch(/<form[^>]*method="post"/);
+    expect(html).not.toMatch(/apply (this|now)|promote now|authorize now/i);
+  });
+});

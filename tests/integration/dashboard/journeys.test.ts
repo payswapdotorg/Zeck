@@ -147,6 +147,10 @@ interface SeedInput {
   readonly route?: RouteSummary;
   readonly cost?: CostSummary;
   readonly lastEventPayload?: Record<string, unknown>;
+  /** WORK-039: the recorded constraints (the declared spend/quality/latency controls). */
+  readonly constraints?: Execution["constraints"];
+  /** WORK-039: the recorded compute environment id. */
+  readonly environmentId?: string | null;
 }
 
 function seedExecution(world: FakeWorld, input: SeedInput): Execution {
@@ -154,10 +158,10 @@ function seedExecution(world: FakeWorld, input: SeedInput): Execution {
   const execution: Execution = {
     id: input.id,
     applicationId: APP_ID,
-    environmentId: null,
+    environmentId: input.environmentId ?? null,
     status: input.status,
     task: { kind: "outcome", description: input.description },
-    constraints: null,
+    constraints: input.constraints ?? null,
     metadata: {},
     createdAt: NOW,
     updatedAt: NOW,
@@ -258,6 +262,25 @@ function createFakeApi(world: FakeWorld): typeof fetch {
             `unknown keys are rejected: ${keyName}`,
           );
         }
+      }
+      // WORK-039 (am): the fake wire enforces the same admission boundary
+      // the real platform enforces at dispatch — a declared spend limit
+      // over the effective ceiling ($100 in this fake world, above every
+      // existing journey's declared limit) is refused with the typed
+      // policy denial (BEFORE any durable record; adjusting the limit and
+      // resubmitting succeeds — the refusal never wedges the create).
+      const declaredLimit = (body.constraints as Record<string, unknown> | undefined | null)
+        ?.maxCostMicroUsd;
+      if (
+        typeof declaredLimit === "string" &&
+        /^\d+$/.test(declaredLimit) &&
+        BigInt(declaredLimit) > 100_000_000n
+      ) {
+        return publicError(
+          403,
+          "POLICY_DENIED",
+          "the requested spend exceeds the effective policy ceiling",
+        );
       }
       const fingerprint = JSON.stringify(body);
       const established = world.createIndex.get(key);
@@ -520,6 +543,12 @@ const VERIFIED_ID = "00000000-0000-7000-8000-0000000000cf";
 const CONSUMER_ID = "00000000-0000-7000-8000-0000000000d1";
 const ARTIFACT_F1 = "00000000-0000-7000-8000-0000000000f1";
 const ARTIFACT_F2 = "00000000-0000-7000-8000-0000000000f2";
+// WORK-039 (ad)–(am): the control-plane fixtures — a constrained +
+// costed spend run (the declared limit, the settled cost, the routed
+// provider), an environment-tagged run and a waiting-human approval run.
+const SPEND_ID = "00000000-0000-7000-8000-0000000000d2";
+const ENV_ID = "00000000-0000-7000-8000-0000000000d3";
+const APPROVAL_ID = "00000000-0000-7000-8000-0000000000d4";
 
 let world: FakeWorld;
 let base = "";
@@ -750,11 +779,20 @@ beforeAll(async () => {
   });
   // (y): policy-blocked — a durable policy-denied admission record; the
   // denial is its own dimension (the execution axis stays in-progress).
+  // WORK-039 (ad)/(al): the denial event carries the platform's own
+  // recorded reason (the controlling rule) on its payload — exactly the
+  // real wire's `execution.policy-denied` `{ denied, reason }` pair.
   seedExecution(world, {
     id: POLICY_ID,
     status: "CREATED",
     description: "Transfer funds to the vendor",
     eventTypes: ["execution.created", "execution.policy-denied"],
+    lastEventPayload: {
+      from: "CREATED",
+      to: "CREATED",
+      denied: true,
+      reason: "the requested spend exceeds the effective policy ceiling",
+    },
   });
   // (y)/(z)/(aa): verified-success — all checks PASS with recorded
   // confidences, an output artifact (f2) referenced by the checks'
@@ -823,6 +861,48 @@ beforeAll(async () => {
     status: "COMPLETED",
     description: "Draft the renewal summary from the verified table",
     eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+  });
+  // WORK-039 (ae): the spend fixture — a run with BOTH a declared limit
+  // (the recorded constraint) and a settled cost (the recorded result
+  // package), routed through a named provider.
+  seedExecution(world, {
+    id: SPEND_ID,
+    status: "COMPLETED",
+    description: "Summarize the quarterly spend report",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+    constraints: { maxCostMicroUsd: "8000000" },
+    route: { provider: "neutral-p", model: "neutral-m", strategyClass: "hybrid", modelCalls: 2 },
+    cost: { totalMicroUsd: "6250000", currency: "usd" },
+  });
+  // WORK-039 (ag): the environment fixture — a run recorded against the
+  // staging environment (the platform's own environmentId fact).
+  seedExecution(world, {
+    id: ENV_ID,
+    status: "COMPLETED",
+    description: "Validate the staging deployment checklist",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+    environmentId: "env-staging",
+    route: {
+      provider: "neutral-p",
+      model: "neutral-m",
+      strategyClass: "deterministic",
+      modelCalls: 0,
+    },
+    cost: { totalMicroUsd: "1250000", currency: "usd" },
+  });
+  // WORK-039 (ah): the approval fixture — a run waiting for a human
+  // review the governing policy required (the live approval queue).
+  seedExecution(world, {
+    id: APPROVAL_ID,
+    status: "WAITING_HUMAN",
+    description: "Approve the vendor payment batch",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.wait-human",
+    ],
+    lastEventPayload: { question: "Approve the external side effect?" },
   });
   {
     const evs = world.events.get(CONSUMER_ID) ?? [];
@@ -2572,5 +2652,333 @@ describe("(ac) the WORK-038 competence journey (honest discovery, governed use)"
     expect(detail).toContain("governed work action");
     expect(detail).not.toMatch(/<form[^>]*method="post"/);
     expect(detail).not.toMatch(/run (it|this) now|execute now/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ad) The WORK-039 rules journey: the Controls families first, the live
+//     blocked-runs list (each denial's recorded controlling rule), the
+//     effective-policy composition as advanced detail
+// ---------------------------------------------------------------------------
+
+describe("(ad) the WORK-039 rules journey (controls first, live denial reasons)", () => {
+  test("/admin/policies renders the seven control families — the live ones backed, the rest explicit absences", async () => {
+    const page = await html(await get("/admin/policies"));
+    expect(page).toContain("Rules and controls");
+    expect(page).toContain("The controls");
+    // AC1's exact family list, in order: quality, spend, latency, data,
+    // tools, approvals, autonomy.
+    expect(page).toContain("Quality");
+    expect(page).toContain("Spend");
+    expect(page).toContain("Latency");
+    expect(page).toContain("Data");
+    expect(page).toContain("Tools");
+    expect(page).toContain("Approvals");
+    expect(page).toContain("Autonomy");
+    // The four live families carry the Platform-fact marker; the three
+    // absent ones carry the Explicit-absence marker (never a fabricated
+    // default).
+    expect((page.match(/class="glance-kind">Platform fact/g) ?? []).length).toBeGreaterThanOrEqual(
+      4,
+    );
+    expect(page).toContain("Explicit absence");
+  });
+
+  test("the blocked list renders the platform-recorded controlling rule per denied run (recents scope)", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${POLICY_ID}`, jar);
+    const page = await html(await get("/admin/policies", jar));
+    expect(page).toContain("Why work gets blocked");
+    expect(page).toContain("the requested spend exceeds the effective policy ceiling");
+    expect(page).toContain(`href="/runs/${POLICY_ID}"`);
+    // The reason renders as the platform's own words — the composition
+    // (set identity/version) stays honestly absent as advanced detail.
+    expect(page).toContain("How the effective rules compose (advanced)");
+  });
+
+  test("without a denied run in the recents scope, no denial reason renders (nothing fabricated)", async () => {
+    const page = await html(await get("/admin/policies"));
+    expect(page).not.toContain("the requested spend exceeds the effective policy ceiling");
+    expect(page).toContain("No run opened in this browser carries a recorded policy denial");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ae) The WORK-039 spend journey: current usage, limits and major
+//     categories in the simple view; reservations/settlement/ledger as
+//     accounting detail; every figure a platform recording
+// ---------------------------------------------------------------------------
+
+describe("(ae) the WORK-039 spend journey (usage, limits, categories — never a second ledger)", () => {
+  test("/admin/budgets renders the simple view: usage, limits and the provider categories", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${SPEND_ID}`, jar);
+    const page = await html(await get("/admin/budgets", jar));
+    expect(page).toContain('class="spend-summary"');
+    expect(page).toContain("Current usage");
+    expect(page).toContain("$6.25");
+    expect(page).toContain("1 run with settled costs");
+    expect(page).toContain("Limits");
+    expect(page).toContain("1 run carries a declared spend limit");
+    expect(page).toContain("Major categories");
+    expect(page).toContain("neutral-p");
+    // The per-run table: cost AND limit side by side, linked to the run.
+    expect(page).toContain('class="kv spend-runs"');
+    expect(page).toContain(`href="/runs/${SPEND_ID}"`);
+    expect(page).toContain("$8.00");
+  });
+
+  test("a run without a settled cost renders the honest 'not settled yet' — never zero", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${POLICY_ID}`, jar);
+    const page = await html(await get("/admin/budgets", jar));
+    expect(page).toContain("not settled yet");
+    expect(page).toContain("none declared");
+  });
+
+  test("the accounting detail is the advanced disclosure with the honest public absence", async () => {
+    const page = await html(await get("/admin/budgets"));
+    expect(page).toContain("Reservations, settlement and the ledger (accounting detail)");
+    expect(page).toContain("Workspace budgets");
+    expect(page).toContain("not yet exposed by the public API");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (af) The WORK-039 connections journey: the live routing facts, the
+//     BYOK/secret-mediated story, no credential-shaped value anywhere
+// ---------------------------------------------------------------------------
+
+describe("(af) the WORK-039 connections journey (routing facts, never secrets)", () => {
+  test("/assets/connections renders the routing facts from the runs opened in this browser", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${SPEND_ID}`, jar);
+    const page = await html(await get("/assets/connections", jar));
+    expect(page).toContain('class="connection-facts"');
+    expect(page).toContain("Routing facts (live)");
+    expect(page).toContain("neutral-p");
+    expect(page).toContain("routed for 1 run opened in this browser");
+    expect(page).toContain("bring your own keys");
+    expect(page).toContain("Health");
+  });
+
+  test("the connections page states the secret-mediated boundary and renders no credential-shaped value", async () => {
+    const page = await html(await get("/assets/connections"));
+    expect(page).toContain("Connection inventory");
+    expect(page).toContain("not yet exposed by the public API");
+    expect(page).toContain("No credential, key or token is ever rendered");
+    // No secret-shaped value ever appears (the hostile-ref discipline).
+    expect(page).not.toMatch(/sk-[a-z0-9]{8,}|api[_-]?key\s*[:=]/i);
+    expect(page).not.toMatch(/<form[^>]*method="post"/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ag) The WORK-039 environments journey: the environments recorded on
+//     real runs (the default honestly), the authority absent
+// ---------------------------------------------------------------------------
+
+describe("(ag) the WORK-039 environments journey (recorded isolation boundaries)", () => {
+  test("/admin/environments renders the recorded environments with run links (the default honestly)", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${ENV_ID}`, jar);
+    await get(`/runs/${SPEND_ID}`, jar);
+    const page = await html(await get("/admin/environments", jar));
+    expect(page).toContain("env-staging");
+    expect(page).toContain(`href="/runs/${ENV_ID}"`);
+    expect(page).toContain("default");
+    expect(page).toContain(`href="/runs/${SPEND_ID}"`);
+    expect(page).toContain("Environment inventory and configuration");
+    expect(page).toContain("not yet exposed by the public API");
+  });
+
+  test("without recents the page renders the honest empty scope note", async () => {
+    const page = await html(await get("/admin/environments"));
+    expect(page).toContain("No executions opened in this browser yet");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ah) The WORK-039 team journey: safe operational intent — the live
+//     approval queue, the membership absence
+// ---------------------------------------------------------------------------
+
+describe("(ah) the WORK-039 team journey (who decides what)", () => {
+  test("/admin/team renders the live approval queue from the platform's waiting states", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${APPROVAL_ID}`, jar);
+    const page = await html(await get("/admin/team", jar));
+    expect(page).toContain("Who decides what");
+    expect(page).toContain(`href="/runs/${APPROVAL_ID}"`);
+    expect(page).toContain("a human review the governing policy required");
+    expect(page).toContain("Members and roles");
+    expect(page).toContain("not yet exposed by the public API");
+  });
+
+  test("no waiting runs render the honest empty queue (never a fabricated approver)", async () => {
+    const page = await html(await get("/admin/team"));
+    expect(page).toContain("No governed work is waiting for a decision right now");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ai) The WORK-039 audit journey: the per-run governed-action ledgers
+//     (the closest live record), the cross-work surface absent
+// ---------------------------------------------------------------------------
+
+describe("(ai) the WORK-039 audit journey (the governed-action record)", () => {
+  test("/admin/audit renders the per-run event ledgers with the latest stage and the activity link", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${SPEND_ID}`, jar);
+    const page = await html(await get("/admin/audit", jar));
+    expect(page).toContain(`href="/runs/${SPEND_ID}?tab=activity"`);
+    expect(page).toContain("4 recorded events");
+    expect(page).toContain("Cross-work audit");
+    expect(page).toContain("not yet exposed by the public API");
+  });
+
+  test("a policy-denied run's ledger includes the denial in its event count (the append-only record)", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${POLICY_ID}`, jar);
+    const page = await html(await get("/admin/audit", jar));
+    expect(page).toContain("2 recorded events");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (aj) The WORK-039 insights journey: the five recommendation families,
+//     the three dispositions, the live evidence pointers
+// ---------------------------------------------------------------------------
+
+describe("(aj) the WORK-039 insights journey (the recommendation structure, honest ahead of facts)", () => {
+  test("/improve/insights renders the five families as explicit absences — never fabricated rows", async () => {
+    const page = await html(await get("/improve/insights"));
+    expect(page).toContain("Observed evidence");
+    expect(page).toContain("Expected impact");
+    expect(page).toContain("Confidence");
+    expect(page).toContain("Affected work");
+    expect(page).toContain("Disposition");
+    expect(page).toContain("not yet exposed by the public API");
+  });
+
+  test("the three dispositions render as distinct rows (advisory/review/applicable, never merged)", async () => {
+    const page = await html(await get("/improve/insights"));
+    expect(page).toContain("Advisory");
+    expect(page).toContain("Review");
+    expect(page).toContain("Applicable");
+    expect(page).toContain("never a dashboard-side mutation");
+  });
+
+  test("the live evidence pointers link to the executions/evidence surfaces (IR4)", async () => {
+    const page = await html(await get("/improve/insights"));
+    expect(page).toContain('href="/trust/evidence"');
+    expect(page).toContain('href="/improve/evaluations"');
+    expect(page).toContain('href="/improve/learning"');
+    // No apply mutation exists anywhere on the insights surface.
+    expect(page).not.toMatch(/<form[^>]*method="post"/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ak) The WORK-039 learning journey: evidence / recommendation /
+//     authoritative production — distinct, with the live selection record
+// ---------------------------------------------------------------------------
+
+describe("(ak) the WORK-039 learning journey (learning never authorizes)", () => {
+  test("/improve/learning renders the three distinct stages with the never-authorizes boundary", async () => {
+    const page = await html(await get("/improve/learning"));
+    expect(page).toContain("Evidence");
+    expect(page).toContain("Recommendation");
+    expect(page).toContain("Authoritative production behavior");
+    expect(page).toContain("Learning produces recommendations and evidence, never authorization");
+  });
+
+  test("the live production record renders the platform's own selection facts (promotion, who, when)", async () => {
+    const page = await html(await get("/improve/learning"));
+    expect(page).toContain("The live production record");
+    expect(page).toContain("Support Triage Agent");
+    expect(page).toContain("promoted by the platform's selection rules");
+    expect(page).toContain("architect@example.test");
+    expect(page).toContain(`href="/agents/${AGENT_ID}"`);
+  });
+
+  test("no apply mutation exists on the learning surface (the authority boundary is structural)", async () => {
+    const page = await html(await get("/improve/learning"));
+    expect(page).not.toMatch(/<form[^>]*method="post"/);
+    expect(page).not.toMatch(/apply (this|now)|promote now/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (al) The WORK-039 blocked-run journey: the run page explains why the
+//     action is blocked and which rule controls it (the recorded reason)
+// ---------------------------------------------------------------------------
+
+describe("(al) the WORK-039 blocked-run journey (why blocked, which rule)", () => {
+  test("the policy-denied run page renders the blocked explanation with the platform's recorded reason", async () => {
+    const page = await html(await get(`/runs/${POLICY_ID}`));
+    expect(page).toContain('class="state state-blocked"');
+    expect(page).toContain("Blocked by policy");
+    expect(page).toContain("the requested spend exceeds the effective policy ceiling");
+    expect(page).toContain("policy is the admission authority");
+  });
+
+  test("the whyPanel's permission answer carries the controlling rule verbatim", async () => {
+    const page = await html(await get(`/runs/${POLICY_ID}`));
+    expect(page).toContain("Why was that approach permitted?");
+    expect(page).toContain("The controlling rule:");
+    expect(page).toContain("never reworded");
+  });
+
+  test("a run with NO recorded denial renders no blocked explanation (the block never fabricates)", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).not.toContain("state state-blocked");
+    expect(page).not.toContain("Blocked by policy");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (am) The WORK-039 create-refusal journey: a policy-boundary refusal at
+//     admission renders the blocked vocabulary before any retry
+// ---------------------------------------------------------------------------
+
+describe("(am) the WORK-039 create-refusal journey (the governed create refused by policy)", () => {
+  test("an over-ceiling spend limit is refused with the typed denial and the blocked explanation", async () => {
+    const review = await html(
+      await get(
+        `/build/execution?outcome=${encodeURIComponent(
+          "Transfer the funds to the vendor",
+        )}&applicationId=${APP_ID}&spendLimitDollars=500`,
+      ),
+    );
+    expect(review).toContain("Run this work?");
+    const body = hiddenFieldsOf(review);
+    const response = await postForm("/build/execution", body);
+    expect(response.status).toBe(422);
+    const page = await html(response);
+    // The live region carries the typed code; the blocked explanation
+    // renders the platform's message as the controlling rule.
+    expect(page).toContain("The platform rejected this request");
+    expect(page).toContain("POLICY_DENIED");
+    expect(page).toContain('class="state state-blocked"');
+    expect(page).toContain("the requested spend exceeds the effective policy ceiling");
+    expect(page).toContain("Adjust the declared controls");
+    // No execution was created (the refusal precedes any durable record).
+    expect(world.createCalls.length).toBeGreaterThanOrEqual(1);
+    const lastCall = world.createCalls[world.createCalls.length - 1];
+    expect((lastCall?.constraints as Record<string, unknown>)?.maxCostMicroUsd).toBe("500000000");
+  });
+
+  test("adjusting the limit and resubmitting succeeds (the refusal never wedges the create)", async () => {
+    const review = await html(
+      await get(
+        `/build/execution?outcome=${encodeURIComponent(
+          "Transfer the funds to the vendor",
+        )}&applicationId=${APP_ID}&spendLimitDollars=5`,
+      ),
+    );
+    const body = hiddenFieldsOf(review);
+    const response = await postForm("/build/execution", body);
+    expect(response.status).toBe(303);
   });
 });

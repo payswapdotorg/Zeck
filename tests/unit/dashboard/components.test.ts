@@ -321,6 +321,44 @@ describe("WhyPanel (UX §6.4 — platform facts only, route is secondary)", () =
     expect(html).toContain("$4.18");
     expect(html).toContain("4180000 micro-USD");
   });
+
+  // WORK-039 AC2: the permission answer carries the platform's recorded
+  // controlling rule when a policy denial exists — verbatim, and ONLY
+  // then (a run without a denial never renders one).
+  test("the permission answer carries the recorded controlling rule when a denial exists", () => {
+    const denied = events("execution.created", "execution.policy-denied").map((event, index) =>
+      index === 1
+        ? {
+            ...event,
+            payload: {
+              from: "CREATED",
+              to: "CREATED",
+              denied: true,
+              reason: "the requested spend exceeds the effective policy ceiling",
+            },
+          }
+        : event,
+    );
+    const html = whyPanel({
+      execution: execution("CREATED"),
+      result: baseResult([]),
+      events: denied,
+    });
+    expect(html).toContain("Policy denied admission");
+    expect(html).toContain("The controlling rule:");
+    expect(html).toContain(
+      "<strong>the requested spend exceeds the effective policy ceiling</strong>",
+    );
+  });
+
+  test("a run without a recorded denial renders no controlling-rule line (nothing fabricated)", () => {
+    const html = whyPanel({
+      execution: execution("COMPLETED"),
+      result: baseResult([]),
+      events: events("execution.created", "execution.fail"),
+    });
+    expect(html).not.toContain("The controlling rule:");
+  });
 });
 
 describe("AttentionCard (UX §4/§8)", () => {

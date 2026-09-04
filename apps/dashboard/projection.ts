@@ -1393,3 +1393,297 @@ export function evaluationStatusRows(): readonly EvaluationStatusRow[] {
     },
   ];
 }
+
+// ---------------------------------------------------------------------------
+// WORK-039: the control-plane derivations — policy denial, spend, provider
+// routing, environments, approvals and the learning-authority distinctions.
+// Every derivation reads ONLY platform-typed public fields; nothing here
+// computes an authority client-side (policy stays the authorization
+// boundary, accounting stays canonical, learning never authorizes).
+// ---------------------------------------------------------------------------
+
+/**
+ * The recorded policy denial (AC2): reads ONLY the `execution.policy-denied`
+ * event's payload — the platform's own recorded `{ denied, reason }` pair.
+ * The reason is the controlling rule in the platform's own words; it is
+ * rendered verbatim, never classified or reworded by this projection. No
+ * other event type and no other payload key can produce a denial fact (a
+ * fabricated-reason mutant differs on the same input — pinned by D19).
+ */
+export interface PolicyDenialFact {
+  /** The platform-recorded denial reason, verbatim. */
+  readonly reason: string;
+  /** When the denial was recorded. */
+  readonly occurredAt: string;
+}
+
+export function policyDenialOf(events: readonly ExecutionEvent[]): PolicyDenialFact | null {
+  for (const event of chronologicalEvents(events)) {
+    if (event.type !== "execution.policy-denied") {
+      continue;
+    }
+    const payload = event.payload as Record<string, unknown>;
+    const reason = payload.reason;
+    if (typeof reason === "string" && reason.trim().length > 0) {
+      return { reason, occurredAt: event.occurredAt };
+    }
+  }
+  return null;
+}
+
+/** One run's spend facts (AC3): the recorded cost, the declared limit, the routed provider. */
+export interface RunSpendFact {
+  readonly executionId: string;
+  /** Integer micro-USD string when the platform recorded a settled cost, else null. */
+  readonly costMicroUsd: string | null;
+  /** The declared per-execution spend limit (constraints.maxCostMicroUsd), else null. */
+  readonly limitMicroUsd: string | null;
+  /** The opaque routed provider (neutral string) when a route is recorded, else null. */
+  readonly provider: string | null;
+}
+
+/**
+ * Derive one run's spend facts from the public records ONLY: the settled
+ * cost from the run's own result package, the declared limit from the
+ * execution's recorded constraints, the provider from the route summary.
+ * A missing fact stays null — never zero, never a guess (D20).
+ */
+export function runSpendFacts(execution: Execution, result: ExecutionResult): RunSpendFact {
+  return {
+    executionId: execution.id,
+    costMicroUsd: result.cost === null ? null : result.cost.totalMicroUsd,
+    limitMicroUsd: declaredBudgetMicroUsd(execution),
+    provider: result.route === null ? null : result.route.provider,
+  };
+}
+
+/**
+ * Sum integer micro-USD strings (AC3): BigInt only — never floats, never
+ * parsed decimals. Non-string / non-integer values contribute NOTHING
+ * (the honest skip: a malformed value never becomes a fabricated total).
+ */
+export function sumMicroUsd(values: readonly string[]): string {
+  let total = 0n;
+  for (const value of values) {
+    if (/^\d{1,19}$/.test(value)) {
+      total += BigInt(value);
+    }
+  }
+  return total.toString();
+}
+
+/** One provider category's usage (AC3 "major categories"): the routed runs and their recorded spend. */
+export interface ProviderCategoryFact {
+  /** The opaque provider string (neutral — never a connection handle). */
+  readonly provider: string;
+  readonly runCount: number;
+  /** The sum of the recorded costs of these runs (integer micro-USD string). */
+  readonly totalMicroUsd: string;
+  /** The run ids in this category (each links to its run page). */
+  readonly executionIds: readonly string[];
+}
+
+/**
+ * Group the runs' spend facts by routed provider (AC3 "major categories"):
+ * the platform's own opaque provider strings — null (deterministic route)
+ * groups as "(no provider recorded)". Grouping NEVER invents a provider a
+ * run did not record (D20).
+ */
+export function providerCategoryFacts(
+  facts: readonly RunSpendFact[],
+): readonly ProviderCategoryFact[] {
+  const groups = new Map<string, RunSpendFact[]>();
+  for (const fact of facts) {
+    const key = fact.provider ?? "(no provider recorded)";
+    const bucket = groups.get(key);
+    if (bucket === undefined) {
+      groups.set(key, [fact]);
+    } else {
+      bucket.push(fact);
+    }
+  }
+  return [...groups.entries()]
+    .map(([provider, runs]) => ({
+      provider,
+      runCount: runs.length,
+      totalMicroUsd: sumMicroUsd(
+        runs.map((run) => run.costMicroUsd).filter((value): value is string => value !== null),
+      ),
+      executionIds: runs.map((run) => run.executionId),
+    }))
+    .sort((a, b) => a.provider.localeCompare(b.provider));
+}
+
+/** One environment's live facts (AC5): the runs recorded against it in this browser's scope. */
+export interface EnvironmentFact {
+  /** The recorded environment id, or the honest default marker. */
+  readonly environmentId: string | null;
+  readonly runCount: number;
+  readonly executionIds: readonly string[];
+}
+
+/**
+ * Group the runs by their RECORDED environment id (AC5): `null` is the
+ * platform's own "no environment recorded" fact — rendered as the default
+ * environment honestly, never invented. The environments authority's own
+ * inventory/configuration is not public (stated, never worked around).
+ */
+export function environmentFacts(executions: readonly Execution[]): readonly EnvironmentFact[] {
+  const groups = new Map<string | null, Execution[]>();
+  for (const execution of executions) {
+    const bucket = groups.get(execution.environmentId);
+    if (bucket === undefined) {
+      groups.set(execution.environmentId, [execution]);
+    } else {
+      bucket.push(execution);
+    }
+  }
+  return [...groups.entries()]
+    .map(([environmentId, runs]) => ({
+      environmentId,
+      runCount: runs.length,
+      executionIds: runs.map((run) => run.id),
+    }))
+    .sort((a, b) => {
+      if (a.environmentId === null) {
+        return b.environmentId === null ? 0 : 1;
+      }
+      if (b.environmentId === null) {
+        return -1;
+      }
+      return a.environmentId < b.environmentId ? -1 : a.environmentId > b.environmentId ? 1 : 0;
+    });
+}
+
+/**
+ * The live approval queue (AC5/AC8): runs recorded in a waiting state —
+ * WAITING_USER (the end user's decision) and WAITING_HUMAN (a human
+ * review the governing policy required). These are the platform's own
+ * approval facts; who the approvers ARE is membership data the public API
+ * does not expose (the honest absence on the team surface).
+ */
+export interface ApprovalQueueFact {
+  readonly executionId: string;
+  readonly status: "WAITING_USER" | "WAITING_HUMAN";
+}
+
+export function approvalQueueFacts(executions: readonly Execution[]): readonly ApprovalQueueFact[] {
+  return executions
+    .filter(
+      (execution) => execution.status === "WAITING_USER" || execution.status === "WAITING_HUMAN",
+    )
+    .map((execution) => ({
+      executionId: execution.id,
+      status: execution.status as "WAITING_USER" | "WAITING_HUMAN",
+    }));
+}
+
+/**
+ * The authoritative production record (AC7): the agent inventory's own
+ * selection facts — the platform's promotion/rollback decisions, with WHO
+ * selected and WHEN. This is the live "authoritative production behavior"
+ * the learning distinction anchors to: an authoritative change of what
+ * governed work runs, decided by the platform's selection rules — never
+ * by a recommendation and never by this dashboard.
+ */
+export interface AgentSelectionFact {
+  readonly agentId: string;
+  readonly agentName: string;
+  readonly kind: "promotion" | "rollback";
+  readonly selectedBy: string;
+  readonly selectedAt: string;
+  readonly rollbackOf: string | null;
+}
+
+export function agentSelectionFacts(status: AgentStatusView): AgentSelectionFact | null {
+  const selection = status.latestSelection;
+  if (selection === null) {
+    return null;
+  }
+  return {
+    agentId: status.agent.id,
+    agentName: status.agent.name,
+    kind: selection.kind,
+    selectedBy: selection.selectedBy,
+    selectedAt: selection.selectedAt,
+    rollbackOf: selection.rollbackOf,
+  };
+}
+
+/**
+ * The recommendation disposition vocabulary (AC6): the three dispositions
+ * a platform recommendation carries — advisory / review / applicable —
+ * each its own row, never derived from another, each the explicit absence
+ * today (no public recommendation surface; the structure renders ahead of
+ * the facts, exactly like the W038 competence families).
+ */
+export type RecommendationDispositionKind = "advisory" | "review" | "applicable";
+
+export interface RecommendationDispositionRow {
+  readonly kind: RecommendationDispositionKind;
+  readonly label: string;
+  readonly fact: string;
+  readonly backed: boolean;
+}
+
+export function recommendationDispositionRows(): readonly RecommendationDispositionRow[] {
+  return [
+    {
+      kind: "advisory",
+      label: "Advisory",
+      fact: "A recommendation the platform derived from observed evidence — presented for your judgment. Advisory recommendations change nothing on their own: they are never authorization, and they are never applied automatically.",
+      backed: false,
+    },
+    {
+      kind: "review",
+      label: "Review",
+      fact: "A recommendation that asks for a human decision before anything changes — the review step in the platform's own promotion rules. No public review surface exists yet; when one ships, its decisions render here as their own facts.",
+      backed: false,
+    },
+    {
+      kind: "applicable",
+      label: "Applicable",
+      fact: "A recommendation the platform has validated as applicable to specific work — still not applied: application is a governed platform operation with its own consequence preview, never a dashboard-side mutation. No public applicable-recommendation surface exists yet.",
+      backed: false,
+    },
+  ];
+}
+
+/**
+ * The learning-authority distinction rows (AC7, IR6): evidence,
+ * recommendation and authoritative production — three DISTINCT stages,
+ * never conflated. The evidence row and the production row state their
+ * LIVE public anchors (per-execution verification; the agent inventory's
+ * selection records); the recommendation row carries the boundary
+ * sentence: learning produces recommendations and evidence, never
+ * authorization.
+ */
+export interface LearningAuthorityRow {
+  readonly kind: "evidence" | "recommendation" | "production";
+  readonly label: string;
+  readonly fact: string;
+  readonly backed: boolean;
+}
+
+export function learningAuthorityRows(): readonly LearningAuthorityRow[] {
+  return [
+    {
+      kind: "evidence",
+      label: "Evidence",
+      fact: "What the platform observed and recorded — per-execution verification results, events and settled facts. Evidence is live through the governed API: open a run's Evidence view, or the Trust evidence surface. Evidence describes what happened; it never authorizes anything.",
+      backed: true,
+    },
+    {
+      kind: "recommendation",
+      label: "Recommendation",
+      fact: "An advisory improvement proposal derived from evidence — advisory only. Learning produces recommendations and evidence, never authorization: no recommendation can change policy, budget, connections or what governed work runs, and no recommendation is applied automatically (application is a governed platform operation with its own rules). No public recommendation surface exists yet.",
+      backed: false,
+    },
+    {
+      kind: "production",
+      label: "Authoritative production behavior",
+      fact: "What governed work actually runs — decided by the platform's own selection rules. The live public record today is the agent inventory's selection facts (promotions and rollbacks, each with who selected and when); open an agent's page for its selection record. A production change is never implied by an observation or a recommendation.",
+      backed: true,
+    },
+  ];
+}

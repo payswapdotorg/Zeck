@@ -28,6 +28,7 @@ import {
   executionTitle,
   type GlanceFact,
   isSecretShapedKey,
+  policyDenialOf,
   redactSecretShaped,
   safeTaskPairs,
   statusLabel,
@@ -361,7 +362,16 @@ export function whyPanel(view: WhyPanelView): string {
           ["model calls", String(result.route.modelCalls)],
         ]);
   const policyAxis = derivePolicyAxis(execution, events);
-  const permitted = `<p><strong>${esc(policyAxis.label)}</strong> — ${esc(policyAxis.detail)}</p>`;
+  // WORK-039 AC2: when the platform recorded a policy denial, the
+  // recorded reason (the controlling rule, the platform's own words)
+  // renders inside the permission answer — the same fact the run page's
+  // blocked explanation carries, never re-derived here.
+  const denial = policyDenialOf(events);
+  const permitted = `<p><strong>${esc(policyAxis.label)}</strong> — ${esc(policyAxis.detail)}</p>${
+    denial === null
+      ? ""
+      : `\n<p>The controlling rule: <strong>${esc(denial.reason)}</strong> (recorded by the platform — rendered verbatim, never reworded).</p>`
+  }`;
   const constraints = execution.constraints as Record<string, unknown> | null;
   const constraintKeys =
     constraints === null

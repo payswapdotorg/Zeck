@@ -43,6 +43,23 @@ import {
   verificationSummary,
   whyPanel,
 } from "./components";
+import {
+  type AuditLedgerRow,
+  accountingDetailDisclosure,
+  auditLedgerSection,
+  blockedExplanation,
+  connectionsSection,
+  controlFamiliesTable,
+  createBlockedExplanation,
+  environmentsSection,
+  learningDistinctionSection,
+  policyCompositionDisclosure,
+  recommendationDispositionList,
+  recommendationFamiliesSection,
+  spendRunsTable,
+  spendSummarySection,
+  teamSection,
+} from "./controls";
 import { advancedDisclosure } from "./disclosure";
 import {
   assetResult,
@@ -56,11 +73,15 @@ import {
 } from "./http";
 import { type ExperienceMode, modeCookieHeader, modeOf } from "./modes";
 import {
+  type AgentSelectionFact,
   APPEARANCE_COOKIE,
   addRecent,
   agentGlanceFacts,
+  agentSelectionFacts,
+  approvalQueueFacts,
   buildExecutionRequest,
   buildWorkloadRequest,
+  chronologicalEvents,
   competenceDetailFacts,
   competenceDiscoveryFacts,
   completionExplainerRows,
@@ -73,18 +94,26 @@ import {
   deriveVerificationChip,
   deriveWorkloadFacts,
   durationMs,
+  environmentFacts,
   evaluationStatusRows,
+  eventStageLabel,
   executionTitle,
   inputArtifactRefsOf,
   isTerminal,
   looksLikeExecutionId,
+  type PolicyDenialFact,
   parseAttachmentRefs,
   parseRecents,
+  policyDenialOf,
+  providerCategoryFacts,
   QUALITY_OPTIONS,
   RECENTS_COOKIE,
+  type RunSpendFact,
   redactSecretShaped,
+  runSpendFacts,
   safeTaskPairs,
   serializeRecents,
+  sumMicroUsd,
   validateExecutionForm,
   validateWorkloadForm,
   WORKLOAD_FORM_KEYS,
@@ -695,6 +724,14 @@ async function createExecutionHandler(
     return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
   } catch (error) {
     if (error instanceof ZeckApiError && error.status < 500) {
+      // WORK-039 AC2/AC8: a policy-boundary refusal renders the blocked
+      // vocabulary (the platform's message as the controlling rule, the
+      // authorization boundary stated) — the same explanation a blocked
+      // run's page carries, before any retry commitment.
+      const policyBoundary =
+        error.body.code === "POLICY_DENIED" || error.body.code === "BUDGET_EXCEEDED"
+          ? `\n${createBlockedExplanation(error.body.code, error.body.message)}`
+          : "";
       const content = `${pageHead({
         title: "Review the proposed execution",
         path: "/build/execution",
@@ -703,6 +740,7 @@ async function createExecutionHandler(
 <div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this request: ${esc(
         error.body.message,
       )} (${esc(error.body.code)})</div>
+${policyBoundary}
 ${proposedApproachEnvelope(ctx.form)}
 ${runCommitmentCard(ctx.form, idempotencyKey, "Try again")}`;
       return htmlStatusResult(
@@ -1597,9 +1635,14 @@ ${resultSurface({
   trustSummaryHtml: trustSummarySection({ execution, result, events }),
 })}`;
   }
+  // WORK-039 AC2: the blocked explanation renders when (and only when) the
+  // platform recorded a policy denial on this run's event stream — the
+  // controlling rule in the platform's own words, never re-resolved here.
+  const denial = policyDenialOf(events);
   const content = `${head}
 ${header}
 ${workloadBlock}
+${denial === null ? "" : blockedExplanation(denial)}
 ${whyPanel({ execution, result, events })}
 ${tabNav(execution.id, tab)}
 ${panel}`;
@@ -2123,21 +2166,6 @@ ${glanceGrid(competenceDetailFacts())}
   );
 }
 
-async function connectionsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
-  void client;
-  const content = `${pageHead({ title: "Connections", path: "/assets/connections" })}
-${unavailableState(
-  "Connections",
-  "External tool and data connections are governed server-side; the public API does not expose a connections surface.",
-  "a connections projection over the integrations authority",
-)}
-<p class="muted">Secret safety: connection credentials are never rendered anywhere in this dashboard — there is no field where a secret could appear.</p>`;
-  return page(
-    { title: "Zeck — Connections", activePath: "/assets/connections", mainContent: content },
-    ctx,
-  );
-}
-
 // ---------------------------------------------------------------------------
 // WORK-038: the Trust surfaces — live per-execution evidence and lineage
 // anchors (from the executions opened in this browser), with the honest
@@ -2310,118 +2338,348 @@ ${unavailableState(
 }
 
 // ---------------------------------------------------------------------------
-// Improve and Admin — honest unavailable states
+// WORK-039: the Control and Improve surfaces — live presentations over the
+// public control-plane facts (the runs opened in this browser + the agent
+// inventory), each honest absence anchored to its authority. Policy stays
+// the authorization boundary; accounting stays canonical; credentials stay
+// secret-mediated; learning stays advisory (never authorization).
 // ---------------------------------------------------------------------------
 
-interface StaticPage {
-  readonly title: string;
-  readonly h1: string;
-  readonly activePath: string;
-  readonly concept: string;
-  readonly explanation: string;
-  readonly futureSource: string;
-}
-
-const STATIC_PAGES: readonly (readonly [string, StaticPage])[] = [
-  [
-    "/improve/insights",
-    {
-      title: "Zeck — Insights",
-      h1: "Insights",
-      activePath: "/improve/insights",
-      concept: "Insights",
-      explanation:
-        "Insights are recommendations to improve your workflows — each with observed evidence, expected impact and confidence. The public API does not expose an insights surface yet.",
-      futureSource: "the learning authority through the public API",
-    },
-  ],
-  [
-    "/improve/learning",
-    {
-      title: "Zeck — Learning",
-      h1: "Learning",
-      activePath: "/improve/learning",
-      concept: "Learning",
-      explanation:
-        "Learning telemetry powers Zeck's recommendations. The public API does not expose a learning surface yet.",
-      futureSource: "the learning authority through the public API",
-    },
-  ],
-  [
-    "/admin/policies",
-    {
-      title: "Zeck — Policies",
-      h1: "Policies",
-      activePath: "/admin/policies",
-      concept: "Policies and controls",
-      explanation:
-        "Controls in user language: quality targets, cost limits per execution, latency limits, data regions, allowed external tools, and approval requirements for external side effects. The effective values are not exposed by the public API yet.",
-      futureSource: "the policy authority through the public API",
-    },
-  ],
-  [
-    "/admin/budgets",
-    {
-      title: "Zeck — Budgets",
-      h1: "Budgets",
-      activePath: "/admin/budgets",
-      concept: "Budgets and spend",
-      explanation:
-        "Spend management: monthly spend, remaining budget and the breakdown across executions, agents and training. The values are not exposed by the public API yet.",
-      futureSource: "the budgets authority through the public API",
-    },
-  ],
-  [
-    "/admin/team",
-    {
-      title: "Zeck — Team",
-      h1: "Team",
-      activePath: "/admin/team",
-      concept: "Team",
-      explanation:
-        "Workspace members, roles and approval responsibilities. The public API does not expose a team surface yet.",
-      futureSource: "the membership authority through the public API",
-    },
-  ],
-  [
-    "/admin/environments",
-    {
-      title: "Zeck — Environments",
-      h1: "Environments",
-      activePath: "/admin/environments",
-      concept: "Compute environments",
-      explanation:
-        "Compute environments (substrates) that executions run in. The public API does not expose an environments surface yet; executions carry only their environment id.",
-      futureSource: "the compute environment authority through the public API",
-    },
-  ],
-  [
-    "/admin/audit",
-    {
-      title: "Zeck — Audit",
-      h1: "Audit",
-      activePath: "/admin/audit",
-      concept: "Audit",
-      explanation:
-        "Audit records over governed actions. The public API does not expose an audit surface yet; per-execution events are the closest live record.",
-      futureSource: "the audit authority through the public API",
-    },
-  ],
-];
-
-function staticPageOf(path: string): StaticPage {
-  const entry = STATIC_PAGES.find(([key]) => key === path);
-  if (entry === undefined) {
-    throw new Error(`no static page registered for ${path}`);
+/**
+ * WORK-039 AC1/AC2: the Rules surface — user-level controls FIRST (the
+ * seven families: quality/spend/latency/approvals live, data/tools/
+ * autonomy the honest absences), the live blocked-runs list (each
+ * denial's recorded controlling rule + link to the run), and the
+ * effective-policy composition as ADVANCED detail (never resolved here).
+ */
+async function policiesPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const blocked: { id: string; title: string; status: string; denial: PolicyDenialFact }[] = [];
+  for (const execution of recents.executions) {
+    let events: readonly ExecutionEvent[] = [];
+    try {
+      events = await client.listEvents(execution.id);
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+    const denial = policyDenialOf(events);
+    if (denial !== null) {
+      blocked.push({
+        id: execution.id,
+        title: executionTitle(execution.task, execution.id),
+        status: execution.status,
+        denial,
+      });
+    }
   }
-  return entry[1];
+  const blockedList =
+    blocked.length === 0
+      ? '<p class="muted">No run opened in this browser carries a recorded policy denial — when the platform refuses admission, the controlling rule is recorded on the run and listed here.</p>'
+      : `<ul class="runs-list">${blocked
+          .map(
+            (item) => `<li>
+  <a class="run-title" href="/runs/${encodeURIComponent(item.id)}">${esc(item.title)}</a>
+  ${statusBadge(item.status)}
+  <span class="axis-fact">Blocked: ${esc(item.denial.reason)}</span>
+</li>`,
+          )
+          .join("\n")}</ul>`;
+  const content = `${pageHead({ title: "Rules and controls", path: "/admin/policies" })}
+<p>Controls in your language. Each control is a rule the platform enforces at admission — declared per run on the create request, or set by your workspace's effective policy. This surface explains them; it never resolves them.</p>
+<h2>The controls</h2>
+${controlFamiliesTable()}
+<h2>Why work gets blocked</h2>
+<p>When the effective policy refuses a run, the platform records the controlling rule on that run's event stream — the reason in the platform's own words, linked from here. No policy-engine internals, and no re-resolution by this dashboard.</p>
+${blockedList}
+${policyCompositionDisclosure()}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
+  return page(
+    { title: "Zeck — Rules and controls", activePath: "/admin/policies", mainContent: content },
+    ctx,
+    { setCookies },
+  );
 }
 
-function staticUnavailablePage(pageInfo: StaticPage, ctx: HttpContext): HandlerResult {
-  const content = `${pageHead({ title: pageInfo.h1, path: pageInfo.activePath })}
-${unavailableState(pageInfo.concept, pageInfo.explanation, pageInfo.futureSource)}`;
+/**
+ * WORK-039 AC3: the Spend surface — the simple view (current usage, the
+ * declared limits, the major categories — every figure a platform
+ * recording, the sum BigInt-only), the per-run table with links, and the
+ * accounting detail (reservations/settlement/ledger) as ADVANCED detail
+ * with its honest public absence. No second accounting truth.
+ */
+async function spendPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const facts: RunSpendFact[] = [];
+  for (const execution of recents.executions) {
+    let result: ExecutionResult;
+    try {
+      result = await client.getResult(execution.id);
+    } catch (error) {
+      if (error instanceof ZeckApiError && error.status === 404) {
+        // No result package yet (the run has not settled): the run still
+        // renders — its declared limit from the execution record, the
+        // honest "not settled yet" for cost, no invented route.
+        result = {
+          executionId: execution.id,
+          status: execution.status,
+          route: null,
+          cost: null,
+          usage: null,
+          outputArtifacts: [],
+          verification: [],
+          warnings: [],
+          terminalAt: null,
+        };
+      } else {
+        throw error;
+      }
+    }
+    facts.push(runSpendFacts(execution, result));
+  }
+  const total = sumMicroUsd(
+    facts.map((fact) => fact.costMicroUsd).filter((value): value is string => value !== null),
+  );
+  const categories = providerCategoryFacts(facts);
+  const content = `${pageHead({ title: "Spend", path: "/admin/budgets" })}
+<p>Spend in plain language: what work cost, what limits were declared, and where the money went — every figure a platform recording, never a dashboard estimate.</p>
+${spendSummarySection({ facts, totalMicroUsd: total, categories })}
+<h2>Per-run spend</h2>
+${spendRunsTable(facts)}
+${accountingDetailDisclosure()}
+${unavailableState(
+  "Workspace budgets",
+  "Workspace-level budgets — the spending ceiling, the remaining budget and the breakdown across ALL work (not just this browser's runs) — are the budgets authority's own records and are not exposed by the public API. The per-run figures above are the live public facts; nothing on this surface competes with the authority's accounting.",
+  "the budgets authority through the public API",
+)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
+  return page({ title: "Zeck — Spend", activePath: "/admin/budgets", mainContent: content }, ctx, {
+    setCookies,
+  });
+}
+
+/**
+ * WORK-039 AC4: the Connections surface — the live routing facts (the
+ * platform's own opaque provider strings, per run, browser-scoped), the
+ * BYOK/secret-mediated setup story, and the honest absence of a
+ * connections inventory/health API. No credential-shaped value renders
+ * anywhere; no public wire shape even carries a field where a secret
+ * could appear.
+ */
+async function connectionsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const facts: RunSpendFact[] = [];
+  for (const execution of recents.executions) {
+    let result: ExecutionResult;
+    try {
+      result = await client.getResult(execution.id);
+    } catch (error) {
+      if (error instanceof ZeckApiError && error.status === 404) {
+        result = {
+          executionId: execution.id,
+          status: execution.status,
+          route: null,
+          cost: null,
+          usage: null,
+          outputArtifacts: [],
+          verification: [],
+          warnings: [],
+          terminalAt: null,
+        };
+      } else {
+        throw error;
+      }
+    }
+    facts.push(runSpendFacts(execution, result));
+  }
+  const categories = providerCategoryFacts(facts);
+  const content = `${pageHead({ title: "Connections", path: "/assets/connections" })}
+<p>Connections are governed server-side — you bring your own keys, and the platform mediates every credential. What is live here is the routing the platform recorded for the runs opened in this browser.</p>
+${connectionsSection(categories)}
+${unavailableState(
+  "Connection inventory",
+  "An inventory of configured connections — each connection's setup state, health and configuration — is governed by the integrations authority and is not exposed by the public API. No credential, key or token is ever rendered anywhere in this dashboard: no public wire shape carries a field where a secret could appear, and the create contract rejects connection selection fail-closed.",
+  "a connections projection over the integrations authority",
+)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
   return page(
-    { title: pageInfo.title, activePath: pageInfo.activePath, mainContent: content },
+    { title: "Zeck — Connections", activePath: "/assets/connections", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+/**
+ * WORK-039 AC5: the Environments surface — the environments RECORDED on
+ * the runs opened in this browser, each an isolation boundary for
+ * governed work (safe operational intent, not backend topology); the
+ * environments authority's own inventory/configuration is honestly absent.
+ */
+async function environmentsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const facts = environmentFacts(recents.executions);
+  const content = `${pageHead({ title: "Environments", path: "/admin/environments" })}
+<p>Environments are the isolation boundaries governed work runs in — organized by what they mean for the safety of the work, not by backend topology. Each environment below is recorded on real runs opened in this browser.</p>
+${environmentsSection(facts)}
+${unavailableState(
+  "Environment inventory and configuration",
+  "The environments authority's own records — the full inventory, each environment's configuration, capacity and admission rules — are not exposed by the public API. Executions carry their environment id; that recorded fact is exactly what renders here (never a guessed configuration).",
+  "the compute environment authority through the public API",
+)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
+  return page(
+    { title: "Zeck — Environments", activePath: "/admin/environments", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+/**
+ * WORK-039 AC5: the Team surface — organized around safe operational
+ * intent (who decides what, when governed work waits for a human), with
+ * the LIVE approval queue and the honest membership absence.
+ */
+async function teamPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const approvals = approvalQueueFacts(recents.executions);
+  const content = `${pageHead({ title: "Team", path: "/admin/team" })}
+<p>Team controls organized around safe operation: who decides what, and when governed work must wait for a human decision before it proceeds.</p>
+${teamSection(approvals)}
+${unavailableState(
+  "Members and roles",
+  "Workspace membership — who the members are, their roles and their approval responsibilities — is governed by the membership authority and is not exposed by the public API. The live approval queue above is the platform's own waiting-state record; it never names an approver the API does not expose.",
+  "the membership authority through the public API",
+)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
+  return page({ title: "Zeck — Team", activePath: "/admin/team", mainContent: content }, ctx, {
+    setCookies,
+  });
+}
+
+/**
+ * WORK-039: the Audit surface — the per-run governed-action ledgers of
+ * the runs opened in this browser (the public event streams ARE the
+ * closest live audit record; every command on a run is recorded
+ * platform-side, append-only). The cross-work audit surface is honestly
+ * absent.
+ */
+async function auditPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const rows: AuditLedgerRow[] = [];
+  for (const execution of recents.executions) {
+    let events: readonly ExecutionEvent[] = [];
+    try {
+      events = await client.listEvents(execution.id);
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+    if (events.length === 0) {
+      continue;
+    }
+    const ordered = chronologicalEvents(events);
+    const last = ordered[ordered.length - 1];
+    rows.push({
+      executionId: execution.id,
+      eventCount: events.length,
+      lastEventAt: last?.occurredAt ?? null,
+      lastEventLabel: last === undefined ? null : eventStageLabel(last.type),
+    });
+  }
+  const content = `${pageHead({ title: "Audit", path: "/admin/audit" })}
+<p>The governed-action record: every command on a run — create, authorize, dispatch, verification, terminal transitions and denials — is recorded platform-side, append-only. The per-run event ledgers of the runs opened in this browser are the closest live audit record.</p>
+${auditLedgerSection(rows)}
+${unavailableState(
+  "Cross-work audit",
+  "The audit authority's own surface — searching governed actions across ALL work, with its retention and export rules — is not exposed by the public API. Each run's event stream (linked above) is the live public record.",
+  "the audit authority through the public API",
+)}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${lookupForm()}`;
+  return page({ title: "Zeck — Audit", activePath: "/admin/audit", mainContent: content }, ctx, {
+    setCookies,
+  });
+}
+
+/**
+ * WORK-039 AC6: the Insights surface — the five recommendation families
+ * (observed evidence, expected impact, confidence, affected work,
+ * disposition) as the honest structure ahead of the facts, the three
+ * dispositions as distinct rows, and the live evidence pointers (each
+ * linked to the executions that produced it — IR4).
+ */
+async function insightsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const content = `${pageHead({ title: "Insights", path: "/improve/insights" })}
+<p>Insights are recommendations to improve your workflows — each presented with its observed evidence, expected impact, confidence, affected work and disposition. The structure below is the honest presentation ahead of the facts: no public recommendation surface exists yet, so every family states exactly where its facts will come from, and nothing here invents a recommendation.</p>
+<h2>The recommendation families</h2>
+${recommendationFamiliesSection()}
+<h2>Dispositions</h2>
+${recommendationDispositionList()}
+${unavailableState(
+  "Recommendations",
+  "The learning authority's recommendation records — derived from observed evidence, with their measured impact and confidence — are not exposed by the public API. Nothing here invents a recommendation, an impact figure or a confidence level; the live public evidence is each run's verification results and events.",
+  "the learning authority through the public API",
+)}
+<p>Live today: <a href="/trust/evidence">the evidence surface</a> carries each run's recorded checks; <a href="/improve/evaluations">the evaluations surface</a> carries the observation/recommendation/validation/production distinction; <a href="/improve/learning">the learning surface</a> carries the evidence/recommendation/production distinction with the live selection record.</p>`;
+  return page(
+    { title: "Zeck — Insights", activePath: "/improve/insights", mainContent: content },
+    ctx,
+  );
+}
+
+/**
+ * WORK-039 AC7: the Learning surface — the evidence/recommendation/
+ * authoritative-production distinction (three stages, never conflated;
+ * the recommendation row carries the never-authorizes boundary), with
+ * the LIVE production record beneath (the agent inventory's own
+ * promotion/rollback selections, read through the governed API).
+ */
+async function learningPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const agents = await client.listAgents();
+  const selections: AgentSelectionFact[] = [];
+  for (const agent of agents) {
+    try {
+      const status = await client.getAgentStatus(agent.id);
+      const fact = agentSelectionFacts(status);
+      if (fact !== null) {
+        selections.push(fact);
+      }
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+  }
+  const content = `${pageHead({ title: "Learning", path: "/improve/learning" })}
+<p>Learning is how Zeck improves over time — observations become recommendations, recommendations become validated improvements, and only the platform's own rules put an improvement into production. The three stages are distinct, and nothing here is ever authorization.</p>
+${learningDistinctionSection(selections)}
+${unavailableState(
+  "Learning telemetry",
+  "The learning authority's own records — the telemetry, the recommendation pipeline and the validation populations — are not exposed by the public API. The live public records are the per-run evidence and the agent inventory's selection facts; no recommendation, telemetry or validation state is ever implied from them, and no recommendation can be applied from this surface.",
+  "the learning authority through the public API",
+)}`;
+  return page(
+    { title: "Zeck — Learning", activePath: "/improve/learning", mainContent: content },
     ctx,
   );
 }
@@ -2688,23 +2946,13 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
     wrap("GET", "/assets/competences/:competenceId", (ctx) => competenceDetailPage(client, ctx)),
     wrap("GET", "/assets/connections", (ctx) => connectionsPage(client, ctx)),
     wrap("GET", "/improve/evaluations", (ctx) => evaluationsPage(client, ctx)),
-    wrap("GET", "/improve/insights", (ctx) =>
-      staticUnavailablePage(staticPageOf("/improve/insights"), ctx),
-    ),
-    wrap("GET", "/improve/learning", (ctx) =>
-      staticUnavailablePage(staticPageOf("/improve/learning"), ctx),
-    ),
-    wrap("GET", "/admin/policies", (ctx) =>
-      staticUnavailablePage(staticPageOf("/admin/policies"), ctx),
-    ),
-    wrap("GET", "/admin/budgets", (ctx) =>
-      staticUnavailablePage(staticPageOf("/admin/budgets"), ctx),
-    ),
-    wrap("GET", "/admin/team", (ctx) => staticUnavailablePage(staticPageOf("/admin/team"), ctx)),
-    wrap("GET", "/admin/environments", (ctx) =>
-      staticUnavailablePage(staticPageOf("/admin/environments"), ctx),
-    ),
-    wrap("GET", "/admin/audit", (ctx) => staticUnavailablePage(staticPageOf("/admin/audit"), ctx)),
+    wrap("GET", "/improve/insights", (ctx) => insightsPage(client, ctx)),
+    wrap("GET", "/improve/learning", (ctx) => learningPage(client, ctx)),
+    wrap("GET", "/admin/policies", (ctx) => policiesPage(client, ctx)),
+    wrap("GET", "/admin/budgets", (ctx) => spendPage(client, ctx)),
+    wrap("GET", "/admin/team", (ctx) => teamPage(client, ctx)),
+    wrap("GET", "/admin/environments", (ctx) => environmentsPage(client, ctx)),
+    wrap("GET", "/admin/audit", (ctx) => auditPage(client, ctx)),
     wrap("GET", "/trust/evidence", (ctx) => trustEvidencePage(client, ctx)),
     wrap("GET", "/trust/lineage", (ctx) => trustLineagePage(client, ctx)),
     wrap("GET", "/command", (ctx) => commandPage(client, ctx)),

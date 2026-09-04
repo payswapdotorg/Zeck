@@ -149,8 +149,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Connections",
         path: "/assets/connections",
-        description:
-          "External tool and data connections (not exposed yet; secrets never rendered).",
+        description: "Routing facts from real runs; BYOK, secret-mediated (no inventory API yet).",
         keywords: ["connection", "credential", "tool", "integration", "library"],
         modes: PROFESSIONAL,
       },
@@ -196,35 +195,36 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Policies",
         path: "/admin/policies",
-        description: "Rules and controls in user language (not exposed yet).",
+        description: "Rules and controls in user language; live denial reasons per run.",
         keywords: ["policy", "rules", "controls", "quality", "limits", "control"],
         modes: PROFESSIONAL,
       },
       {
         label: "Spend",
         path: "/admin/budgets",
-        description: "Spend management (not exposed yet).",
+        description: "Per-run spend, limits and categories; accounting as advanced detail.",
         keywords: ["spend", "budget", "limit", "cost", "control"],
         modes: PROFESSIONAL,
       },
       {
         label: "Team",
         path: "/admin/team",
-        description: "Workspace members and roles (not exposed yet).",
+        description: "Safe operation: who decides what, and the live approval queue.",
         keywords: ["team", "members", "roles", "people", "control"],
         modes: PROFESSIONAL,
       },
       {
         label: "Environments",
         path: "/admin/environments",
-        description: "Compute environments (not exposed yet).",
+        description:
+          "Environments recorded on real runs; the inventory authority is not public yet.",
         keywords: ["environment", "compute", "substrate", "control"],
         modes: PROFESSIONAL,
       },
       {
         label: "Audit",
         path: "/admin/audit",
-        description: "Audit records (an expert inspection surface, not exposed yet).",
+        description: "Per-run governed-action ledgers (an expert inspection surface).",
         keywords: ["audit", "records", "evidence", "expert"],
         modes: EXPERT_ONLY,
       },
@@ -239,14 +239,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Insights",
         path: "/improve/insights",
-        description: "Recommendations to improve your workflows (not exposed yet).",
+        description: "The recommendation families; the learning authority is not public yet.",
         keywords: ["insight", "recommendation", "improvement"],
         modes: PROFESSIONAL,
       },
       {
         label: "Learning",
         path: "/improve/learning",
-        description: "Learning telemetry (not exposed yet).",
+        description: "Evidence, recommendation and production — distinct; live selection record.",
         keywords: ["learning", "telemetry", "signal", "improve"],
         modes: PROFESSIONAL,
       },
