@@ -119,7 +119,7 @@ Worker opens a PR but does not merge. Completion requires architect acceptance, 
 
 - Issue: #67
 - Dispatch status: AUTHORIZED
-- Exact base: `01294b2cf1b90fa68035d482de8deb69ee39589d`
+- Exact base: `ed73bfe5e922764895aef342b62e7358a42cadae`
 - Required branch: `work/WORK-038-trust-evidence-artifacts-competence`
 - Worker may implement only this Work Order and its declared surfaces.
 - Worker must not modify `spec/development-state/*` during active work.
