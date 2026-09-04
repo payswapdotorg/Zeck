@@ -383,6 +383,22 @@ table.data thead th { border-bottom: 2px solid var(--border-strong); }
 .failure-distinction { color: var(--text-muted); font-size: 0.875rem; margin: var(--space-2) 0; }
 .quality-failure-surface h3 { margin-top: 0; }
 
+/* WORK-037: the at-a-glance grids (agent/deployment), the training/
+ * evaluation/release distinction list and the long-running workload view. */
+.glance-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); margin: var(--space-3) 0; }
+.glance-cell { background: var(--surface-raised); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); }
+.glance-cell h4 { margin: 0 0 var(--space-1); }
+.glance-cell p { margin: 0 0 var(--space-1); font-size: 0.9375rem; }
+.glance-kind { color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+.distinction-list { list-style: none; margin: var(--space-2) 0; padding: 0; }
+.distinction-list li { display: grid; gap: var(--space-1); border-bottom: 1px dashed var(--border-subtle); padding: var(--space-2) 0; }
+.distinction-list li:last-child { border-bottom: none; }
+.distinction-state { font-weight: 600; }
+.distinction-fact { color: var(--text-secondary); }
+.workload-facts { margin: var(--space-4) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.workload-facts h2 { margin-top: 0; }
+.workload-facts h3 { margin: var(--space-3) 0 var(--space-1); }
+
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .timeline li {
   display: grid;
