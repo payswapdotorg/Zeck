@@ -114,3 +114,13 @@ Evidence must identify exact revisions, affected routes, policy/spend/connection
 # Completion
 
 Worker opens a PR but does not merge. Completion requires architect acceptance, exact-head verification and post-merge finalization.
+
+# Dispatch Record
+
+- Dispatch status: AUTHORIZED
+- Exact base: `a4726a4c7218c35b3a64ca55ee946aa7cdda3605`
+- Required worker branch: `work/WORK-039-control-spend-connections-improvement`
+- Architect binding issue: to be created immediately against this exact dispatch revision
+- Worker may implement only this Work Order and its declared surfaces.
+- Worker must not modify `spec/development-state/*` during active work.
+- Worker must not merge its own PR.
