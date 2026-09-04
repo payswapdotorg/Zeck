@@ -1,6 +1,6 @@
 # WORK-039 — Control, spend, connections and improvement experience
 
-Status: PENDING
+Status: IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -114,3 +114,14 @@ Evidence must identify exact revisions, affected routes, policy/spend/connection
 # Completion
 
 Worker opens a PR but does not merge. Completion requires architect acceptance, exact-head verification and post-merge finalization.
+
+# Dispatch Record
+
+- Issue: #69
+- Dispatch status: AUTHORIZED / IN-FLIGHT
+- Work Order was promoted from PENDING to IN-FLIGHT by the Architect before worker branch creation.
+- The binding exact base is the final dispatch-state commit on `main`, recorded in issue #69 immediately before branch creation.
+- Required worker branch: `work/WORK-039-control-spend-connections-improvement`
+- Worker must not modify `spec/development-state/*` during active work.
+- Worker must not merge its own PR.
+- Worker may implement only this Work Order and its declared surfaces.
