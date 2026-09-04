@@ -217,3 +217,81 @@ describe("the four axes stay separate (never one score)", () => {
     expect(statusRank("unknown-status")).toBe(0);
   });
 });
+
+/**
+ * WORK-038 Implementation Requirement 5: the four required trust-state
+ * fixtures — provider-success/task-failure, execution-success/
+ * quality-failure, policy-blocked and verified-success. Each pins that
+ * the SUCCESS of one dimension NEVER claims (or implies) another: the
+ * axes stay independent facts on exactly these mixed states.
+ */
+describe("the four WORK-038 trust-state fixtures (each dimension speaks only for itself)", () => {
+  test("provider-success/task-failure: completed provider calls NEVER claim task success", () => {
+    // The provider axis records 4 completed calls; the task FAILED.
+    const axes = deriveTrustAxes(
+      executionOf("FAILED"),
+      resultOf({ provider: "p", model: "m", strategyClass: "hybrid", modelCalls: 4 }, []),
+      [eventOf("execution.created"), eventOf("execution.authorize", 2)],
+    );
+    const provider = axes.find((axis) => axis.kind === "provider");
+    const executionAxis = axes.find((axis) => axis.kind === "execution");
+    expect(provider?.label).toBe("Provider calls completed (4)");
+    expect(executionAxis?.label).toBe("Execution failed");
+    // The mutant: a provider-success → task-success conflation would
+    // surface a success vocabulary on the execution axis — pinned out.
+    const joined = axes.map((axis) => axis.label).join(" ");
+    expect(joined).not.toMatch(/execution (succeeded|completed)/i);
+    expect(joined).not.toContain("Execution completed");
+  });
+
+  test("execution-success/quality-failure: a completed run NEVER claims quality success", () => {
+    // The execution COMPLETED; one check FAILED.
+    const axes = deriveTrustAxes(
+      executionOf("COMPLETED"),
+      resultOf(null, [checkOf("PASS", 0.9), checkOf("FAIL", null)]),
+      [eventOf("execution.created"), eventOf("execution.authorize", 2)],
+    );
+    const executionAxis = axes.find((axis) => axis.kind === "execution");
+    const quality = axes.find((axis) => axis.kind === "quality");
+    expect(executionAxis?.label).toBe("Execution completed");
+    expect(quality?.label).toBe("1 of 2 checks passed");
+    // The mutant: a completion → quality-success conflation would emit
+    // all-passed vocabulary — pinned out.
+    expect(quality?.label).not.toBe("2 of 2 checks passed");
+    expect(quality?.label).not.toMatch(/high confidence/i);
+  });
+
+  test("policy-blocked: a policy denial is its OWN dimension — never a task failure", () => {
+    const axes = deriveTrustAxes(executionOf("CREATED"), resultOf(null, []), [
+      eventOf("execution.created"),
+      eventOf("execution.policy-denied", 2),
+    ]);
+    const policy = axes.find((axis) => axis.kind === "policy");
+    const executionAxis = axes.find((axis) => axis.kind === "execution");
+    expect(policy?.label).toBe("Policy denied admission");
+    // The execution axis keeps its own honest state (not failed).
+    expect(executionAxis?.label).toBe("In progress (CREATED)");
+    expect(executionAxis?.label).not.toBe("Execution failed");
+    // The provider/quality axes stay silent (no facts were recorded).
+    expect(axes.find((axis) => axis.kind === "provider")?.label).toBe("No route recorded yet");
+    expect(axes.find((axis) => axis.kind === "quality")?.label).toBe(
+      "No verification results recorded",
+    );
+  });
+
+  test("verified-success: all-pass-with-confidence derives the explainable chip, still no merged score", () => {
+    const checks = [checkOf("PASS", 0.93), checkOf("PASS", 0.88)];
+    const axes = deriveTrustAxes(
+      executionOf("COMPLETED"),
+      resultOf({ provider: "p", model: "m", strategyClass: "hybrid", modelCalls: 3 }, checks),
+      [eventOf("execution.created"), eventOf("execution.authorize", 2)],
+    );
+    expect(axes.find((axis) => axis.kind === "quality")?.label).toBe("2 of 2 checks passed");
+    expect(deriveConfidenceChip(checks)).toBe("High confidence — 2/2 checks passed");
+    expect(deriveVerificationChip(checks)).toBe("2/2 checks passed");
+    // The verified-success state still renders four separate facts —
+    // even the best case never collapses into one verdict.
+    const labels = axes.map((axis) => axis.label).join(" ");
+    expect(labels).not.toMatch(/overall|score|rating/i);
+  });
+});

@@ -591,3 +591,238 @@ describe("D14 training/evaluation/release conflation (completion never implies e
     expect(html).toContain("never imply release approval");
   });
 });
+
+// ---------------------------------------------------------------------------
+// D15 — evidence-link fabrication (WORK-038 AC2/AC9): a recorded evidence
+// reference becomes a LINK only when the platform exposes an artifact
+// with that id; an opaque reference stays verbatim — a mutant linking
+// every ref (or inventing targets) is flagged.
+// ---------------------------------------------------------------------------
+
+describe("D15 evidence-link fabrication (links only where a public object exists)", () => {
+  test("MODULE: a ref with NO public artifact renders verbatim — the link-everything mutant differs on the same input", async () => {
+    const { evidenceRefLink } = await import("../../apps/dashboard/trust");
+    const artifacts = [{ id: "art-known", digest: "d", createdAt: NOW }];
+    const honest = evidenceRefLink("opaque-ref-9", artifacts, EXECUTION_ID);
+    // The honest rendering carries NO href and states the limitation.
+    expect(honest).not.toContain("href=");
+    expect(honest).toContain("opaque-ref-9");
+    expect(honest).toContain("no public object with this id");
+    // The mutant: linking the ref regardless of the platform's records.
+    const mutant = `<a href="/assets/artifacts/opaque-ref-9?executionId=${EXECUTION_ID}">opaque-ref-9</a>`;
+    expect(honest).not.toBe(mutant);
+    // The known ref IS linked (the guard is a discriminator, not a blanket).
+    const known = evidenceRefLink("art-known", artifacts, EXECUTION_ID);
+    expect(known).toContain(`href="/assets/artifacts/art-known?executionId=${EXECUTION_ID}"`);
+  });
+
+  test("STATIC: the link decision is the platform-recorded membership check — the mutant removing it is flagged", () => {
+    const TRUST = appsSource("trust.ts");
+    // The guard: a ref links only when it matches a recorded output
+    // artifact of this execution.
+    expect(TRUST.includes("artifacts.some((artifact) => artifact.id === reference)")).toBe(true);
+    // The mutant deleting the membership check (linking every ref) is
+    // flagged by the same scanner (the guard disappears).
+    const mutant = TRUST.replace("artifacts.some((artifact) => artifact.id === reference)", "true");
+    expect(mutant.includes("artifacts.some((artifact) => artifact.id === reference)")).toBe(false);
+  });
+
+  test("RUNTIME: a run with ZERO verification renders no check rows and no evidence links (nothing to link — nothing invented)", async () => {
+    const page = await get(`/runs/${EXECUTION_ID}?tab=evidence`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("No verification results recorded");
+    // No check table rows, no evidence-ref links, no derived chip (the
+    // stylesheet mentions the class; the RENDERED usage is pinned out).
+    expect(html).not.toContain('class="evidence-ref"');
+    expect(html).not.toContain('class="chip chip-derived"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D16 — client-truth fabrication (WORK-038 AC9): a UI-only value must
+// never be mistaken for platform verification truth — the rendered trust
+// summary on a zero-verification run carries NO confidence vocabulary,
+// and its chip is EXACTLY the platform derivation.
+// ---------------------------------------------------------------------------
+
+describe("D16 client-truth fabrication (UI values are never platform verification truth)", () => {
+  test("RUNTIME: the Result view of a zero-verification run renders the honest chip and NO confidence verdict", async () => {
+    const run = await get(`/runs/${EXECUTION_ID}`);
+    const html = await run.text();
+    expect(run.status).toBe(200);
+    // The trust summary renders — with the honest no-results chip.
+    expect(html).toContain('class="trust-summary"');
+    expect(html).toContain("Checks: No verification results");
+    // The fabricated mutants ("High confidence", a numeric score, an
+    // overall verdict) never appear on this input (the stylesheet may
+    // name the chip class; the RENDERED usage is pinned out).
+    expect(html).not.toContain("High confidence");
+    expect(html).not.toContain('class="chip chip-derived"');
+    expect(html).not.toMatch(/overall (confidence|success|trust)/i);
+    expect(html).not.toMatch(/trust score/i);
+  });
+
+  test("MODULE: the trust-summary chip is exactly the platform derivation — a UI-only value differs", async () => {
+    const { trustSummarySection } = await import("../../apps/dashboard/trust");
+    const { deriveVerificationChip } = await import("../../apps/dashboard/projection");
+    const html = trustSummarySection({ execution, result, events });
+    // The chip line carries deriveVerificationChip's output verbatim.
+    expect(html).toContain(`Checks: ${deriveVerificationChip(result.verification)}`);
+    // The mutant: a UI-computed "confidence" the platform never recorded.
+    const fabricated = "Checks: High confidence (UI)";
+    expect(html).not.toContain(fabricated);
+  });
+
+  test("MODULE: the trust summary renders EXACTLY the four derived axes — the extra-verdict mutant differs", async () => {
+    const { trustSummarySection } = await import("../../apps/dashboard/trust");
+    const html = trustSummarySection({ execution, result, events });
+    expect((html.match(/class="trust-summary-axis"/g) ?? []).length).toBe(4);
+    for (const label of [
+      "Provider success",
+      "Execution success",
+      "Quality success",
+      "Policy success",
+    ]) {
+      expect(html).toContain(label);
+    }
+    // The mutant: adding a fifth "Overall" axis (a UI verdict over the
+    // four platform facts) — flagged by the count and the vocabulary.
+    expect(html).not.toMatch(/axis-kind">Overall/i);
+    expect(html).not.toMatch(/overall/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D17 — learning/competence promotion conflation (WORK-038 AC7/AC8): the
+// competence and evaluation surfaces never imply a promotion, a
+// validation or an authoritative production status — every such row is
+// the explicit absence until the authority's own rules are satisfied.
+// ---------------------------------------------------------------------------
+
+describe("D17 learning/competence promotion conflation (advisory never displays as authoritative)", () => {
+  test("MODULE: every evaluation status row is the explicit absence — the mutant marking production as a platform fact fails", async () => {
+    const { evaluationStatusRows } = await import("../../apps/dashboard/projection");
+    const rows = evaluationStatusRows();
+    expect(rows.map((row) => row.kind)).toEqual([
+      "observation",
+      "recommendation",
+      "validation",
+      "production",
+    ]);
+    // No status is backed by a platform fact (no public authority): the
+    // mutant flipping `backed` to true would fail here.
+    expect(rows.every((row) => row.backed === false)).toBe(true);
+    // The advisory boundary is stated on the recommendation row.
+    expect(rows[1]?.fact).toContain("advisory only");
+    // Production is NEVER implied by observation or recommendation.
+    expect(rows[3]?.fact).toContain("never implied by an observation or a recommendation");
+  });
+
+  test("MODULE: the competence promotion cell never claims a promotion — the mutant fails", async () => {
+    const { competenceDetailFacts } = await import("../../apps/dashboard/projection");
+    const facts = competenceDetailFacts();
+    const promotion = facts.find((fact) => fact.label === "Promotion state");
+    expect(promotion?.backed).toBe(false);
+    expect(promotion?.fact).toContain("implies a promotion");
+    // The mutant: claiming a validated/promoted state.
+    expect(promotion?.fact).not.toMatch(/is (validated|promoted)/i);
+  });
+
+  test("RUNTIME: the competence and evaluation surfaces carry no claim vocabulary and no mutation surface", async () => {
+    const competences = await get("/assets/competences");
+    const competencesHtml = await competences.text();
+    expect(competences.status).toBe(200);
+    expect(competencesHtml).toContain("Competence discovery — not yet exposed by the public API");
+    // No fabricated competence rows (no success-rate claims).
+    expect(competencesHtml).not.toMatch(/\d+% (success|pass)|success rate: \d/i);
+    // No local execution shortcut: no POST form on the surface.
+    expect(competencesHtml).not.toMatch(/<form[^>]*method="post"/);
+
+    const evaluations = await get("/improve/evaluations");
+    const evaluationsHtml = await evaluations.text();
+    expect(evaluations.status).toBe(200);
+    // The four statuses render as distinctions, each the explicit absence.
+    expect((evaluationsHtml.match(/class="distinction-state"/g) ?? []).length).toBe(4);
+    expect((evaluationsHtml.match(/>Explicit absence</g) ?? []).length).toBe(4);
+    expect(evaluationsHtml).not.toContain(">Platform fact<");
+    // No row claims a stage was REACHED for this workspace — the concepts
+    // are explained (what each status means), never asserted as held.
+    expect(evaluationsHtml).not.toMatch(
+      /your (observation|recommendation|validation|production)[^.<]*(passed|granted|approved|in effect)/i,
+    );
+    expect(evaluationsHtml).not.toMatch(
+      /(observation|recommendation) (has|is)[^.<]*(validated|promoted|production)/i,
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D18 — lineage fabrication (WORK-038 AC5): artifact parents and usage
+// derive ONLY from the platform's recorded input references — a mutant
+// fabricating a parent (or a provenance block without a public record)
+// is flagged.
+// ---------------------------------------------------------------------------
+
+describe("D18 lineage fabrication (parents and usage are recorded facts only)", () => {
+  test("MODULE: input refs read ONLY the execution.created payload — the free-text mutant differs", async () => {
+    const { inputArtifactRefsOf } = await import("../../apps/dashboard/projection");
+    const stream = [
+      {
+        eventId: "ev-1",
+        executionId: EXECUTION_ID,
+        type: "execution.created",
+        sequence: 1,
+        occurredAt: NOW,
+        payload: { inputArtifactRefs: ["art-parent-1"] },
+      },
+      {
+        eventId: "ev-2",
+        executionId: EXECUTION_ID,
+        type: "execution.start",
+        sequence: 2,
+        occurredAt: NOW,
+        // A hostile later event claiming DIFFERENT inputs: the derivation
+        // must ignore it (only the created record is authoritative).
+        payload: { inputArtifactRefs: ["art-hostile-later"] },
+      },
+    ];
+    expect(inputArtifactRefsOf(stream)).toEqual(["art-parent-1"]);
+    // The no-created-event stream yields the honest empty list.
+    expect(
+      inputArtifactRefsOf([
+        {
+          eventId: "ev-1",
+          executionId: EXECUTION_ID,
+          type: "execution.start",
+          sequence: 1,
+          occurredAt: NOW,
+          payload: { inputArtifactRefs: ["art-invented"] },
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  test("MODULE: the parent-lineage rendering with no recorded parents states the absence — the fabricating mutant differs", async () => {
+    const { artifactParentLineage } = await import("../../apps/dashboard/trust");
+    const honest = artifactParentLineage([], EXECUTION_ID);
+    expect(honest).toContain("No input artifact references are recorded");
+    expect(honest).not.toContain('class="evidence-ref"');
+    // The mutant: fabricating a parent link without a recorded input.
+    const mutant = artifactParentLineage([`${EXECUTION_ID}-invented`], EXECUTION_ID);
+    expect(mutant).toContain('class="evidence-ref"');
+    expect(honest).not.toBe(mutant);
+  });
+
+  test("RUNTIME: an artifact with no resolvable public record renders the honest state — never a fabricated provenance", async () => {
+    const page = await get("/assets/artifacts/art-00000000-0000-7000-8000-0000000000f9");
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("Artifact detail — not yet exposed by the public API");
+    expect(html).toContain("no artifact-by-id route");
+    // No fabricated provenance/lineage/verification blocks.
+    expect(html).not.toContain("Provenance — the producing execution");
+    expect(html).not.toContain("Parent lineage");
+    expect(html).not.toContain("Verification references");
+  });
+});

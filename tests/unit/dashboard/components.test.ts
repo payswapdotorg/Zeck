@@ -199,6 +199,23 @@ describe("VerificationSummary (never invents confidence)", () => {
     expect(html).toContain('href="/runs/exec-9?tab=evidence"');
     expect(html).toContain("View evidence");
   });
+
+  test("WORK-038: the full table renders refs through renderEvidenceRef when supplied (linked evidence)", () => {
+    const html = verificationSummary([check("PASS", 0.9)], {
+      executionId: "exec-9",
+      renderEvidenceRef: (reference) =>
+        `<a class="evidence-ref" href="/x/${reference}">${reference}</a>`,
+    });
+    expect(html).toContain('href="/x/ref-1"');
+    expect(html).toContain('href="/x/ref-2"');
+    expect(html).toContain('id="verification-results"');
+  });
+
+  test("WORK-038: without renderEvidenceRef the refs render verbatim (the default is unchanged)", () => {
+    const html = verificationSummary([check("PASS", 0.9)], { executionId: "exec-9" });
+    expect(html).toContain("ref-1, ref-2");
+    expect(html).not.toContain('href="/x/');
+  });
 });
 
 describe("ProgressTimeline (UX §7 — chronological, never a graph)", () => {

@@ -19,15 +19,18 @@
 
 import {
   type AgentSummary,
+  type ArtifactReference,
   type Execution,
   type ExecutionEvent,
   type ExecutionResult,
+  type VerificationResult,
   ZeckApiError,
   type ZeckClient,
 } from "../../sdk";
 import { attentionArea, attentionSummary } from "./attention";
 import { CLIENT_SCRIPT } from "./client";
 import {
+  distinctionList,
   esc,
   executionHeader,
   glanceGrid,
@@ -58,7 +61,10 @@ import {
   agentGlanceFacts,
   buildExecutionRequest,
   buildWorkloadRequest,
+  competenceDetailFacts,
+  competenceDiscoveryFacts,
   completionExplainerRows,
+  consumesArtifact,
   currentStageLabel,
   DEPLOYMENT_EXECUTION_DISTINCTION,
   deploymentGlanceFacts,
@@ -67,7 +73,9 @@ import {
   deriveVerificationChip,
   deriveWorkloadFacts,
   durationMs,
+  evaluationStatusRows,
   executionTitle,
+  inputArtifactRefsOf,
   isTerminal,
   looksLikeExecutionId,
   parseAttachmentRefs,
@@ -75,6 +83,7 @@ import {
   QUALITY_OPTIONS,
   RECENTS_COOKIE,
   redactSecretShaped,
+  safeTaskPairs,
   serializeRecents,
   validateExecutionForm,
   validateWorkloadForm,
@@ -82,6 +91,18 @@ import {
 } from "./projection";
 import { type Appearance, type AppShellInput, appShell, navIndex, pageHead } from "./shell";
 import { confirmationCard, emptyState, errorState, unavailableState } from "./states";
+import {
+  artifactMetadataTable,
+  artifactParentLineage,
+  artifactUsageReferences,
+  artifactVerificationReferences,
+  contextTraversal,
+  evidenceRefLink,
+  TRUST_NOTE,
+  trustAxesTable,
+  trustAxisLabel,
+  trustSummarySection,
+} from "./trust";
 
 const RECENTS_NOTE =
   "recently opened in this browser — navigation only; every view reads live through the governed API";
@@ -1349,21 +1370,10 @@ ${lookupForm()}`;
   );
 }
 
-function axisLabel(kind: string): string {
-  switch (kind) {
-    case "provider":
-      return "Provider success";
-    case "execution":
-      return "Execution success";
-    case "quality":
-      return "Quality success";
-    case "policy":
-      return "Policy success";
-    default:
-      return kind;
-  }
-}
-
+/**
+ * WORK-038: the axis labels come from the ONE trust presentation module
+ * (trust.ts) — every route uses the same semantic vocabulary.
+ */
 function activityView(
   execution: Execution,
   events: readonly ExecutionEvent[],
@@ -1461,7 +1471,7 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
     costMicroUsd: result.cost === null ? null : result.cost.totalMicroUsd,
     verificationChip: deriveVerificationChip(result.verification),
     trustAxes: deriveTrustAxes(execution, result, events).map((axis) => ({
-      kind: axisLabel(axis.kind),
+      kind: trustAxisLabel(axis.kind),
       label: axis.label,
     })),
   });
@@ -1509,17 +1519,19 @@ ${confirmationCard({
   const view = viewParam === "events" || viewParam === "raw" ? viewParam : "";
   let panel: string;
   if (tab === "evidence") {
+    /**
+     * WORK-038 AC2/AC3/AC4: the Evidence view — the four axes (each mapped
+     * to its evidence location with contextual links), the verification
+     * table with LINKED evidence refs (a ref becomes a link only when the
+     * platform exposes an artifact with that id on this execution), the
+     * provenance disclosure (id'd as the provider axis's anchor), and the
+     * contextual traversal strip (result / activity / artifacts — never
+     * back through an index).
+     */
     const verification = await client.listVerification(executionId);
     const axes = deriveTrustAxes(execution, result, events);
-    const axesRows = axes
-      .map(
-        (axis) => `<tr>
-      <th scope="row">${esc(axisLabel(axis.kind))}</th>
-      <td>${esc(axis.label)}<br><span class="muted">${esc(axis.detail)}</span></td>
-      <td class="mono">${esc(axis.source)}</td>
-    </tr>`,
-      )
-      .join("");
+    const renderRef = (reference: string): string =>
+      evidenceRefLink(reference, result.outputArtifacts, execution.id);
     const routeSummary =
       result.route === null
         ? '<p class="muted">No route is recorded yet.</p>'
@@ -1533,15 +1545,31 @@ ${confirmationCard({
       result.warnings.length === 0
         ? '<p class="muted">No warnings recorded.</p>'
         : `<ul>${result.warnings.map((warning) => `<li>${esc(warning)}</li>`).join("")}</ul>`;
+    const artifactsBlock =
+      result.outputArtifacts.length === 0
+        ? emptyState(
+            "No output artifacts",
+            "This execution produced no output artifacts (or has not reached that point yet) — the checks' evidence refs link to artifacts when the platform records them.",
+          )
+        : `<ul class="lineage-list">${result.outputArtifacts
+            .map(
+              (artifact) =>
+                `<li><a class="evidence-ref" href="/assets/artifacts/${encodeURIComponent(
+                  artifact.id,
+                )}?executionId=${encodeURIComponent(execution.id)}">${esc(artifact.id)}</a>${
+                  artifact.digest === null
+                    ? '\n    <span class="muted">(no digest recorded)</span>'
+                    : `\n    <span class="muted mono">${esc(artifact.digest)}</span>`
+                }</li>`,
+            )
+            .join("\n    ")}</ul>`;
     panel = `<h2>Evidence</h2>
-<table class="data">
-  <thead><tr><th scope="col">Trust axis</th><th scope="col">What the platform records</th><th scope="col">Fact source</th></tr></thead>
-  <tbody>${axesRows}</tbody>
-</table>
-<p class="muted">The four axes are separate facts — they are never merged into a single score.</p>
-<h3>Verification results</h3>
-${verificationSummary(verification, { executionId: execution.id })}
-<h3>Provenance</h3>
+${trustAxesTable(axes, execution.id)}
+<h3 id="verification-results">Verification results</h3>
+${verificationSummary(verification, { executionId: execution.id, renderEvidenceRef: renderRef })}
+<h3>Artifacts referenced by this run</h3>
+${artifactsBlock}
+${contextTraversal({ executionId: execution.id, includeArtifact: false })}
 ${advancedDisclosure(
   "Route, compute and warnings (advanced)",
   `<p class="muted">Route detail is secondary — provider and model are never the primary mental model.</p>
@@ -1562,7 +1590,12 @@ ${warnings}`,
     panel = activityView(execution, events, view);
   } else {
     panel = `<h2>Result</h2>
-${resultSurface({ execution, result, events })}`;
+${resultSurface({
+  execution,
+  result,
+  events,
+  trustSummaryHtml: trustSummarySection({ execution, result, events }),
+})}`;
   }
   const content = `${head}
 ${header}
@@ -1772,82 +1805,318 @@ ${
   );
 }
 
-async function artifactDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
-  const artifactId = ctx.params.artifactId ?? "";
-  const executionId = ctx.query.get("executionId");
-  let contextBlock = "";
-  if (executionId !== null && executionId.length > 0) {
+/**
+ * WORK-038 AC5: the artifact view — preview/metadata, provenance, parent
+ * lineage, verification references, usage references and contextual
+ * traversal, each a public-wire fact or an explicit honest absence.
+ *
+ * The public API exposes artifacts ONLY as per-execution output
+ * references (id/digest/createdAt): the producing-execution context is
+ * resolved from the URL (the contextual links carry it), or — when
+ * absent — from the executions opened in this browser whose recorded
+ * outputs include this artifact (a public-fact resolution, never a
+ * fabricated producer). The platform's own records carry the rest: the
+ * `execution.created` event's inputArtifactRefs are the parents; the
+ * verification results' evidenceRefs are the verification references;
+ * other executions' recorded inputs are the usage references.
+ */
+interface ArtifactUsageRow {
+  readonly executionId: string;
+  readonly title: string;
+}
+
+async function collectArtifactUsages(
+  client: ZeckClient,
+  ids: readonly string[],
+  artifactId: string,
+  excludeExecutionId: string | null,
+): Promise<readonly ArtifactUsageRow[]> {
+  const usages: ArtifactUsageRow[] = [];
+  for (const id of ids) {
+    if (id === excludeExecutionId) {
+      continue;
+    }
     try {
-      const [execution, result] = await Promise.all([
-        client.getExecution(executionId),
-        client.getResult(executionId),
+      const [execution, events] = await Promise.all([
+        client.getExecution(id),
+        client.listEvents(id),
       ]);
-      const match = result.outputArtifacts.find((artifact) => artifact.id === artifactId);
-      contextBlock = `<h2>Producing execution</h2>
-${keyValueTable([
-  ["execution", execution.id],
-  ["outcome", executionTitle(execution.task, execution.id)],
-  ["status", `${currentStageLabel(execution.status)} (${execution.status})`],
-  ["digest", match === undefined || match.digest === null ? "—" : match.digest],
-  ["created", match === undefined ? "—" : match.createdAt],
-])}
-<div class="actions"><a href="/runs/${encodeURIComponent(execution.id)}">Open the execution result</a></div>`;
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
-        throw error;
+      if (consumesArtifact(events, artifactId)) {
+        usages.push({ executionId: id, title: executionTitle(execution.task, id) });
       }
-      contextBlock = `<h2>Producing execution</h2>
-${errorState(
-  "The producing execution is not visible",
-  `No execution "${executionId}" was returned — it may belong to another application or not exist.`,
-)}`;
+    } catch (error) {
+      if (error instanceof ZeckApiError && error.status === 404) {
+        continue;
+      }
+      throw error;
     }
   }
+  return usages;
+}
+
+async function resolveProducingExecution(
+  client: ZeckClient,
+  artifactId: string,
+  explicitExecutionId: string | null,
+): Promise<
+  | {
+      readonly source: "url" | "recents";
+      readonly execution: Execution;
+      readonly result: ExecutionResult;
+      readonly events: readonly ExecutionEvent[];
+      readonly verification: readonly VerificationResult[];
+      readonly artifact: ArtifactReference | undefined;
+    }
+  | { readonly source: "url-missing" }
+  | null
+> {
+  if (explicitExecutionId !== null && explicitExecutionId.length > 0) {
+    try {
+      const [execution, result, events, verification] = await Promise.all([
+        client.getExecution(explicitExecutionId),
+        client.getResult(explicitExecutionId),
+        client.listEvents(explicitExecutionId),
+        client.listVerification(explicitExecutionId),
+      ]);
+      return {
+        source: "url",
+        execution,
+        result,
+        events,
+        verification,
+        artifact: result.outputArtifacts.find((candidate) => candidate.id === artifactId),
+      };
+    } catch (error) {
+      if (error instanceof ZeckApiError && error.status === 404) {
+        return { source: "url-missing" };
+      }
+      throw error;
+    }
+  }
+  return null;
+}
+
+async function artifactDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const artifactId = ctx.params.artifactId ?? "";
+  const executionIdParam = ctx.query.get("executionId");
+  const recentsIds = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const resolved = await resolveProducingExecution(client, artifactId, executionIdParam);
+
+  if (resolved === null) {
+    // No URL context: resolve the producing execution from the public
+    // output references of executions opened in this browser (never a
+    // fabricated producer; no artifact-by-id route exists on the wire).
+    for (const id of recentsIds) {
+      try {
+        const result = await client.getResult(id);
+        if (result.outputArtifacts.some((candidate) => candidate.id === artifactId)) {
+          const [execution, events, verification] = await Promise.all([
+            client.getExecution(id),
+            client.listEvents(id),
+            client.listVerification(id),
+          ]);
+          const usages = await collectArtifactUsages(client, recentsIds, artifactId, id);
+          return artifactDetailRender(
+            {
+              execution,
+              result,
+              events,
+              verification,
+              artifact: result.outputArtifacts.find((candidate) => candidate.id === artifactId),
+            },
+            artifactId,
+            ctx,
+            usages,
+          );
+        }
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          continue;
+        }
+        throw error;
+      }
+    }
+    const usages = await collectArtifactUsages(client, recentsIds, artifactId, null);
+    const content = `${pageHead({
+      title: "Artifact",
+      path: "/assets/artifacts",
+      currentLabel: artifactId,
+    })}
+<p class="muted mono">${esc(artifactId)}</p>
+${unavailableState(
+  "Artifact detail",
+  "No producing execution for this artifact is visible here: the public API exposes artifacts only as per-execution output references (id, digest, createdAt) — there is no artifact-by-id route, and no execution opened in this browser records this artifact as an output. Metadata, provenance and lineage render when the artifact is opened from the execution that produced it.",
+  "an artifact content and lineage projection over executions",
+)}
+<h2>Usage references</h2>
+${artifactUsageReferences(usages)}
+${lookupForm()}`;
+    return page(
+      { title: "Zeck — Artifact", activePath: "/assets/artifacts", mainContent: content },
+      ctx,
+    );
+  }
+
+  if (resolved.source === "url-missing") {
+    const content = `${pageHead({ title: "Artifact", path: "/assets/artifacts" })}
+${errorState(
+  "The producing execution is not visible",
+  `No execution "${executionIdParam ?? ""}" was returned — it may belong to another application or not exist. The artifact view reads through the governed API only.`,
+  "GET /executions/:id (results, events, verification) through the Zeck SDK client",
+)}
+${lookupForm()}`;
+    return page(
+      { title: "Zeck — Artifact", activePath: "/assets/artifacts", mainContent: content },
+      ctx,
+    );
+  }
+
+  const usages = await collectArtifactUsages(client, recentsIds, artifactId, resolved.execution.id);
+  return artifactDetailRender(resolved, artifactId, ctx, usages);
+}
+
+function artifactDetailRender(
+  resolved: {
+    readonly execution: Execution;
+    readonly result: ExecutionResult;
+    readonly events: readonly ExecutionEvent[];
+    readonly verification: readonly VerificationResult[];
+    readonly artifact: ArtifactReference | undefined;
+  },
+  artifactId: string,
+  ctx: HttpContext,
+  usages: readonly ArtifactUsageRow[],
+): HandlerResult {
+  const { execution, result, events, verification, artifact } = resolved;
+  const id = encodeURIComponent(execution.id);
+  const title = executionTitle(execution.task, execution.id);
+  const taskPairs = safeTaskPairs(execution.task);
+  const route =
+    result.route === null
+      ? '<p class="muted">No route is recorded for the producing execution.</p>'
+      : keyValueTable([
+          ["strategy class", result.route.strategyClass ?? "—"],
+          ["provider", result.route.provider ?? "(deterministic)"],
+          ["model", result.route.model ?? "—"],
+          ["model calls", String(result.route.modelCalls)],
+        ]);
+  const artifactFacts =
+    artifact === undefined
+      ? errorState(
+          "This artifact is not among the execution's recorded outputs",
+          `The execution "${execution.id}" is visible, but its recorded output artifacts do not include "${artifactId}" — the reference may be an input reference, belong to another execution, or not exist. The dashboard shows only the references the platform records.`,
+        )
+      : artifactMetadataTable(artifact);
   const content = `${pageHead({
     title: "Artifact",
     path: "/assets/artifacts",
     currentLabel: artifactId,
   })}
 <p class="muted mono">${esc(artifactId)}</p>
-${contextBlock}
+${contextTraversal({ executionId: execution.id, artifactId, includeArtifact: false })}
+<h2>Metadata</h2>
+${artifactFacts}
+<h2>Preview</h2>
 ${unavailableState(
-  "Artifact content and lineage",
-  "Artifact content, metadata and lineage are not exposed by the public API — artifacts cross the wire only as id/digest/createdAt references on execution results.",
-  "an artifact content and lineage projection",
-)}`;
+  "Artifact content preview",
+  "Artifact content is not exposed by the public API — artifacts cross the wire as id/digest/createdAt references only, so no preview can be rendered without inventing content. The recorded digest above is the platform's content identity for this artifact.",
+  "an artifact content projection (streaming or bounded preview) over the artifact authority",
+)}
+<h2>Provenance — the producing execution</h2>
+${keyValueTable([
+  ["execution", execution.id],
+  ["outcome", title],
+  ["status", `${currentStageLabel(execution.status)} (${execution.status})`],
+  ["produced at", artifact === undefined ? "—" : artifact.createdAt],
+  ["application", execution.applicationId],
+])}
+${advancedDisclosure("Route of the producing execution (advanced)", route)}
+<h2>Source — what was asked</h2>
+${
+  taskPairs.length === 0
+    ? '<p class="muted">The public task record carries no fields for the producing execution.</p>'
+    : keyValueTable(taskPairs)
+}
+<h2>Parent lineage</h2>
+${artifactParentLineage(inputArtifactRefsOf(events), execution.id)}
+<h2>Verification references</h2>
+${artifactVerificationReferences(verification, artifactId, execution.id)}
+<h2>Usage references</h2>
+${artifactUsageReferences(usages)}
+<p class="muted">${esc(TRUST_NOTE)}</p>
+<div class="actions">
+  <a class="button-link" href="/runs/${id}">Open the result</a>
+  <a href="/runs/${id}?tab=evidence">Open the evidence</a>
+  <a href="/runs/${id}?tab=activity">Open the activity</a>
+</div>`;
   return page(
-    { title: "Zeck — Artifact", activePath: "/assets/artifacts", mainContent: content },
+    {
+      title: `Zeck — Artifact ${artifactId}`,
+      activePath: "/assets/artifacts",
+      mainContent: content,
+    },
     ctx,
   );
 }
 
+/**
+ * WORK-038 AC6 + Implementation Requirement 4: competence discovery —
+ * the discovery fact families (task outcome, relevance, success rate,
+ * typical cost/time, verification status) render as the honest structure
+ * they will take when the competence authority ships; every cell states
+ * the explicit absence today. Using a competence is a GOVERNED WORK
+ * ACTION through the create path — never a local execution shortcut,
+ * and the frozen create contract carries no competence-selection field
+ * (the platform routes work itself).
+ */
 async function competencesPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
   const content = `${pageHead({ title: "Competences", path: "/assets/competences" })}
+<p>A competence is a reusable, validated way of accomplishing work — represented by the platform's competence authority, anchored to the evidence of the runs that shaped it. Discovery is organized around what you care about when you reuse work:</p>
+${glanceGrid(competenceDiscoveryFacts())}
 ${unavailableState(
-  "Competences",
-  "A competence is a reusable, evidence-backed way of describing work Zeck knows how to perform — with success rate, typical cost and verification checks. None of that is exposed by the public API yet.",
+  "Competence discovery",
+  "The competence authority is not exposed by the public API — no competence inventory, search or relevance ranking exists on the public wire, so no competence is listed here. When it ships, its facts feed the discovery grid above live — success rates, typical costs and verification statuses will be the authority's own recorded facts, never dashboard estimates.",
   "the competence authority through the public API",
-)}`;
+)}
+<h2>Using a competence</h2>
+<p>Using a competence is a governed work action: you describe the outcome and <a href="/build/execution">start it through the governed create path</a> — the same consequence preview and the same platform policy admission as any work. The public create contract carries no competence-selection field (selection is decided platform-side during planning), so this dashboard never offers a competence picker and never runs anything locally on a competence's behalf.</p>
+${lookupForm()}`;
   return page(
     { title: "Zeck — Competences", activePath: "/assets/competences", mainContent: content },
     ctx,
   );
 }
 
+/**
+ * WORK-038 AC7: competence detail — provenance, procedures, validation
+ * population, uncertainty, compatibility and promotion state render ONLY
+ * when available from the API. None are public today, so each family
+ * states the explicit absence; the promotion cell states the boundary —
+ * promotion is decided by the competence authority's own validation and
+ * promotion rules, and nothing on this page implies a promotion or a
+ * validated state (learning stays advisory until those rules are
+ * satisfied).
+ */
 async function competenceDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   void client;
+  const competenceId = ctx.params.competenceId ?? "";
   const content = `${pageHead({
     title: "Competence",
     path: "/assets/competences",
-    currentLabel: ctx.params.competenceId ?? "",
+    currentLabel: competenceId,
   })}
-<p class="muted mono">${esc(ctx.params.competenceId ?? "")}</p>
+<p class="muted mono">${esc(competenceId)}</p>
 ${unavailableState(
   "Competence detail",
-  "Competence procedures, success rates and costs are not exposed by the public API yet.",
-  "the competence authority through the public API",
-)}`;
+  "The competence authority is not exposed by the public API — no record for this id can be read through the public wire, so no procedures, statistics or states are shown. The fact families below render as the authority exposes them — only then, never before.",
+  "the competence authority's own detail projection",
+)}
+<h2>What a competence's detail carries (when the authority is public)</h2>
+${glanceGrid(competenceDetailFacts())}
+<h2>Using this competence</h2>
+<p>Using a competence is a governed work action: describe the outcome and <a href="/build/execution">start it through the governed create path</a>. The create contract carries no competence-selection field — this page offers no picker, no local run and no shortcut, and it never implies this competence is validated or promoted.</p>
+<p><a href="/assets/competences">Back to competences</a> · <a href="/build/execution">Start governed work</a></p>`;
   return page(
     { title: "Zeck — Competence", activePath: "/assets/competences", mainContent: content },
     ctx,
@@ -1870,7 +2139,178 @@ ${unavailableState(
 }
 
 // ---------------------------------------------------------------------------
-// Improve and Admin (AC5) — honest unavailable states
+// WORK-038: the Trust surfaces — live per-execution evidence and lineage
+// anchors (from the executions opened in this browser), with the honest
+// cross-work absence notes (no public evidence/lineage authority exists)
+// ---------------------------------------------------------------------------
+
+/**
+ * WORK-038: the evidence surface — per-execution evidence anchors from the
+ * live recents scope, each carrying the platform's own verification chip
+ * and links to the run's Evidence view and artifacts. A cross-work
+ * evidence search is NOT public — stated honestly, never fabricated.
+ */
+async function trustEvidencePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const sections: string[] = [];
+  for (const execution of recents.executions) {
+    let chip = "No verification results";
+    let artifactsCount = 0;
+    try {
+      const result = await client.getResult(execution.id);
+      chip = deriveVerificationChip(result.verification);
+      artifactsCount = result.outputArtifacts.length;
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+    const id = encodeURIComponent(execution.id);
+    sections.push(`<li>
+  <a class="run-title" href="/runs/${id}?tab=evidence">${esc(
+    executionTitle(execution.task, execution.id),
+  )}</a>
+  ${statusBadge(execution.status)}
+  <span class="axis-fact">${esc(chip)}</span>
+  <a href="/runs/${id}">Result</a> · <a href="/runs/${id}?tab=activity">Activity</a> · <a href="/assets/artifacts">Artifacts (${artifactsCount})</a>
+</li>`);
+  }
+  const content = `${pageHead({ title: "Evidence", path: "/trust/evidence" })}
+<p>Evidence is why a result can be trusted — the platform's verification checks, their recorded evidence refs, and the provenance of each run. Per-execution evidence is live through the governed API; open a run's Evidence view for the full check table with linked refs.</p>
+${
+  sections.length === 0
+    ? emptyState(
+        "No evidence to show yet",
+        "No executions opened in this browser — start work, or look an execution up by id; its Evidence view carries the recorded checks.",
+      )
+    : `<p class="muted">${esc(RECENTS_NOTE)}.</p>
+<ul class="runs-list">${sections.join("\n")}</ul>`
+}
+${unavailableState(
+  "Cross-work evidence",
+  "A cross-work evidence surface — searching checks and evidence across ALL executions, not just those opened in this browser — is not exposed by the public API (there is no execution listing route). Nothing is fabricated here; when the projection ships, its facts feed this page through the same trust vocabulary.",
+  "an evidence projection over executions and verification records",
+)}
+${lookupForm()}`;
+  return page(
+    { title: "Zeck — Evidence", activePath: "/trust/evidence", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+/**
+ * WORK-038: the lineage surface (expert) — the per-execution lineage chain
+ * that IS public: the recorded inputs (parent artifacts) → the execution
+ * → its recorded outputs, every link contextual. The cross-work lineage
+ * graph (dags, downstream usage beyond this browser) is NOT public —
+ * stated honestly.
+ */
+async function trustLineagePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const sections: string[] = [];
+  for (const execution of recents.executions) {
+    let inputRefs: readonly string[] = [];
+    let outputs: readonly { id: string; digest: string | null }[] = [];
+    try {
+      const [events, result] = await Promise.all([
+        client.listEvents(execution.id),
+        client.getResult(execution.id),
+      ]);
+      inputRefs = inputArtifactRefsOf(events);
+      outputs = result.outputArtifacts;
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+    }
+    const id = encodeURIComponent(execution.id);
+    const inputsHtml =
+      inputRefs.length === 0
+        ? '<span class="muted">no recorded input references</span>'
+        : inputRefs
+            .map(
+              (ref) =>
+                `<a class="evidence-ref" href="/assets/artifacts/${encodeURIComponent(
+                  ref,
+                )}?executionId=${id}">${esc(ref)}</a>`,
+            )
+            .join("\n    ");
+    const outputsHtml =
+      outputs.length === 0
+        ? '<span class="muted">no recorded output artifacts</span>'
+        : outputs
+            .map(
+              (artifact) =>
+                `<a class="evidence-ref" href="/assets/artifacts/${encodeURIComponent(
+                  artifact.id,
+                )}?executionId=${id}">${esc(artifact.id)}</a>`,
+            )
+            .join("\n    ");
+    sections.push(`<li class="lineage-chain">
+  <div class="lineage-step"><span class="glance-kind">Inputs (parents)</span>\n    ${inputsHtml}</div>
+  <div class="lineage-step"><span class="glance-kind">Execution</span>\n    <a href="/runs/${id}">${esc(
+    executionTitle(execution.task, execution.id),
+  )}</a> ${statusBadge(execution.status)}</div>
+  <div class="lineage-step"><span class="glance-kind">Outputs</span>\n    ${outputsHtml}</div>
+</li>`);
+  }
+  const content = `${pageHead({ title: "Lineage", path: "/trust/lineage" })}
+<p>Lineage connects artifacts to their producing executions, parent artifacts and downstream usage. The per-run chain — the platform's own recorded inputs and outputs — is live below; open any artifact for its full provenance, parent lineage, verification and usage references.</p>
+${
+  sections.length === 0
+    ? emptyState(
+        "No lineage to show yet",
+        "No executions opened in this browser — lineage renders from each run's own recorded input and output references.",
+      )
+    : `<p class="muted">${esc(RECENTS_NOTE)}.</p>
+<ul class="lineage-chains">${sections.join("\n")}</ul>`
+}
+${unavailableState(
+  "Cross-work lineage graph",
+  "A cross-work lineage graph — every consumer of an artifact across ALL executions, not just those opened in this browser — is not exposed by the public API. The public wire carries per-execution input/output references only; this page renders exactly those and invents no graph.",
+  "a lineage projection over execution artifacts",
+)}
+${lookupForm()}`;
+  return page(
+    { title: "Zeck — Lineage", activePath: "/trust/lineage", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+/**
+ * WORK-038 AC8: the evaluations surface — observation, recommendation,
+ * validation and authoritative production stay four DISTINCT statuses;
+ * learning is advisory until the existing validation and promotion rules
+ * are satisfied. No public evaluation authority exists — the distinction
+ * renders ahead of the facts, with the live per-execution evidence as the
+ * closest public record.
+ */
+async function evaluationsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const content = `${pageHead({ title: "Evaluations", path: "/improve/evaluations" })}
+<p>Evaluations are the records behind quality claims — scored runs over defined datasets, and the improvement pipeline they feed. The four statuses below are the pipeline's distinct stages; no stage is ever implied by another:</p>
+${distinctionList(evaluationStatusRows())}
+${unavailableState(
+  "Evaluation records",
+  "The public API does not expose an evaluation authority — no scored runs, datasets or evaluation records cross the public wire, so none are listed here. When the authority ships, its records render through the same four-status vocabulary (an observation will never display as a validated or production fact).",
+  "the evaluation authority through the public API",
+)}
+<h2>The live evaluation facts today</h2>
+<p>Per-execution verification results are the live public checks — the runs' recorded PASS/FAIL evidence. <a href="/trust/evidence">Open the evidence surface</a> to see them per execution.</p>`;
+  return page(
+    { title: "Zeck — Evaluations", activePath: "/improve/evaluations", mainContent: content },
+    ctx,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Improve and Admin — honest unavailable states
 // ---------------------------------------------------------------------------
 
 interface StaticPage {
@@ -1883,42 +2323,6 @@ interface StaticPage {
 }
 
 const STATIC_PAGES: readonly (readonly [string, StaticPage])[] = [
-  [
-    "/trust/evidence",
-    {
-      title: "Zeck — Evidence",
-      h1: "Evidence",
-      activePath: "/trust/evidence",
-      concept: "Evidence",
-      explanation:
-        "Evidence is why a result can be trusted — checks, verification records and provenance per execution. The public API exposes evidence per execution today; a cross-work evidence surface is not exposed yet.",
-      futureSource: "an evidence projection over executions and verification records",
-    },
-  ],
-  [
-    "/trust/lineage",
-    {
-      title: "Zeck — Lineage",
-      h1: "Lineage",
-      activePath: "/trust/lineage",
-      concept: "Lineage",
-      explanation:
-        "Lineage connects artifacts to their producing executions, parent artifacts and downstream usage. The public API exposes artifacts only as per-execution output references; a lineage graph is not exposed yet.",
-      futureSource: "a lineage projection over execution artifacts",
-    },
-  ],
-  [
-    "/improve/evaluations",
-    {
-      title: "Zeck — Evaluations",
-      h1: "Evaluations",
-      activePath: "/improve/evaluations",
-      concept: "Evaluations",
-      explanation:
-        "Evaluations are the records behind quality claims — scored runs over defined datasets. The public API does not expose an evaluations surface yet.",
-      futureSource: "the evaluation authority through the public API",
-    },
-  ],
   [
     "/improve/insights",
     {
@@ -2283,9 +2687,7 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
     wrap("GET", "/assets/competences", (ctx) => competencesPage(client, ctx)),
     wrap("GET", "/assets/competences/:competenceId", (ctx) => competenceDetailPage(client, ctx)),
     wrap("GET", "/assets/connections", (ctx) => connectionsPage(client, ctx)),
-    wrap("GET", "/improve/evaluations", (ctx) =>
-      staticUnavailablePage(staticPageOf("/improve/evaluations"), ctx),
-    ),
+    wrap("GET", "/improve/evaluations", (ctx) => evaluationsPage(client, ctx)),
     wrap("GET", "/improve/insights", (ctx) =>
       staticUnavailablePage(staticPageOf("/improve/insights"), ctx),
     ),
@@ -2303,12 +2705,8 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
       staticUnavailablePage(staticPageOf("/admin/environments"), ctx),
     ),
     wrap("GET", "/admin/audit", (ctx) => staticUnavailablePage(staticPageOf("/admin/audit"), ctx)),
-    wrap("GET", "/trust/evidence", (ctx) =>
-      staticUnavailablePage(staticPageOf("/trust/evidence"), ctx),
-    ),
-    wrap("GET", "/trust/lineage", (ctx) =>
-      staticUnavailablePage(staticPageOf("/trust/lineage"), ctx),
-    ),
+    wrap("GET", "/trust/evidence", (ctx) => trustEvidencePage(client, ctx)),
+    wrap("GET", "/trust/lineage", (ctx) => trustLineagePage(client, ctx)),
     wrap("GET", "/command", (ctx) => commandPage(client, ctx)),
     wrap("GET", "/attention", (ctx) => attentionPage(client, ctx)),
     wrap("GET", "/mode", (ctx) => modePage(client, ctx)),

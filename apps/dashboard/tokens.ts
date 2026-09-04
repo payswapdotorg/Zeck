@@ -399,6 +399,33 @@ table.data thead th { border-bottom: 2px solid var(--border-strong); }
 .workload-facts h2 { margin-top: 0; }
 .workload-facts h3 { margin: var(--space-3) 0 var(--space-1); }
 
+/* WORK-038: the trust presentation — the result-view trust summary, the
+ * evidence-ref links (linked only where a public artifact exists), the
+ * lineage chains and the contextual traversal strip. Every rule consumes
+ * the same tokens; no one-off hierarchy. */
+.trust-summary { margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.trust-summary h3 { margin-top: 0; }
+.trust-summary-lead { color: var(--text-secondary); margin: var(--space-1) 0 var(--space-2); }
+.trust-summary-axes { list-style: none; margin: 0 0 var(--space-2); padding: 0; }
+.trust-summary-axis { display: grid; gap: var(--space-1); border-bottom: 1px dashed var(--border-subtle); padding: var(--space-2) 0; grid-template-columns: 1fr; }
+.trust-summary-axis:last-child { border-bottom: none; }
+.trust-summary-chip { margin: var(--space-1) 0; color: var(--text-secondary); }
+.trust-summary-note, .trust-note { color: var(--text-muted); font-size: 0.875rem; margin: var(--space-2) 0 0; }
+.axis-evidence { font-size: 0.875rem; }
+.evidence-ref { font-family: var(--font-mono); font-size: 0.875rem; word-break: break-all; }
+.evidence-ref-plain { color: var(--text-secondary); }
+.lineage-list { list-style: none; margin: var(--space-2) 0; padding: 0; }
+.lineage-list li { padding: var(--space-1) 0; border-bottom: 1px dashed var(--border-subtle); }
+.lineage-list li:last-child { border-bottom: none; }
+.lineage-chains { list-style: none; margin: var(--space-3) 0; padding: 0; }
+.lineage-chain { display: grid; gap: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-3); margin-bottom: var(--space-3); background: var(--surface-raised); grid-template-columns: 1fr; }
+.lineage-step { display: grid; gap: var(--space-1); }
+.context-traversal { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: baseline; margin: var(--space-2) 0 var(--space-3); padding: var(--space-2) var(--space-3); border: 1px dashed var(--border-subtle); border-radius: var(--radius-md); }
+@media (max-width: 640px) {
+  .trust-summary { padding: var(--space-2) var(--space-3); }
+  .lineage-chain { padding: var(--space-2); }
+}
+
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .timeline li {
   display: grid;
