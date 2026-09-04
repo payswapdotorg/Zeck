@@ -18,7 +18,8 @@ Frozen base: `a29b81775866d487e49641bddd728f61d07df3d0` (main — the WORK-038 d
    - **`apps/dashboard/shell.ts`** — the Trust nav descriptions updated honestly (Evidence: "live per run; cross-work evidence search is not public yet"; Lineage: "live; the cross-work lineage graph is not public yet"). Labels/paths/mode-visibility untouched (the navigation pins are unchanged).
    - **`apps/dashboard/tokens.ts`** — the WORK-038 CSS block: `.trust-summary` (+ axes/lead/chip/note), `.axis-evidence`, `.evidence-ref`/`.evidence-ref-plain`, `.lineage-list`/`.lineage-chains`/`.lineage-chain`/`.lineage-step`, `.context-traversal`, with a ≤640px mobile rule — every rule consuming the existing spacing/surface/border/text tokens; no one-off hierarchy.
    - The proof suites (the exact inventory below): the trust-presentation unit suite (30), the four required trust-state fixtures (4), the linked-ref component pins (2), the (y)–(ac) journeys (17), the D15–D18 discriminations (12).
-2. This doc (the final head).
+2. `2be1c4a` — the evidence doc as originally committed (the first final head; superseded by the correction below).
+3. The evidence-count correction commit (THIS doc — the final head). The Architect's re-review of PR #68 (the CHANGES-REQUIRED record, comment `5545542659`, 2026-09-04) found the surface-diff count statement wrong: this doc's header said "Exactly 11 files" while the filename list immediately below it enumerates 12, and the PR body's breakdown read "5 `apps/dashboard` incl. the NEW `trust.ts`" where the actual dashboard count is 6 (5 modified + `trust.ts` new). Corrected here to exactly 12, the complete filename list preserved unchanged (the list was always correct — the count arithmetic was not; the count is now stated with its explicit breakdown and cross-checked against both `git diff --name-only a29b817…HEAD` and the GitHub PR file list). NO code, test or surface change: the implementation commit `198bfe2` and its tree are untouched; the only delta between `2be1c4a` and this head is this document. The complete gate was re-run TWICE consecutively at this correction head per the same instruction (the gate section below).
 
 ## Baseline gate (readiness checkpoint — the exact frozen base, BEFORE implementation)
 
@@ -26,7 +27,7 @@ governance OK (41 WOs, inFlight=['WORK-038'], frontier=[]) · typecheck 0 · bio
 
 ## What changed (the surface diff, every touched file vs `a29b817…`)
 
-Exactly 11 files (rg-verified — zero files under `src/`, `sdk/`, `cli/`, `scripts/`, `spec/` (incl. development-state), `migrations/`, `.github/`, or root configs; the count of files outside `apps/dashboard/` + `tests/` + `docs/work-items/` is ZERO):
+Exactly 12 files — 6 under `apps/dashboard/` (5 modified + the NEW `trust.ts`) + 5 dashboard-local test files + this evidence document; the count cross-checked against `git diff --name-only a29b817…HEAD` AND the GitHub PR #68 file list (both list exactly these 12; rg-verified — zero files under `src/`, `sdk/`, `cli/`, `scripts/`, `spec/` (incl. development-state), `migrations/`, `.github/`, or root configs; the count of files outside `apps/dashboard/` + `tests/` + `docs/work-items/` is ZERO):
 
 - `apps/dashboard/trust.ts` (NEW — the centralized trust-state presentation)
 - `apps/dashboard/projection.ts` (the W038 derivations; every existing derivation untouched)
@@ -71,7 +72,7 @@ The harness (OUTSIDE the repository — /home/z/w038-harness, playwright 1.57 / 
 
 ## The complete gate (run at the final head, TWICE consecutively green)
 
-`python3 scripts/governance-check.py` (OK: 41 WOs, inFlight=['WORK-038'], frontier=[]) · `bun run typecheck` (0 errors) · `bun run lint` (biome clean, 967 files, zero diagnostics/warnings) · `ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:55432/postgres bun run test` = **280 files / 4011 tests, exit 0** — run TWICE consecutively green at the exact final head (the 279/3946 baseline + 1 file / +65 tests vs the base: trust-presentation 30, the four trust-state fixtures 4, the component linked-ref pins 2, the (y)–(ac) journeys 17, the D15–D18 discriminations 12).
+`python3 scripts/governance-check.py` (OK: 41 WOs, inFlight=['WORK-038'], frontier=[]) · `bun run typecheck` (0 errors) · `bun run lint` (biome clean, 967 files, zero diagnostics/warnings) · `ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:55432/postgres bun run test` = **280 files / 4011 tests, exit 0** — run TWICE consecutively green at the exact final head (THIS doc's commit — the evidence-count correction head, re-run per the Architect's PR #68 re-review instruction; the run-pair record with timestamps is carried in the PR body and the reply to the finding). The identical gate had already run twice consecutively green at the pre-correction head `2be1c4a` (2026-09-04 18:55/18:58 UTC, verification comment `5545205505`); the only delta between the two heads is this document, so the counts are necessarily identical (the re-run proves it). The 279/3946 baseline + 1 file / +65 tests vs the base: trust-presentation 30, the four trust-state fixtures 4, the component linked-ref pins 2, the (y)–(ac) journeys 17, the D15–D18 discriminations 12.
 
 ## Test inventory (the exact delta vs the base)
 
