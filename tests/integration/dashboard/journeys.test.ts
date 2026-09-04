@@ -506,6 +506,20 @@ const AGENT_ID = "00000000-0000-7000-8000-0000000000b1";
 const LONGRUN_ID = "00000000-0000-7000-8000-0000000000cb";
 // (u): the completed long-running workload fixture.
 const LONGRUN_DONE_ID = "00000000-0000-7000-8000-0000000000cc";
+// WORK-038 (y): the four required trust-state fixtures —
+// provider-success/task-failure, execution-success/quality-failure (the
+// existing QUALITY_ID), policy-blocked and verified-success. The
+// verified-success run (VERIFIED_ID) doubles as the lineage fixture: its
+// `execution.created` payload carries recorded input refs (the parent
+// artifacts — including the COMPLETED run's output f1), its outputs (f2)
+// are referenced by its own verification checks' evidenceRefs, and
+// CONSUMER_ID records f2 as an input (the usage reference).
+const PROVFAIL_ID = "00000000-0000-7000-8000-0000000000cd";
+const POLICY_ID = "00000000-0000-7000-8000-0000000000ce";
+const VERIFIED_ID = "00000000-0000-7000-8000-0000000000cf";
+const CONSUMER_ID = "00000000-0000-7000-8000-0000000000d1";
+const ARTIFACT_F1 = "00000000-0000-7000-8000-0000000000f1";
+const ARTIFACT_F2 = "00000000-0000-7000-8000-0000000000f2";
 
 let world: FakeWorld;
 let base = "";
@@ -715,6 +729,106 @@ beforeAll(async () => {
             resourceClass: "standard",
           },
         };
+      }
+    });
+  }
+
+  // WORK-038 (y): provider-success/task-failure — the route records 4
+  // completed provider calls while the task itself FAILED (the two
+  // dimensions never collapse).
+  seedExecution(world, {
+    id: PROVFAIL_ID,
+    status: "FAILED",
+    description: "Fetch the filings and extract the tables",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.fail"],
+    route: {
+      provider: "neutral-provider",
+      model: "neutral-model",
+      strategyClass: "hybrid",
+      modelCalls: 4,
+    },
+  });
+  // (y): policy-blocked — a durable policy-denied admission record; the
+  // denial is its own dimension (the execution axis stays in-progress).
+  seedExecution(world, {
+    id: POLICY_ID,
+    status: "CREATED",
+    description: "Transfer funds to the vendor",
+    eventTypes: ["execution.created", "execution.policy-denied"],
+  });
+  // (y)/(z)/(aa): verified-success — all checks PASS with recorded
+  // confidences, an output artifact (f2) referenced by the checks'
+  // evidenceRefs, and one OPAQUE ref (no public object with that id).
+  seedExecution(world, {
+    id: VERIFIED_ID,
+    status: "COMPLETED",
+    description: "Verify the extracted clause table",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+    verification: [
+      {
+        id: `v-${VERIFIED_ID}-1`,
+        executionId: VERIFIED_ID,
+        criterionId: "criterion-table-digest",
+        strategy: "digest-check",
+        status: "PASS",
+        confidence: 0.93,
+        evaluator: { kind: "check", id: "evaluator-1", version: "3" },
+        evidenceRefs: [ARTIFACT_F2],
+        recordedAt: "2026-09-15T12:03:41Z",
+      },
+      {
+        id: `v-${VERIFIED_ID}-2`,
+        executionId: VERIFIED_ID,
+        criterionId: "criterion-cross-check",
+        strategy: "digest-check",
+        status: "PASS",
+        confidence: 0.88,
+        evaluator: { kind: "check", id: "evaluator-1", version: "3" },
+        evidenceRefs: ["opaque-evidence-ref-9"],
+        recordedAt: "2026-09-15T12:03:41Z",
+      },
+    ],
+    artifacts: [
+      {
+        id: ARTIFACT_F2,
+        digest: "digest-f2",
+        createdAt: "2026-09-15T12:03:40Z",
+      },
+    ],
+    route: {
+      provider: "neutral-provider",
+      model: "neutral-model",
+      strategyClass: "hybrid",
+      modelCalls: 3,
+    },
+    cost: { totalMicroUsd: "2210000", currency: "usd" },
+  });
+  // The verified run's own recorded parents: the COMPLETED run's output
+  // artifact f1 plus a hostile ref (the escape-boundary pin).
+  {
+    const evs = world.events.get(VERIFIED_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.created") {
+        evs[index] = {
+          ...entry,
+          payload: { inputArtifactRefs: [ARTIFACT_F1, "<script>ref-injection</script>"] },
+        };
+      }
+    });
+  }
+  // (aa): the usage fixture — a second completed run that consumed f2 as
+  // a recorded input (f2's "usage references").
+  seedExecution(world, {
+    id: CONSUMER_ID,
+    status: "COMPLETED",
+    description: "Draft the renewal summary from the verified table",
+    eventTypes: ["execution.created", "execution.authorize", "execution.start", "execution.pass"],
+  });
+  {
+    const evs = world.events.get(CONSUMER_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.created") {
+        evs[index] = { ...entry, payload: { inputArtifactRefs: [ARTIFACT_F2] } };
       }
     });
   }
@@ -2193,5 +2307,270 @@ describe("(x) the WORK-037 workload create authority (idempotency + tenancy)", (
     for (const call of world.scopedCalls) {
       expect(call.application).toBe(APP_ID);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (y) The WORK-038 trust-summary journey: the Result view's four-axis
+//     summary (each fact linked to its evidence) + the four required
+//     trust-state fixtures rendered as separate dimensions
+// ---------------------------------------------------------------------------
+
+describe("(y) the WORK-038 trust-summary journey (the result view's linked four-axis summary)", () => {
+  test("the Result view renders the trust summary: four separate facts, each linked to its evidence location", async () => {
+    const page = await html(await get(`/runs/${VERIFIED_ID}`));
+    expect(page).toContain('class="trust-summary"');
+    expect((page.match(/class="trust-summary-axis"/g) ?? []).length).toBe(4);
+    expect((page.match(/class="axis-evidence"/g) ?? []).length).toBe(4);
+    // Each axis's evidence link is contextual to THIS execution.
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=evidence#verification-results"`);
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=evidence#route-facts"`);
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=activity"`);
+    // The never-a-score vocabulary and the verification chip.
+    expect(page).toContain("never merged into a single score");
+    expect(page).toContain("2/2 checks passed");
+    expect(page).not.toMatch(/trust score|overall confidence|overall success/i);
+  });
+
+  test("provider-success/task-failure keeps the dimensions distinct on the rendered page", async () => {
+    const page = await html(await get(`/runs/${PROVFAIL_ID}`));
+    // The provider axis records the completed calls…
+    expect(page).toContain("Provider calls completed (4)");
+    // …while the execution axis records the task failure (never merged).
+    expect(page).toContain("Zeck could not complete this execution");
+    expect(page).not.toContain("Execution completed");
+    expect(page).not.toMatch(/overall (success|trust)/i);
+  });
+
+  test("policy-blocked renders the denial as its own dimension (never a task failure)", async () => {
+    const page = await html(await get(`/runs/${POLICY_ID}`));
+    expect(page).toContain("Policy denied admission");
+    expect(page).toContain("In progress (CREATED)");
+    // A denial is not an execution failure — the failure surface stays absent.
+    expect(page).not.toContain("Zeck could not complete this execution");
+  });
+
+  test("execution-success/quality-failure renders the two dimensions separately (the QUALITY fixture)", async () => {
+    const page = await html(await get(`/runs/${QUALITY_ID}`));
+    expect(page).toContain("Execution completed");
+    expect(page).toContain("1 of 2 checks passed");
+    expect(page).toContain("The work completed, but 1 verification check failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (z) The WORK-038 evidence-linking journey: every trust claim maps to
+//     platform evidence — check refs LINK to public artifacts, opaque refs
+//     stay verbatim (never a fabricated target)
+// ---------------------------------------------------------------------------
+
+describe("(z) the WORK-038 evidence-linking journey (claims linked to platform evidence)", () => {
+  test("the Evidence view links each axis to its evidence and each check's refs to public artifacts", async () => {
+    const page = await html(await get(`/runs/${VERIFIED_ID}?tab=evidence`));
+    // The axes table carries the drill-down column.
+    expect(page).toContain('<th scope="col">See the evidence</th>');
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=evidence#verification-results"`);
+    // The check whose evidenceRefs point at the run's recorded output
+    // artifact becomes a contextual artifact link…
+    expect(page).toContain(`href="/assets/artifacts/${ARTIFACT_F2}?executionId=${VERIFIED_ID}"`);
+    // …and the verification table keeps its criterion/status columns.
+    expect(page).toContain('<th scope="col">Criterion</th>');
+    expect(page).toContain("criterion-table-digest");
+    expect(page).toContain("PASS");
+    // The artifacts-referenced block lists the output with its digest.
+    expect(page).toContain("digest-f2");
+    // The contextual traversal strip renders (no index round-trip).
+    expect(page).toContain('class="context-traversal"');
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=activity"`);
+  });
+
+  test("an OPAQUE evidence ref renders verbatim — never a fabricated link (AC9 discrimination)", async () => {
+    const page = await html(await get(`/runs/${VERIFIED_ID}?tab=evidence`));
+    expect(page).toContain("opaque-evidence-ref-9");
+    // The ref with no public object carries the honest plain rendering —
+    // a mutant linking it would emit an href for it.
+    expect(page).not.toContain('href="/assets/artifacts/opaque-evidence-ref-9');
+    expect(page).toContain("no public object with this id");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (aa) The WORK-038 artifact lineage journey: metadata, provenance, parent
+//      lineage, verification references, usage references and the
+//      contextual traversal — all from the platform's own records
+// ---------------------------------------------------------------------------
+
+describe("(aa) the WORK-038 artifact lineage journey (the AC5 artifact view)", () => {
+  test("the artifact page renders the full AC5 set from public facts", async () => {
+    // A browser that has opened the consumer run (so usage can resolve).
+    const jar = new CookieJar();
+    await get(`/runs/${CONSUMER_ID}`, jar);
+    const page = await html(
+      await get(`/assets/artifacts/${ARTIFACT_F2}?executionId=${VERIFIED_ID}`, jar),
+    );
+    // Metadata: exactly the public reference fields.
+    expect(page).toContain("artifact id");
+    expect(page).toContain("digest-f2");
+    // Preview: the honest absence (never invented content).
+    expect(page).toContain("Artifact content preview — not yet exposed by the public API");
+    // Provenance: the producing execution and its outcome.
+    expect(page).toContain("Provenance — the producing execution");
+    expect(page).toContain("Verify the extracted clause table");
+    // Source: what was asked.
+    expect(page).toContain("Source — what was asked");
+    // Parent lineage: the verified run's recorded inputs (f1 + the
+    // hostile ref — escaped, never injected).
+    expect(page).toContain("Parent lineage");
+    expect(page).toContain(`href="/assets/artifacts/${ARTIFACT_F1}?executionId=${VERIFIED_ID}"`);
+    expect(page).not.toContain("<script>ref-injection");
+    expect(page).toContain("&lt;script&gt;ref-injection&lt;/script&gt;");
+    // Verification references: the check whose evidence refs point here.
+    expect(page).toContain("Verification references");
+    expect(page).toContain("criterion-table-digest");
+    expect(page).not.toContain("criterion-cross-check");
+    // Usage references: the consumer run's recorded input.
+    expect(page).toContain("Usage references");
+    expect(page).toContain("Draft the renewal summary from the verified table");
+    // Contextual traversal: result / evidence / activity of the producer.
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=evidence"`);
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=activity"`);
+  });
+
+  test("without the executionId param the producing execution resolves from the public recents scope", async () => {
+    const jar = new CookieJar();
+    // Opening the verified run first seeds the navigation cookie.
+    await get(`/runs/${VERIFIED_ID}`, jar);
+    const page = await html(await get(`/assets/artifacts/${ARTIFACT_F2}`, jar));
+    expect(page).toContain("Provenance — the producing execution");
+    expect(page).toContain("Verify the extracted clause table");
+    expect(page).toContain("digest-f2");
+  });
+
+  test("an artifact with no resolvable producer renders the honest state (never a fabricated one)", async () => {
+    const page = await html(await get("/assets/artifacts/00000000-0000-7000-8000-0000000000f9"));
+    expect(page).toContain("Artifact detail — not yet exposed by the public API");
+    expect(page).toContain("no artifact-by-id route");
+    expect(page).not.toContain("Provenance — the producing execution");
+  });
+
+  test("a 404'd executionId param renders the honest error state (the scope-checked miss)", async () => {
+    const page = await html(
+      await get(
+        `/assets/artifacts/${ARTIFACT_F2}?executionId=00000000-0000-7000-8000-0000000000e9`,
+      ),
+    );
+    expect(page).toContain("The producing execution is not visible");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ab) The WORK-038 Trust-surface journeys: the live per-execution
+//      evidence and lineage pages and the evaluation status distinction
+// ---------------------------------------------------------------------------
+
+describe("(ab) the WORK-038 Trust surfaces journey (evidence, lineage, evaluations)", () => {
+  test("/trust/evidence renders per-execution anchors with the verification chip and the honest cross-work note", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${VERIFIED_ID}`, jar);
+    await get(`/runs/${COMPLETED_ID}`, jar);
+    const page = await html(await get("/trust/evidence", jar));
+    // Each recent run renders as an evidence anchor with its chip.
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}?tab=evidence"`);
+    expect(page).toContain("2/2 checks passed");
+    expect(page).toContain("Contract risk analysis");
+    // The honest cross-work absence — never a fabricated search.
+    expect(page).toContain("Cross-work evidence — not yet exposed by the public API");
+    expect(page).toContain("no execution listing route");
+  });
+
+  test("/trust/evidence renders the honest empty state without recents", async () => {
+    const page = await html(await get("/trust/evidence"));
+    expect(page).toContain("No evidence to show yet");
+    expect(page).toContain("Cross-work evidence — not yet exposed by the public API");
+  });
+
+  test("/trust/lineage renders the per-run chains (inputs → execution → outputs)", async () => {
+    const jar = new CookieJar();
+    await get(`/runs/${VERIFIED_ID}`, jar);
+    const page = await html(await get("/trust/lineage", jar));
+    expect(page).toContain('class="lineage-chains"');
+    // The verified run's chain: its recorded inputs (f1) → the execution
+    // → its outputs (f2), every link contextual.
+    expect(page).toContain(`href="/assets/artifacts/${ARTIFACT_F1}?executionId=${VERIFIED_ID}"`);
+    expect(page).toContain(`href="/runs/${VERIFIED_ID}"`);
+    expect(page).toContain(`href="/assets/artifacts/${ARTIFACT_F2}?executionId=${VERIFIED_ID}"`);
+    // The honest cross-work lineage absence.
+    expect(page).toContain("Cross-work lineage graph — not yet exposed by the public API");
+  });
+
+  test("/improve/evaluations renders the four DISTINCT statuses and the advisory boundary", async () => {
+    const page = await html(await get("/improve/evaluations"));
+    expect(page).toContain("Observation");
+    expect(page).toContain("Recommendation");
+    expect(page).toContain("Validation");
+    expect(page).toContain("Authoritative production status");
+    expect((page.match(/class="distinction-state"/g) ?? []).length).toBe(4);
+    // Learning stays advisory until validation and promotion are satisfied.
+    expect(page).toContain("advisory only");
+    expect(page).toContain("validation and promotion rules");
+    // The honest authority absence + the live evidence pointer.
+    expect(page).toContain("Evaluation records — not yet exposed by the public API");
+    expect(page).toContain('href="/trust/evidence"');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ac) The WORK-038 competence journey: discovery/detail structure as
+//      explicit absences, use as a governed work action (never a local
+//      execution shortcut)
+// ---------------------------------------------------------------------------
+
+describe("(ac) the WORK-038 competence journey (honest discovery, governed use)", () => {
+  test("the competences page renders the discovery families as explicit absences — never fabricated rows", async () => {
+    const page = await html(await get("/assets/competences"));
+    for (const label of [
+      "Task outcome",
+      "Relevance",
+      "Success rate",
+      "Typical cost and time",
+      "Verification status",
+    ]) {
+      expect(page).toContain(label);
+    }
+    expect((page.match(/class="glance-kind"/g) ?? []).length).toBeGreaterThanOrEqual(5);
+    expect(page).toContain("Competence discovery — not yet exposed by the public API");
+    // No competence row is fabricated: no fake success-rate numbers.
+    expect(page).not.toMatch(/\d+% success|success rate: \d/i);
+  });
+
+  test("the competence detail page renders the six detail families and the promotion honesty", async () => {
+    const page = await html(await get("/assets/competences/competence-77"));
+    for (const label of [
+      "Provenance",
+      "Procedures",
+      "Validation population",
+      "Uncertainty",
+      "Compatibility",
+      "Promotion state",
+    ]) {
+      expect(page).toContain(label);
+    }
+    expect(page).toContain("Competence detail — not yet exposed by the public API");
+    // Promotion is the authority's own decision — never implied here.
+    expect(page).toContain("implies a promotion");
+  });
+
+  test("using a competence is a governed work action — no picker, no local run, no shortcut", async () => {
+    const discovery = await html(await get("/assets/competences"));
+    expect(discovery).toContain("governed work action");
+    expect(discovery).toContain('href="/build/execution"');
+    expect(discovery).toContain("no competence-selection field");
+    // No execution shortcut exists anywhere on the competence surfaces:
+    // no POST form, no run button.
+    expect(discovery).not.toMatch(/<form[^>]*method="post"/);
+    const detail = await html(await get("/assets/competences/competence-77"));
+    expect(detail).toContain("governed work action");
+    expect(detail).not.toMatch(/<form[^>]*method="post"/);
+    expect(detail).not.toMatch(/run (it|this) now|execute now/i);
   });
 });

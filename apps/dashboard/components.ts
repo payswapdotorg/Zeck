@@ -196,10 +196,21 @@ function checkLine(check: VerificationResult): string {
  * full form renders the evidence-tab table. With ZERO results it renders
  * the honest "No verification results recorded" state — and NEVER a
  * confidence verdict (the quality axis owns that honesty).
+ *
+ * WORK-038 AC2: the full table's evidence refs render through the
+ * caller-supplied `renderEvidenceRef` when provided — the trust module
+ * links each recorded reference to the artifact view when the platform
+ * exposes an object with that id, and shows the reference verbatim
+ * otherwise (never a fabricated target).
  */
 export function verificationSummary(
   verification: readonly VerificationResult[],
-  options: { readonly compact?: boolean; readonly executionId?: string } = {},
+  options: {
+    readonly compact?: boolean;
+    readonly executionId?: string;
+    /** WORK-038: renders one evidence reference (link or verbatim). */
+    readonly renderEvidenceRef?: (reference: string) => string;
+  } = {},
 ): string {
   if (verification.length === 0) {
     return emptyState(
@@ -223,6 +234,7 @@ export function verificationSummary(
   ${evidenceLink}
 </div>`;
   }
+  const renderRef = options.renderEvidenceRef ?? ((reference: string) => esc(reference));
   const rows = verification
     .map(
       (check) => `<tr>
@@ -233,12 +245,12 @@ export function verificationSummary(
     <td class="mono">${esc(check.evaluator.kind)}:${esc(check.evaluator.id)} <span class="muted">v${esc(
       check.evaluator.version,
     )}</span></td>
-    <td class="mono">${check.evidenceRefs.map((ref) => esc(ref)).join(", ")}</td>
+    <td class="mono">${check.evidenceRefs.map((ref) => renderRef(ref)).join(", ")}</td>
     <td class="mono">${esc(check.recordedAt)}</td>
   </tr>`,
     )
     .join("");
-  return `<div class="verification-table">
+  return `<div class="verification-table" id="verification-results">
   <p><strong>${passed} of ${verification.length} checks passed</strong>${
     derivedChip === null ? "" : ` <span class="chip chip-derived">${esc(derivedChip)}</span>`
   }</p>
@@ -582,8 +594,17 @@ function nextActions(execution: Execution, result: ExecutionResult): string {
  * it be trusted, what to do next. Next actions follow the status family
  * (decision / failure / cancel / completed); a completed run with failed
  * checks renders the quality-failure notice (AC10's second dimension).
+ *
+ * WORK-038 AC1: the caller may supply `trustSummaryHtml` (the trust
+ * module's four-axis summary, linked to the evidence) — rendered as the
+ * "Can you trust it?" lead; the compact verification strip follows it.
  */
-export function resultSurface(view: WhyPanelView): string {
+export interface ResultSurfaceView extends WhyPanelView {
+  /** The WORK-038 trust summary (from the trust presentation module). */
+  readonly trustSummaryHtml?: string;
+}
+
+export function resultSurface(view: ResultSurfaceView): string {
   const { execution, result, events } = view;
   const artifacts =
     result.outputArtifacts.length === 0
@@ -632,7 +653,7 @@ export function resultSurface(view: WhyPanelView): string {
       ${warnings}
     </div>
     <div>
-      <h3>Can you trust it?</h3>
+      ${view.trustSummaryHtml === undefined ? "<h3>Can you trust it?</h3>" : view.trustSummaryHtml}
       ${verificationSummary(result.verification, { compact: true, executionId: execution.id })}
     </div>
   </div>
@@ -672,11 +693,23 @@ export function glanceGrid(cells: readonly GlanceFact[]): string {
 }
 
 /**
- * The four-state distinction list (AC7): compute complete / training
- * complete / evaluation passed / release approved — each row its own
- * fact, never merged, the release row always the explicit absence.
+ * A generic distinction row (WORK-038): label + fact + backed marker —
+ * the shared shape behind the training-state and evaluation-status
+ * distinction lists. Each row is its own fact, never merged.
  */
-export function trainingStateList(rows: readonly TrainingStateRow[]): string {
+export interface DistinctionRow {
+  readonly label: string;
+  readonly fact: string;
+  /** True when a live platform fact backs the row (drives the marker). */
+  readonly backed: boolean;
+}
+
+/**
+ * The generic distinction list: label / fact / marker rows — each its own
+ * fact, never merged (the WORK-037 four-state list and the WORK-038
+ * evaluation statuses both render through this one presentation).
+ */
+export function distinctionList(rows: readonly DistinctionRow[]): string {
   const items = rows
     .map(
       (row) => `<li>
@@ -689,6 +722,15 @@ export function trainingStateList(rows: readonly TrainingStateRow[]): string {
   return `<ul class="distinction-list">
   ${items}
 </ul>`;
+}
+
+/**
+ * The four-state distinction list (AC7): compute complete / training
+ * complete / evaluation passed / release approved — each row its own
+ * fact, never merged, the release row always the explicit absence.
+ */
+export function trainingStateList(rows: readonly TrainingStateRow[]): string {
+  return distinctionList(rows);
 }
 
 const RECOVERY_LABELS: Readonly<Record<WorkloadRecoveryKind, string>> = {

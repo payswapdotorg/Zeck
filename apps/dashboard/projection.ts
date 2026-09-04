@@ -1216,3 +1216,180 @@ export function deploymentGlanceFacts(): readonly GlanceFact[] {
  */
 export const DEPLOYMENT_EXECUTION_DISTINCTION =
   "A Deployment is persistent availability of an agent or program. An Execution is one governed unit of work. Deployment availability is never an execution status, and an execution's status never describes a deployment.";
+
+// ---------------------------------------------------------------------------
+// WORK-038 — artifact lineage/provenance derivations (pure view-models over
+// the public wire facts only: the execution.created event's recorded input
+// artifact references, and the verification results' recorded evidence refs)
+// ---------------------------------------------------------------------------
+
+/**
+ * The input artifact references a producing execution consumed, from the
+ * platform's own `execution.created` event payload (the one public wire
+ * record of what an execution read as inputs). Only string values count;
+ * absent or non-array payloads yield the honest empty list — never a
+ * guessed parent.
+ */
+export function inputArtifactRefsOf(events: readonly ExecutionEvent[]): readonly string[] {
+  const created = events.find((event) => event.type === "execution.created");
+  if (created === undefined) {
+    return [];
+  }
+  const payload = created.payload as Readonly<Record<string, unknown>>;
+  const refs = payload.inputArtifactRefs;
+  if (!Array.isArray(refs)) {
+    return [];
+  }
+  return refs.filter((ref): ref is string => typeof ref === "string" && ref.trim().length > 0);
+}
+
+/**
+ * True when an execution's recorded input references include the artifact
+ * (usage is the platform's own per-execution record — never a
+ * dashboard-invented usage claim).
+ */
+export function consumesArtifact(events: readonly ExecutionEvent[], artifactId: string): boolean {
+  return inputArtifactRefsOf(events).some((ref) => ref === artifactId);
+}
+
+/**
+ * The verification checks whose RECORDED evidence refs point at the given
+ * artifact — the platform's own artifact→evidence linkage (the public
+ * wire's only authority for which checks used which artifacts).
+ */
+export function checksReferencing(
+  verification: readonly VerificationResult[],
+  artifactId: string,
+): readonly VerificationResult[] {
+  return verification.filter((check) => check.evidenceRefs.some((ref) => ref === artifactId));
+}
+
+// ---------------------------------------------------------------------------
+// WORK-038 — the competence experience fact families (AC6/AC7): discovery
+// and detail facts render ONLY when available from the API — none are
+// public today, so every cell states the explicit absence, anchored to
+// where each fact WILL come from. Competence is presented as reusable
+// validated behavior governed by the competence authority — never as an
+// autonomous authority and never implying an unauthorized promotion.
+// ---------------------------------------------------------------------------
+
+/** The competence discovery fact families (AC6). */
+export function competenceDiscoveryFacts(): readonly GlanceFact[] {
+  return [
+    {
+      label: "Task outcome",
+      fact: "What the competence accomplishes, in outcome terms — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Relevance",
+      fact: "How well the competence matches your kind of work — a competence-authority ranking fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Success rate",
+      fact: "The validated share of governed runs that used this competence and met their outcome — a competence-authority statistic, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Typical cost and time",
+      fact: "The recorded cost/time profile of runs using the competence — a competence-authority statistic, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Verification status",
+      fact: "The verification checks that validate the competence and their current standing — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+  ];
+}
+
+/** The competence detail fact families (AC7 — only when available from the API). */
+export function competenceDetailFacts(): readonly GlanceFact[] {
+  return [
+    {
+      label: "Provenance",
+      fact: "Where the competence came from and what evidence backs it — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Procedures",
+      fact: "The validated way of accomplishing the work the competence represents — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Validation population",
+      fact: "The population of runs the competence's validation was measured over — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Uncertainty",
+      fact: "The recorded uncertainty of the competence's outcome statistics — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Compatibility",
+      fact: "The kinds of work and constraints the competence is validated for — a competence-authority fact, not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      label: "Promotion state",
+      fact: "The competence authority's promotion state, decided by its own validation and promotion rules — not exposed by the public API, and nothing on this page implies a promotion or a validated state.",
+      backed: false,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// WORK-038 — the evaluation status distinction (AC8): observation,
+// recommendation, validation and authoritative production are four
+// DISTINCT statuses — learning stays advisory until the existing
+// validation/promotion rules are satisfied, and no status is ever
+// implied by another.
+// ---------------------------------------------------------------------------
+
+export type EvaluationStatusKind = "observation" | "recommendation" | "validation" | "production";
+
+export interface EvaluationStatusRow {
+  readonly kind: EvaluationStatusKind;
+  readonly label: string;
+  /** A live platform fact, or the explicit honest absence. */
+  readonly fact: string;
+  /** True when a live platform fact backs the row. */
+  readonly backed: boolean;
+}
+
+/**
+ * The four evaluation statuses, each an explicit honest absence today
+ * (no public evaluation authority): the distinction vocabulary renders
+ * ahead of the facts so no observation is ever mistaken for a
+ * recommendation, a validation or an authoritative production status.
+ */
+export function evaluationStatusRows(): readonly EvaluationStatusRow[] {
+  return [
+    {
+      kind: "observation",
+      label: "Observation",
+      fact: "What the platform observed about how work went — recorded per execution on the public event stream (the closest live record today: open a run's activity). A cross-work evaluation observation surface is not exposed by the public API yet.",
+      backed: false,
+    },
+    {
+      kind: "recommendation",
+      label: "Recommendation",
+      fact: "An advisory improvement proposal derived from observations — advisory only: it never changes how work runs until the existing validation and promotion rules are satisfied. No public recommendation surface exists yet.",
+      backed: false,
+    },
+    {
+      kind: "validation",
+      label: "Validation",
+      fact: "A measured evaluation over a defined population that backs (or refutes) a recommendation — decided by the platform's validation rules. No public validation surface exists yet; per-execution verification results are the live public checks today.",
+      backed: false,
+    },
+    {
+      kind: "production",
+      label: "Authoritative production status",
+      fact: "The platform's authoritative statement that a validated improvement is in effect for governed work — granted by the existing promotion rules, never by this dashboard and never implied by an observation or a recommendation. No public surface exists yet.",
+      backed: false,
+    },
+  ];
+}

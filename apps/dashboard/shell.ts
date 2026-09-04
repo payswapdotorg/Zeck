@@ -165,7 +165,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Evidence",
         path: "/trust/evidence",
-        description: "The evidence surface across your work (not exposed yet).",
+        description:
+          "Verification evidence per execution — live per run; cross-work evidence search is not public yet.",
         keywords: ["evidence", "trust", "verification", "checks"],
         modes: PROFESSIONAL,
       },
@@ -179,7 +180,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Lineage",
         path: "/trust/lineage",
-        description: "Artifact and result lineage (an expert inspection surface, not exposed yet).",
+        description:
+          "Per-run artifact lineage — live; the cross-work lineage graph is not public yet.",
         keywords: ["lineage", "provenance", "graph", "expert"],
         modes: EXPERT_ONLY,
       },
