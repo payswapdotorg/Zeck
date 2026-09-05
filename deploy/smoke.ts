@@ -17,11 +17,13 @@
  * object-store root, and Redis when ZECK_LOCAL_REDIS_URL is set
  * (absent ⇒ the explicit coordination-degraded mode).
  *
- * PROVIDER probes: the secret-reference preconditions. Unprovisioned
- * provider resources report their dependency as unavailable with the
- * provider's degraded mode — an honest NOT-READY until D-02+ adapters
- * provision them; the authoritative dependency being unprovisioned
- * makes the environment DOWN (fail closed).
+ * PROVIDER probes (D-02/WORK-043): concerns with landed adapters
+ * (relational-state, artifact-bytes) are probed for REAL when their
+ * credential materialization is present; other concerns report the
+ * secret-reference precondition state honestly (unprovisioned ⇒
+ * unavailable with the provider's declared degraded mode). The
+ * authoritative dependency being unattested makes the environment
+ * DOWN (fail closed).
  *
  * Exit 0 = ready (or degraded with --allow-degraded); exit 1 = down /
  * not attested.
@@ -31,6 +33,9 @@ import { existsSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { Client } from "pg";
+import { parseConnectionConfig, redactConnectionString } from "../src/platform/db/connection";
+import { PgDatabasePort } from "../src/platform/db/pg-database-port";
+import { shippedMigrations } from "../src/platform/db/startup";
 import { evaluateEnvironmentContract } from "../src/platform/deployment/env-contract";
 import { deploymentIdentity, namingConventionsOf } from "../src/platform/deployment/identity";
 import {
@@ -43,6 +48,7 @@ import {
   evaluateReadiness,
   expectedProbeConcerns,
 } from "../src/platform/deployment/readiness";
+import { createS3ObjectStore } from "../src/platform/object-store/s3-object-store";
 import { gitRevision, hasFlag, loadManifest, optionalBranch, requireEnvironment } from "./lib";
 
 const DEFAULT_DATA_ROOT = join(
@@ -162,23 +168,190 @@ async function probeProviderEnvironment(
   manifest: ReturnType<typeof loadManifest>,
   environment: EnvironmentId,
 ): Promise<readonly DependencyProbeResult[]> {
-  // Provider environments without D-02+ adapters: the honest probe is
-  // the secret-reference precondition state. Credentials materialized
-  // ⇒ "degraded" (resources exist to be verified only by the future
-  // adapter phase); credentials absent ⇒ "unavailable" (nothing is
-  // attested — the authoritative relational concern keeps the whole
-  // environment DOWN, fail closed).
+  // PROVIDER probes (D-02, WORK-043): concerns with landed adapters
+  // are probed for real when their credential materialization is
+  // present; concerns whose adapters arrive with D-03+ keep the
+  // honest secret-reference precondition state. Credentials absent ⇒
+  // "unavailable" (nothing is attested — the authoritative relational
+  // concern keeps the whole environment DOWN, fail closed).
   const contract = evaluateEnvironmentContract(manifest, environment, process.env);
   const expected = manifest.secretReferences[environment].length;
   const materialized = contract.materializedReferences.length;
   const referencesReady = expected > 0 && materialized === expected;
-  return expectedProbeConcerns(manifest, environment).map((concern) => ({
-    concern,
-    status: referencesReady ? "degraded" : "unavailable",
-    detail: referencesReady
-      ? "secret references materialized; provider resource verification arrives with the D-02+ adapter phase"
-      : `secret references not materialized (${materialized}/${expected}); environment not provisioned`,
-  }));
+
+  const probes: DependencyProbeResult[] = [];
+  for (const concern of expectedProbeConcerns(manifest, environment)) {
+    if (concern === "relational-state") {
+      probes.push(await probeProviderRelationalState(manifest, environment, contract));
+    } else if (concern === "artifact-bytes") {
+      probes.push(await probeProviderObjectStore(manifest, environment, contract));
+    } else {
+      probes.push({
+        concern,
+        status: referencesReady ? "degraded" : "unavailable",
+        detail: referencesReady
+          ? "secret references materialized; the D-03+ adapter for this concern is not landed (degraded by declared mode)"
+          : `secret references not materialized (${materialized}/${expected}); environment not provisioned`,
+      });
+    }
+  }
+  return probes;
+}
+
+/**
+ * The D-02 relational-state probe: when the materialized database-url
+ * secret (ZECK_DATABASE_URL) and its reference binding exist, connect
+ * through the production pg path and verify the PostgreSQL 16+ floor
+ * and migration convergence (read-only). Without materialization the
+ * concern reports unattested (unavailable — fail closed).
+ */
+async function probeProviderRelationalState(
+  _manifest: ReturnType<typeof loadManifest>,
+  _environment: EnvironmentId,
+  contract: ReturnType<typeof evaluateEnvironmentContract>,
+): Promise<DependencyProbeResult> {
+  void _manifest;
+  const referenceBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_DATABASE_URL_REF",
+  );
+  const url = process.env.ZECK_DATABASE_URL;
+  if (!referenceBound || url === undefined || url.length === 0) {
+    return {
+      concern: "relational-state",
+      status: "unavailable",
+      detail: !referenceBound
+        ? "ZECK_SECRET_DATABASE_URL_REF is not materialized (the environment-scoped reference binding is a precondition)"
+        : "ZECK_DATABASE_URL is not set (the materialized database-url secret value is absent)",
+    };
+  }
+  // Real probe through the production adapter path (redacted detail).
+  try {
+    const config = parseConnectionConfig(url, {
+      max: 1,
+      connectionTimeoutMillis: 8000,
+      idleTimeoutMillis: 5000,
+    });
+    const adapter = new PgDatabasePort(config);
+    try {
+      const ping = await adapter.ping();
+      const major = Math.floor(ping.serverVersionNum / 10_000);
+      if (major < 16) {
+        return {
+          concern: "relational-state",
+          status: "unavailable",
+          detail: `managed server is not PostgreSQL 16+ (reported ${major})`,
+        };
+      }
+      const shipped = shippedMigrations();
+      const recorded = await adapter.execute<{ version: number }>({
+        sql: "SELECT version FROM platform.schema_migrations ORDER BY version",
+      });
+      const recordedVersions = new Set(recorded.rows.map((row) => row.version));
+      const missing = shipped.filter((file) => !recordedVersions.has(file.version));
+      return {
+        concern: "relational-state",
+        status: missing.length === 0 ? "ready" : "unavailable",
+        detail:
+          missing.length === 0
+            ? `managed postgres reachable (pg ${major}); all ${shipped.length} shipped migrations recorded`
+            : `managed postgres reachable but schema not converged (${missing.length} shipped migrations unapplied; run deploy:migrate)`,
+      };
+    } finally {
+      await adapter.close();
+    }
+  } catch (error) {
+    return {
+      concern: "relational-state",
+      status: "unavailable",
+      detail: redactConnectionString(
+        `managed postgres unreachable: ${(error as Error).message.slice(0, 140)}`,
+      ),
+    };
+  }
+}
+
+/**
+ * The D-02 artifact-bytes probe: when the materialized R2 secrets
+ * (access key id + secret access key), their reference bindings and
+ * the ordinary object-store configuration (endpoint/bucket/region)
+ * exist, HEAD the bucket through the S3 adapter. 200 = ready; 403 =
+ * credentials rejected; 404 = bucket absent. Without materialization
+ * the concern reports unattested (fail closed, honest).
+ */
+async function probeProviderObjectStore(
+  manifest: ReturnType<typeof loadManifest>,
+  environment: EnvironmentId,
+  contract: ReturnType<typeof evaluateEnvironmentContract>,
+): Promise<DependencyProbeResult> {
+  const accessKeyBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF",
+  );
+  const secretKeyBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_OBJECT_STORE_SECRET_ACCESS_KEY_REF",
+  );
+  const accessKeyId = process.env.ZECK_OBJECT_STORE_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.ZECK_OBJECT_STORE_SECRET_ACCESS_KEY;
+  const endpoint = process.env.ZECK_OBJECT_STORE_ENDPOINT;
+  const bucket = process.env.ZECK_OBJECT_STORE_BUCKET;
+  const region = process.env.ZECK_OBJECT_STORE_REGION ?? "auto";
+  const notMaterialized =
+    !accessKeyBound || !secretKeyBound
+      ? "the object-store secret reference bindings are not materialized (ZECK_SECRET_OBJECT_STORE_*_REF)"
+      : accessKeyId === undefined || accessKeyId.length === 0
+        ? "ZECK_OBJECT_STORE_ACCESS_KEY_ID is not set (the materialized object-store-access-key-id secret value is absent)"
+        : secretAccessKey === undefined || secretAccessKey.length === 0
+          ? "ZECK_OBJECT_STORE_SECRET_ACCESS_KEY is not set (the materialized object-store-secret-access-key secret value is absent)"
+          : endpoint === undefined || endpoint.length === 0
+            ? "ZECK_OBJECT_STORE_ENDPOINT is not set (ordinary object-store configuration; see deploy/README.md)"
+            : bucket === undefined || bucket.length === 0
+              ? "ZECK_OBJECT_STORE_BUCKET is not set (ordinary object-store configuration; see deploy/README.md)"
+              : null;
+  if (notMaterialized !== null) {
+    return { concern: "artifact-bytes", status: "unavailable", detail: notMaterialized };
+  }
+  // Cross-check the configured bucket against the manifest-computed
+  // resource name for this environment (naming drift is a defect).
+  const conventions = namingConventionsOf(manifest);
+  const names = computeResourceNames(
+    conventions,
+    environment,
+    manifest.resources[environment as keyof typeof manifest.resources] ?? [],
+  );
+  const expectedBucket = names.find((name) => name.kind === "r2-bucket")?.name;
+  const bucketDrift =
+    expectedBucket !== undefined && bucket !== undefined && expectedBucket !== bucket;
+  try {
+    const store = createS3ObjectStore({
+      endpoint: endpoint ?? "",
+      bucket: bucket ?? "",
+      region,
+      accessKeyId: accessKeyId ?? "",
+      secretAccessKey: secretAccessKey ?? "",
+    });
+    const probe = await store.headBucket();
+    if (probe.ok) {
+      return {
+        concern: "artifact-bytes",
+        status: bucketDrift ? "unavailable" : "ready",
+        detail: bucketDrift
+          ? `bucket reachable but the configured bucket name drifts from the manifest-computed resource name (${bucket} != ${expectedBucket})`
+          : `object-store bucket reachable (bucket: ${bucket})`,
+      };
+    }
+    const reason =
+      probe.status === 403
+        ? "credentials rejected (403)"
+        : probe.status === 404
+          ? "bucket absent (404)"
+          : `provider status ${probe.status}`;
+    return { concern: "artifact-bytes", status: "unavailable", detail: reason };
+  } catch (error) {
+    return {
+      concern: "artifact-bytes",
+      status: "unavailable",
+      detail: `object-store probe failed closed: ${(error as Error).message.slice(0, 140)}`,
+    };
+  }
 }
 
 async function main(): Promise<void> {

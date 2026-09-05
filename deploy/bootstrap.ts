@@ -13,10 +13,13 @@
  * PREVIEW/STAGING/PRODUCTION: emits the deterministic provisioning
  * plan — the exact resource set with computed names and ownership
  * labels, the secret-reference preconditions, and the classification
- * of each operation. Executing provider mutations is D-02+ adapter
- * work; the plan marks `executable` ONLY when every secret reference
- * is materialized with a valid environment-scoped reference URI (fail
- * closed: no half-provisioned, half-credentialed state).
+ * of each operation. Provider RESOURCE PROVISIONING (creating the
+ * Neon project/branch or the R2 bucket) is account-plane work outside
+ * the D-02 runtime credentials; the plan marks `executable` ONLY when
+ * every secret reference is materialized with a valid
+ * environment-scoped reference URI (fail closed: no half-provisioned,
+ * half-credentialed state). The D-02 RUNTIME adapters (migrate/smoke
+ * probes) landed with WORK-043.
  *
  * Usage:
  *   bun run deploy:bootstrap -- --environment local
@@ -165,7 +168,8 @@ async function main(): Promise<void> {
       resource: resource.id ?? "-",
       kind: resource.kind,
       name: resource.name,
-      action: "plan-only (provider adapter execution arrives with D-02+; see deploy/README.md)",
+      action:
+        "plan-only (resource provisioning is account-plane work outside the D-02 runtime credentials; runtime adapters landed with WORK-043/D-02 — see deploy/README.md)",
       idempotent: true,
     })),
     labels: names[0]?.labels ?? {},

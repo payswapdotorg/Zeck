@@ -149,6 +149,49 @@
       "credentialShaped": false,
       "environments": ["local"],
       "description": "Local dashboard listen port. Defaults to 4545."
+    },
+    {
+      "name": "ZECK_DATABASE_URL",
+      "type": "postgres-url",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's database-url secret (the managed PostgreSQL connection string, e.g. a Neon endpoint with sslmode=require). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_DATABASE_URL_REF; resolution happens immediately before the authorized database adapter call (src/platform/secret-store/adapters/env-secret-store.ts)."
+    },
+    {
+      "name": "ZECK_OBJECT_STORE_ACCESS_KEY_ID",
+      "type": "provider-credential",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's object-store-access-key-id secret (the R2 S3 access key id). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF."
+    },
+    {
+      "name": "ZECK_OBJECT_STORE_SECRET_ACCESS_KEY",
+      "type": "provider-credential",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's object-store-secret-access-key secret (the R2 S3 secret access key). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_OBJECT_STORE_SECRET_ACCESS_KEY_REF."
+    },
+    {
+      "name": "ZECK_OBJECT_STORE_ENDPOINT",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "S3-compatible object-store endpoint for the artifact-bytes port (Cloudflare R2: https://<account-id>.r2.cloudflarestorage.com). Ordinary non-secret configuration; the account id is separately declared as ZECK_CLOUDFLARE_ACCOUNT_ID."
+    },
+    {
+      "name": "ZECK_OBJECT_STORE_BUCKET",
+      "type": "bucket-name",
+      "required": false,
+      "credentialShaped": false,
+      "description": "S3-compatible bucket name behind the ObjectStore port. Ordinary non-secret configuration; smoke cross-checks it against the manifest-computed resource name for the environment."
+    },
+    {
+      "name": "ZECK_OBJECT_STORE_REGION",
+      "type": "provider-region",
+      "required": false,
+      "credentialShaped": false,
+      "description": "SigV4 region for the S3-compatible object store. Cloudflare R2 uses the 'auto' region; the repository default is 'auto'."
     }
   ]
 }

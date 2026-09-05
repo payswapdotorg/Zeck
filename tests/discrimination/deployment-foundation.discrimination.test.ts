@@ -270,7 +270,13 @@ describe("discrimination: identity integrity (tampering detected)", () => {
     const manifest = loadReal();
     const revision = "0123456789abcdef0123456789abcdef01234567";
     const identity = deploymentIdentity(manifest, revision, "staging");
-    const tampered = { ...identity, identityId: `0${identity.identityId.slice(1)}` };
+    // The tamper must be GUARANTEED different from the real id: a
+    // same-length mutation like `0${id.slice(1)}` silently no-ops when
+    // the digest already begins with 0 (a 1/16 hash coincidence —
+    // WORK-043's manifest addition moved the digest into exactly that
+    // shape). Use a value that cannot equal the recomputed digest.
+    const forged = identity.identityId === "0".repeat(64) ? "1".repeat(64) : "0".repeat(64);
+    const tampered = { ...identity, identityId: forged };
     const result = verifyDeploymentIdentity(manifest, tampered, revision, "staging");
     expect(result.valid).toBe(false);
     expect(result.reason).toMatch(/does not recompute/);
