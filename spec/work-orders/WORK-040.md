@@ -1,6 +1,6 @@
 # WORK-040 — Advanced inspection and multimodal work experience
 
-Status: IN-FLIGHT
+Status: COMPLETE
 
 Owner: Architect-assigned implementation worker
 
@@ -126,8 +126,21 @@ Worker opens a PR but does not merge. Completion requires architect acceptance, 
 - Issue: #71
 - Dispatch status: AUTHORIZED / IN-FLIGHT
 - Work Order was promoted from PENDING to IN-FLIGHT by the Architect before worker branch creation.
-- Binding exact base: `aac355d1fad3c1a80a2d757f5c62160a95c4a5e3`
+- Binding exact base: `596c90ef91275a64cbef137e78a26c4ea14394da`
 - Required worker branch: `work/WORK-040-advanced-inspection-multimodal-work`
 - Worker must not modify `spec/development-state/*` during active work.
 - Worker must not merge its own PR.
 - Worker may implement only this Work Order and its declared surfaces.
+
+# Completion Record
+
+- Issue: #71
+- PR: #72
+- Architect decision: ACCEPTED
+- Implementation commit: `6313c4d`
+- Final evidence head: `df3fb5183d68987bb7bf4155b56b8775fd4246fa`
+- Merge commit: `64bc1b11e99e9c7b2ab13b36c4d311750211050d`
+- Changed files: 10, all within declared surfaces
+- Complete gate: twice consecutively green at exact final head; governance, typecheck, lint and full suite passed; full suite 284 files / 4173 tests on correction final head
+- Driven browser: 143/143 checks passed with zero console/page errors
+- Correction cycle: deployments events-read now treats only 404 as absence; non-404 failures propagate to fail-closed router surfaces, with regression proof in `(av)`
