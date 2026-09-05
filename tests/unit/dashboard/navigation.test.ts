@@ -451,6 +451,11 @@ describe("responsive and appearance evidence in the stylesheet", () => {
   test("mobile touch targets are at least 44px (--touch-target)", () => {
     const mobileBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf("@media (max-width: 640px)"));
     expect(mobileBlock).toContain("min-height: var(--touch-target)");
+    // WORK-041 (responsive refinement): the touch-target minimum covers
+    // the dialog family too — the command dialog's input/submit, the
+    // sheet's close and action buttons (modal surfaces are primary
+    // interactive surfaces on mobile).
+    expect(mobileBlock).toContain("dialog button, dialog input, dialog select");
   });
 
   test("reduced motion is honored", () => {

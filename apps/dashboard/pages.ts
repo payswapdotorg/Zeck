@@ -196,19 +196,29 @@ async function readRecentExecutions(
   client: ZeckClient,
   ids: readonly string[],
 ): Promise<RecentsView> {
-  const executions: Execution[] = [];
-  let pruned = false;
-  for (const id of ids) {
-    try {
-      executions.push(await client.getExecution(id));
-    } catch (error) {
-      if (error instanceof ZeckApiError && error.status === 404) {
-        pruned = true;
-        continue;
+  /**
+   * WORK-041 (performance — semantics-preserving): the recents reads fan
+   * out concurrently. The read SET is identical to the sequential form
+   * (exactly one governed getExecution per recents id, results kept in the
+   * recents order), a 404 still prunes exactly that id, and every other
+   * error still propagates fail-closed to the router's error surfaces —
+   * only wall-clock time changes, so primary journeys stay fast as the
+   * recents list fills (the domain semantics are untouched).
+   */
+  const reads = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        return await client.getExecution(id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
       }
-      throw error;
-    }
-  }
+    }),
+  );
+  const executions = reads.filter((execution): execution is Execution => execution !== null);
+  const pruned = executions.length !== ids.length;
   return { executions, survivingIds: executions.map((execution) => execution.id), pruned };
 }
 
@@ -1274,18 +1284,25 @@ async function deploymentsOverviewPage(
     readonly sessionCount: number;
     readonly lastActivity: string | null;
   }[] = [];
-  for (const execution of recents.executions) {
-    let events: readonly ExecutionEvent[] = [];
-    try {
-      events = await client.listEvents(execution.id);
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // event reads run concurrently; the read set, the 404-only absence and
+  // the fail-closed propagation are identical to the sequential form.
+  const eventsPerRun: readonly (readonly ExecutionEvent[])[] = await Promise.all(
+    recents.executions.map(async (execution) => {
+      try {
+        return await client.listEvents(execution.id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          // A 404 event stream is the honest absence: the run exists but
+          // contributes no session facts — the row's absence is truthful.
+          return [] as readonly ExecutionEvent[];
+        }
         throw error;
       }
-      // A 404 event stream is the honest absence: the run exists but
-      // contributes no session facts — the row's absence is truthful.
-    }
-    const sessionFacts = agentSessionFactsOf(events);
+    }),
+  );
+  recents.executions.forEach((execution, index) => {
+    const sessionFacts = agentSessionFactsOf(eventsPerRun[index] ?? []);
     if (sessionFacts.present) {
       sessionRuns.push({
         executionId: execution.id,
@@ -1293,7 +1310,7 @@ async function deploymentsOverviewPage(
         lastActivity: sessionFacts.events[sessionFacts.events.length - 1]?.occurredAt ?? null,
       });
     }
-  }
+  });
   const content = `${pageHead({
     title: "Deployments",
     path: "/deployments",
@@ -1452,7 +1469,11 @@ ${lookupForm()}`;
       mainContent: content,
       appearance: appearanceOf(ctx.cookies),
       mode: modeOf(ctx.cookies),
-      returnTo: "/runs",
+      // WORK-041 (context restoration): the same foundation rule as every
+      // content page — a preference change on this view returns to THIS
+      // view (re-rendered in the new presentation), never a bounce that
+      // loses the user's place. The lookup form above is the recovery path.
+      returnTo: ctx.path,
     }),
   );
 }
@@ -1886,10 +1907,17 @@ async function artifactsPage(client: ZeckClient, ctx: HttpContext): Promise<Hand
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const sections: string[] = [];
-  for (const execution of recents.executions) {
-    const result = await client.getResult(execution.id);
-    if (result.outputArtifacts.length === 0) {
-      continue;
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // result reads run concurrently (no 404-catch here, exactly as before —
+  // an error on any recents result read propagates to the router's error
+  // surfaces); the read set is identical to the sequential form.
+  const resultsPerRun = await Promise.all(
+    recents.executions.map((execution) => client.getResult(execution.id)),
+  );
+  recents.executions.forEach((execution, index) => {
+    const result = resultsPerRun[index];
+    if (result === undefined || result.outputArtifacts.length === 0) {
+      return;
     }
     const rows = result.outputArtifacts
       .map(
@@ -1909,7 +1937,7 @@ async function artifactsPage(client: ZeckClient, ctx: HttpContext): Promise<Hand
   <thead><tr><th scope="col">Artifact</th><th scope="col">Digest</th><th scope="col">Created</th></tr></thead>
   <tbody>${rows}</tbody>
 </table>`);
-  }
+  });
   const content = `${pageHead({ title: "Artifacts", path: "/assets/artifacts" })}
 ${unavailableState(
   "Artifact inventory",
@@ -1957,26 +1985,34 @@ async function collectArtifactUsages(
   artifactId: string,
   excludeExecutionId: string | null,
 ): Promise<readonly ArtifactUsageRow[]> {
-  const usages: ArtifactUsageRow[] = [];
-  for (const id of ids) {
-    if (id === excludeExecutionId) {
-      continue;
-    }
-    try {
-      const [execution, events] = await Promise.all([
-        client.getExecution(id),
-        client.listEvents(id),
-      ]);
-      if (consumesArtifact(events, artifactId)) {
-        usages.push({ executionId: id, title: executionTitle(execution.task, id) });
-      }
-    } catch (error) {
-      if (error instanceof ZeckApiError && error.status === 404) {
-        continue;
-      }
-      throw error;
-    }
-  }
+  const usages: ArtifactUsageRow[] =
+    // WORK-041 (performance — semantics-preserving fan-out): the per-id
+    // execution+event reads run concurrently; the read set, the 404-only
+    // skip and the fail-closed propagation are identical to the sequential
+    // form.
+    (
+      await Promise.all(
+        ids
+          .filter((id) => id !== excludeExecutionId)
+          .map(async (id): Promise<ArtifactUsageRow | null> => {
+            try {
+              const [execution, events] = await Promise.all([
+                client.getExecution(id),
+                client.listEvents(id),
+              ]);
+              if (consumesArtifact(events, artifactId)) {
+                return { executionId: id, title: executionTitle(execution.task, id) };
+              }
+              return null;
+            } catch (error) {
+              if (error instanceof ZeckApiError && error.status === 404) {
+                return null;
+              }
+              throw error;
+            }
+          }),
+      )
+    ).filter((usage): usage is ArtifactUsageRow => usage !== null);
   return usages;
 }
 
@@ -2266,18 +2302,27 @@ async function trustEvidencePage(client: ZeckClient, ctx: HttpContext): Promise<
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
   const sections: string[] = [];
-  for (const execution of recents.executions) {
-    let chip = "No verification results";
-    let artifactsCount = 0;
-    try {
-      const result = await client.getResult(execution.id);
-      chip = deriveVerificationChip(result.verification);
-      artifactsCount = result.outputArtifacts.length;
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // result reads run concurrently; the 404 absence keeps the honest
+  // "No verification results" chip and zero artifact count, every other
+  // error propagates fail-closed.
+  const resultsPerRun = await Promise.all(
+    recents.executions.map(async (execution) => {
+      try {
+        return await client.getResult(execution.id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return null;
+        }
         throw error;
       }
-    }
+    }),
+  );
+  recents.executions.forEach((execution, index) => {
+    const result = resultsPerRun[index] ?? null;
+    const chip =
+      result === null ? "No verification results" : deriveVerificationChip(result.verification);
+    const artifactsCount = result === null ? 0 : result.outputArtifacts.length;
     const id = encodeURIComponent(execution.id);
     sections.push(`<li>
   <a class="run-title" href="/runs/${id}?tab=evidence">${esc(
@@ -2287,7 +2332,7 @@ async function trustEvidencePage(client: ZeckClient, ctx: HttpContext): Promise<
   <span class="axis-fact">${esc(chip)}</span>
   <a href="/runs/${id}">Result</a> · <a href="/runs/${id}?tab=activity">Activity</a> · <a href="/assets/artifacts">Artifacts (${artifactsCount})</a>
 </li>`);
-  }
+  });
   const content = `${pageHead({ title: "Evidence", path: "/trust/evidence" })}
 <p>Evidence is why a result can be trusted — the platform's verification checks, their recorded evidence refs, and the provenance of each run. Per-execution evidence is live through the governed API; open a run's Evidence view for the full check table with linked refs.</p>
 ${
@@ -2324,21 +2369,42 @@ async function trustLineagePage(client: ZeckClient, ctx: HttpContext): Promise<H
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
   const sections: string[] = [];
-  for (const execution of recents.executions) {
-    let inputRefs: readonly string[] = [];
-    let outputs: readonly { id: string; digest: string | null }[] = [];
-    try {
-      const [events, result] = await Promise.all([
-        client.listEvents(execution.id),
-        client.getResult(execution.id),
-      ]);
-      inputRefs = inputArtifactRefsOf(events);
-      outputs = result.outputArtifacts;
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
-        throw error;
-      }
-    }
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // event+result reads run concurrently; the read set, the 404-only
+  // absence and the fail-closed propagation are identical to the
+  // sequential form.
+  const factsPerRun: readonly {
+    readonly inputRefs: readonly string[];
+    readonly outputs: readonly { id: string; digest: string | null }[];
+  }[] = await Promise.all(
+    recents.executions.map(
+      async (
+        execution,
+      ): Promise<{
+        inputRefs: readonly string[];
+        outputs: readonly { id: string; digest: string | null }[];
+      }> => {
+        try {
+          const [events, result] = await Promise.all([
+            client.listEvents(execution.id),
+            client.getResult(execution.id),
+          ]);
+          return { inputRefs: inputArtifactRefsOf(events), outputs: result.outputArtifacts };
+        } catch (error) {
+          if (error instanceof ZeckApiError && error.status === 404) {
+            return { inputRefs: [], outputs: [] };
+          }
+          throw error;
+        }
+      },
+    ),
+  );
+  recents.executions.forEach((execution, index) => {
+    const facts = factsPerRun[index] ?? {
+      inputRefs: [] as readonly string[],
+      outputs: [] as readonly { id: string; digest: string | null }[],
+    };
+    const { inputRefs, outputs } = facts;
     const id = encodeURIComponent(execution.id);
     const inputsHtml =
       inputRefs.length === 0
@@ -2369,7 +2435,7 @@ async function trustLineagePage(client: ZeckClient, ctx: HttpContext): Promise<H
   )}</a> ${statusBadge(execution.status)}</div>
   <div class="lineage-step"><span class="glance-kind">Outputs</span>\n    ${outputsHtml}</div>
 </li>`);
-  }
+  });
   const content = `${pageHead({ title: "Lineage", path: "/trust/lineage" })}
 <p>Lineage connects artifacts to their producing executions, parent artifacts and downstream usage. The per-run chain — the platform's own recorded inputs and outputs — is live below; open any artifact for its full provenance, parent lineage, verification and usage references.</p>
 ${
@@ -2440,16 +2506,23 @@ async function policiesPage(client: ZeckClient, ctx: HttpContext): Promise<Handl
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
   const blocked: { id: string; title: string; status: string; denial: PolicyDenialFact }[] = [];
-  for (const execution of recents.executions) {
-    let events: readonly ExecutionEvent[] = [];
-    try {
-      events = await client.listEvents(execution.id);
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // event reads run concurrently; the read set, the 404-only absence and
+  // the fail-closed propagation are identical to the sequential form.
+  const eventsPerRun: readonly (readonly ExecutionEvent[])[] = await Promise.all(
+    recents.executions.map(async (execution) => {
+      try {
+        return await client.listEvents(execution.id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return [] as readonly ExecutionEvent[];
+        }
         throw error;
       }
-    }
-    const denial = policyDenialOf(events);
+    }),
+  );
+  recents.executions.forEach((execution, index) => {
+    const denial = policyDenialOf(eventsPerRun[index] ?? []);
     if (denial !== null) {
       blocked.push({
         id: execution.id,
@@ -2458,7 +2531,7 @@ async function policiesPage(client: ZeckClient, ctx: HttpContext): Promise<Handl
         denial,
       });
     }
-  }
+  });
   const blockedList =
     blocked.length === 0
       ? '<p class="muted">No run opened in this browser carries a recorded policy denial — when the platform refuses admission, the controlling rule is recorded on the run and listed here.</p>'
@@ -2500,32 +2573,40 @@ async function spendPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerR
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
   const facts: RunSpendFact[] = [];
-  for (const execution of recents.executions) {
-    let result: ExecutionResult;
-    try {
-      result = await client.getResult(execution.id);
-    } catch (error) {
-      if (error instanceof ZeckApiError && error.status === 404) {
-        // No result package yet (the run has not settled): the run still
-        // renders — its declared limit from the execution record, the
-        // honest "not settled yet" for cost, no invented route.
-        result = {
-          executionId: execution.id,
-          status: execution.status,
-          route: null,
-          cost: null,
-          usage: null,
-          outputArtifacts: [],
-          verification: [],
-          warnings: [],
-          terminalAt: null,
-        };
-      } else {
-        throw error;
-      }
-    }
-    facts.push(runSpendFacts(execution, result));
-  }
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // result reads run concurrently; the 404 absence keeps the honest
+  // synthetic unsettled view, every other error propagates fail-closed.
+  facts.push(
+    ...(await Promise.all(
+      recents.executions.map(async (execution): Promise<RunSpendFact> => {
+        let result: ExecutionResult;
+        try {
+          result = await client.getResult(execution.id);
+        } catch (error) {
+          if (error instanceof ZeckApiError && error.status === 404) {
+            // No result package yet (the run has not settled): the run
+            // still renders — its declared limit from the execution
+            // record, the honest "not settled yet" for cost, no invented
+            // route.
+            result = {
+              executionId: execution.id,
+              status: execution.status,
+              route: null,
+              cost: null,
+              usage: null,
+              outputArtifacts: [],
+              verification: [],
+              warnings: [],
+              terminalAt: null,
+            };
+          } else {
+            throw error;
+          }
+        }
+        return runSpendFacts(execution, result);
+      }),
+    )),
+  );
   const total = sumMicroUsd(
     facts.map((fact) => fact.costMicroUsd).filter((value): value is string => value !== null),
   );
@@ -2561,29 +2642,36 @@ async function connectionsPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
   const facts: RunSpendFact[] = [];
-  for (const execution of recents.executions) {
-    let result: ExecutionResult;
-    try {
-      result = await client.getResult(execution.id);
-    } catch (error) {
-      if (error instanceof ZeckApiError && error.status === 404) {
-        result = {
-          executionId: execution.id,
-          status: execution.status,
-          route: null,
-          cost: null,
-          usage: null,
-          outputArtifacts: [],
-          verification: [],
-          warnings: [],
-          terminalAt: null,
-        };
-      } else {
-        throw error;
-      }
-    }
-    facts.push(runSpendFacts(execution, result));
-  }
+  // WORK-041 (performance — semantics-preserving fan-out): the per-run
+  // result reads run concurrently; the 404 absence keeps the honest
+  // synthetic unsettled view, every other error propagates fail-closed.
+  facts.push(
+    ...(await Promise.all(
+      recents.executions.map(async (execution): Promise<RunSpendFact> => {
+        let result: ExecutionResult;
+        try {
+          result = await client.getResult(execution.id);
+        } catch (error) {
+          if (error instanceof ZeckApiError && error.status === 404) {
+            result = {
+              executionId: execution.id,
+              status: execution.status,
+              route: null,
+              cost: null,
+              usage: null,
+              outputArtifacts: [],
+              verification: [],
+              warnings: [],
+              terminalAt: null,
+            };
+          } else {
+            throw error;
+          }
+        }
+        return runSpendFacts(execution, result);
+      }),
+    )),
+  );
   const categories = providerCategoryFacts(facts);
   const content = `${pageHead({ title: "Connections", path: "/assets/connections" })}
 <p>Connections are governed server-side — you bring your own keys, and the platform mediates every credential. What is live here is the routing the platform recorded for the runs opened in this browser.</p>
@@ -2666,28 +2754,35 @@ async function auditPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerR
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
-  const rows: AuditLedgerRow[] = [];
-  for (const execution of recents.executions) {
-    let events: readonly ExecutionEvent[] = [];
-    try {
-      events = await client.listEvents(execution.id);
-    } catch (error) {
-      if (!(error instanceof ZeckApiError && error.status === 404)) {
-        throw error;
-      }
-    }
-    if (events.length === 0) {
-      continue;
-    }
-    const ordered = chronologicalEvents(events);
-    const last = ordered[ordered.length - 1];
-    rows.push({
-      executionId: execution.id,
-      eventCount: events.length,
-      lastEventAt: last?.occurredAt ?? null,
-      lastEventLabel: last === undefined ? null : eventStageLabel(last.type),
-    });
-  }
+  const rows: AuditLedgerRow[] =
+    // WORK-041 (performance — semantics-preserving fan-out): the per-run
+    // event reads run concurrently; the read set, the 404-only absence and
+    // the fail-closed propagation are identical to the sequential form.
+    (
+      await Promise.all(
+        recents.executions.map(async (execution): Promise<AuditLedgerRow | null> => {
+          let events: readonly ExecutionEvent[] = [];
+          try {
+            events = await client.listEvents(execution.id);
+          } catch (error) {
+            if (!(error instanceof ZeckApiError && error.status === 404)) {
+              throw error;
+            }
+          }
+          if (events.length === 0) {
+            return null;
+          }
+          const ordered = chronologicalEvents(events);
+          const last = ordered[ordered.length - 1];
+          return {
+            executionId: execution.id,
+            eventCount: events.length,
+            lastEventAt: last?.occurredAt ?? null,
+            lastEventLabel: last === undefined ? null : eventStageLabel(last.type),
+          };
+        }),
+      )
+    ).filter((row): row is AuditLedgerRow => row !== null);
   const content = `${pageHead({ title: "Audit", path: "/admin/audit" })}
 <p>The governed-action record: every command on a run — create, authorize, dispatch, verification, terminal transitions and denials — is recorded platform-side, append-only. The per-run event ledgers of the runs opened in this browser are the closest live audit record.</p>
 ${auditLedgerSection(rows)}
@@ -2920,10 +3015,14 @@ async function commandPage(client: ZeckClient, ctx: HttpContext): Promise<Handle
   const content = `${pageHead({ title: "Command", path: "/command" })}
 ${
   unique.length === 0
-    ? `<div class="state state-empty">
-  <p class="state-title">No matches for "${esc(query)}"</p>
-  <p class="state-body">Try a navigation word (agents, runs, policies), an execution id, or a phrase like "cancel &lt;execution id&gt;".</p>
-</div>`
+    ? // WORK-041 (states consistency): the no-match state composes the
+      // ONE empty-state primitive — the same vocabulary and the same
+      // single escape boundary every other route uses (the query passes
+      // through esc inside the primitive, never hand-rolled markup).
+      emptyState(
+        `No matches for "${query}"`,
+        'Try a navigation word (agents, runs, policies), an execution id, or a phrase like "cancel <execution id>".',
+      )
     : `<p class="muted">Results for "${esc(query)}" — every result is a link; mutations open their confirmation flows.</p>
 <ul class="command-results">
   ${listItems}

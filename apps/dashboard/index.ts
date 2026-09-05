@@ -68,7 +68,16 @@ export interface DashboardOptions {
   readonly fetchImpl?: typeof fetch;
 }
 
-/** The dashboard's own error surfaces: the public error shape only (M25). */
+/**
+ * The dashboard's own error surfaces: the public error shape only (M25).
+ *
+ * WORK-041 (context restoration): every error surface passes ctx.path as
+ * the no-script preference fallback's returnTo — the same foundation rule
+ * every content page follows (WORK-035: "Current path for the no-script
+ * appearance/mode fallback redirect"). Applying a mode or appearance
+ * change on an error page returns to the SAME view (re-rendered in the
+ * new presentation), never a bounce to Home that loses the user's place.
+ */
 function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult {
   const { code, message, retryable } = error.body;
   if (error.status === 401 || error.status === 403) {
@@ -83,7 +92,7 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
           message,
           `${code}${retryable ? " — retryable" : ""}`,
         )}`,
-        returnTo: "/",
+        returnTo: ctx.path,
       }),
     };
   }
@@ -99,7 +108,7 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
           message,
           `${code}${retryable ? " — retryable" : ""}`,
         )}`,
-        returnTo: "/",
+        returnTo: ctx.path,
       }),
     };
   }
@@ -114,7 +123,7 @@ function apiErrorResponse(error: ZeckApiError, ctx: HttpContext): HandlerResult 
         message,
         `${code}${retryable ? " — retryable" : ""}`,
       )}`,
-      returnTo: "/",
+      returnTo: ctx.path,
     }),
   };
 }
@@ -131,7 +140,7 @@ function transportErrorResponse(ctx: HttpContext): HandlerResult {
         "The live read through the governed API failed; no further detail is exposed. Retry, or check the API availability.",
         "Every dashboard view is a live read — there is no cached fallback.",
       )}`,
-      returnTo: "/",
+      returnTo: ctx.path,
     }),
   };
 }
@@ -147,7 +156,7 @@ function notFoundResponse(ctx: HttpContext): HandlerResult {
         "This page does not exist",
         `No route matches "${ctx.path}". Use the navigation or the command bar.`,
       )}`,
-      returnTo: "/",
+      returnTo: ctx.path,
     }),
   };
 }
@@ -163,7 +172,7 @@ function tooLargeResponse(ctx: HttpContext): HandlerResult {
         "The submitted form was too large",
         "The dashboard caps form bodies at 64 KiB; submit a smaller request.",
       )}`,
-      returnTo: "/",
+      returnTo: ctx.path,
     }),
   };
 }
