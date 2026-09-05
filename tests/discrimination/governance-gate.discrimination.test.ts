@@ -105,15 +105,17 @@ test("merge evidence on an incomplete Work Order is rejected", () => {
   const program = JSON.parse(readFileSync(programPath, "utf8")) as {
     workOrders: Array<{ id: string; status: string; mergedAs?: unknown }>;
   };
-  // WORK-002 repair: the original hardcoded WORK-001, which stopped
-  // discriminating once WORK-001 legitimately completed WITH merge
-  // evidence. Mutate the first INCOMPLETE Work Order instead — merge
-  // evidence there can never be legal, whatever the program state.
-  const incomplete = program.workOrders.find((order) => order.status !== "complete");
-  if (incomplete === undefined) {
-    throw new Error("fixture error: no incomplete Work Order exists to mutate");
+  // Mutate a known complete Work Order into an incomplete state while keeping
+  // its existing merge evidence. The governance gate must reject this because
+  // merge evidence is legal only when status is exactly "complete". This
+  // remains discriminating even when the live repository has no incomplete
+  // Work Orders at all.
+  const complete = program.workOrders.find((order) => order.status === "complete");
+  if (complete === undefined) {
+    throw new Error("fixture error: no complete Work Order exists to mutate");
   }
-  incomplete.mergedAs = { pr: 999, commit: "0".repeat(40) };
+  complete.status = "pending";
+  complete.mergedAs = { pr: 999, commit: "0".repeat(40) };
   writeFileSync(programPath, `${JSON.stringify(program, null, 2)}\n`);
   const result = runGovernanceCheck(copy);
   expect(result.code).not.toBe(0);
