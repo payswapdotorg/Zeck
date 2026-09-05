@@ -85,6 +85,14 @@ interface FakeWorld {
   readonly cancelIndex: Map<string, { executionId: string; status: ExecutionReceipt["status"] }>;
   durableCreates: number;
   failAgentList: boolean;
+  /**
+   * WORK-040 correction (the Architect review of PR #72): a simulated
+   * NON-404 failure of the scoped events read for one execution id — the
+   * fail-closed regression proof (status 403 = the auth/policy class;
+   * anything else = the transport class). NEVER a 404: the 404 absence
+   * stays the world's own scope-checked miss below.
+   */
+  failEventList: { id: string; status: number } | null;
   /** Every scoped wire call's application selector (the (l) proof). */
   readonly scopedCalls: { path: string; application: string }[];
   /** Every create request body (the (s)/(x) proofs: budget, datasets, task). */
@@ -448,6 +456,15 @@ function createFakeApi(world: FakeWorld): typeof fetch {
       if (execution === undefined || execution.applicationId !== applicationId) {
         return executionNotFound();
       }
+      // WORK-040 correction: the simulated NON-404 events-read failure
+      // (403 POLICY_DENIED = the auth/policy class; PROVIDER_ERROR = the
+      // transport class) — the dashboard must FAIL CLOSED on it, never
+      // swallow it into an empty session projection.
+      if (world.failEventList?.id === id) {
+        return world.failEventList.status === 403
+          ? publicError(403, "POLICY_DENIED", "the scoped event read was denied")
+          : publicError(500, "PROVIDER_ERROR", "simulated event-read failure");
+      }
       if (events === undefined) {
         return executionNotFound();
       }
@@ -678,6 +695,7 @@ beforeAll(async () => {
     cancelIndex: new Map(),
     durableCreates: 0,
     failAgentList: false,
+    failEventList: null,
     scopedCalls: [],
     createCalls: [],
   };
@@ -3724,5 +3742,80 @@ describe("(au) the WORK-040 real-wire normalization journey (prefixed step event
     const page = await html(await get(`/runs/${LONGRUN_ID}`));
     expect(page).toContain("Long-running workload");
     expect(page).toContain("Checkpoint 2 of 2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (av) The WORK-040 correction journey (the Architect review of PR #72):
+//      the deployments fail-closed discipline on the scoped events read —
+//      ONLY the 404 absence renders as "no session facts"; every other
+//      events-read failure is surfaced, never swallowed
+// ---------------------------------------------------------------------------
+
+describe("(av) the WORK-040 correction journey (the fail-closed deployments events read)", () => {
+  test('an auth-class (403) events-read failure FAILS CLOSED — never a false "no session facts" success', async () => {
+    // A browser whose recents cookie carries the realtime run; the
+    // scoped events read for that run fails with 403 POLICY_DENIED
+    // (the auth/policy class). The authoritative read FAILED — the
+    // dashboard must surface it, not render a successful-looking
+    // overview with the run silently missing from session evidence.
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", REALTIME_ID);
+    world.failEventList = { id: REALTIME_ID, status: 403 };
+    try {
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(403);
+      const page = await html(response);
+      expect(page).toContain("Not authorized");
+      expect(page).toContain("The governed API denied this view");
+      // The false-success states never render: neither the overview
+      // section nor the session-evidence empty state (which would mask
+      // the failed read as "no session facts").
+      expect(page).not.toContain("Availability and the governed work behind it");
+      expect(page).not.toContain("No session evidence");
+    } finally {
+      world.failEventList = null;
+    }
+  });
+
+  test("a transport-class (500) events-read failure FAILS CLOSED (the 502 upstream surface)", async () => {
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", REALTIME_ID);
+    world.failEventList = { id: REALTIME_ID, status: 500 };
+    try {
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(502);
+      const page = await html(response);
+      expect(page).toContain("Upstream failure");
+      expect(page).toContain("The Zeck API could not complete this view");
+      expect(page).not.toContain("Availability and the governed work behind it");
+      expect(page).not.toContain("No session evidence");
+    } finally {
+      world.failEventList = null;
+    }
+  });
+
+  test("the normal 404 absence stays the HONEST absence — the page renders, the run contributes no session row", async () => {
+    // The execution is live (its getExecution read succeeds — the recents
+    // prune does not fire) but its event stream 404s: the 404 IS the
+    // honest absence, so the overview renders normally and the empty
+    // session state is TRUTHFUL (the authoritative read said 404).
+    const eventsBackup = world.events.get(REALTIME_ID);
+    world.events.delete(REALTIME_ID);
+    try {
+      const jar = new CookieJar();
+      jar.set("zeck_recent_executions", REALTIME_ID);
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(200);
+      const page = await html(response);
+      expect(page).toContain("Availability and the governed work behind it");
+      expect(page).toContain("No session evidence");
+      expect(page).not.toContain("Not authorized");
+      expect(page).not.toContain("Upstream failure");
+    } finally {
+      if (eventsBackup !== undefined) {
+        world.events.set(REALTIME_ID, eventsBackup);
+      }
+    }
   });
 });

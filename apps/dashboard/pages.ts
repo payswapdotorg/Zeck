@@ -1259,6 +1259,13 @@ async function deploymentsOverviewPage(
    * scope — for each recent run, the agent-session events (the realtime/
    * messaging/media vocabulary) are read through the governed client and
    * counted; every row links back to the canonical execution context.
+   *
+   * CORRECTION (the Architect review of PR #72): the events read is
+   * fail-closed EXACTLY like every other dashboard read — only the 404
+   * absence of an event stream renders as "no session facts" for that
+   * run; every other failure (scope/auth/transport/422) PROPAGATES to
+   * the router's error surfaces and never becomes a successful-looking
+   * page (never a swallowed empty session projection).
    */
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
@@ -1268,9 +1275,17 @@ async function deploymentsOverviewPage(
     readonly lastActivity: string | null;
   }[] = [];
   for (const execution of recents.executions) {
-    const sessionFacts = agentSessionFactsOf(
-      await client.listEvents(execution.id).catch(() => [] as readonly ExecutionEvent[]),
-    );
+    let events: readonly ExecutionEvent[] = [];
+    try {
+      events = await client.listEvents(execution.id);
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+      // A 404 event stream is the honest absence: the run exists but
+      // contributes no session facts — the row's absence is truthful.
+    }
+    const sessionFacts = agentSessionFactsOf(events);
     if (sessionFacts.present) {
       sessionRuns.push({
         executionId: execution.id,
