@@ -6,6 +6,10 @@
  *  - missing provider configuration fails closed with the exact
  *    variable NAMES (never values) in the reason (the provider
  *    endpoint loader lives in the owning adapter module);
+ *  - the DEDICATED probe queue variable is optional for the transport
+ *    and validated fail-closed when present (the PR #6 correction:
+ *    probe() refuses without it — it never targets the execution
+ *    queue);
  *  - the bounded retry/replay budgets default to the
  *    repository-declared defaults and reject garbage fail-closed;
  *  - the materialized secret is never echoed in configuration errors.
@@ -37,6 +41,9 @@ describe("queue adapter runtime configuration (WORK-044 D-03)", () => {
     expect(config.accountId).toBe(ACCOUNT);
     expect(config.queueId).toBe(QUEUE);
     expect(config.apiBaseUrl).toBeUndefined();
+    // The dedicated probe queue is optional for the TRANSPORT (only
+    // probe() requires it — and refuses fail-closed without it).
+    expect(config.probeQueueId).toBeUndefined();
   });
 
   test("each missing variable is named exactly (fail closed, value-free)", () => {
@@ -61,6 +68,27 @@ describe("queue adapter runtime configuration (WORK-044 D-03)", () => {
   test("an empty environment reports every missing variable", () => {
     const missing = missingCloudflareQueuesConfiguration({});
     expect(missing).toHaveLength(3);
+  });
+
+  test("the dedicated probe queue variable loads when present and fails closed when malformed", () => {
+    const PROBE_QUEUE = "c".repeat(32);
+    expect(
+      loadCloudflareQueuesRuntimeConfig({ ...COMPLETE_ENV, ZECK_PROBE_QUEUE_ID: PROBE_QUEUE })
+        .probeQueueId,
+    ).toBe(PROBE_QUEUE);
+    // Whitespace-only is absent (the transport needs no probe queue).
+    expect(
+      loadCloudflareQueuesRuntimeConfig({ ...COMPLETE_ENV, ZECK_PROBE_QUEUE_ID: "   " })
+        .probeQueueId,
+    ).toBeUndefined();
+    // Malformed: fail closed with the exact variable NAME, value-free.
+    try {
+      loadCloudflareQueuesRuntimeConfig({ ...COMPLETE_ENV, ZECK_PROBE_QUEUE_ID: "not-hex" });
+      expect.unreachable("a malformed probe queue id must fail closed");
+    } catch (error) {
+      expect(error).toBeInstanceOf(QueueConfigError);
+      expect((error as Error).message).toContain("ZECK_PROBE_QUEUE_ID");
+    }
   });
 
   test("the timeout override is validated (positive integer only)", () => {

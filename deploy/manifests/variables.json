@@ -202,6 +202,14 @@
       "description": "Cloudflare queue id (the 32-hex REST resource id) for the environment's dispatch queue behind the queue transport port. Ordinary non-secret provider-resource configuration; the queue name is deterministic from deploy/manifests/resources.json (kind cf-queue) and the id is resolved at provisioning time."
     },
     {
+      "name": "ZECK_PROBE_QUEUE_ID",
+      "type": "queue-resource-id",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "Cloudflare queue id (the 32-hex REST resource id) of the DEDICATED operator-owned probe queue used by the transport round-trip verification (deploy:smoke and deploy:queue probe). Must be a queue reserved for probe traffic and MUST differ from ZECK_QUEUE_ID (equal values are rejected fail-closed): probe traffic never enters the execution queue, and the probe acknowledges only its own exact message, so unrelated execution deliveries can never be consumed, discarded or delayed by a probe. The probe queue carries no application state and is not part of the environment's authoritative resource inventory; provision it with an HTTP pull consumer and the same token scopes (queues_read + queues_write)."
+    },
+    {
       "name": "ZECK_QUEUE_API_BASE_URL",
       "type": "http-url",
       "required": false,

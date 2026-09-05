@@ -17,7 +17,9 @@
  *   consume   — drain N delivery batches through the idempotent
  *               consumer (the governed-effect seam re-entering the
  *               single execution write path).
- *   probe     — the real transport round-trip (publish → pull → ack).
+ *   probe     — the real transport round-trip (publish → pull → ack)
+ *               on the DEDICATED operator-owned probe queue
+ *               (ZECK_PROBE_QUEUE_ID); never the execution queue.
  *
  * Composition root: this tool wires the platform pieces the frozen
  * dependency rules keep separate — the DatabasePort adapter from the
@@ -151,6 +153,22 @@ function transportFromEnvironment() {
   }
 }
 
+/**
+ * The probe command's fail-closed precondition: the probe NEVER runs
+ * against the execution queue — a dedicated operator-owned probe queue
+ * (ZECK_PROBE_QUEUE_ID) is required, and probe() itself refuses without
+ * one. Fail here with the exact variable name for the operator.
+ */
+function requireProbeQueueId(): void {
+  const probeQueueId = process.env.ZECK_PROBE_QUEUE_ID;
+  if (probeQueueId === undefined || probeQueueId.trim().length === 0) {
+    console.error(
+      "error: probe requires ZECK_PROBE_QUEUE_ID (the dedicated operator-owned probe queue; the transport probe never targets the execution queue — see deploy/README.md)",
+    );
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const command = requireCommand(argv);
@@ -160,6 +178,7 @@ async function main(): Promise<void> {
   const generateId = createUuidv7Generator();
 
   if (command === "probe") {
+    requireProbeQueueId();
     const transport = transportFromEnvironment();
     const probe = await transport.probe();
     console.log(JSON.stringify({ tool: "deploy/queue", command, environment, probe }, null, 2));

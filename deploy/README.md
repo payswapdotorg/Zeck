@@ -86,7 +86,7 @@ bun run deploy:queue -- inspect --environment local       # backlog/failure/dead
 bun run deploy:queue -- republish --environment local     # bounded crash/outage recovery (recorded envelopes)
 bun run deploy:queue -- replay --environment local --envelope <uuid>   # bounded replay of a dead-lettered lineage
 bun run deploy:queue -- consume --environment local --batches 1        # drain deliveries (idempotent, governed)
-bun run deploy:queue -- probe --environment preview       # real transport round-trip (publish → pull → ack)
+bun run deploy:queue -- probe --environment preview       # real transport round-trip on the dedicated probe queue
 ```
 
 ## Local environment reproduction (fresh checkout)
@@ -233,6 +233,10 @@ export ZECK_QUEUE_API_TOKEN='<cloudflare api token with queues read+write>'
 export ZECK_CLOUDFLARE_ACCOUNT_ID='<32-hex account id>'
 export ZECK_QUEUE_ID='<32-hex queue resource id>'
 
+# the DEDICATED operator-owned probe queue (required by deploy:smoke's
+# async-transport probe and deploy:queue probe — never the execution queue):
+export ZECK_PROBE_QUEUE_ID='<32-hex dedicated probe queue resource id>'
+
 # bounded budgets (repository defaults: 3 / 3 / 3 / 500ms — all optional):
 export ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS=3     # then: backlogged (recoverable, explicit)
 export ZECK_QUEUE_MAX_DELIVERY_ATTEMPTS=3    # then: explicit dead letter
@@ -248,6 +252,36 @@ enabled on it, and the token carries `queues_read` + `queues_write`.
 when the materialization is present and reports the honest
 `dispatch-backlogged` degraded mode otherwise — a queued message is never
 mistaken for execution success.
+
+### The transport probe and the dedicated probe queue
+
+The transport probe (`deploy:smoke`'s async-transport concern and
+`deploy:queue -- probe`) NEVER runs against the execution queue. It
+executes its publish → pull → ack round trip on a **dedicated
+operator-owned probe queue** (`ZECK_PROBE_QUEUE_ID`): a queue reserved
+for probe traffic, provisioned exactly like the execution queue (HTTP
+pull consumer enabled, token scopes `queues_read` + `queues_write`),
+carrying no application state and therefore not part of the
+environment's authoritative resource inventory.
+
+The probe acknowledges **exactly the one message it published in that
+run** (exact probe-tag match). Anything else it happens to lease — an
+execution delivery, another probe's message, foreign noise — is never
+acknowledged and never re-queued; the lease expires (the transport's
+documented crash-recovery mechanism) and the message returns for its
+rightful consumer. Configuration guards enforce the boundary fail
+closed: `probe()` without `ZECK_PROBE_QUEUE_ID` refuses, and a probe
+queue equal to the execution queue (`ZECK_PROBE_QUEUE_ID ==
+ZECK_QUEUE_ID`) is rejected at configuration validation. A probe can
+therefore never consume, discard or delay genuine execution deliveries.
+(Probe-queue hygiene: leftover probe messages after a crashed probe are
+disposable transport noise on a noise-only queue and may be purged by
+the operator at will.)
+
+Attesting the execution queue's own pull path is the consumer's job,
+not the probe's: `deploy:queue -- consume` drains real deliveries
+through the idempotent governed consumer, and the gated live suite
+runs its port-flow verification on the probe queue.
 
 The transport model (the authority boundary): every dispatch has a
 durable PostgreSQL correlation record (`queue_transport.dispatch_envelopes`)

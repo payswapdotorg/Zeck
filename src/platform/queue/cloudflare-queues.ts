@@ -34,6 +34,21 @@
  * queue exists, an HTTP pull consumer is enabled on it, and the API
  * token carries `queues_read` + `queues_write`. Those are deployment
  * preconditions (deploy/manifests + deploy/README), not code.
+ *
+ * PROBE DESIGN (the PR #6 correction): `probe()` NEVER runs against
+ * the execution queue. It executes its publish → pull → ack round
+ * trip on a DEDICATED operator-owned probe queue
+ * (`ZECK_PROBE_QUEUE_ID`) that carries no application workload, and
+ * it acknowledges EXACTLY the one message it published in that run
+ * (exact probe-tag match). Anything else the probe happens to lease
+ * — an execution delivery, another probe's message, foreign noise —
+ * is NEVER acknowledged and NEVER re-queued (retries would consume
+ * the provider's per-message attempt budget); its lease simply
+ * expires and the message returns for its rightful consumer. A
+ * probe queue equal to the execution queue is rejected fail-closed
+ * (at configuration validation and again at probe time), so probe
+ * traffic can neither discard nor delay genuine execution
+ * deliveries: unrelated workload is unconsumable by construction.
  */
 import {
   type PublishReceipt,
@@ -97,10 +112,24 @@ export function loadCloudflareQueuesRuntimeConfig(
     timeoutRaw === undefined || timeoutRaw.trim().length === 0
       ? undefined
       : readPositiveInt(timeoutRaw, "ZECK_QUEUE_REQUEST_TIMEOUT_MS");
+  // The dedicated probe queue (optional: the transport itself never
+  // needs it — only probe() does, and probe() refuses fail-closed
+  // without it rather than ever targeting the execution queue).
+  const probeQueueIdRaw = env.ZECK_PROBE_QUEUE_ID;
+  const probeQueueId =
+    probeQueueIdRaw === undefined || probeQueueIdRaw.trim().length === 0
+      ? undefined
+      : probeQueueIdRaw.trim();
+  if (probeQueueId !== undefined && !QUEUE_ID_PATTERN.test(probeQueueId)) {
+    throw new QueueConfigError(
+      "ZECK_PROBE_QUEUE_ID must be a 32-hex Cloudflare queue id (the dedicated operator-owned probe queue; see deploy/README.md)",
+    );
+  }
   return {
     apiBaseUrl: env.ZECK_QUEUE_API_BASE_URL,
     accountId: env.ZECK_CLOUDFLARE_ACCOUNT_ID ?? "",
     queueId: env.ZECK_QUEUE_ID ?? "",
+    probeQueueId,
     apiToken: env.ZECK_QUEUE_API_TOKEN ?? "",
     requestTimeoutMs,
   };
@@ -124,6 +153,14 @@ export interface CloudflareQueuesConfig {
   readonly accountId: string;
   /** Cloudflare queue id — the REST resource id (non-secret). */
   readonly queueId: string;
+  /**
+   * The DEDICATED operator-owned probe queue resource id (non-secret;
+   * `ZECK_PROBE_QUEUE_ID`). Optional: publish/pull/settle never need
+   * it — only `probe()` does, and `probe()` fails closed without it.
+   * Must differ from `queueId` (a probe queue that IS the execution
+   * queue is rejected — the probe must never consume workload).
+   */
+  readonly probeQueueId?: string;
   /**
    * API token — resolved secret material (`queue-api-token` secret,
    * materialized in the environment as ZECK_QUEUE_API_TOKEN). Never a
@@ -155,6 +192,17 @@ export function validateCloudflareQueuesConfig(config: CloudflareQueuesConfig): 
   if (config.apiToken.length === 0) {
     problems.push("apiToken is required (resolved secret material; never empty in production)");
   }
+  if (config.probeQueueId !== undefined) {
+    if (!QUEUE_ID_PATTERN.test(config.probeQueueId)) {
+      problems.push(
+        "probeQueueId must be a 32-hex Cloudflare queue id (the dedicated probe queue)",
+      );
+    } else if (config.probeQueueId === config.queueId) {
+      problems.push(
+        "probeQueueId must differ from queueId — the probe queue is dedicated operator-owned infrastructure and must never be the execution queue",
+      );
+    }
+  }
   const timeout = config.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
   if (!Number.isInteger(timeout) || timeout < 100 || timeout > 120_000) {
     problems.push("requestTimeoutMs must be an integer in [100, 120000]");
@@ -175,7 +223,9 @@ const MAX_DELAY_SECONDS = 86_400;
 /**
  * The wire-level result the adapter understands. Kept public for the
  * protocol integration tests (the in-process server mirrors the
- * documented response envelope).
+ * documented response envelope). A wire is bound to ONE queue's REST
+ * path — the execution queue for the port surface, the dedicated
+ * probe queue for `probe()`.
  */
 export interface CloudflareQueuesWire {
   /** Publish one message. */
@@ -202,8 +252,10 @@ export interface CloudflareWireMessage {
 /**
  * Build the provider-neutral `QueueTransportPort` over the Cloudflare
  * Queues REST API. The returned object also exposes `probe()` — the
- * real transport round-trip probe used by deploy smoke (publish → pull
- * → ack a self-identifying probe message; cleans up after itself).
+ * real transport round-trip probe used by deploy smoke and the
+ * deploy/queue tool (publish → pull → ack on the DEDICATED
+ * operator-owned probe queue; acknowledges exactly its own probe
+ * message and never touches the execution queue).
  */
 export function createCloudflareQueuesTransport(
   config: CloudflareQueuesConfig,
@@ -221,10 +273,14 @@ export function createCloudflareQueuesTransport(
       .replace(config.apiToken, "[redacted]")
       .slice(0, 200);
 
-  async function request(path: string, body: unknown): Promise<{ status: number; json: unknown }> {
+  async function request(
+    targetPath: string,
+    path: string,
+    body: unknown,
+  ): Promise<{ status: number; json: unknown }> {
     let response: Response;
     try {
-      response = await doFetch(`${queuePath}${path}`, {
+      response = await doFetch(`${targetPath}${path}`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${config.apiToken}`,
@@ -290,7 +346,8 @@ export function createCloudflareQueuesTransport(
     );
   }
 
-  const wire: CloudflareQueuesWire = {
+  /** Build the wire surface bound to ONE queue's REST path. */
+  const wireFor = (targetPath: string): CloudflareQueuesWire => ({
     async publishWire(message) {
       const body: Record<string, unknown> = {
         body: message.body,
@@ -307,7 +364,7 @@ export function createCloudflareQueuesTransport(
         // Cloudflare's REST publish expresses delay in milliseconds.
         body.delay_ms = message.delaySeconds * 1000;
       }
-      const { status, json } = await request("/messages", body);
+      const { status, json } = await request(targetPath, "/messages", body);
       if (status < 200 || status >= 300) {
         failClosed(status, json, "publish");
       }
@@ -323,7 +380,7 @@ export function createCloudflareQueuesTransport(
         Math.max(1, options?.visibilityTimeoutMs ?? DEFAULT_VISIBILITY_TIMEOUT_MS),
         MAX_VISIBILITY_TIMEOUT_MS,
       );
-      const { status, json } = await request("/messages/poll", {
+      const { status, json } = await request(targetPath, "/messages/poll", {
         visibility_timeout_ms: visibilityTimeoutMs,
         batch_size: batchSize,
       });
@@ -367,7 +424,7 @@ export function createCloudflareQueuesTransport(
       if (settlement.ackLeaseIds.length === 0 && settlement.retryLeaseIds.length === 0) {
         return;
       }
-      const { status, json } = await request("/messages/ack", {
+      const { status, json } = await request(targetPath, "/messages/ack", {
         acks: settlement.ackLeaseIds.map((leaseId) => ({ lease_id: leaseId })),
         retries: settlement.retryLeaseIds.map((leaseId) => ({ lease_id: leaseId })),
       });
@@ -375,7 +432,10 @@ export function createCloudflareQueuesTransport(
         failClosed(status, json, "settle");
       }
     },
-  };
+  });
+
+  /** The port surface is bound to the execution queue. */
+  const wire = wireFor(queuePath);
 
   /** Decode a wire message into the provider-neutral delivery shape. */
   function toDelivery(message: CloudflareWireMessage): QueueDelivery {
@@ -423,45 +483,67 @@ export function createCloudflareQueuesTransport(
     },
 
     /**
-     * The real transport round-trip probe (deploy smoke): publish a
-     * self-identifying probe message, pull until it appears (bounded),
-     * ack it. Proves publish+pull+ack against the real provider and
-     * cleans up after itself. A probe message is transport noise —
-     * never an execution, never authority.
+     * The real transport round-trip probe (deploy smoke + deploy/queue
+     * probe): publish a self-identifying probe message to the DEDICATED
+     * operator-owned probe queue, pull until it appears (bounded), ack
+     * EXACTLY that one message. Proves publish+pull+ack against the
+     * real provider on queue infrastructure that carries no
+     * application workload.
+     *
+     * SAFETY INVARIANT (the PR #6 correction): the probe never targets
+     * the execution queue and never settles a message it did not
+     * publish in this run. A message that is not this run's exact
+     * probe message — an execution delivery, another probe's message,
+     * anything foreign — is NEVER acknowledged and NEVER re-queued by
+     * the probe (retries would consume the provider's per-message
+     * attempt budget); its lease expires — the transport's documented
+     * crash-recovery mechanism — and the message returns for its
+     * rightful consumer. Unrelated workload cannot be consumed,
+     * discarded or delayed beyond a short lease by the probe.
      */
     async probe(): Promise<{ ok: true; detail: string }> {
+      const probeQueueId = config.probeQueueId;
+      if (probeQueueId === undefined || probeQueueId.length === 0) {
+        // Fail closed: probing the execution queue is not an option.
+        throw new QueueConfigError(
+          "queue transport probe requires a dedicated probe queue (ZECK_PROBE_QUEUE_ID is not set; the probe never targets the execution queue — see deploy/README.md)",
+        );
+      }
+      if (probeQueueId === config.queueId) {
+        // Defense-in-depth: construction already rejects this; refuse
+        // again here so no call path can ever probe the execution queue.
+        throw new QueueConfigError(
+          "the probe queue must be a dedicated queue distinct from the execution queue (ZECK_PROBE_QUEUE_ID must differ from ZECK_QUEUE_ID)",
+        );
+      }
+      const probeWire = wireFor(`${baseUrl}/accounts/${config.accountId}/queues/${probeQueueId}`);
       const probeTag = `zeck-transport-probe-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      await wire.publishWire({
+      await probeWire.publishWire({
         body: JSON.stringify({ probe: probeTag }),
         contentType: "application/json",
       });
       const deadline = Date.now() + 20_000;
       while (Date.now() < deadline) {
-        const batch = await wire.pullWire({ batchSize: 5, visibilityTimeoutMs: 5_000 });
-        const hit = batch.messages.find((message) => {
-          try {
-            const parsed = JSON.parse(
-              typeof message.body === "string" ? message.body : JSON.stringify(message.body),
-            ) as Record<string, unknown>;
-            return parsed.probe === probeTag;
-          } catch {
-            return false;
-          }
+        // Small batches + a short lease: anything the probe leases but
+        // does not own returns to the queue promptly (lease expiry).
+        const batch = await probeWire.pullWire({
+          batchSize: 5,
+          visibilityTimeoutMs: 2_000,
         });
+        const hit = batch.messages.find((message) => isOwnProbeMessage(message, probeTag));
         if (hit !== undefined) {
-          await wire.settleWire({ ackLeaseIds: [hit.lease_id], retryLeaseIds: [] });
+          // Ack EXACTLY this run's probe message — nothing else. Any
+          // other leased message is left to lease expiry: never
+          // acknowledged, never re-queued, never discarded here.
+          await probeWire.settleWire({ ackLeaseIds: [hit.lease_id], retryLeaseIds: [] });
           return {
             ok: true,
-            detail: `queue transport round-trip verified (publish+pull+ack); probe acknowledged`,
+            detail:
+              "queue transport round-trip verified on the dedicated probe queue (publish+pull+ack); exactly one probe message acknowledged",
           };
         }
-        // Ack anything else we leased so the probe leaves no side effects.
-        if (batch.messages.length > 0) {
-          await wire.settleWire({
-            ackLeaseIds: batch.messages.filter((m) => m !== hit).map((m) => m.lease_id),
-            retryLeaseIds: [],
-          });
-        }
+        // No settle call for anything leased but not ours: the probe
+        // must not touch foreign state in either direction.
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
       throw new QueueTransportError(
@@ -470,4 +552,26 @@ export function createCloudflareQueuesTransport(
       );
     },
   };
+}
+
+/**
+ * True iff the wire message is EXACTLY this run's probe message — the
+ * published body parses as JSON and carries this run's unique probe
+ * tag. Every other body (an execution pointer payload, another
+ * probe's tag, unparseable noise) is foreign to this probe.
+ */
+function isOwnProbeMessage(message: CloudflareWireMessage, probeTag: string): boolean {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(
+      typeof message.body === "string" ? message.body : JSON.stringify(message.body),
+    );
+  } catch {
+    return false;
+  }
+  return (
+    parsed !== null &&
+    typeof parsed === "object" &&
+    (parsed as Record<string, unknown>).probe === probeTag
+  );
 }

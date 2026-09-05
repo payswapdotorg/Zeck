@@ -14,6 +14,13 @@
  *  - configuration: missing provider materialization fails closed
  *    naming the exact variable (the "default-and-go" weakening is
  *    rejected) — and the value never appears in the error;
+ *  - probe isolation (the PR #6 correction): the weakened forms that
+ *    would let a probe consume unrelated workload — no dedicated
+ *    probe queue, or a probe queue that IS the execution queue — are
+ *    rejected fail-closed before any wire call; a probe that
+ *    acknowledged foreign messages is unrepresentable because the
+ *    probe acknowledges only its own exact message (protocol-suite
+ *    regression battery);
  *  - the error taxonomy: provider refusals classify permanent
  *    (401/403/404) vs transient (429/5xx/network) — a misclassifying
  *    adapter would either loop unbounded or abandon recoverably
@@ -153,6 +160,48 @@ describe("D-03 fail-closed discrimination (WORK-044)", () => {
         expect((failure as Error).message).not.toContain(TOKEN);
       },
     );
+  });
+
+  test("probe isolation: the weakened probe-on-execution-queue forms are rejected fail-closed", async () => {
+    // Weakened form 1: no dedicated probe queue — the probe would have
+    // to run against the execution queue to do anything at all (the
+    // original PR #6 defect). It refuses with the exact variable name
+    // BEFORE any wire call (the endpoint below is unreachable).
+    const t = createCloudflareQueuesTransport({
+      apiBaseUrl: "http://127.0.0.1:1",
+      accountId: ACCOUNT,
+      queueId: QUEUE,
+      apiToken: TOKEN,
+      requestTimeoutMs: 500,
+    });
+    await expect(t.probe()).rejects.toSatisfy((error: unknown) => {
+      const configError = error as QueueConfigError;
+      return (
+        configError instanceof QueueConfigError &&
+        configError.message.includes("ZECK_PROBE_QUEUE_ID")
+      );
+    });
+    // Weakened form 2: the probe queue IS the execution queue (probe
+    // traffic sharing the queue that carries real deliveries).
+    expect(() =>
+      createCloudflareQueuesTransport({
+        apiBaseUrl: "http://127.0.0.1:1",
+        accountId: ACCOUNT,
+        queueId: QUEUE,
+        probeQueueId: QUEUE,
+        apiToken: TOKEN,
+      }),
+    ).toThrow(QueueConfigError);
+    // The unweakened form constructs: a DEDICATED probe queue.
+    expect(() =>
+      createCloudflareQueuesTransport({
+        apiBaseUrl: "http://127.0.0.1:1",
+        accountId: ACCOUNT,
+        queueId: QUEUE,
+        probeQueueId: "c".repeat(32),
+        apiToken: TOKEN,
+      }),
+    ).not.toThrow();
   });
 
   test("vocabulary disjointness: a weakened (overlapping) transport vocabulary is DETECTED", () => {

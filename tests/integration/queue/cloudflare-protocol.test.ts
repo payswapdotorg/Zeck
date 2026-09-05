@@ -11,6 +11,17 @@
  * error classification (401/403/404 permanent; 429/5xx/network
  * transient). It is explicitly NOT Cloudflare evidence — the live
  * provider suite is env-gated (`queue-live.test.ts`).
+ *
+ * PROBE ISOLATION (the PR #6 correction — the Architect's blocking
+ * finding): the transport probe must never consume unrelated
+ * workload. The dedicated describe block below proves over real
+ * HTTP, with execution-shaped deliveries seeded on the queues, that
+ * (a) a probe on a contaminated queue acknowledges EXACTLY its own
+ * message — unrelated execution deliveries are never ACKed, never
+ * re-queued, never discarded; (b) the probe issues ZERO requests
+ * against the execution queue (workload is never even leased); and
+ * (c) the weakened configurations (no probe queue / probe queue ==
+ * execution queue) are rejected fail-closed before any wire call.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -277,5 +288,190 @@ describe("the Cloudflare Queues REST adapter over real HTTP (WORK-044 D-03)", ()
         retryBackoffMs: 500,
       }),
     ).toThrow(QueueConfigError);
+  });
+});
+
+// The PR #6 correction battery: the transport probe on the DEDICATED
+// operator-owned probe queue can never consume unrelated workload.
+describe("the transport probe never consumes unrelated workload (WORK-044 PR #6 correction)", () => {
+  const PROBE_QUEUE_ID = "c".repeat(32);
+
+  // Execution-shaped pointer payloads exactly like the dispatcher
+  // publishes (correlation-key pointers, ids-only, secret-free) —
+  // genuine execution deliveries a probe must never touch.
+  const EXECUTION_DELIVERY_BODIES: readonly string[] = [
+    JSON.stringify({
+      v: 1,
+      correlationKey: "execution-dispatch:01890a3c-1000-7000-8000-000000000001",
+      purpose: "execution-dispatch",
+      executionId: "01890a3c-1000-7000-8000-000000000001",
+      applicationId: "01890a3c-2000-7000-8000-000000000001",
+      tenantId: "01890a3c-3000-7000-8000-000000000001",
+      dispatchedAt: "2025-01-01T00:00:00.000Z",
+    }),
+    JSON.stringify({
+      v: 1,
+      correlationKey: "execution-dispatch:01890a3c-1000-7000-8000-000000000002",
+      purpose: "execution-dispatch",
+      executionId: "01890a3c-1000-7000-8000-000000000002",
+      applicationId: "01890a3c-2000-7000-8000-000000000002",
+      tenantId: "01890a3c-3000-7000-8000-000000000002",
+      dispatchedAt: "2025-01-01T00:00:01.000Z",
+    }),
+    JSON.stringify({
+      v: 1,
+      correlationKey: "execution-dispatch:01890a3c-1000-7000-8000-000000000003:replay-1",
+      purpose: "execution-dispatch",
+      executionId: "01890a3c-1000-7000-8000-000000000003",
+      applicationId: "01890a3c-2000-7000-8000-000000000003",
+      tenantId: "01890a3c-3000-7000-8000-000000000003",
+      dispatchedAt: "2025-01-01T00:00:02.000Z",
+    }),
+  ];
+  const FOREIGN_PROBE_BODY = JSON.stringify({ probe: "zeck-transport-probe-earlier-crashed-run" });
+
+  test("REGRESSION: a probe on a queue carrying unrelated execution deliveries never acknowledges them", {
+    timeout: 30_000,
+  }, async () => {
+    // Worst case defense-in-depth: the probe queue itself is
+    // contaminated with unrelated execution-shaped workload (and
+    // even another probe's leftover message). The probe must still
+    // settle EXACTLY its own message and nothing else.
+    const contaminated = await startFakeCloudflareQueues({
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      probeQueueId: PROBE_QUEUE_ID,
+      apiToken: API_TOKEN,
+      probeSeeded: [...EXECUTION_DELIVERY_BODIES, FOREIGN_PROBE_BODY],
+    });
+    try {
+      const t = createCloudflareQueuesTransport({
+        apiBaseUrl: contaminated.baseUrl,
+        accountId: ACCOUNT_ID,
+        queueId: QUEUE_ID,
+        probeQueueId: PROBE_QUEUE_ID,
+        apiToken: API_TOKEN,
+        requestTimeoutMs: 3000,
+      });
+      const probe = await t.probe();
+      expect(probe.ok).toBe(true);
+
+      // EXACTLY one message was ever acknowledged on the probe queue:
+      // this run's own probe message (fresh unique tag).
+      const settled = contaminated.settledBodies("probe");
+      expect(settled).toHaveLength(1);
+      const settledBody = JSON.parse(settled[0] as string) as Record<string, unknown>;
+      expect(typeof settledBody.probe).toBe("string");
+      expect(settledBody.probe as string).toMatch(/^zeck-transport-probe-\d+-/);
+      expect(settledBody.probe).not.toBe("zeck-transport-probe-earlier-crashed-run");
+
+      // The unrelated execution deliveries — and even the foreign
+      // probe message — are NEVER acknowledged: still pending, still
+      // deliverable for their rightful consumer.
+      const pending = contaminated.pendingBodies("probe");
+      for (const body of EXECUTION_DELIVERY_BODIES) {
+        expect(pending).toContain(body);
+      }
+      expect(pending).toContain(FOREIGN_PROBE_BODY);
+
+      // Wire-level discipline: every ack the probe issued carried
+      // exactly ONE ack entry (its own) and no retries — nothing
+      // foreign was settled or re-queued through the ack endpoint.
+      const ackRequests = contaminated.requests.filter(
+        (r) => r.method === "POST" && r.path.endsWith("/messages/ack"),
+      );
+      expect(ackRequests.length).toBe(1);
+      for (const ack of ackRequests) {
+        const body = ack.body as { acks?: unknown[]; retries?: unknown[] };
+        expect(body.acks).toHaveLength(1);
+        expect(body.retries).toEqual([]);
+      }
+    } finally {
+      await contaminated.close();
+    }
+  });
+
+  test("the probe never issues any request against the execution queue (workload never even leased)", {
+    timeout: 30_000,
+  }, async () => {
+    const isolated = await startFakeCloudflareQueues({
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      probeQueueId: PROBE_QUEUE_ID,
+      apiToken: API_TOKEN,
+      seeded: EXECUTION_DELIVERY_BODIES, // real workload on the execution queue
+    });
+    try {
+      const t = createCloudflareQueuesTransport({
+        apiBaseUrl: isolated.baseUrl,
+        accountId: ACCOUNT_ID,
+        queueId: QUEUE_ID,
+        probeQueueId: PROBE_QUEUE_ID,
+        apiToken: API_TOKEN,
+        requestTimeoutMs: 3000,
+      });
+      const probe = await t.probe();
+      expect(probe.ok).toBe(true);
+
+      // ZERO requests against the execution queue's REST path — the
+      // probe cannot publish into, lease from, acknowledge against
+      // or even observe the execution queue.
+      const executionRequests = isolated.requests.filter((r) =>
+        r.path.includes(`/queues/${QUEUE_ID}/`),
+      );
+      expect(executionRequests).toEqual([]);
+
+      // The workload is untouched: never acked (settled stays empty)
+      // and never leased (pending bodies intact, in order).
+      expect(isolated.pendingBodies("execution")).toEqual(EXECUTION_DELIVERY_BODIES);
+      expect(isolated.settledBodies("execution")).toEqual([]);
+
+      // And the probe's own message on the probe queue was cleaned up.
+      expect(isolated.settledBodies("probe")).toHaveLength(1);
+    } finally {
+      await isolated.close();
+    }
+  });
+
+  test("the 'probe queue IS the execution queue' misconfiguration is rejected fail-closed", () => {
+    // Weakened form: point the probe at the execution queue — rejected
+    // at CONFIGURATION validation, before any wire call exists.
+    expect(() =>
+      createCloudflareQueuesTransport({
+        apiBaseUrl: "http://127.0.0.1:1",
+        accountId: ACCOUNT_ID,
+        queueId: QUEUE_ID,
+        probeQueueId: QUEUE_ID,
+        apiToken: API_TOKEN,
+      }),
+    ).toThrow(/probeQueueId must differ from queueId/);
+    // Malformed probe queue ids are likewise rejected.
+    expect(() =>
+      createCloudflareQueuesTransport({
+        apiBaseUrl: "http://127.0.0.1:1",
+        accountId: ACCOUNT_ID,
+        queueId: QUEUE_ID,
+        probeQueueId: "not-hex",
+        apiToken: API_TOKEN,
+      }),
+    ).toThrow(/probeQueueId must be a 32-hex/);
+  });
+
+  test("probe() without a dedicated probe queue fails closed naming the exact variable (no wire call)", async () => {
+    const t = createCloudflareQueuesTransport({
+      apiBaseUrl: "http://127.0.0.1:1", // unreachable — proves no wire call happens
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      apiToken: API_TOKEN,
+      requestTimeoutMs: 3000,
+    });
+    await expect(t.probe()).rejects.toSatisfy((error: unknown) => {
+      const configError = error as QueueConfigError;
+      return (
+        configError instanceof QueueConfigError &&
+        configError.message.includes("ZECK_PROBE_QUEUE_ID") &&
+        configError.message.includes("never targets the execution queue")
+      );
+    });
   });
 });

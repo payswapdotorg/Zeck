@@ -362,12 +362,16 @@ async function probeProviderObjectStore(
 
 /**
  * The D-03 async-transport probe: when the materialized queue-api-token
- * secret (ZECK_QUEUE_API_TOKEN), its reference binding and the ordinary
- * queue configuration (account id + queue id) exist, execute the REAL
- * transport round trip (publish → pull → ack a self-identifying probe
- * message) through the Cloudflare Queues adapter. Without materialization
- * the concern reports unattested (unavailable — non-authoritative, so
- * the environment degrades explicitly instead of failing).
+ * secret (ZECK_QUEUE_API_TOKEN), its reference binding, the ordinary
+ * queue configuration (account id + queue id) and the DEDICATED
+ * operator-owned probe queue id (ZECK_PROBE_QUEUE_ID) exist, execute the
+ * REAL transport round trip (publish → pull → ack of exactly one
+ * self-identifying probe message) through the Cloudflare Queues adapter
+ * — on the probe queue only. The probe never targets the execution
+ * queue: it cannot lease, acknowledge or discard genuine execution
+ * deliveries. Without materialization the concern reports unattested
+ * (unavailable — non-authoritative, so the environment degrades
+ * explicitly instead of failing).
  */
 async function probeProviderAsyncTransport(
   _manifest: ReturnType<typeof loadManifest>,
@@ -382,6 +386,7 @@ async function probeProviderAsyncTransport(
   const apiToken = process.env.ZECK_QUEUE_API_TOKEN;
   const accountId = process.env.ZECK_CLOUDFLARE_ACCOUNT_ID;
   const queueId = process.env.ZECK_QUEUE_ID;
+  const probeQueueId = process.env.ZECK_PROBE_QUEUE_ID;
   const notMaterialized = !tokenBound
     ? "ZECK_SECRET_QUEUE_API_TOKEN_REF is not materialized (the environment-scoped reference binding is a precondition)"
     : apiToken === undefined || apiToken.length === 0
@@ -390,7 +395,9 @@ async function probeProviderAsyncTransport(
         ? "ZECK_CLOUDFLARE_ACCOUNT_ID is not set (provider-account metadata; see deploy/manifests/variables.json)"
         : queueId === undefined || queueId.length === 0
           ? "ZECK_QUEUE_ID is not set (the environment's queue resource id; see deploy/README.md)"
-          : null;
+          : probeQueueId === undefined || probeQueueId.length === 0
+            ? "ZECK_PROBE_QUEUE_ID is not set (the dedicated operator-owned probe queue; the transport probe never targets the execution queue — see deploy/README.md)"
+            : null;
   if (notMaterialized !== null) {
     return { concern: "async-transport", status: "unavailable", detail: notMaterialized };
   }

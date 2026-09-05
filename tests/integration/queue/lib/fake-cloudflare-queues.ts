@@ -9,6 +9,15 @@
  * provider credentials. Real-Cloudflare evidence is separately gated
  * (queue-live.test.ts) and never claimed from this server.
  *
+ * The server hosts the EXECUTION queue (options.queueId) and,
+ * optionally, a second DEDICATED PROBE QUEUE on the same account
+ * (options.probeQueueId) — the PR #6 correction's probe isolation
+ * tests lease the two queues apart and prove the probe never touches
+ * the execution queue. Requests to any other queue id answer 404 (the
+ * adapter cannot wander). Both queues can be pre-seeded with workload
+ * (options.seeded / options.probeSeeded) so tests can prove what the
+ * probe does to messages it does not own.
+ *
  * Wire protocol (developers.cloudflare.com/queues):
  *  - POST /accounts/{account}/queues/{queue}/messages
  *    body {"body": <value>} → {"success": true}
@@ -23,8 +32,18 @@ import { createServer, type Server } from "node:http";
 
 export interface FakeQueueOptions {
   readonly accountId: string;
+  /** The EXECUTION queue id (the transport's configured queue). */
   readonly queueId: string;
   readonly apiToken: string;
+  /**
+   * An additional queue hosted on the same account: the DEDICATED
+   * probe queue. Requests routed here belong to probe traffic only.
+   */
+  readonly probeQueueId?: string;
+  /** Wire bodies seeded on the execution queue before any request. */
+  readonly seeded?: readonly unknown[];
+  /** Wire bodies seeded on the probe queue before any request. */
+  readonly probeSeeded?: readonly unknown[];
   /** Fail every request with 401 (credential-rejection path). */
   readonly rejectAuth?: boolean;
   /** Answer every request with 503 (transient outage path). */
@@ -43,6 +62,9 @@ interface StoredMessage {
   settled: boolean;
 }
 
+/** Which of the hosted queues a request or accessor addresses. */
+export type FakeQueueRole = "execution" | "probe";
+
 export interface FakeQueueServer {
   readonly port: number;
   readonly baseUrl: string;
@@ -53,13 +75,30 @@ export interface FakeQueueServer {
     readonly authorization: string;
     readonly body: unknown;
   }[];
+  /** Unsettled (pending) message count on the execution queue. */
   readonly pendingCount: number;
+  /**
+   * Snapshot of the unsettled (never-acknowledged, still-deliverable)
+   * message bodies on the addressed queue — what a probe must NOT
+   * change for messages it does not own.
+   */
+  pendingBodies(role: FakeQueueRole): readonly unknown[];
+  /**
+   * Snapshot of the acknowledged message bodies on the addressed
+   * queue — what a probe was allowed to settle (its own message).
+   */
+  settledBodies(role: FakeQueueRole): readonly unknown[];
+}
+
+interface QueueStore {
+  readonly messages: StoredMessage[];
 }
 
 export async function startFakeCloudflareQueues(
   options: FakeQueueOptions,
 ): Promise<FakeQueueServer> {
-  const messages: StoredMessage[] = [];
+  const executionStore: QueueStore = { messages: [] };
+  const probeStore: QueueStore = { messages: [] };
   const requests: {
     method: string;
     path: string;
@@ -68,6 +107,34 @@ export async function startFakeCloudflareQueues(
   }[] = [];
   let counter = 0;
   let rateLimitedLeft = options.rateLimitPublish ?? 0;
+
+  const nextId = (): string => {
+    counter += 1;
+    return `cf-message-${counter.toString(16).padStart(32, "0")}`;
+  };
+
+  const seed = (store: QueueStore, bodies: readonly unknown[]): void => {
+    for (const body of bodies) {
+      store.messages.push({
+        id: nextId(),
+        body,
+        contentType: undefined,
+        timestampMs: 1_689_615_013_000 + counter,
+        lease: null,
+        attempts: 0,
+        settled: false,
+      });
+    }
+  };
+  seed(executionStore, options.seeded ?? []);
+  seed(probeStore, options.probeSeeded ?? []);
+
+  const storeFor = (queueId: string): QueueStore | null =>
+    queueId === options.queueId
+      ? executionStore
+      : options.probeQueueId !== undefined && queueId === options.probeQueueId
+        ? probeStore
+        : null;
 
   const server: Server = createServer((request, response) => {
     const chunks: Buffer[] = [];
@@ -106,96 +173,104 @@ export async function startFakeCloudflareQueues(
       }
 
       const path = request.url ?? "";
-      const prefix = `/accounts/${options.accountId}/queues/${options.queueId}/messages`;
+      const route = /^\/accounts\/([^/]+)\/queues\/([^/]+)\/messages(\/poll|\/ack)?$/.exec(path);
 
-      if (request.method === "POST" && path === prefix) {
-        if (rateLimitedLeft > 0) {
-          rateLimitedLeft -= 1;
-          fail(429, 13943, "ratelimited");
+      if (request.method === "POST" && route !== null && route[1] === options.accountId) {
+        const store = storeFor(route[2] ?? "");
+        if (store === null) {
+          fail(404, 7000, "no such queue");
           return;
         }
-        const record = (body ?? {}) as Record<string, unknown>;
-        if (typeof record.body === "undefined") {
-          fail(400, 7003, "body is required");
+        const suffix = route[3] ?? "";
+
+        if (suffix === "") {
+          // publish
+          if (rateLimitedLeft > 0) {
+            rateLimitedLeft -= 1;
+            fail(429, 13943, "ratelimited");
+            return;
+          }
+          const record = (body ?? {}) as Record<string, unknown>;
+          if (typeof record.body === "undefined") {
+            fail(400, 7003, "body is required");
+            return;
+          }
+          store.messages.push({
+            id: nextId(),
+            body: record.body,
+            contentType: typeof record.content_type === "string" ? record.content_type : undefined,
+            timestampMs: 1_689_615_013_000 + counter,
+            lease: null,
+            attempts: 0,
+            settled: false,
+          });
+          response.writeHead(200, { "content-type": "application/json" });
+          response.end(JSON.stringify({ success: true }));
           return;
         }
-        counter += 1;
-        messages.push({
-          id: `cf-message-${counter.toString(16).padStart(32, "0")}`,
-          body: record.body,
-          contentType: typeof record.content_type === "string" ? record.content_type : undefined,
-          timestampMs: 1_689_615_013_000 + counter,
-          lease: null,
-          attempts: 0,
-          settled: false,
-        });
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(JSON.stringify({ success: true }));
-        return;
-      }
 
-      if (request.method === "POST" && path === `${prefix}/poll`) {
-        const record = (body ?? {}) as Record<string, unknown>;
-        const batchSize =
-          typeof record.batch_size === "number" && Number.isFinite(record.batch_size)
-            ? Math.max(1, Math.min(100, Math.floor(record.batch_size)))
-            : 5;
-        const visibilityTimeoutMs =
-          typeof record.visibility_timeout_ms === "number" &&
-          Number.isFinite(record.visibility_timeout_ms)
-            ? Math.max(1, record.visibility_timeout_ms)
-            : 30_000;
-        const now = Date.now();
-        const leased: StoredMessage[] = [];
-        for (const message of messages) {
-          if (leased.length >= batchSize) {
-            break;
+        if (suffix === "/poll") {
+          const record = (body ?? {}) as Record<string, unknown>;
+          const batchSize =
+            typeof record.batch_size === "number" && Number.isFinite(record.batch_size)
+              ? Math.max(1, Math.min(100, Math.floor(record.batch_size)))
+              : 5;
+          const visibilityTimeoutMs =
+            typeof record.visibility_timeout_ms === "number" &&
+            Number.isFinite(record.visibility_timeout_ms)
+              ? Math.max(1, record.visibility_timeout_ms)
+              : 30_000;
+          const now = Date.now();
+          const leased: StoredMessage[] = [];
+          for (const message of store.messages) {
+            if (leased.length >= batchSize) {
+              break;
+            }
+            if (message.settled) {
+              continue;
+            }
+            const leaseAlive = message.lease !== null && message.lease.expiresAtMs > now;
+            if (message.lease !== null && leaseAlive) {
+              continue;
+            }
+            message.attempts += 1;
+            message.lease = {
+              leaseId: `lease-${++counter}`,
+              expiresAtMs: now + visibilityTimeoutMs,
+            };
+            leased.push(message);
           }
-          if (message.settled) {
-            continue;
-          }
-          const leaseAlive = message.lease !== null && message.lease.expiresAtMs > now;
-          if (message.lease !== null && leaseAlive) {
-            continue;
-          }
-          message.attempts += 1;
-          message.lease = {
-            leaseId: `lease-${++counter}`,
-            expiresAtMs: now + visibilityTimeoutMs,
-          };
-          leased.push(message);
+          const backlog = store.messages.filter((m) => !m.settled).length;
+          response.writeHead(200, { "content-type": "application/json" });
+          response.end(
+            JSON.stringify({
+              success: true,
+              errors: [],
+              messages: [],
+              result: {
+                message_backlog_count: backlog,
+                messages: leased.map((message) => ({
+                  id: message.id,
+                  lease_id: message.lease?.leaseId,
+                  body: message.body,
+                  timestamp_ms: message.timestampMs,
+                  attempts: message.attempts,
+                  metadata:
+                    message.contentType === undefined
+                      ? {}
+                      : { "CF-Content-Type": message.contentType },
+                })),
+              },
+            }),
+          );
+          return;
         }
-        const backlog = messages.filter((m) => !m.settled).length;
-        response.writeHead(200, { "content-type": "application/json" });
-        response.end(
-          JSON.stringify({
-            success: true,
-            errors: [],
-            messages: [],
-            result: {
-              message_backlog_count: backlog,
-              messages: leased.map((message) => ({
-                id: message.id,
-                lease_id: message.lease?.leaseId,
-                body: message.body,
-                timestamp_ms: message.timestampMs,
-                attempts: message.attempts,
-                metadata:
-                  message.contentType === undefined
-                    ? {}
-                    : { "CF-Content-Type": message.contentType },
-              })),
-            },
-          }),
-        );
-        return;
-      }
 
-      if (request.method === "POST" && path === `${prefix}/ack`) {
+        // suffix === "/ack"
         const record = (body ?? {}) as Record<string, unknown>;
         const acks = Array.isArray(record.acks) ? record.acks : [];
         const retries = Array.isArray(record.retries) ? record.retries : [];
-        for (const message of messages) {
+        for (const message of store.messages) {
           const leaseId = message.lease?.leaseId;
           if (leaseId === undefined) {
             continue;
@@ -222,6 +297,9 @@ export async function startFakeCloudflareQueues(
   const address = server.address();
   const port = typeof address === "object" && address !== null ? address.port : 0;
 
+  const roleStore = (role: FakeQueueRole): QueueStore =>
+    role === "execution" ? executionStore : probeStore;
+
   return {
     port,
     baseUrl: `http://127.0.0.1:${port}`,
@@ -233,7 +311,17 @@ export async function startFakeCloudflareQueues(
       return requests;
     },
     get pendingCount() {
-      return messages.filter((m) => !m.settled).length;
+      return executionStore.messages.filter((m) => !m.settled).length;
+    },
+    pendingBodies(role: FakeQueueRole): readonly unknown[] {
+      return roleStore(role)
+        .messages.filter((m) => !m.settled)
+        .map((m) => m.body);
+    },
+    settledBodies(role: FakeQueueRole): readonly unknown[] {
+      return roleStore(role)
+        .messages.filter((m) => m.settled)
+        .map((m) => m.body);
     },
   };
 }

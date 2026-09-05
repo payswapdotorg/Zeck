@@ -6,9 +6,12 @@
  * the repository):
  *
  *   ZECK_CLOUDFLARE_ACCOUNT_ID   the Cloudflare account id
- *   ZECK_QUEUE_ID                the queue's REST resource id
+ *   ZECK_QUEUE_ID                the execution queue's REST resource id
+ *   ZECK_PROBE_QUEUE_ID          the DEDICATED operator-owned probe
+ *                                queue's REST resource id (never the
+ *                                execution queue; PR #6 correction)
  *   ZECK_QUEUE_API_TOKEN         the materialized queue-api-token secret
- *                                 (Bearer auth, queues read+write)
+ *                                (Bearer auth, queues read+write)
  *   ZECK_QUEUE_API_BASE_URL      optional (defaults to the public API)
  *
  * When any of them is absent the suite SKIPS with the exact reason —
@@ -17,11 +20,16 @@
  * evidence contract).
  *
  * When present, the suite executes the REAL production transport path:
- * the provider round-trip probe (publish → pull → ack of a
- * self-identifying probe message) plus the full port flow and the
- * settle/lease semantics against the real queue. Pull-consumer
- * prerequisites (queue exists, HTTP pull consumer enabled, token has
- * queues read+write) are operator-owned account-plane preconditions.
+ * the provider round-trip probe on the dedicated probe queue (publish
+ * → pull → ack of exactly one self-identifying probe message) plus the
+ * full port flow (publish/pull/settle) — ALSO on the probe queue: test
+ * traffic never enters the execution queue, and the port-flow loop
+ * acknowledges ONLY its own marker message (foreign messages are never
+ * acked or re-queued; their leases expire). Pull-consumer
+ * prerequisites (both queues exist, HTTP pull consumers enabled, token
+ * has queues read+write) are operator-owned account-plane
+ * preconditions; attesting the execution queue's own pull path is the
+ * governed consumer's job (deploy:queue -- consume), never a probe's.
  */
 
 import { describe, expect, test } from "vitest";
@@ -29,8 +37,10 @@ import { createCloudflareQueuesTransport } from "../../../src/platform/queue/clo
 
 const ACCOUNT_ID = process.env.ZECK_CLOUDFLARE_ACCOUNT_ID ?? "";
 const QUEUE_ID = process.env.ZECK_QUEUE_ID ?? "";
+const PROBE_QUEUE_ID = process.env.ZECK_PROBE_QUEUE_ID ?? "";
 const API_TOKEN = process.env.ZECK_QUEUE_API_TOKEN ?? "";
-const GATED = ACCOUNT_ID.length > 0 && QUEUE_ID.length > 0 && API_TOKEN.length > 0;
+const GATED =
+  ACCOUNT_ID.length > 0 && QUEUE_ID.length > 0 && PROBE_QUEUE_ID.length > 0 && API_TOKEN.length > 0;
 
 describe.skipIf(!GATED)(
   "the real Cloudflare Queues production transport (WORK-044 D-03; gated on ZECK_QUEUE_* materialization)",
@@ -43,21 +53,32 @@ describe.skipIf(!GATED)(
         apiBaseUrl: process.env.ZECK_QUEUE_API_BASE_URL,
         accountId: ACCOUNT_ID,
         queueId: QUEUE_ID,
+        probeQueueId: PROBE_QUEUE_ID,
         apiToken: API_TOKEN,
         requestTimeoutMs: 15_000,
       });
 
-    test("the provider round-trip probe attests the real transport", {
+    test("the provider round-trip probe attests the real transport (on the dedicated probe queue)", {
       timeout: 60_000,
     }, async () => {
       const probe = await transport().probe();
       expect(probe.ok).toBe(true);
     });
 
-    test("the full port flow against the real queue (publish/pull/settle)", {
+    test("the full port flow (publish/pull/settle) against the real probe queue — never acking foreign messages", {
       timeout: 60_000,
     }, async () => {
-      const t = transport();
+      // The port flow runs against the DEDICATED probe queue as its
+      // configured queue: the same documented wire surface, without
+      // injecting test traffic into the execution queue. (No
+      // probeQueueId here: this transport does not call probe().)
+      const t = createCloudflareQueuesTransport({
+        apiBaseUrl: process.env.ZECK_QUEUE_API_BASE_URL,
+        accountId: ACCOUNT_ID,
+        queueId: PROBE_QUEUE_ID,
+        apiToken: API_TOKEN,
+        requestTimeoutMs: 15_000,
+      });
       const marker = `zeck-d03-verify-${Date.now()}`;
       const receipt = await t.publish({
         body: JSON.stringify({ verify: marker }),
@@ -67,7 +88,9 @@ describe.skipIf(!GATED)(
       const deadline = Date.now() + 30_000;
       let leased: string | null = null;
       while (Date.now() < deadline && leased === null) {
-        const batch = await t.pull({ batchSize: 5, visibilityTimeoutMs: 10_000 });
+        // Short lease: anything we lease but do not own returns to the
+        // queue promptly (lease expiry — never acked, never retried).
+        const batch = await t.pull({ batchSize: 5, visibilityTimeoutMs: 2_000 });
         const hit = batch.messages.find((message) => {
           try {
             const parsed = JSON.parse(message.body) as Record<string, unknown>;
@@ -80,13 +103,9 @@ describe.skipIf(!GATED)(
           leased = hit.leaseId;
           break;
         }
-        if (batch.messages.length > 0) {
-          // Lease nothing we do not own intent for beyond this test.
-          await t.settle({
-            ackLeaseIds: batch.messages.map((m) => m.leaseId),
-            retryLeaseIds: [],
-          });
-        }
+        // NO settle call for foreign messages: this loop never
+        // acknowledges or re-queues anything it did not publish (the
+        // PR #6 correction discipline — foreign leases expire).
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
       expect(leased).not.toBeNull();
@@ -102,6 +121,7 @@ describe.skipIf(GATED)(
       const missing = [
         ["ZECK_CLOUDFLARE_ACCOUNT_ID", ACCOUNT_ID],
         ["ZECK_QUEUE_ID", QUEUE_ID],
+        ["ZECK_PROBE_QUEUE_ID", PROBE_QUEUE_ID],
         ["ZECK_QUEUE_API_TOKEN", API_TOKEN],
       ]
         .filter((entry) => (entry[1] ?? "").length === 0)
