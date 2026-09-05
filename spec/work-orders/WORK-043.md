@@ -18,7 +18,23 @@ This order follows WORK-042 / D-01 and must remain strictly within the D-02 scop
 
 Requires: WORK-042
 
-# Scope
+# Requirement IDs
+
+N/A — deployment/runtime production-path phase; acceptance is governed by the deployment architecture and checkpoint contracts below.
+
+# Declared Change Surfaces
+
+- `src/platform/db/**` production database adapter/configuration and directly-required migration/startup seams
+- `src/platform/object-store/**` production object-store adapter/configuration and directly-required integrity/retention seams
+- `src/platform/secret-store/adapters/**` directly-required environment secret materialization
+- `deploy/` production-path migration/backup/restore/smoke tooling directly required by D-02
+- `deploy/manifests/variables.json` and directly-required deployment configuration
+- package/toolchain registration directly required by D-02
+- tests and evidence required by the acceptance criteria
+- `docs/work-items/WORK-043.md`
+- directly-required runtime documentation
+
+# Scope Boundaries
 
 Allowed:
 - Neon PostgreSQL adapter/configuration and repository-owned connection contract
@@ -75,16 +91,25 @@ Forbidden:
 9. Failure/retry/recovery tests prove provider outages do not create a second authority or silently report success.
 10. Evidence identifies the exact repository revision, managed resources where non-secret, secret-reference validation, migration/pool results, artifact integrity results, restore proof, and final changed-file inventory.
 
-# Required verification
+# Implementation Requirements
+
+1. Use repository-resident configuration as the canonical declaration; console-created values that are required for correctness must be captured as code/config or explicitly classified as provider-account metadata that cannot be reproduced.
+2. Prefer environment variables and secret references over hard-coded provider identifiers.
+3. Keep provider-specific behavior behind the owning platform adapters and preserve the existing public contracts.
+4. Ensure lifecycle operations used by the production-path tooling are idempotent or converge safely where provider semantics permit.
+5. Preserve environment separation and prevent non-production credentials from addressing production resources.
+6. Record verified provider assumptions in evidence only when actually tested; never convert an unverified provider claim into PASS evidence.
+
+# Required Verification
 
 - `python3 scripts/governance-check.py`
 - typecheck
 - lint
 - relevant unit/architecture/discrimination suites
-- managed Neon PostgreSQL integration tests
+- managed Neon PostgreSQL integration tests where credentials/access exist
 - migration/startup compatibility tests
 - connection-pool/transaction validation
-- real R2 adapter integration tests
+- real R2 adapter integration tests where credentials/access exist
 - signed artifact flow tests
 - artifact hash/integrity discrimination tests
 - retention/cleanup safety tests
@@ -94,7 +119,7 @@ Forbidden:
 - exact-revision deployment identity verification
 - full suite twice consecutively at exact final head
 
-# Checkpoint contracts
+# Checkpoint Contracts
 
 - `SELF-HOSTING-BOUNDARY`
 - `IDENTITY-IDEMPOTENCY`
@@ -102,7 +127,7 @@ Forbidden:
 - `EXECUTION-PROVENANCE`
 - `IMPLEMENTATION-COMPLETENESS`
 
-# Evidence contract
+# Evidence Contract
 
 Evidence must distinguish repository-defined configuration from external provider account state. Provider credentials may be used only through the connected secret-mediated environment. Any unavailable provider evidence must be recorded as NOT RUN with the exact reason; it must never be converted into a PASS claim.
 
@@ -119,4 +144,6 @@ The worker opens exactly one PR against `main` and does not merge it. Architect 
 - Canonical remote: `payswapdotorg/Zeck`
 - Canonical issue: #3
 - Required worker branch: `work/WORK-043-database-artifact-production-path`
-- Binding base: `c13aaa0924e12152487d38a36c3ef3c4f31fa58`
+- Binding exact base: `c13aaa0924e12152487d38a36c3ef3c4f31fa58`
+- Worker must not modify `spec/development-state/*` during active implementation.
+- Worker must not merge its own PR.
