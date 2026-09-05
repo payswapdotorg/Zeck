@@ -100,6 +100,28 @@ Forbidden:
 5. Preserve environment separation and prevent non-production credentials from addressing production resources.
 6. Record verified provider assumptions in evidence only when actually tested; never convert an unverified provider claim into PASS evidence.
 
+# Required Checkpoint Contracts
+
+- `SELF-HOSTING-BOUNDARY`
+- `IDENTITY-IDEMPOTENCY`
+- `CONCURRENCY-CRASH-SAFETY`
+- `EXECUTION-PROVENANCE`
+- `IMPLEMENTATION-COMPLETENESS`
+
+# Checkpoints
+
+- `SELF-HOSTING-BOUNDARY`
+- `IDENTITY-IDEMPOTENCY`
+- `CONCURRENCY-CRASH-SAFETY`
+- `EXECUTION-PROVENANCE`
+- `IMPLEMENTATION-COMPLETENESS`
+
+# Evidence Contract
+
+Evidence must distinguish repository-defined configuration from external provider account state. Provider credentials may be used only through the connected secret-mediated environment. Any unavailable provider evidence must be recorded as NOT RUN with the exact reason; it must never be converted into a PASS claim.
+
+The restore proof must identify the exact source backup/snapshot class, target environment, recovered revision/state checks, validation query or equivalent evidence, cleanup of disposable recovery resources, and whether authoritative state was preserved.
+
 # Required Verification
 
 - `python3 scripts/governance-check.py`
@@ -118,20 +140,6 @@ Forbidden:
 - secret-exposure scans
 - exact-revision deployment identity verification
 - full suite twice consecutively at exact final head
-
-# Checkpoint Contracts
-
-- `SELF-HOSTING-BOUNDARY`
-- `IDENTITY-IDEMPOTENCY`
-- `CONCURRENCY-CRASH-SAFETY`
-- `EXECUTION-PROVENANCE`
-- `IMPLEMENTATION-COMPLETENESS`
-
-# Evidence Contract
-
-Evidence must distinguish repository-defined configuration from external provider account state. Provider credentials may be used only through the connected secret-mediated environment. Any unavailable provider evidence must be recorded as NOT RUN with the exact reason; it must never be converted into a PASS claim.
-
-The restore proof must identify the exact source backup/snapshot class, target environment, recovered revision/state checks, validation query or equivalent evidence, cleanup of disposable recovery resources, and whether authoritative state was preserved.
 
 # Completion
 
