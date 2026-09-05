@@ -14,25 +14,45 @@ Read `docs/LLM-ARCHITECT-HANDOFF.md` immediately after `AGENTS.md`.
 
 ## Current continuation pointer
 
-The UX v2 sequence is complete through **WORK-041**. The deployment/runtime stream is now active under approved **Deployment & Runtime Architecture D1.0**.
+The UX v2 sequence is complete through **WORK-041**. The deployment/runtime roadmap is active under approved **Deployment & Runtime Architecture D1.0**.
 
-Current frontier: `eligible=[]`, `inFlight=["WORK-042"]`, `blocked=[]`.
+**D-00 complete. D-01 complete through WORK-042. D-02 is now the sole authorized in-flight deployment phase through WORK-043.**
+
+Current frontier: `eligible=[]`, `inFlight=["WORK-043"]`, `blocked=[]`.
+
+## Authoritative deployment sequence
+
+`D-00 → D-01 → D-02 → D-03 → D-04 → D-05 → D-06 → D-07 → D-08`
+
+No deployment phase may be skipped, reordered or inferred from chat. Each phase becomes executable only through an approved repository Work Order with explicit surfaces, dependencies, acceptance criteria and evidence requirements.
 
 ## Deployment authority
 
 - `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 - `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment sequence.
 - `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-- `spec/work-orders/WORK-042.md` — authoritative current implementation scope.
-- GitHub Issue #1 — canonical WORK-042 dispatch record on this remote.
+- `spec/work-orders/WORK-043.md` — authoritative current implementation scope.
+- GitHub Issue #3 — canonical WORK-043 dispatch record on this remote.
 
 The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination. Commercial production must use commercially permitted plans; free-tier eligibility is not an architectural authority.
 
-## WORK-042 identity
+## D-01 completion
 
-- Dispatch base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`
-- Required branch: `work/WORK-042-deployment-infrastructure-foundation`
+- Work Order: `WORK-042`
 - Canonical issue: #1
+- PR: #2
+- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f9`
+- Worker final head: `c61392260024244db7bab723e9f018d7c582e9a8`
+- Post-merge governance state: finalized
+
+## D-02 dispatch
+
+- Work Order: `WORK-043`
+- Canonical issue: #3
+- Required branch: `work/WORK-043-database-artifact-production-path`
+- Dependency: `WORK-042`
+- Status: `AUTHORIZED / IN-FLIGHT`
+- Exact dispatch base: to be recorded in the final dispatch binding before worker checkout
 
 ## Recovery sequence
 
