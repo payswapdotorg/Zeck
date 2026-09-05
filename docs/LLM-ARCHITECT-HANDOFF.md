@@ -5,14 +5,27 @@
 ## Current state
 
 - Repository: `pectoraux/Zeck`
-- Architecture: **v1.0**, frozen after approval.
+- Core architecture: **v1.0**, frozen after approval.
 - UX v2 implementation wave: **complete through WORK-041**.
-- Last Work Order: **WORK-041 — UX integration hardening, usability and release gate**.
+- Last UX Work Order: **WORK-041 — UX integration hardening, usability and release gate**.
 - PR: **#74**, merged.
 - Merge commit: `153b5f1c4de6180e5e56c421f5fdfcea7b855cf2`.
 - Issue #73: closed as completed.
-- Development frontier: `eligible=[]`, `inFlight=[]`, `blocked=[]`.
-- There is no currently authorized W042.
+- Previous UX frontier: `eligible=[]`, `inFlight=[]`, `blocked=[]`.
+- No UX successor Work Order is authorized by this handoff.
+
+## New authoritative architecture stream
+
+The next engineering concern is deployment/runtime infrastructure, not a new customer feature wave.
+
+- Architecture Change Record: `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`
+- Deployment Architecture: `docs/DEPLOYMENT-ARCHITECTURE.md`
+- Deployment Roadmap: `docs/DEPLOYMENT-ROADMAP.md`
+- Deployment architecture version: **D1.0**
+- D1.0 is subordinate to core architecture v1.0 and does not rewrite the frozen core.
+- The repository is the only source of truth for deployment design and implementation sequencing.
+
+The reference low-cost topology is Vercel for experience/preview delivery, Neon PostgreSQL for durable authority, Cloudflare R2 for object bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination, with external identity/email and provider-neutral execution adapters. Commercial production must use commercially permitted plans; Vercel Hobby is not the commercial production tier.
 
 ## W041 identity and ancestry
 
@@ -29,9 +42,11 @@ W041 stayed within its declared dashboard/evidence surfaces. PR #74 had exactly 
 
 The Architect verified the PR base/head, merge-base, changed-file inventory, CI, and boundary constraints before merging. W041 was then finalized in `spec/development-state/program-state.json` with the actual PR and merge commit, and the frontier was re-derived to empty.
 
-## Governance after merge
+## Deployment architecture rule
 
-`python3 scripts/governance-check.py` is required whenever governance state is changed. The repository's `Repository Governance` workflow was triggered by the finalization commit and reported the governance job successful; the implementation job was also running from the same state-finalization push.
+Deployment work must not silently alter `spec/architecture.md` v1.0 or `spec/architecture-lock.md`. Material changes to the frozen architecture require the existing architecture-versioning/change protocol.
+
+The deployment architecture is deliberately provider-neutral. Vendor products are implementation choices behind explicit ports. PostgreSQL remains authority; R2 contains durable bytes while metadata remains in PostgreSQL; queues/workflows orchestrate but do not own execution truth; Redis is ephemeral coordination only.
 
 ## Fresh-session recovery order
 
@@ -43,22 +58,24 @@ The Architect verified the PR base/head, merge-base, changed-file inventory, CI,
 6. Read `spec/architecture.md` and `spec/architecture-lock.md`.
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
-9. Inspect live GitHub refs, PRs, issues, checks, and exact ancestry.
-10. Run `python3 scripts/governance-check.py` before changing state or implementation.
+9. Read `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`, `docs/DEPLOYMENT-ARCHITECTURE.md`, and `docs/DEPLOYMENT-ROADMAP.md`.
+10. Inspect live GitHub refs, PRs, issues, checks, and exact ancestry.
+11. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
 
 1. Actual Git refs and commit ancestry.
 2. Repository-resident development-state JSON.
 3. Frozen architecture and architecture lock.
-4. Active/approved Work Orders.
-5. Exact-revision CI/test/browser evidence.
-6. Other repository documentation.
-7. Conversation history — never authoritative.
+4. Approved architecture-change records and current Deployment Architecture.
+5. Active/approved Work Orders and Deployment Roadmap.
+6. Exact-revision CI/test/browser/deployment evidence.
+7. Other repository documentation.
+8. Conversation history — never authoritative.
 
 ## Completion boundary
 
-W041 is the final currently-defined UX v2 Work Order. Stop after the completed wave and re-derive the frontier. Do not invent W042. A future implementation wave requires a formally approved Work Order and, where necessary, a new architecture decision/version.
+W041 is complete and remains the final completed UX v2 Work Order. A deployment work stream may now proceed under D1.0, but deployment implementation still requires explicit repository Work Orders. Do not invent implementation tasks from chat.
 
 ## Fresh-session invariant
 
