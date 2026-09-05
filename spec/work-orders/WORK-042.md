@@ -16,6 +16,8 @@ Implement the first executable deployment phase from `docs/DEPLOYMENT-ROADMAP.md
 
 Deployment & Runtime Architecture D1.0 is approved and authoritative. This Work Order does not change frozen core architecture v1.0. It establishes the concrete infrastructure contracts required to deploy Zeck reproducibly using the reference provider stack while preserving provider substitution.
 
+The canonical product-development remote is `payswapdotorg/Zeck`. The former `pectoraux/Zeck` repository is historical upstream/reference only.
+
 # Dependencies
 
 Requires: WORK-041
@@ -58,7 +60,7 @@ Forbidden:
 - bypassing `/auth`, `/policies`, `/budgets`, `/executions`, `/artifacts`, `/sandbox`, or other existing authorities
 - production data migrations unrelated to deployment bootstrap
 - inventing a second deployment control plane
-- modifying `spec/development-state/*` during active work
+- modifying `spec/development-state/*` during active implementation
 - merging the worker's own PR
 
 # Architecture Invariants
@@ -141,6 +143,8 @@ Worker opens exactly one PR and does not merge. Completion requires Architect ac
 
 - Work Order: WORK-042
 - Status: AUTHORIZED / IN-FLIGHT
+- Canonical remote: `payswapdotorg/Zeck`
+- Canonical issue: #1
 - Required worker branch: `work/WORK-042-deployment-infrastructure-foundation`
 - Binding exact base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`
 - Worker must not modify `spec/development-state/*` during active work.
