@@ -278,6 +278,7 @@ export async function seedApiPgWorld(db: DatabasePort): Promise<ApiPgWorld> {
     codebaseAnalyzer,
     scopeResolver,
     authenticate,
+    dependencyReadiness: async () => [],
     // The inventory enumeration seam over the real agents table.
     listAgentIdsOfApplication: async (appId) => {
       const result = await db.execute<{ id: string }>({

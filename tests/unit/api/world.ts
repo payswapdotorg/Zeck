@@ -347,6 +347,7 @@ export async function seedApiWorld(options: SeedApiWorldOptions = {}): Promise<A
     codebaseAnalyzer,
     scopeResolver,
     authenticate,
+    dependencyReadiness: async () => [],
     listAgentIdsOfApplication: async (appId) =>
       [...agentRegistry.agents.values()]
         .filter((agent) => agent.applicationId === appId)

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck environment variable contract (Deployment Roadmap D-01). Non-secret configuration variables only. Credential-shaped values never appear here: infrastructure credentials enter exclusively as zeck-secret:// references held in ZECK_SECRET_*_REF variables (see secret-references.json, which this manifest cross-references). Every variable declares its name, type, scope and whether its value is credential-shaped (environment-only storage, never committed).",
+  "variables": [
+    {
+      "name": "ZECK_ENVIRONMENT",
+      "type": "environment-identity",
+      "values": ["local", "preview", "staging", "production"],
+      "required": true,
+      "credentialShaped": false,
+      "description": "The environment identity this process or tool invocation represents."
+    },
+    {
+      "name": "ZECK_DEPLOY_GIT_REVISION",
+      "type": "git-sha",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Exact Git revision for deployment identity computation. Defaults to the repository HEAD of the working tree."
+    },
+    {
+      "name": "ZECK_SECRET_DATABASE_URL_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/database-url",
+      "description": "Reference to the environment's PostgreSQL connection string. The reference URI is non-secret; the materialized value never is."
+    },
+    {
+      "name": "ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/object-store-access-key-id",
+      "description": "Reference to the environment's R2 access key id."
+    },
+    {
+      "name": "ZECK_SECRET_OBJECT_STORE_SECRET_ACCESS_KEY_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/object-store-secret-access-key",
+      "description": "Reference to the environment's R2 secret access key."
+    },
+    {
+      "name": "ZECK_SECRET_QUEUE_API_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/queue-api-token",
+      "description": "Reference to the environment's Cloudflare Queues API token."
+    },
+    {
+      "name": "ZECK_SECRET_WORKFLOW_API_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/workflow-api-token",
+      "description": "Reference to the environment's Cloudflare Workflows API token."
+    },
+    {
+      "name": "ZECK_SECRET_REDIS_REST_URL_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/redis-rest-url",
+      "description": "Reference to the environment's Upstash Redis REST URL."
+    },
+    {
+      "name": "ZECK_SECRET_REDIS_REST_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/redis-rest-token",
+      "description": "Reference to the environment's Upstash Redis REST token."
+    },
+    {
+      "name": "ZECK_SECRET_EXPERIENCE_DEPLOY_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/experience-deploy-token",
+      "description": "Reference to the environment's Vercel deployment token."
+    },
+    {
+      "name": "ZECK_CLOUDFLARE_ACCOUNT_ID",
+      "type": "provider-account-id",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "Cloudflare account identifier. Non-secret provider-account metadata: an account locator, not a credential. Classified as provider-account metadata that cannot be reproduced from the repository."
+    },
+    {
+      "name": "ZECK_LOCAL_DATA_ROOT",
+      "type": "filesystem-path",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["local"],
+      "description": "Root directory for local disposable resources. Defaults to ~/.local/share/zeck. Never inside the repository."
+    },
+    {
+      "name": "ZECK_PG_ADMIN_URL",
+      "type": "postgres-url",
+      "required": false,
+      "credentialShaped": true,
+      "environments": ["local"],
+      "description": "Local PostgreSQL admin connection string used by bootstrap/teardown to create and drop the disposable zeck_local database. Credential-shaped: environment-only storage, never committed."
+    },
+    {
+      "name": "ZECK_PG_TEST_URL",
+      "type": "postgres-url",
+      "required": false,
+      "credentialShaped": true,
+      "environments": ["local", "ci"],
+      "description": "PostgreSQL connection string consumed by the test suite (integration harness). Credential-shaped: environment-only storage, never committed."
+    },
+    {
+      "name": "ZECK_LOCAL_REDIS_URL",
+      "type": "redis-url",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["local"],
+      "description": "Local Redis-compatible service URL for coordination smoke checks. Absent, the local smoke reports the explicit coordination-degraded mode."
+    },
+    {
+      "name": "ZECK_API_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Control-plane API base URL used by the dashboard experience client."
+    },
+    {
+      "name": "ZECK_APPLICATION_ID",
+      "type": "zeck-identifier",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Application id whose scope authorizes the dashboard's governed reads."
+    },
+    {
+      "name": "ZECK_TOKEN",
+      "type": "bearer-credential",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Dashboard API bearer credential. Credential-shaped: environment-only storage, never committed. Application-level credential; infrastructure credentials use secret references instead."
+    },
+    {
+      "name": "DASHBOARD_PORT",
+      "type": "tcp-port",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["local"],
+      "description": "Local dashboard listen port. Defaults to 4545."
+    }
+  ]
+}

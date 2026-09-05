@@ -182,6 +182,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       authenticate: fakeAuthenticate(),
       listAgentIdsOfApplication: async () => [],
       codebaseAnalyzer: fakeCodebaseAnalyzer(),
+      dependencyReadiness: async () => [],
     });
     const routes = server.routes.map((route) => `${route.method} ${route.url}`);
     expect(routes.sort()).toEqual(
@@ -198,6 +199,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /executions/:id/events",
         "GET /executions/:id/results",
         "GET /executions/:id/verification",
+        "GET /health",
         "POST /codebase-analysis",
         "POST /codebase-analysis/:id/findings/:findingId/transition",
         "POST /codebase-analysis/:id/ratings",

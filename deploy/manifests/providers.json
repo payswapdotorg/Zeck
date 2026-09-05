@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck provider substitution map (Deployment & Runtime Architecture D1.0 sections 3 and 19). Zeck owns authority; providers implement operational ports. Every concern has an owning port, a reference provider and a documented replacement target. Failure behavior is explicit per dependency: the authoritative relational store fails closed; every non-authoritative dependency has an explicit degraded mode.",
+  "providers": [
+    {
+      "id": "neon",
+      "concern": "relational-state",
+      "authorityRole": "authoritative",
+      "owningPort": "database",
+      "portStatus": "established",
+      "portContract": "src/platform/db/port.ts",
+      "substitutionTarget": "managed PostgreSQL provider",
+      "degradation": {
+        "authority": "authoritative",
+        "onFailure": "fail-closed",
+        "mode": "authority-unavailable",
+        "effect": "Control-plane admission and every authority-bearing operation refuse. No datastore is silently promoted; no authority data exists outside PostgreSQL."
+      }
+    },
+    {
+      "id": "cloudflare-r2",
+      "concern": "artifact-bytes",
+      "authorityRole": "bytes-only",
+      "owningPort": "object-storage",
+      "portStatus": "established",
+      "portContract": "src/platform/object-store/port.ts",
+      "substitutionTarget": "any S3-compatible object store",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "artifact-store-unavailable",
+        "effect": "Operations requiring artifact bytes fail explicitly. Artifact metadata and provenance in PostgreSQL remain authoritative; no artifact bytes pass through PostgreSQL as a fallback."
+      }
+    },
+    {
+      "id": "cloudflare-queues",
+      "concern": "async-transport",
+      "authorityRole": "non-authoritative",
+      "owningPort": "queue",
+      "portStatus": "planned",
+      "plannedPhase": "D-03",
+      "substitutionTarget": "managed queue / broker",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "dispatch-backlogged",
+        "effect": "Execution admission continues through PostgreSQL authority; dispatch is deferred and backlogged. A queued message is never mistaken for execution success; queue state is never an authority claim."
+      }
+    },
+    {
+      "id": "cloudflare-workflows",
+      "concern": "durable-orchestration",
+      "authorityRole": "non-authoritative",
+      "owningPort": "workflow",
+      "portStatus": "planned",
+      "plannedPhase": "D-04",
+      "substitutionTarget": "durable workflow engine",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "orchestration-paused",
+        "effect": "Waiting orchestrations pause; execution status, budget state, policy state and ledger state remain authoritative in PostgreSQL and resume on recovery."
+      }
+    },
+    {
+      "id": "upstash-redis",
+      "concern": "ephemeral-coordination",
+      "authorityRole": "non-authoritative",
+      "owningPort": "redis",
+      "portStatus": "established",
+      "portContract": "src/platform/redis/port.ts",
+      "substitutionTarget": "managed Redis-compatible service",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "coordination-degraded",
+        "effect": "Locks, rate limits and cache entries fall back to conservative local behavior. Redis holds no authority data, so its outage cannot corrupt or redefine durable application authority."
+      }
+    },
+    {
+      "id": "vercel",
+      "concern": "experience-delivery",
+      "authorityRole": "delivery-only",
+      "owningPort": "api-transport",
+      "portStatus": "established",
+      "portContract": "src/api/server.ts",
+      "substitutionTarget": "alternate web/API host",
+      "commercialUse": "Hobby-tier usage is permitted for personal/non-commercial development and preview only. Commercial production requires a commercially permitted plan; the API remains independently runnable so hosting can move without domain change.",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "delivery-degraded",
+        "effect": "The experience layer is unreachable; control-plane and execution-plane authority are unaffected."
+      }
+    }
+  ]
+}

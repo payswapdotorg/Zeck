@@ -12,7 +12,12 @@
     "test:integration": "vitest run tests/integration",
     "test:architecture": "vitest run tests/architecture tests/discrimination",
     "test": "vitest run",
-    "test:pg": "vitest run tests/integration/postgres"
+    "test:pg": "vitest run tests/integration/postgres",
+    "deploy:validate": "bun deploy/validate.ts",
+    "deploy:bootstrap": "bun deploy/bootstrap.ts",
+    "deploy:teardown": "bun deploy/teardown.ts",
+    "deploy:smoke": "bun deploy/smoke.ts",
+    "deploy:identity": "bun deploy/identity.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
