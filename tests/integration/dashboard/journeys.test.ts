@@ -2044,6 +2044,13 @@ describe("(k) every page: one h1, the landmarks, the skip link first", () => {
     "/admin/audit",
     "/command",
     "/command?q=agents",
+    // WORK-041: the frame sweep covers EVERY user-reachable GET route —
+    // the five the prior orders' list had not yet grown to include.
+    "/attention",
+    "/trust/evidence",
+    "/trust/lineage",
+    `/assets/artifacts/${ARTIFACT_F2}?executionId=${VERIFIED_ID}`,
+    "/assets/competences/competence-77",
   ];
 
   test("each page carries the complete accessible frame", async () => {
@@ -3817,5 +3824,89 @@ describe("(av) the WORK-040 correction journey (the fail-closed deployments even
         world.events.set(REALTIME_ID, eventsBackup);
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (aw) The WORK-041 context-restoration journey: the no-script preference
+//      fallback (mode/appearance) returns to the CURRENT view — on every
+//      surface, including the router's error surfaces (never a Home bounce
+//      that loses the user's place)
+// ---------------------------------------------------------------------------
+
+describe("(aw) the WORK-041 context-restoration journey (the preference fallback returns to the current view)", () => {
+  test("a content page's mode form carries the CURRENT path as returnTo", async () => {
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", COMPLETED_ID);
+    const page = await html(await get("/admin/budgets", jar));
+    // The no-script fallback hidden field points at the SAME view — the
+    // WORK-035 foundation rule every content page follows.
+    expect(page).toContain('<input type="hidden" name="returnTo" value="/admin/budgets">');
+  });
+
+  test("the ROUTE-404 error surface keeps the user's place (never a Home bounce)", async () => {
+    const page = await html(await get("/no-such-route"));
+    expect(page).toContain("This page does not exist");
+    expect(page).toContain('<input type="hidden" name="returnTo" value="/no-such-route">');
+    // The fallback round-trip: applying a mode from the 404 page lands
+    // back on the SAME view (rendered in the new presentation) — the
+    // user's place is preserved end-to-end.
+    const jar = new CookieJar();
+    const applied = await get("/mode?level=expert&returnTo=/no-such-route", jar);
+    expect(applied.status).toBe(303);
+    expect(applied.headers.get("location")).toBe("/no-such-route");
+    const again = await html(await get("/no-such-route", jar));
+    expect(again).toContain('data-mode="expert"');
+    expect(again).toContain("This page does not exist");
+  });
+
+  test("an authorization-class (403) wire-error surface preserves the context too", async () => {
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", REALTIME_ID);
+    world.failEventList = { id: REALTIME_ID, status: 403 };
+    try {
+      const page = await html(await get("/deployments", jar));
+      expect(page).toContain("Not authorized");
+      expect(page).toContain('<input type="hidden" name="returnTo" value="/deployments">');
+    } finally {
+      world.failEventList = null;
+    }
+  });
+
+  test("the execution-not-found view keeps the user's place (the lookup form is the recovery path)", async () => {
+    const missing = "00000000-0000-7000-8000-0000000000ef";
+    const page = await html(await get(`/runs/${missing}`));
+    expect(page).toContain("This execution is not visible through the governed API");
+    expect(page).toContain(`<input type="hidden" name="returnTo" value="/runs/${missing}">`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ax) The WORK-041 command empty-state journey: the no-match state composes
+//      the ONE empty-state primitive (the same vocabulary and escape
+//      boundary every other route uses)
+// ---------------------------------------------------------------------------
+
+describe("(ax) the WORK-041 command empty-state journey (the one states primitive)", () => {
+  test("a no-match query renders the shared empty-state primitive's exact markup", async () => {
+    const page = await html(await get("/command?q=zzzz-no-match-xyz"));
+    expect(page).toContain('class="state state-empty"');
+    // The primitive escapes the whole title/body through the one boundary
+    // (the quotes render as &quot; — visually identical in the browser).
+    expect(page).toContain(
+      '<p class="state-title">No matches for &quot;zzzz-no-match-xyz&quot;</p>',
+    );
+    expect(page).toContain(
+      '<p class="state-body">Try a navigation word (agents, runs, policies), an execution id, or a phrase like &quot;cancel &lt;execution id&gt;&quot;.</p>',
+    );
+  });
+
+  test("a hostile no-match query passes through the primitive's escape boundary", async () => {
+    const hostile = '"><script>zeck("x")</script>&';
+    const page = await html(await get(`/command?q=${encodeURIComponent(hostile)}`));
+    expect(page).toContain('class="state state-empty"');
+    expect(page).toContain("No matches for");
+    expect(page).not.toContain("<script>");
+    expect(page).not.toContain('zeck("x")');
   });
 });

@@ -809,7 +809,12 @@ a.button-link.danger { color: var(--status-error); border-color: var(--status-er
   .app-main button, .app-main input, .app-main select, .app-main textarea, .app-main summary,
   .tabs a, .command-results a, .actions a, .actions button, .suggested a,
   .command-suggestions a, .page-actions a, .page-actions button,
-  .attention-indicator, a.button-link {
+  .attention-indicator, a.button-link,
+  /* WORK-041 (responsive refinement): every interactive element INSIDE the
+   * dialog family (the command dialog's input/submit, the sheet's close
+   * and action buttons) obeys the same --touch-target minimum — the
+   * modal surfaces are primary interactive surfaces on mobile too. */
+  dialog button, dialog input, dialog select {
     min-height: var(--touch-target);
   }
   .app-nav > ul li a { display: flex; align-items: center; }
