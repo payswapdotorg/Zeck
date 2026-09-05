@@ -426,6 +426,20 @@ table.data thead th { border-bottom: 2px solid var(--border-strong); }
   .lineage-chain { padding: var(--space-2); }
 }
 
+/* WORK-039: the control-plane presentation — the blocked explanation (the
+ * recorded controlling rule), the spend summary and per-run spend table,
+ * and the connections facts. Every rule consumes the same tokens; no
+ * one-off hierarchy. */
+.state.state-blocked { border-style: solid; border-color: var(--status-warn); background: var(--surface-raised); }
+.spend-summary { margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.spend-summary h2, .spend-summary h3 { margin-top: 0; }
+table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.875rem; word-break: break-all; }
+.connection-facts { margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.connection-facts h2, .connection-facts h3 { margin-top: 0; }
+@media (max-width: 640px) {
+  .spend-summary, .connection-facts { padding: var(--space-2) var(--space-3); }
+}
+
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .timeline li {
   display: grid;
