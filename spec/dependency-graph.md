@@ -42,9 +42,12 @@ WORK-037 -> WORK-038
 WORK-038 -> WORK-039
 WORK-039 -> WORK-040
 WORK-040 -> WORK-041
+WORK-041 -> WORK-042
 ```
 
 Initial implementation frontier: `WORK-001`.
+
+Current post-UX deployment frontier: `WORK-042`.
 
 Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.
 
@@ -53,3 +56,5 @@ Multimodal deployment is intentionally staged: WORK-023 establishes the common d
 Computational-substrate extensibility is intentionally staged: WORK-031 establishes the common substrate/workload-class contract; WORK-027/028/029/030 specialize computer use, long-running execution, edge/embodied execution and training/accelerator workloads.
 
 UX realization is intentionally staged: WORK-033 established the prior dashboard projection; WORK-034 reconciled application scope; WORK-035 establishes the UX v2 foundation; WORK-036 through WORK-040 realize the product surfaces in dependency order; WORK-041 closes the cross-product usability, accessibility, responsive and release gate. All seven new Work Orders remain within the dashboard experience surface and are intentionally serialized to avoid protected shared-surface conflicts.
+
+Deployment implementation is intentionally staged after UX completion: WORK-042 establishes reproducible infrastructure/environment foundations before asynchronous transport, orchestration, worker deployment, production release controls and disaster recovery are introduced by later approved Work Orders.
