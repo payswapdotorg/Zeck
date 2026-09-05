@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck environment matrix (Deployment & Runtime Architecture D1.0 section 4). Repository truth: the four logical environment classes, their isolation contract, teardown policy and promotion ladder. Provider consoles cannot redefine this matrix.",
+  "promotionOrder": ["local", "ci", "preview", "staging", "production"],
+  "note": "ci is a check phase on the promotion ladder, not a hosting environment class. The four environment classes are exactly local, preview, staging and production.",
+  "environments": {
+    "local": {
+      "class": "disposable",
+      "description": "Developer workstation control plane with local PostgreSQL, local object-store root and a Redis-compatible coordination service. Fully disposable synthetic state.",
+      "dataPolicy": "synthetic-only",
+      "teardownAllowed": true,
+      "credentialScope": "developer-local",
+      "promotion": {
+        "nextPhase": "ci",
+        "requires": ["governance-check", "typecheck", "lint", "full-test-suite"]
+      }
+    },
+    "preview": {
+      "class": "disposable",
+      "description": "Isolated per-branch preview deployment. Synthetic or explicitly disposable data only. Preview resources are never implicitly promoted.",
+      "dataPolicy": "synthetic-only",
+      "teardownAllowed": true,
+      "credentialScope": "preview-isolated",
+      "promotion": {
+        "nextPhase": "staging",
+        "requires": ["ci-gates", "preview-smoke"]
+      }
+    },
+    "staging": {
+      "class": "persistent",
+      "description": "Production-like topology with isolated credentials and a dedicated database project/branch. Exists to prove production deployment behavior before promotion.",
+      "dataPolicy": "staging-only",
+      "teardownAllowed": false,
+      "credentialScope": "staging-isolated",
+      "promotion": {
+        "nextPhase": "production",
+        "requires": ["architect-approval", "staging-smoke", "deployment-identity-audit"]
+      }
+    },
+    "production": {
+      "class": "persistent",
+      "description": "Authoritative production data and credentials. Requires commercially permitted provider plans and explicit monitoring, backup and rollback procedures.",
+      "dataPolicy": "authoritative",
+      "teardownAllowed": false,
+      "credentialScope": "production-only",
+      "promotion": null
+    }
+  }
+}

@@ -37,6 +37,8 @@ import { registerAgentRoutes } from "./routes/agents";
 import { registerCodebaseAnalysisRoutes } from "./routes/codebase-analysis";
 import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
+import type { DependencyReadinessWire } from "./routes/health";
+import { registerHealthRoutes } from "./routes/health";
 
 export interface ApiServerDeps {
   readonly executions: ExecutionService;
@@ -57,6 +59,13 @@ export interface ApiServerDeps {
    * an Execution": policy admission before codebase access).
    */
   readonly codebaseAnalyzer: OpportunityAnalyzer;
+  /**
+   * The deployment dependency readiness probe (WORK-042 AC6): the
+   * composition-owned evaluation of infrastructure dependency
+   * readiness behind the ports. Transport reports it; it never
+   * computes it (see src/platform/deployment/readiness.ts).
+   */
+  readonly dependencyReadiness: () => Promise<readonly DependencyReadinessWire[]>;
 }
 
 export interface ApiServer {
@@ -102,6 +111,9 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
     analyzer: deps.codebaseAnalyzer,
     scopeResolver: deps.scopeResolver,
     authenticate: deps.authenticate,
+  });
+  registerHealthRoutes(app, {
+    dependencyReadiness: deps.dependencyReadiness,
   });
 
   return {

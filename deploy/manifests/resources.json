@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck resource inventory (Deployment Roadmap D-01). Every required infrastructure resource is declared here with its environment ownership and kind. Resource NAMES are never stored: they are computed deterministically from (environment, kind, preview branch identity) by src/platform/deployment/naming.ts, which is the single naming authority. Disposables (local, preview) may be torn down and recreated; persistent resources (staging, production) are never torn down by tooling.",
+  "naming": {
+    "prefix": "zeck",
+    "previewBranchSlug": {
+      "maxLength": 24,
+      "charset": "lowercase alphanumerics and hyphens; non-alphanumerics collapsed to single hyphens; leading and trailing hyphens stripped"
+    },
+    "kinds": {
+      "vercel-project": {
+        "suffix": null,
+        "maxLength": 100,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$",
+        "description": "Vercel project hosting the experience and API deployment."
+      },
+      "neon-project": {
+        "suffix": null,
+        "maxLength": 60,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$",
+        "description": "Neon project owning the environment's PostgreSQL branches."
+      },
+      "neon-branch": {
+        "suffix": null,
+        "maxLength": 60,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$",
+        "description": "Neon branch inside the owning project. Preview branches descend from the staging project's main branch."
+      },
+      "r2-bucket": {
+        "suffix": "artifacts",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Cloudflare R2 bucket holding artifact bytes only; metadata stays in PostgreSQL."
+      },
+      "cf-queue": {
+        "suffix": "executions",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Cloudflare Queue used as non-authoritative dispatch transport."
+      },
+      "cf-workflow": {
+        "suffix": "orchestration",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Cloudflare Workflow used as non-authoritative durable orchestration."
+      },
+      "upstash-redis": {
+        "suffix": "redis",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Upstash Redis database restricted to recomputable coordination data."
+      },
+      "pg-database": {
+        "suffix": null,
+        "maxLength": 63,
+        "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+        "description": "Local PostgreSQL database on the developer workstation."
+      },
+      "local-object-store": {
+        "suffix": "artifacts",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Local object-store root directory under the local data root (never inside the repository)."
+      },
+      "local-redis": {
+        "suffix": "redis",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Local Redis-compatible coordination service."
+      }
+    }
+  },
+  "resources": {
+    "local": [
+      { "id": "postgres", "concern": "relational-state", "kind": "pg-database" },
+      { "id": "object-store", "concern": "artifact-bytes", "kind": "local-object-store" },
+      { "id": "redis", "concern": "ephemeral-coordination", "kind": "local-redis" }
+    ],
+    "preview": [
+      {
+        "id": "experience",
+        "concern": "experience-delivery",
+        "kind": "vercel-project",
+        "perBranch": true
+      },
+      { "id": "database", "concern": "relational-state", "kind": "neon-branch", "perBranch": true },
+      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket", "perBranch": true },
+      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue", "perBranch": true },
+      {
+        "id": "orchestration",
+        "concern": "durable-orchestration",
+        "kind": "cf-workflow",
+        "perBranch": true
+      },
+      {
+        "id": "redis",
+        "concern": "ephemeral-coordination",
+        "kind": "upstash-redis",
+        "perBranch": true
+      }
+    ],
+    "staging": [
+      { "id": "experience", "concern": "experience-delivery", "kind": "vercel-project" },
+      { "id": "database-project", "concern": "relational-state", "kind": "neon-project" },
+      { "id": "database", "concern": "relational-state", "kind": "neon-branch" },
+      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket" },
+      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue" },
+      { "id": "orchestration", "concern": "durable-orchestration", "kind": "cf-workflow" },
+      { "id": "redis", "concern": "ephemeral-coordination", "kind": "upstash-redis" }
+    ],
+    "production": [
+      { "id": "experience", "concern": "experience-delivery", "kind": "vercel-project" },
+      { "id": "database-project", "concern": "relational-state", "kind": "neon-project" },
+      { "id": "database", "concern": "relational-state", "kind": "neon-branch" },
+      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket" },
+      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue" },
+      { "id": "orchestration", "concern": "durable-orchestration", "kind": "cf-workflow" },
+      { "id": "redis", "concern": "ephemeral-coordination", "kind": "upstash-redis" }
+    ]
+  },
+  "previewBranching": {
+    "databaseParent": "staging",
+    "description": "Preview Neon branches descend from the staging project's main branch so previews prove staging-shaped topology with disposable data."
+  }
+}
