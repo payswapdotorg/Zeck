@@ -5,13 +5,16 @@ This repository is designed for stateless LLM architect and implementation agent
 ## Required recovery sequence
 
 1. Read this file.
-2. Read `README.md`.
-3. Read `IMPLEMENTATION.md` and `spec/worker-runbook.md`.
-4. Read `spec/architecture.md` and `spec/architecture-lock.md`.
-5. Read `spec/development-state/program-state.json`, `dependency-state.json`, `frontier-state.json`, and `checkpoint-state.json`.
-6. Read the relevant ADRs and `spec/requirement-traceability.md`.
-7. Read the assigned `spec/work-orders/WORK-NNN.md` in full.
-8. Run `python3 scripts/governance-check.py` before making changes.
+2. Read `AI_CONTINUATION.md`.
+3. Read `docs/LLM-ARCHITECT-HANDOFF.md`.
+4. Read `README.md`.
+5. Read `IMPLEMENTATION.md` and `spec/worker-runbook.md`.
+6. Read `spec/architecture.md` and `spec/architecture-lock.md`.
+7. Read `spec/development-state/program-state.json`, `dependency-state.json`, `frontier-state.json`, and `checkpoint-state.json`.
+8. Read the relevant ADRs and `spec/requirement-traceability.md`.
+9. Read the assigned `spec/work-orders/WORK-NNN.md` in full.
+10. Inspect live Git refs/PRs/issues and verify the active Work Order's exact branch/base relationship.
+11. Run `python3 scripts/governance-check.py` before making changes.
 
 ## Architect agent
 
@@ -37,3 +40,7 @@ The implementer must report exact revisions, changed surfaces, tests, checkpoint
 ## Zero-context rule
 
 When a question cannot be answered from repository artifacts, treat the repository as incomplete and raise a governance finding or request an architecture/Work Order amendment. Do not invent missing authority from chat memory.
+
+## Current-state rule
+
+For the current implementation frontier and exact handoff, `docs/LLM-ARCHITECT-HANDOFF.md` is the durable navigation document. It supplements, but never overrides, the architecture lock, Work Orders, development-state JSON, Git ancestry, and verified CI/evidence.
