@@ -1,6 +1,6 @@
 # WORK-042 — Reproducible deployment infrastructure foundation
 
-Status: PENDING
+Status: IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -58,7 +58,7 @@ Forbidden:
 - bypassing `/auth`, `/policies`, `/budgets`, `/executions`, `/artifacts`, `/sandbox`, or other existing authorities
 - production data migrations unrelated to deployment bootstrap
 - inventing a second deployment control plane
-- modifying `spec/development-state/*` during active implementation
+- modifying `spec/development-state/*` during active work
 - merging the worker's own PR
 
 # Architecture Invariants
@@ -140,8 +140,8 @@ Worker opens exactly one PR and does not merge. Completion requires Architect ac
 # Dispatch Record
 
 - Work Order: WORK-042
-- Status before dispatch: PENDING
+- Status: AUTHORIZED / IN-FLIGHT
 - Required worker branch: `work/WORK-042-deployment-infrastructure-foundation`
-- Binding base will be recorded by the Architect at dispatch.
+- Binding exact base: `375aee55c22f7f80c82199cb3baf987f03077d24`
 - Worker must not modify `spec/development-state/*` during active work.
 - Worker must not merge its own PR.
