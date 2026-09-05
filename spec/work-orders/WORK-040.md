@@ -126,7 +126,7 @@ Worker opens a PR but does not merge. Completion requires architect acceptance, 
 - Issue: #71
 - Dispatch status: AUTHORIZED / IN-FLIGHT
 - Work Order was promoted from PENDING to IN-FLIGHT by the Architect before worker branch creation.
-- Binding exact base: `85b1b39a540787c9cad7df31415d2b550acf26db`
+- Binding exact base: `aac355d1fad3c1a80a2d757f5c62160a95c4a5e3`
 - Required worker branch: `work/WORK-040-advanced-inspection-multimodal-work`
 - Worker must not modify `spec/development-state/*` during active work.
 - Worker must not merge its own PR.
