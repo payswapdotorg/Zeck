@@ -16,11 +16,12 @@
 - D-00 architecture/contract: complete.
 - D-01 reproducible infrastructure foundation: complete through WORK-042 / PR #2.
 - D-02 database and artifact production path: complete through WORK-043 / PR #4.
-- Current implementation order: **WORK-044 — Asynchronous execution transport (D-03)**.
-- Canonical GitHub Issue: **#5**, authorized/in-flight on `payswapdotorg/Zeck`.
-- Required worker branch: `work/WORK-044-asynchronous-execution-transport`.
-- Exact dispatch base: `44eaceca4de2af7d531fd1b9bad5a14b14d3b69e`.
-- Development frontier: `eligible=[]`, `inFlight=["WORK-044"]`, `blocked=[]`.
+- D-03 asynchronous execution transport: complete through WORK-044 / PR #6.
+- Current implementation order: **WORK-045 — Durable orchestration (D-04)**.
+- Canonical GitHub Issue: **#7**, authorized/in-flight on `payswapdotorg/Zeck`.
+- Required worker branch: `work/WORK-045-durable-orchestration`.
+- Exact dispatch base: `6cfbd936475a457886a174adeb457faf9b974ce9`.
+- Development frontier: `eligible=[]`, `inFlight=["WORK-045"]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -28,8 +29,8 @@
 D-00 Architecture/contract — COMPLETE
 D-01 Reproducible infrastructure foundation — COMPLETE (WORK-042)
 D-02 Database + artifact production path — COMPLETE (WORK-043)
-D-03 Asynchronous execution transport — CURRENT (WORK-044)
-D-04 Durable orchestration
+D-03 Asynchronous execution transport — COMPLETE (WORK-044)
+D-04 Durable orchestration — CURRENT (WORK-045)
 D-05 Execution worker deployment fabric
 D-06 Production delivery, observability and release control
 D-07 Resilience, disaster recovery and provider exit
@@ -43,7 +44,7 @@ Workers may not skip, reorder or infer phases from chat. A phase becomes executa
 1. `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 2. `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment implementation sequence.
 3. `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-4. `spec/work-orders/WORK-044.md` — authoritative executable scope for the active increment.
+4. `spec/work-orders/WORK-045.md` — authoritative executable scope for the active increment.
 
 Core principle:
 
@@ -63,8 +64,8 @@ Reference topology:
 - Work Order: `WORK-042`
 - Canonical Issue: #1
 - PR: #2
-- Worker final head: `c61392260024244db7bab723e9f018d7c582e9a8`
-- Merge commit: `b75e23bacf9aace76e88e643ea2a272f588a0f9`
+- Worker final head: `c61392260024244db7bab723e9f018d7c582a9e8`
+- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f9`
 - Post-merge program/frontier state finalized by Architect.
 
 ## WORK-043 / D-02 completion
@@ -78,19 +79,35 @@ Reference topology:
 - Live Neon/R2 provider verification: NOT RUN in the worker environment because provider credentials were unavailable; this is not a PASS claim.
 - Post-merge program/dependency state finalized by Architect.
 
-## WORK-044 / D-03 dispatch
+## WORK-044 / D-03 completion
 
 - Work Order: `spec/work-orders/WORK-044.md`
 - Canonical issue: #5
-- Status: AUTHORIZED / IN-FLIGHT
+- Status: COMPLETE
 - Dependency: WORK-043
 - Required branch: `work/WORK-044-asynchronous-execution-transport`
 - Assurance: HIGH_ASSURANCE
 - Exact dispatch base: `44eaceca4de2af7d531fd1b9bad5a14b14d3b69e`
+- Corrected implementation head: `785605777ab590577cd8df8173cdb1ab64866116`
+- PR: #6
+- Merge commit: `985ca850faaa620cf3df05675f7af74e2073f188`
+- Critical Architect correction: transport probe isolated to dedicated `ZECK_PROBE_QUEUE_ID`; exact-own-message settlement; execution queue never touched by probe.
+- Live Cloudflare successful round-trip: NOT RUN due unavailable provider credentials; fail-closed provider reachability evidence retained.
+- Post-merge program/dependency/frontier state finalized by Architect; repository governance check passes on main.
 
-D-03 scope is limited to asynchronous execution transport: durable dispatch correlation, provider-neutral queue adapter, idempotent consumers, bounded retry/dead-letter handling, backlog inspection, safe replay, crash/restart recovery, and explicit provider outage behavior.
+## WORK-045 / D-04 dispatch
 
-Workers must not implement D-04 orchestration, D-05 worker fabric, D-06 release/observability expansion, unrelated product runtime work, or a second execution state machine.
+- Work Order: `spec/work-orders/WORK-045.md`
+- Canonical issue: #7
+- Status: AUTHORIZED / IN-FLIGHT
+- Dependency: WORK-044
+- Required branch: `work/WORK-045-durable-orchestration`
+- Assurance: HIGH_ASSURANCE
+- Exact dispatch base: `6cfbd936475a457886a174adeb457faf9b974ce9`
+
+D-04 scope is limited to durable orchestration: provider-neutral workflow abstraction, durable execution/workflow correlation, waits, callbacks, approvals, bounded retries, timeout/expiration, state compaction, provider-limit handling, and restart/resume recovery. Workflow state remains non-authoritative and large artifact bytes/secrets remain outside it.
+
+Workers must not implement D-05 worker fabric, D-06 release/observability expansion, unrelated product runtime work, or a second execution state machine.
 
 ## Fresh-session recovery order
 
@@ -103,8 +120,8 @@ Workers must not implement D-04 orchestration, D-05 worker fabric, D-06 release/
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
 9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, ACR-002, and `docs/FORK-CANONICAL-REMOTE.md`.
-10. Read `spec/work-orders/WORK-044.md` in full.
-11. Inspect live Git refs, canonical Issue #5, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry.
+10. Read `spec/work-orders/WORK-045.md` in full.
+11. Inspect live Git refs, canonical Issue #7, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry.
 12. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
@@ -128,13 +145,14 @@ Workers must not implement D-04 orchestration, D-05 worker fabric, D-06 release/
 - PostgreSQL remains authoritative for durable Zeck state.
 - R2 stores artifact bytes only; artifact metadata/provenance remains authoritative in Zeck.
 - Queue state is never execution authority.
+- Workflow state is never execution authority.
 - Secrets remain secret-mediated and never enter Git, logs, artifacts or public domain state.
 - Evidence is valid only for the exact revision tested.
 - Governance-state changes are Architect-owned.
 
 ## Completion boundary
 
-WORK-044 is currently the only authorized deployment implementation order. Do not invent D-04 or any product-runtime Work Order during active D-03 implementation. The next phase becomes executable only after D-03 acceptance, merge and post-merge finalization through a new repository-approved Work Order.
+WORK-045 is currently the only authorized deployment implementation order. Do not invent D-05 or any product-runtime Work Order during active D-04 implementation. The next phase becomes executable only after D-04 acceptance, merge and post-merge finalization through a new repository-approved Work Order.
 
 ## Fresh-session invariant
 
