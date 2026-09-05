@@ -1,6 +1,6 @@
 # WORK-039 — Control, spend, connections and improvement experience
 
-Status: IN-FLIGHT
+Status: COMPLETE
 
 Owner: Architect-assigned implementation worker
 
@@ -120,8 +120,18 @@ Worker opens a PR but does not merge. Completion requires architect acceptance, 
 - Issue: #69
 - Dispatch status: AUTHORIZED / IN-FLIGHT
 - Work Order was promoted from PENDING to IN-FLIGHT by the Architect before worker branch creation.
-- The binding exact base is the final dispatch-state commit on `main`, recorded in issue #69 immediately before branch creation.
+- The binding exact base was `b332b13434eef294d3c9890d4bd1c9694d8845ab`.
 - Required worker branch: `work/WORK-039-control-spend-connections-improvement`
 - Worker must not modify `spec/development-state/*` during active work.
 - Worker must not merge its own PR.
-- Worker may implement only this Work Order and its declared surfaces.
+- Worker implemented only this Work Order and its declared surfaces.
+
+# Completion Record
+
+- Architect acceptance: PR #70 accepted after independent exact-head review.
+- Implementation head: `22b1397350ad6739a9a579289209c51a680cba14`
+- PR: #70
+- Merge commit: `62d954df92fb2257145966bf8c7717ab318dcf4d`
+- Post-merge verification: main advanced to the merge commit; GitHub repository governance workflow `33930709391` was green for the verified repository state.
+- Surface integrity: exactly 12 PR files, all within declared surfaces; `spec/development-state/*` untouched by the worker; no new POST routes and no new dependencies.
+- Proof record: twice-consecutive exact-head full gate, including governance, typecheck, lint, real-PostgreSQL full suite, responsive/accessibility browser verification, and D19–D22 discrimination tests, as recorded in `docs/work-items/WORK-039.md` and the PR discussion.
