@@ -6,47 +6,55 @@
 
 - Repository: `pectoraux/Zeck`
 - Core architecture: **v1.0**, frozen after approval.
+- Deployment/runtime architecture: **D1.0**, approved and authoritative for deployment concerns, subordinate to v1.0.
 - UX v2 implementation wave: **complete through WORK-041**.
-- Last UX Work Order: **WORK-041 — UX integration hardening, usability and release gate**.
-- PR: **#74**, merged.
-- Merge commit: `153b5f1c4de6180e5e56c421f5fdfcea7b855cf2`.
-- Issue #73: closed as completed.
-- Previous UX frontier: `eligible=[]`, `inFlight=[]`, `blocked=[]`.
-- No UX successor Work Order is authorized by this handoff.
+- Current implementation order: **WORK-042 — Reproducible deployment infrastructure foundation**.
+- GitHub Issue: **#75**, authorized/in-flight.
+- Dispatch base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`.
+- Required worker branch: `work/WORK-042-deployment-infrastructure-foundation`.
+- Development frontier: `eligible=[]`, `inFlight=["WORK-042"]`, `blocked=[]`.
 
-## New authoritative architecture stream
+## Deployment authority
 
-The next engineering concern is deployment/runtime infrastructure, not a new customer feature wave.
+1. `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
+2. `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment implementation sequence.
+3. `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
+4. `spec/work-orders/WORK-042.md` — authoritative executable scope for the active increment.
 
-- Architecture Change Record: `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`
-- Deployment Architecture: `docs/DEPLOYMENT-ARCHITECTURE.md`
-- Deployment Roadmap: `docs/DEPLOYMENT-ROADMAP.md`
-- Deployment architecture version: **D1.0**
-- D1.0 is subordinate to core architecture v1.0 and does not rewrite the frozen core.
-- The repository is the only source of truth for deployment design and implementation sequencing.
+Core principle:
 
-The reference low-cost topology is Vercel for experience/preview delivery, Neon PostgreSQL for durable authority, Cloudflare R2 for object bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination, with external identity/email and provider-neutral execution adapters. Commercial production must use commercially permitted plans; Vercel Hobby is not the commercial production tier.
+> **Zeck owns authority; providers supply infrastructure.**
 
-## W041 identity and ancestry
+Reference topology:
+
+- Vercel — experience/delivery and previews.
+- Neon PostgreSQL — authoritative relational state.
+- Cloudflare R2 — durable artifact bytes; metadata remains in Zeck authority.
+- Cloudflare Queues — non-authoritative asynchronous transport.
+- Cloudflare Workflows — non-authoritative durable orchestration.
+- Upstash Redis — non-authoritative ephemeral coordination/cache.
+
+Commercial-use plan requirements and mutable vendor limits are evidence inputs and must be re-verified before purchase or production promotion.
+
+## W041 completion
 
 - Dispatch pin: `017e44f41eab9ce7a458843d39a38c895ba79800`
 - Binding exact base: `bcc46ee402da33ca478d7cb860352c28b97b1080`
 - Worker final head: `3fbb9db212376275ca50858a296234c25d15d46d`
-- PR #74 merge commit: `153b5f1c4de6180e5e56c421f5fdfcea7b855cf2`
+- PR: #74
+- Merge commit: `153b5f1c4de6180e5e56c421f5fdfcea7b855cf2`
+- Issue #73: closed as completed
 
-The ancestry nuance is intentional. `017e44f…` is the final W041 dispatch-state commit; its parent `bcc46ee…` is the Work Order's binding base. Architect-owned documentation commits after dispatch are not worker implementation history and must not be rewritten away.
+## WORK-042 dispatch
 
-## W041 acceptance record
+- Work Order: `spec/work-orders/WORK-042.md`
+- Issue: #75
+- Status: AUTHORIZED / IN-FLIGHT
+- Exact dispatch base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`
+- Required branch: `work/WORK-042-deployment-infrastructure-foundation`
+- Assurance: HIGH_ASSURANCE
 
-W041 stayed within its declared dashboard/evidence surfaces. PR #74 had exactly six changed files. The worker evidence reported 421/421 driven-browser checks, zero script-level console/page errors, responsive desktop/tablet/mobile coverage, accessibility and authorization/error regressions, performance evidence, and two consecutive full-suite passes of 284 files / 4179 tests at the exact final head `3fbb9db`.
-
-The Architect verified the PR base/head, merge-base, changed-file inventory, CI, and boundary constraints before merging. W041 was then finalized in `spec/development-state/program-state.json` with the actual PR and merge commit, and the frontier was re-derived to empty.
-
-## Deployment architecture rule
-
-Deployment work must not silently alter `spec/architecture.md` v1.0 or `spec/architecture-lock.md`. Material changes to the frozen architecture require the existing architecture-versioning/change protocol.
-
-The deployment architecture is deliberately provider-neutral. Vendor products are implementation choices behind explicit ports. PostgreSQL remains authority; R2 contains durable bytes while metadata remains in PostgreSQL; queues/workflows orchestrate but do not own execution truth; Redis is ephemeral coordination only.
+The worker may use the user's Composio-connected provider accounts to provision and verify infrastructure. Provider dashboards, external infrastructure state, provider credentials and worker conversation are not architecture authority. Required configuration and evidence must be captured in the repository.
 
 ## Fresh-session recovery order
 
@@ -58,25 +66,38 @@ The deployment architecture is deliberately provider-neutral. Vendor products ar
 6. Read `spec/architecture.md` and `spec/architecture-lock.md`.
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
-9. Read `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`, `docs/DEPLOYMENT-ARCHITECTURE.md`, and `docs/DEPLOYMENT-ROADMAP.md`.
-10. Inspect live GitHub refs, PRs, issues, checks, and exact ancestry.
-11. Run `python3 scripts/governance-check.py` before changing state or implementation.
+9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, and ACR-002.
+10. Read `spec/work-orders/WORK-042.md` in full.
+11. Inspect live Git refs, Issue #75, PRs and checks; verify exact ancestry.
+12. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
 
 1. Actual Git refs and commit ancestry.
 2. Repository-resident development-state JSON.
-3. Frozen architecture and architecture lock.
-4. Approved architecture-change records and current Deployment Architecture.
-5. Active/approved Work Orders and Deployment Roadmap.
-6. Exact-revision CI/test/browser/deployment evidence.
-7. Other repository documentation.
-8. Conversation history — never authoritative.
+3. Frozen architecture/architecture lock.
+4. Approved architecture changes and Work Orders.
+5. Exact-revision CI and evidence.
+6. Other repository documentation.
+7. Conversation history — never authoritative.
+
+## Non-negotiables
+
+- One Work Order = one implementation branch = one PR.
+- Workers do not merge their own PRs.
+- Workers do not modify `spec/development-state/*` during active work.
+- Frozen core v1.0 cannot be silently rewritten.
+- D1.0 must remain subordinate to v1.0.
+- Infrastructure providers implement ports and operational concerns; they do not become Zeck domain authorities.
+- PostgreSQL remains authoritative for durable Zeck state.
+- Secrets remain secret-mediated and never enter Git, logs, artifacts or public domain state.
+- Evidence is valid only for the exact revision tested.
+- Governance-state changes are Architect-owned.
 
 ## Completion boundary
 
-W041 is complete and remains the final completed UX v2 Work Order. A deployment work stream may now proceed under D1.0, but deployment implementation still requires explicit repository Work Orders. Do not invent implementation tasks from chat.
+WORK-042 is currently the only authorized deployment implementation order. Do not invent WORK-043 from chat. The next deployment phase must become executable only through a repository-approved Work Order with explicit dependency, surfaces, acceptance criteria and evidence contract.
 
 ## Fresh-session invariant
 
-A fresh LLM Architect must be able to recover Zeck from these repository artifacts and live GitHub state without any prior conversation transcript.
+A fresh LLM Architect must be able to recover Zeck, including the deployment stream, from repository artifacts and live GitHub state without any prior conversation transcript.
