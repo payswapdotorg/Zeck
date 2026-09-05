@@ -142,6 +142,6 @@ Worker opens exactly one PR and does not merge. Completion requires Architect ac
 - Work Order: WORK-042
 - Status: AUTHORIZED / IN-FLIGHT
 - Required worker branch: `work/WORK-042-deployment-infrastructure-foundation`
-- Binding exact base: `375aee55c22f7f80c82199cb3baf987f03077d24`
+- Binding exact base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`
 - Worker must not modify `spec/development-state/*` during active work.
 - Worker must not merge its own PR.
