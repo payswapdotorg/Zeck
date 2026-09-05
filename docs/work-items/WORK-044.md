@@ -1,0 +1,94 @@
+# WORK-044 Evidence — Asynchronous execution transport
+
+Work Order: `WORK-044` (spec/work-orders/WORK-044.md) · Canonical remote: **`payswapdotorg/Zeck`** · Canonical issue: **#5** · Assurance: **HIGH_ASSURANCE** · Governing architecture: Deployment & Runtime Architecture **D1.0** (subordinate to frozen v1.0), roadmap phase **D-03**.
+
+Exact dispatch base: `44eaceca4de2af7d531fd1b9bad5a14b14d3b69e` (verified present; the worker branch was created at exactly that SHA and contains exactly **one** code commit + this evidence document on top of it; zero merge commits). Branch: `work/WORK-044-asynchronous-execution-transport` · **Final head: this doc's commit**. One PR, opened by the worker, **not merged by the worker**.
+
+## Baseline gate at the exact dispatch base (readiness checkpoint — BEFORE implementation)
+
+- **`python3 scripts/governance-check.py` FAILED at the dispatch base** — and at canonical main `921c92d` differently: at the base, `AssertionError: WORK-043 missing # Architecture Invariants` (the merged WORK-043.md uses lowercase heading variants `# Architecture invariants` / `# Acceptance criteria` while the template requires title case); at main, `program-state and dependency-state have different Work Order identities` (WORK-044 registered in program-state but missing from dependency-state.json). Both are **Architect-owned dispatch-state defects — report-only, never worker-fixed** (the branch carries **zero** `spec/` changes, mechanically verified). The two failing tests in every suite run are exactly this defect (identical at base).
+- `bun run typecheck` — 0 errors at `44eacec`.
+- `bun run lint` — biome clean (1027 files) at `44eacec`.
+- Full suite with real PostgreSQL 16.4 (`ZECK_PG_TEST_URL`, 127.0.0.1:55432) at exactly `44eacec`: **307 files / 4389 tests, 4382 passed, 2 failed** (only the two inherited governance failures — `fresh-clone-governance` and the governance-gate negative control), 5 skipped (real-R2 NOT RUN). Executed as the three sequential script invocations `test:unit` / `test:integration` / `test:architecture` (159 / 72 / 76 files).
+- Known inherited flake (disclosed, NOT worker-introduced): `connection-pool bounds hold under parallel load` failed once in ~8 runs at BOTH the exact base `44eacec` and at this branch's code tree (a `pg_stat_activity` sampling-timing race in the WORK-043 test; the pool code is untouched by this order). It passes on retry and in isolation; it is counted honestly wherever it appeared.
+
+## Provider account/resource access (readiness checkpoint)
+
+**NOT RUN — no Cloudflare (or other provider) credential exists in this worker environment.** The only credential held is the operator-provided GitHub PAT for `payswapdotorg/Zeck` (environment-only; used solely for the Git/PR lifecycle of this Work Order).
+
+Consequences, per the evidence contract (never convert unavailable provider access into a PASS):
+
+- **Live Cloudflare Queues endpoint verification: NOT RUN** — no `queue-api-token` material. The transport adapter is instead verified against the **documented** Cloudflare Queues REST wire protocol (publish / poll / ack, Bearer auth, response envelope, error codes) over **real HTTP against an in-process protocol-verifying server** (`tests/integration/queue/cloudflare-protocol.test.ts`) — protocol correctness, explicitly NOT Cloudflare evidence. The real-queue suite (`tests/integration/queue/queue-live.test.ts`) is env-gated on `ZECK_CLOUDFLARE_ACCOUNT_ID` / `ZECK_QUEUE_ID` / `ZECK_QUEUE_API_TOKEN` and **skips with the exact missing-variable reason** (visible in every run: 2 skipped tests).
+- `deploy:smoke`'s async-transport probe executes the REAL transport path when materialization is present and reports the honest `dispatch-backlogged` degraded mode otherwise — both directions **executed locally for evidence**: without materialization, `unavailable / "ZECK_SECRET_QUEUE_API_TOKEN_REF is not materialized (the environment-scoped reference binding is a precondition)"`; with a materialized token against an unreachable endpoint, `unavailable / "queue transport probe failed closed: queue transport request failed (Unable to connect…)"` — never a silent success.
+- The durable PostgreSQL transport machinery (correlation, idempotency, retry/dead-letter, replay, inspection) is proven over **real PostgreSQL 16.4 through the production `DatabasePort` adapter** (the WORK-003/043 local-evidence convention).
+- No provider resource in any non-GitHub account was mutated by this worker.
+
+## What this order IS
+
+D-03: make execution dispatch durable, restartable, idempotent and recoverable while queue state never becomes authority — the provider-neutral queue transport port, the Cloudflare Queues REST adapter behind it, the PostgreSQL durable dispatch/correlation records (envelope-before-publish), idempotent consumption through the existing governed execution path, bounded retry/dead-letter, backlog inspection, bounded replay, and the crash/provider-outage proofs. No D-04 orchestration, no D-05 worker fabric, no D-06 observability, no second execution state machine, no frozen-architecture change.
+
+## The transport/correlation model (what the machinery actually does)
+
+- **Queue port** (`src/platform/queue/port.ts`): publish / pull / settle over opaque bodies and lease handles; typed `QueueTransportError` classified `transient | permanent`; the bounded `QueueRetryPolicy` (publish/delivery/replay budgets + deterministic linear backoff, all repository-configured and validated fail-closed); the `GovernedDispatchEffect` seam; the correlation vocabulary and deterministic key derivation. **No vendor vocabulary exists on the port** (pinned by architecture B2).
+- **Cloudflare Queues adapter** (`src/platform/queue/cloudflare-queues.ts`): the documented REST protocol (publish `POST …/messages` body `{"body":…}`; pull `POST …/messages/poll` `{visibility_timeout_ms,batch_size}` → `result.messages[{id,lease_id,body,timestamp_ms,attempts,metadata}]`; settle `POST …/messages/ack` `{acks:[{lease_id}],retries:[{lease_id}]}`), Bearer auth, 401/403/404 → permanent, 429/5xx/network/timeout → transient, malformed envelopes fail closed, the token never enters an error, plus the real round-trip `probe()` (publish → pull → ack of a self-identifying probe message). Zero new SDK dependencies (plain fetch — the sanctioned runtime import set stays `fastify, pg`).
+- **Durable dispatch** (`correlation.ts` + `dispatcher.ts` + migration `0026_queue_transport.sql`): the PostgreSQL correlation record (`queue_transport.dispatch_envelopes`) commits **BEFORE** the external publish (mid-flight probe proof); the deterministic correlation key `execution-dispatch:<executionId>[:replay-N]`; the pointer payload (ids + provenance only — secret-free, sha256-digested); bounded publish with per-invocation budget; transient exhaustion → **backlogged** (recoverable via `republishPending`, reads PostgreSQL authority only); permanent rejection → **dead-lettered**; every attempt is append-only evidence (`transport_attempts`); every bounded failure is an explicit `dead_letters` row.
+- **Idempotent consumption** (`consumer.ts` + the executions-module `transport-effect.ts` adapter): deliveries resolve the authoritative envelope from PostgreSQL FIRST (unbacked messages are refused + acked — provider state is never authority); binding + digest mismatches dead-letter fail-closed (tenant isolation included); the governed effect re-enters the **existing single execution write path** (`start` transition) with the deterministic consume key `queue-consume:<correlationKey>` — duplicate delivery, consumer restart, crash-before/around/after mutation and ack loss all converge to **exactly one authoritative effect** through the executions idempotency arbitration; governed rejections dead-letter with the reason; transient failures re-queue inside the delivery budget, exhaustion dead-letters explicitly.
+- **Physical schema discipline** (migration 0026): the transport state vocabulary is CHECK-bound and **disjoint from the 14-state execution vocabulary** (terminal `consumed`/`dead-lettered` — deliberately renamed away from any execution word); the legal progress transitions are trigger-enforced; terminal rows are immutable; append-only evidence tables are trigger-enforced; tenant/execution bindings are real composite FKs (a correlation record for a nonexistent execution is unrepresentable).
+
+## Acceptance-criteria mapping (Work Order §Acceptance Criteria)
+
+| AC | Claim | Evidence |
+|---|---|---|
+| 1. Durable dispatch recorded in PostgreSQL before publication, one-to-one correlated | PASS (real PG; live provider NOT RUN) | `queue-dispatch.test.ts`: the mid-flight probe proves the envelope row is committed `recorded` BEFORE the transport call; one envelope/correlation key/message per logical dispatch; duplicate dispatch requests replay the same durable record; dispatch for a nonexistent execution is unrepresentable (FK) |
+| 2. Provider-neutral port; Cloudflare implementation isolated in the platform layer | PASS | Architecture B1/B2/B3/B7 + the full dependency-rule scan (zero violations; sanctioned imports unchanged `fastify, pg`); protocol suite proves the adapter over real HTTP; the domain boundary sees only the port |
+| 3. Idempotent consumers — duplicate delivery cannot duplicate authoritative effects | PASS | `queue-consume.test.ts`: duplicate injection (fresh message id, same body) → 1 durable `execution.start` ever, second delivery acked with zero effects; discrimination: a weakened fresh-key re-`start` is rejected `INVALID_STATE_TRANSITION` BY THE AUTHORITY |
+| 4. Retry bounded, deterministic, observable; explicit dead-letter after exhaustion | PASS | `queue-retry-deadletter.test.ts`: exactly `maxDeliveryAttempts` effect attempts (3), each an append-only evidence row; exhaustion → dead letter + ack (no loop, no residue); governed rejections dead-letter with the reason; publish-side budgets identical (3 attempts → backlogged) |
+| 5. Backlog/failure state inspectable without becoming authority | PASS | `queue-inspection.test.ts`: counts by state, correlated backlog list, dead letters with reasons, attempt evidence, replay lineages; **strictly read-only** (snapshot + executions byte-identical after 3 inspections); `deploy:queue -- inspect` executed against the real local environment |
+| 6. Replay safely re-enters the governed path, bounded, full provenance | PASS | `queue-replay.test.ts`: new envelope on the same root lineage (deterministic ordinal key, `replay_of` root reference); strict per-root budget (4th replay rejected 3/3); outstanding-replay idempotency; replay of a still-QUEUED execution applies through the full governed path; replay of an already-RUNNING execution is REJECTED by the state gate and dead-letters — replay never bypasses admission |
+| 7. Queue/provider failure never reports success, never a second authority | PASS | Publish outage → typed transient failures, bounded, `backlogged`, execution stays QUEUED (recoverable); permanent rejection → dead-letter; settle outage → visible propagation + lease-expiry convergence; smoke: non-authoritative transport unavailable ⇒ explicit `dispatch-backlogged` degraded mode (both directions executed) |
+| 8. Crash/restart recovery converges to the correct authoritative state | PASS | The crash matrix over real PG: before mutation (re-queue → fresh apply); around mutation (arbitration replay — one durable start); after mutation before ack (redelivery → already-applied → ack); ack loss (lease expiry → duplicate → ack); consumer restart (fresh instance over durable state); crash between provider-accept and the accepted mark (delivery adopted as publication proof) |
+| 9. Secret and tenant boundaries preserved across publish/consume/retry/DLQ/inspection/replay | PASS | Pointer payloads are ids-only (key/value secret scans in tests); the token is environment-only materialization (manifest `credentialShaped` + env-secret-store mapping + value-free errors); binding/digest mismatches (incl. forged tenant claims) dead-letter; the envelope tenant FK + the governed transition's tenant scope; architecture B6 scans every new source for credential-shaped literals |
+| 10. Evidence: exact revision, transport configuration, correlation model, retry/dead-letter rules, replay proof, recovery, inventory | PASS | This document + the PR body/comment (three-layer evidence chain, WORK-042/043 convention) |
+
+## Transport configuration (repository-defined)
+
+- Variables (all declared in `deploy/manifests/variables.json`, 33 total after this order): `ZECK_QUEUE_ID` (queue resource id), `ZECK_QUEUE_API_BASE_URL` (optional), `ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS` (default 3), `ZECK_QUEUE_MAX_DELIVERY_ATTEMPTS` (default 3), `ZECK_QUEUE_MAX_REPLAYS` (default 3), `ZECK_QUEUE_RETRY_BACKOFF_MS` (default 500), `ZECK_QUEUE_REQUEST_TIMEOUT_MS` (default 10000); shared provider-account metadata `ZECK_CLOUDFLARE_ACCOUNT_ID` (pre-existing); the credential-shaped materialized secret `ZECK_QUEUE_API_TOKEN` with its non-secret reference binding `ZECK_SECRET_QUEUE_API_TOKEN_REF` → `zeck-secret://<environment>/queue-api-token` (pre-existing inventory; now mapped in the env secret store).
+- Providers manifest: `cloudflare-queues` concern `async-transport` is now `established` with port contract `src/platform/queue/port.ts` (validated by `deploy:validate`); degradation mode `dispatch-backlogged` unchanged.
+- `bun run deploy:validate` — **valid** (4 environments / 6 providers / 10 resource kinds / 33 variables / 4 secret-reference inventories, 0 problems).
+
+## Operator tooling (executed for evidence)
+
+- `bun run deploy:migrate -- --environment local` → 25 applied, `schemaConverged: true` (the D-03 migration included).
+- `bun run deploy:queue -- inspect --environment local` → the full snapshot (all-zero state on the fresh local environment; read-only).
+- `bun run deploy:smoke -- --environment preview` (both materialization directions) → the honest async-transport probe outcomes quoted above.
+- `republish` / `replay` / `consume` commands implemented and proven by the real-PG integration suites (`republishPending`, `replayDispatch`, `consumeBatch` over the real governed path).
+
+## Discrimination proof (HIGH_ASSURANCE rule)
+
+`tests/discrimination/async-transport.discrimination.test.ts`: unbounded/zero/fractional/over-ceiling retry policies rejected (the "infinite retries" weakening unrepresentable); missing materialization fails closed naming the exact variable, value-free; the permanent/transient taxonomy pinned; the token never echoed in errors; a weakened (overlapping) transport vocabulary is DETECTED by the disjointness check (the second-state-machine weakening is visible, not silent); and over real PG — the authority itself rejects a weakened double-`start` with `INVALID_STATE_TRANSITION` while the transport absorbs the duplicate with zero effects.
+
+## Governance result
+
+`python3 scripts/governance-check.py` — **FAILED at base `44eacec` and on this branch, identically** (`WORK-043 missing # Architecture Invariants`), and differently at main (dependency-state identity mismatch — both Architect-owned dispatch-state defects, disclosed at the top). The worker did not touch `spec/development-state/*` or any governance material (the branch diff contains **zero** `spec/` changes — mechanically verified).
+
+## Typecheck / lint / test results (at the final code tree, before this doc's commit)
+
+- `bun run typecheck` — **0 errors**.
+- `bun run lint` — **biome clean (1049 files, 0 problems, 0 warnings)**.
+- `bun run deploy:validate` — **valid** (33 variables).
+- Legitimate pin updates disclosed (all caused by D-03 landing, each with an explanatory comment): the D-02 architecture test's migration count 24→25 (0026 added); the startup unit tests' migration/schema counts 24→25 / 16→17; the manifest unit test's planned-port list (D-03 established, D-04 next); the env-secret-store tests' unmapped-name fixture (queue-api-token is now mapped) plus a new positive mapping test; the discrimination secret fixture likewise.
+
+## Full-suite runs (three sequential script invocations per run, real PG via `ZECK_PG_TEST_URL`)
+
+- **Run 1 and Run 2 — identical at the exact final head** (see the PR evidence comment for the exact SHAs and outputs): **316 files / 4465 tests, 4456 passed, 2 failed, 7 skipped** — the ONLY failures are the two inherited governance-gate tests (identical at base); the 7 skips are the 5 real-R2 and the 2 real-queue NOT RUN gates, each carrying its exact environmental reason.
+
+## Changed-file inventory
+
+Code commit (this order's implementation): `src/platform/queue/port.ts`, `src/platform/queue/cloudflare-queues.ts`, `src/platform/queue/correlation.ts`, `src/platform/queue/dispatcher.ts`, `src/platform/queue/consumer.ts`, `src/platform/queue/inspection.ts`, `src/platform/queue/config.ts`, `src/platform/db/migrations/0026_queue_transport.sql`, `src/modules/executions/adapters/transport-effect.ts`, `src/platform/secret-store/adapters/env-secret-store.ts`, `deploy/queue.ts`, `deploy/smoke.ts`, `deploy/README.md`, `deploy/manifests/providers.json`, `deploy/manifests/variables.json`, `package.json` (+`deploy:queue`), `tests/integration/postgres/queue-world.ts` + the five queue suites, `tests/integration/queue/lib/fake-cloudflare-queues.ts` + `cloudflare-protocol.test.ts` + `queue-live.test.ts`, `tests/unit/queue/port.test.ts` + `config.test.ts`, `tests/architecture/d03-transport-boundaries.test.ts`, `tests/discrimination/async-transport.discrimination.test.ts`, and the disclosed pin updates (`tests/architecture/d02-production-paths.test.ts`, `tests/unit/db/startup.test.ts`, `tests/unit/deployment/manifest.test.ts`, `tests/unit/secret-store/env-secret-store.test.ts`, `tests/integration/postgres/pg-database-port.test.ts`, `tests/discrimination/production-paths.discrimination.test.ts`). Evidence commit: this document.
+
+## Honest boundaries
+
+- Live Cloudflare Queues: **NOT RUN** (no credentials — the wire protocol is proven against the documented protocol surface over real HTTP; the gated live suite is committed and carries the exact reason on every skip).
+- Provider resource provisioning (queue creation, pull-consumer enablement, token scopes): account-plane, operator-owned (documented in `deploy/README.md`); `deploy:bootstrap` continues to emit the deterministic plan.
+- The governed `start` effect demonstrates D-03's re-entry contract; actual model/tool/agent execution inside workers is D-05's scope (the effect seam is the integration point a future worker runtime will drive).
+- The two governance-gate suite failures are the inherited Architect-owned dispatch-state defects (identical at base); the connection-pool sampling flake is inherited timing sensitivity (reproduced at the exact base), not a D-03 regression.
