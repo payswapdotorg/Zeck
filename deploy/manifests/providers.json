@@ -37,15 +37,15 @@
       "concern": "async-transport",
       "authorityRole": "non-authoritative",
       "owningPort": "queue",
-      "portStatus": "planned",
-      "plannedPhase": "D-03",
+      "portStatus": "established",
       "substitutionTarget": "managed queue / broker",
       "degradation": {
         "authority": "non-authoritative",
         "onFailure": "degraded",
         "mode": "dispatch-backlogged",
         "effect": "Execution admission continues through PostgreSQL authority; dispatch is deferred and backlogged. A queued message is never mistaken for execution success; queue state is never an authority claim."
-      }
+      },
+      "portContract": "src/platform/queue/port.ts"
     },
     {
       "id": "cloudflare-workflows",

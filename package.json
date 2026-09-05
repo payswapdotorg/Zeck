@@ -20,7 +20,8 @@
     "deploy:identity": "bun deploy/identity.ts",
     "deploy:migrate": "bun deploy/migrate.ts",
     "deploy:backup": "bun deploy/backup.ts",
-    "deploy:restore": "bun deploy/restore.ts"
+    "deploy:restore": "bun deploy/restore.ts",
+    "deploy:queue": "bun deploy/queue.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",

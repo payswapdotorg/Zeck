@@ -130,15 +130,18 @@ describe("the D-02 production-path boundaries (WORK-043)", () => {
     }
   });
 
-  test("B4: D-02 added no migration (the existing schema is the compatibility target)", () => {
+  test("B4: D-02 added no migration; D-03/WORK-044 added exactly 0026 (the count is pinned)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => /^\d{4}_.*\.sql$/.test(name))
       .sort();
-    expect(migrations).toHaveLength(24);
+    // 24 shipped files through WORK-043 (0015 burned) + 0026_queue_transport
+    // (WORK-044 / D-03: the queue_transport correlation schema). The count
+    // stays pinned — every future migration is a reviewed, disclosed
+    // extension of this expectation.
+    expect(migrations).toHaveLength(25);
     expect(migrations[0]).toMatch(/^0001_/);
-    expect(migrations[migrations.length - 1]).toMatch(/^0025_/);
+    expect(migrations[migrations.length - 1]).toMatch(/^0026_queue_transport/);
     expect(migrations.map((name) => name.slice(0, 4))).not.toContain("0015");
-    expect(migrations.map((name) => name.slice(0, 4))).not.toContain("0026");
   });
 
   test("B5: the new platform/deploy sources carry no credential-shaped literals", () => {

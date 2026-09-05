@@ -192,6 +192,63 @@
       "required": false,
       "credentialShaped": false,
       "description": "SigV4 region for the S3-compatible object store. Cloudflare R2 uses the 'auto' region; the repository default is 'auto'."
+    },
+    {
+      "name": "ZECK_QUEUE_ID",
+      "type": "queue-resource-id",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "Cloudflare queue id (the 32-hex REST resource id) for the environment's dispatch queue behind the queue transport port. Ordinary non-secret provider-resource configuration; the queue name is deterministic from deploy/manifests/resources.json (kind cf-queue) and the id is resolved at provisioning time."
+    },
+    {
+      "name": "ZECK_QUEUE_API_BASE_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Queue transport REST API base URL override. Defaults to https://api.cloudflare.com/client/v4; override only for local protocol gateways in verification."
+    },
+    {
+      "name": "ZECK_QUEUE_API_TOKEN",
+      "type": "queue-api-token",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's queue-api-token secret (the Cloudflare API token with queues read+write for the environment's queue). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_QUEUE_API_TOKEN_REF; resolution happens immediately before the authorized queue adapter call (src/platform/secret-store/adapters/env-secret-store.ts)."
+    },
+    {
+      "name": "ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum publish attempts for one dispatch envelope before the dispatch becomes backlogged (explicit, recoverable). Repository default 3; bounded [1,100]; no unbounded publication retries exist."
+    },
+    {
+      "name": "ZECK_QUEUE_MAX_DELIVERY_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum delivery attempts for one transport message before an explicit dead letter. Repository default 3; bounded [1,100]; retry exhaustion is always explicit and inspectable."
+    },
+    {
+      "name": "ZECK_QUEUE_MAX_REPLAYS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum replays issued from one root dispatch lineage (bounded replay re-entry of the governed execution path). Repository default 3; bounded [1,100]."
+    },
+    {
+      "name": "ZECK_QUEUE_RETRY_BACKOFF_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Base backoff in milliseconds for the deterministic linear retry schedule (attempt * base, capped at 60s). Repository default 500."
+    },
+    {
+      "name": "ZECK_QUEUE_REQUEST_TIMEOUT_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Per-request timeout for queue transport HTTP calls. Bounded [100,120000]; default 10000."
     }
   ]
 }

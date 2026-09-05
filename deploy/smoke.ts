@@ -49,6 +49,10 @@ import {
   expectedProbeConcerns,
 } from "../src/platform/deployment/readiness";
 import { createS3ObjectStore } from "../src/platform/object-store/s3-object-store";
+import {
+  createCloudflareQueuesTransport,
+  loadCloudflareQueuesRuntimeConfig,
+} from "../src/platform/queue/cloudflare-queues";
 import { gitRevision, hasFlag, loadManifest, optionalBranch, requireEnvironment } from "./lib";
 
 const DEFAULT_DATA_ROOT = join(
@@ -185,12 +189,14 @@ async function probeProviderEnvironment(
       probes.push(await probeProviderRelationalState(manifest, environment, contract));
     } else if (concern === "artifact-bytes") {
       probes.push(await probeProviderObjectStore(manifest, environment, contract));
+    } else if (concern === "async-transport") {
+      probes.push(await probeProviderAsyncTransport(manifest, environment, contract));
     } else {
       probes.push({
         concern,
         status: referencesReady ? "degraded" : "unavailable",
         detail: referencesReady
-          ? "secret references materialized; the D-03+ adapter for this concern is not landed (degraded by declared mode)"
+          ? "secret references materialized; the D-04+ adapter for this concern is not landed (degraded by declared mode)"
           : `secret references not materialized (${materialized}/${expected}); environment not provisioned`,
       });
     }
@@ -350,6 +356,56 @@ async function probeProviderObjectStore(
       concern: "artifact-bytes",
       status: "unavailable",
       detail: `object-store probe failed closed: ${(error as Error).message.slice(0, 140)}`,
+    };
+  }
+}
+
+/**
+ * The D-03 async-transport probe: when the materialized queue-api-token
+ * secret (ZECK_QUEUE_API_TOKEN), its reference binding and the ordinary
+ * queue configuration (account id + queue id) exist, execute the REAL
+ * transport round trip (publish → pull → ack a self-identifying probe
+ * message) through the Cloudflare Queues adapter. Without materialization
+ * the concern reports unattested (unavailable — non-authoritative, so
+ * the environment degrades explicitly instead of failing).
+ */
+async function probeProviderAsyncTransport(
+  _manifest: ReturnType<typeof loadManifest>,
+  _environment: EnvironmentId,
+  contract: ReturnType<typeof evaluateEnvironmentContract>,
+): Promise<DependencyProbeResult> {
+  void _manifest;
+  void _environment;
+  const tokenBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_QUEUE_API_TOKEN_REF",
+  );
+  const apiToken = process.env.ZECK_QUEUE_API_TOKEN;
+  const accountId = process.env.ZECK_CLOUDFLARE_ACCOUNT_ID;
+  const queueId = process.env.ZECK_QUEUE_ID;
+  const notMaterialized = !tokenBound
+    ? "ZECK_SECRET_QUEUE_API_TOKEN_REF is not materialized (the environment-scoped reference binding is a precondition)"
+    : apiToken === undefined || apiToken.length === 0
+      ? "ZECK_QUEUE_API_TOKEN is not set (the materialized queue-api-token secret value is absent)"
+      : accountId === undefined || accountId.length === 0
+        ? "ZECK_CLOUDFLARE_ACCOUNT_ID is not set (provider-account metadata; see deploy/manifests/variables.json)"
+        : queueId === undefined || queueId.length === 0
+          ? "ZECK_QUEUE_ID is not set (the environment's queue resource id; see deploy/README.md)"
+          : null;
+  if (notMaterialized !== null) {
+    return { concern: "async-transport", status: "unavailable", detail: notMaterialized };
+  }
+  try {
+    const transport = createCloudflareQueuesTransport({
+      ...loadCloudflareQueuesRuntimeConfig(process.env),
+      requestTimeoutMs: 15_000,
+    });
+    const probe = await transport.probe();
+    return { concern: "async-transport", status: "ready", detail: probe.detail };
+  } catch (error) {
+    return {
+      concern: "async-transport",
+      status: "unavailable",
+      detail: `queue transport probe failed closed: ${(error as Error).message.slice(0, 140)}`,
     };
   }
 }
