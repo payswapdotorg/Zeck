@@ -1,6 +1,6 @@
 # WORK-043 — Database and artifact production path
 
-Status: PENDING
+Status: AUTHORIZED / IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -115,7 +115,8 @@ The worker opens exactly one PR against `main` and does not merge it. Architect 
 # Dispatch record
 
 - Work Order: WORK-043
-- Status: PENDING
+- Status: AUTHORIZED / IN-FLIGHT
 - Canonical remote: `payswapdotorg/Zeck`
+- Canonical issue: #3
 - Required worker branch: `work/WORK-043-database-artifact-production-path`
-- Binding base: to be recorded by the Architect at dispatch.
+- Binding base: `c13aaa0924e12152487d38a36c3ef3c4f31fa58`
