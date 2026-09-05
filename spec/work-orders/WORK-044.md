@@ -64,7 +64,7 @@ Forbidden:
 - modifying `spec/development-state/*` during active implementation
 - worker self-merge
 
-# Architecture invariants
+# Architecture Invariants
 
 - PostgreSQL remains the sole durable Zeck authority.
 - Queue state is transport/progress evidence only; it never establishes execution success or authoritative status.
@@ -101,6 +101,28 @@ Forbidden:
 6. Keep queue provider identifiers and SDK/types confined to the transport adapter.
 7. Record provider-specific assumptions only when verified; unavailable provider evidence must remain NOT RUN with the exact reason.
 
+# Required Checkpoint Contracts
+
+- `SELF-HOSTING-BOUNDARY`
+- `IDENTITY-IDEMPOTENCY`
+- `CONCURRENCY-CRASH-SAFETY`
+- `EXECUTION-PROVENANCE`
+- `IMPLEMENTATION-COMPLETENESS`
+
+# Checkpoints
+
+- `SELF-HOSTING-BOUNDARY`
+- `IDENTITY-IDEMPOTENCY`
+- `CONCURRENCY-CRASH-SAFETY`
+- `EXECUTION-PROVENANCE`
+- `IMPLEMENTATION-COMPLETENESS`
+
+# Evidence Contract
+
+Evidence must distinguish repository-defined transport configuration from external provider account state. Provider credentials may be used only through connected secret-mediated environments. Any unavailable provider evidence must be recorded as NOT RUN with the exact reason.
+
+Evidence must prove durable correlation before publication, duplicate-delivery convergence, bounded retry/dead-letter behavior, safe replay through the governed execution path, restart recovery and explicit queue-outage behavior.
+
 # Required Verification
 
 - `python3 scripts/governance-check.py`
@@ -118,20 +140,6 @@ Forbidden:
 - secret-exposure and tenant-isolation tests
 - exact-revision transport verification
 - full suite twice consecutively at exact final head
-
-# Checkpoint Contracts
-
-- `SELF-HOSTING-BOUNDARY`
-- `IDENTITY-IDEMPOTENCY`
-- `CONCURRENCY-CRASH-SAFETY`
-- `EXECUTION-PROVENANCE`
-- `IMPLEMENTATION-COMPLETENESS`
-
-# Evidence Contract
-
-Evidence must distinguish repository-defined transport configuration from external provider account state. Provider credentials may be used only through connected secret-mediated environments. Any unavailable provider evidence must be recorded as NOT RUN with the exact reason.
-
-Evidence must prove durable correlation before publication, duplicate-delivery convergence, bounded retry/dead-letter behavior, safe replay through the governed execution path, restart recovery and explicit queue-outage behavior.
 
 # Completion
 
