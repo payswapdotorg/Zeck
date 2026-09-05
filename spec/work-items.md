@@ -43,5 +43,6 @@
 | WORK-039 | Control, spend, connections and improvement experience | 038 | HIGH_ASSURANCE | no |
 | WORK-040 | Advanced inspection and multimodal work experience | 039 | HIGH_ASSURANCE | no |
 | WORK-041 | UX integration hardening, usability and release gate | 040 | HIGH_ASSURANCE | no |
+| WORK-042 | Reproducible deployment infrastructure foundation | 041 | HIGH_ASSURANCE | no |
 
 Parallel implementation is permitted only for dependency-independent Work Orders with non-overlapping declared surfaces and no protected shared-surface conflict.
