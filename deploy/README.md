@@ -1,12 +1,18 @@
-# Zeck Deployment Foundation (D-01 / WORK-042)
+# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043)
 
 Reproducible, environment-separated infrastructure configuration for Zeck,
 per `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0) and `docs/DEPLOYMENT-ROADMAP.md`
-(D-01). **The repository is the only source of truth**: the manifests under
+(D-01, D-02). **The repository is the only source of truth**: the manifests under
 `deploy/manifests/` define the environment matrix, the provider/concern map,
 the resource inventory (with computed, deterministic names), the
 secret-reference inventory and the environment-variable contract. Provider
 consoles are evidence or operational state — never authority.
+
+D-02 (WORK-043) landed the production runtime path behind the existing ports:
+the managed-PostgreSQL database adapter with deterministic startup/migrations
+(`src/platform/db/`), the S3-compatible R2 object-store adapter with SigV4
+signing and presigned flows (`src/platform/object-store/`), artifact
+integrity/retention safety, and the executed backup/restore drill below.
 
 ## Layout
 
@@ -24,6 +30,9 @@ deploy/
   teardown.ts                classification-guarded disposable teardown
   smoke.ts                   readiness + exact-revision identity attestation
   identity.ts                deployment identity emission
+  migrate.ts                 D-02: deterministic managed-PostgreSQL startup/migrations
+  backup.ts                  D-02: logical backup of the authoritative state
+  restore.ts                 D-02: the executed restore drill (create/migrate/restore/verify)
 ```
 
 ## Environments
@@ -67,6 +76,11 @@ bun run deploy:teardown -- --environment production       # REFUSED (exit 3, alw
 bun run deploy:smoke -- --environment local               # readiness + identity (exit = gate)
 bun run deploy:smoke -- --environment local --allow-degraded
 bun run deploy:identity -- --environment local            # deterministic identity document
+# D-02 (WORK-043): the managed database + artifact production path
+bun run deploy:migrate -- --environment local             # deterministic startup + migrations
+bun run deploy:migrate -- --environment staging           # via the materialized database-url secret
+bun run deploy:backup -- --environment local --out /path/backup.json
+bun run deploy:restore -- --environment local --from /path/backup.json --drop
 ```
 
 ## Local environment reproduction (fresh checkout)
@@ -111,25 +125,80 @@ credential-shaped variables (`ZECK_PG_ADMIN_URL`, `ZECK_PG_TEST_URL`,
 
 ## Provider environments (preview / staging / production)
 
-Provider mutation adapters arrive with the D-02+ roadmap phases
-(`providers.json` marks each owning port `established` or `planned`). Until
-then, `deploy:bootstrap -- --environment <env>` emits the deterministic
-provisioning plan: the exact resource set with computed names, ownership
-labels, and the secret-reference preconditions. The plan is marked
-`executable: false` until every reference is materialized — there is no
-half-provisioned, half-credentialed state.
+D-02 landed the RUNTIME adapters (migrations, probes, artifact path); resource
+PROVISIONING (creating the Neon project/branch, the R2 bucket) remains
+account-plane work outside the D-02 runtime credentials — `deploy:bootstrap`
+emits the deterministic provisioning plan with the exact resource set,
+computed names, ownership labels, and the secret-reference preconditions. The
+plan is marked `executable: false` until every reference is materialized —
+there is no half-provisioned, half-credentialed state.
 
 Operator steps that remain outside the repository today (classified as
 **provider-account metadata that cannot be reproduced from source**):
 
 - create/own the provider accounts (Neon, Cloudflare, Upstash, Vercel);
 - create the resources with the deterministic names above through each
-  provider's console or API until the D-02+ adapters automate them;
-- materialize the `zeck-secret://<environment>/<name>` references in your
-  secret manager / CI environment.
+  provider's console or API;
+- materialize the `zeck-secret://<environment>/<name>` references AND their
+  values in your secret manager / CI environment (see below).
 
 `ZECK_CLOUDFLARE_ACCOUNT_ID` is provider-account metadata (an account
 locator, not a credential) and is declared in `variables.json`.
+
+## The D-02 runtime configuration (managed database + artifact bytes)
+
+Once the provider resources exist, the runtime path is fully
+repository-defined (`variables.json`; the smoke/migrate tools enforce it):
+
+```bash
+export ZECK_ENVIRONMENT=staging
+# reference bindings (non-secret URIs, environment-scoped):
+export ZECK_SECRET_DATABASE_URL_REF=zeck-secret://staging/database-url
+export ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF=zeck-secret://staging/object-store-access-key-id
+export ZECK_SECRET_OBJECT_STORE_SECRET_ACCESS_KEY_REF=zeck-secret://staging/object-store-secret-access-key
+# materialized secret values (credential-shaped; environment-only, never committed):
+export ZECK_DATABASE_URL='postgres://...@ep-xxx.neon.tech/zeck?sslmode=require'
+export ZECK_OBJECT_STORE_ACCESS_KEY_ID=...
+export ZECK_OBJECT_STORE_SECRET_ACCESS_KEY=...
+# ordinary (non-secret) object-store configuration:
+export ZECK_OBJECT_STORE_ENDPOINT='https://<account-id>.r2.cloudflarestorage.com'
+export ZECK_OBJECT_STORE_BUCKET=zeck-staging-artifacts     # must match the computed name
+export ZECK_OBJECT_STORE_REGION=auto                       # R2 region
+
+bun run deploy:migrate -- --environment staging   # deterministic startup + migrations
+bun run deploy:smoke -- --environment staging     # REAL provider probes (pg + R2 bucket)
+```
+
+The database URL never enters argv, logs or reports (the tools redact
+credential shapes; error paths pass through `redactConnectionString`). The
+secret values are resolved immediately before the authorized adapter call
+(`src/platform/secret-store/adapters/env-secret-store.ts`). A Neon endpoint is
+a standard PostgreSQL wire endpoint — the adapter is provider-neutral and
+identical for any PostgreSQL 16+ endpoint.
+
+## Backup/restore (the executed drill)
+
+The authoritative state's recovery mechanism (D1.0 §17) is
+repository-resident and PORT-BASED — the shipped migrations remain the DDL
+authority, the backup artifact carries the authoritative DATA with per-table
+sha256 checksums:
+
+```bash
+# 1. backup (source must be schema-converged; run deploy:migrate first)
+bun run deploy:backup -- --environment local --out /tmp/zeck-backup.json
+# 2. the restore drill: fresh disposable target → migrations → data → verify → drop
+bun run deploy:restore -- --environment local --from /tmp/zeck-backup.json --drop
+```
+
+Restore verification re-reads every table, re-hashes the content and compares
+row counts + checksums to the backup manifest; any drift fails closed
+(`RestoreVerificationError`) leaving the target at migration-only state.
+Sequences (serial + identity) are re-seeded from the restored maxima. The
+re-runnable integration drill (with seeded authoritative rows and a
+dropped source database) is
+`tests/integration/postgres/backup-restore-drill.test.ts`. For a provider
+environment, `ZECK_DATABASE_ADMIN_URL` (credential-shaped, environment-only)
+supplies the managed admin connection for the disposable recovery target.
 
 ## Readiness and the health endpoint
 

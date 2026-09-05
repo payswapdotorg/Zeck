@@ -21,8 +21,10 @@ describe("dependency direction over the real src/ tree", () => {
     expect(files.length).toBeGreaterThan(100);
     // WORK-015 adds the sanctioned runtime dependency fastify
     // (IMPLEMENTATION.md §1 "HTTP/API: Fastify", confined to src/api/ by
-    // the SDK-boundary table). Everything else still fails closed.
-    expect(allowedPackages).toEqual(["fastify"]);
+    // the SDK-boundary table). WORK-043 (D-02) adds pg as the runtime
+    // database driver, confined to src/platform/db/ by the same table.
+    // Everything else still fails closed.
+    expect(allowedPackages).toEqual(["fastify", "pg"]);
   });
 
   test("no rule violations anywhere in src/", () => {

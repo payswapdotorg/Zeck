@@ -26,7 +26,7 @@ describe("provider SDK boundaries", () => {
   const files = collectSourceFiles(REPO_ROOT);
   const allowedPackages = declaredRuntimePackages(REPO_ROOT);
 
-  test("src/ contains only the declared sanctioned runtime import (fastify, api-confined)", () => {
+  test("src/ contains only the declared sanctioned runtime imports (fastify api-confined, pg db-confined)", () => {
     const sdkImports = new Set<string>();
     for (const file of files) {
       for (const specifier of extractImportSpecifiers(file.content)) {
@@ -40,10 +40,13 @@ describe("provider SDK boundaries", () => {
         sdkImports.add(packageNameOf(specifier));
       }
     }
-    // WORK-015 declares fastify (the sanctioned API transport); it must
-    // be the ONLY bare import in src/ and the boundary table confines it
-    // to src/api/ (proven by the provider-sdk-outside-adapter rule).
-    expect([...sdkImports].sort()).toEqual(["fastify"]);
+    // WORK-015 declares fastify (the sanctioned API transport,
+    // boundary-confined to src/api/). WORK-043 declares pg as the
+    // first runtime database adapter driver (boundary-confined to
+    // src/platform/db/ — the D-02 production database path); it must
+    // remain one of the ONLY bare imports in src/ and confined by
+    // the provider-sdk-outside-adapter rule (proven below).
+    expect([...sdkImports].sort()).toEqual(["fastify", "pg"]);
   });
 
   test("the SDK boundary table pins every known provider family to its owning adapter", () => {
