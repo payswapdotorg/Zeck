@@ -1,4 +1,4 @@
-# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043)
+# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043, D-03 / WORK-044)
 
 Reproducible, environment-separated infrastructure configuration for Zeck,
 per `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0) and `docs/DEPLOYMENT-ROADMAP.md`
@@ -81,6 +81,12 @@ bun run deploy:migrate -- --environment local             # deterministic startu
 bun run deploy:migrate -- --environment staging           # via the materialized database-url secret
 bun run deploy:backup -- --environment local --out /path/backup.json
 bun run deploy:restore -- --environment local --from /path/backup.json --drop
+# D-03 (WORK-044): the asynchronous execution transport operator surface
+bun run deploy:queue -- inspect --environment local       # backlog/failure/dead-letter snapshot (read-only)
+bun run deploy:queue -- republish --environment local     # bounded crash/outage recovery (recorded envelopes)
+bun run deploy:queue -- replay --environment local --envelope <uuid>   # bounded replay of a dead-lettered lineage
+bun run deploy:queue -- consume --environment local --batches 1        # drain deliveries (idempotent, governed)
+bun run deploy:queue -- probe --environment preview       # real transport round-trip on the dedicated probe queue
 ```
 
 ## Local environment reproduction (fresh checkout)
@@ -208,3 +214,80 @@ dependency not ready ⇒ HTTP 503 (fail closed); non-authoritative
 dependencies ⇒ HTTP 200 with the explicit degraded mode. Diagnostics are
 scrubbed (credential-shaped content never crosses the wire). The platform
 model behind it: `src/platform/deployment/readiness.ts`.
+
+## The D-03 runtime configuration (asynchronous execution transport)
+
+The dispatch transport (Cloudflare Queues behind the provider-neutral
+`src/platform/queue/port.ts`) is configured exactly like the D-02 paths:
+ordinary variables for the endpoint identity, one environment-materialized
+secret for the credential, and repository-declared bounded budgets.
+
+```bash
+# reference binding (non-secret URI, environment-scoped):
+export ZECK_SECRET_QUEUE_API_TOKEN_REF='zeck-secret://<environment>/queue-api-token'
+
+# materialized secret value (credential-shaped; environment-only, never committed):
+export ZECK_QUEUE_API_TOKEN='<cloudflare api token with queues read+write>'
+
+# ordinary (non-secret) transport configuration:
+export ZECK_CLOUDFLARE_ACCOUNT_ID='<32-hex account id>'
+export ZECK_QUEUE_ID='<32-hex queue resource id>'
+
+# the DEDICATED operator-owned probe queue (required by deploy:smoke's
+# async-transport probe and deploy:queue probe — never the execution queue):
+export ZECK_PROBE_QUEUE_ID='<32-hex dedicated probe queue resource id>'
+
+# bounded budgets (repository defaults: 3 / 3 / 3 / 500ms — all optional):
+export ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS=3     # then: backlogged (recoverable, explicit)
+export ZECK_QUEUE_MAX_DELIVERY_ATTEMPTS=3    # then: explicit dead letter
+export ZECK_QUEUE_MAX_REPLAYS=3              # bounded replay per dispatch lineage
+export ZECK_QUEUE_RETRY_BACKOFF_MS=500
+```
+
+Pull-consumer prerequisites (account-plane, operator-owned): the queue
+exists with the deterministic name from `resources.json` (kind `cf-queue`,
+e.g. `zeck-<environment>[-<branch>]-executions`), an HTTP pull consumer is
+enabled on it, and the token carries `queues_read` + `queues_write`.
+`deploy:smoke` probes the real transport (publish → pull → ack round-trip)
+when the materialization is present and reports the honest
+`dispatch-backlogged` degraded mode otherwise — a queued message is never
+mistaken for execution success.
+
+### The transport probe and the dedicated probe queue
+
+The transport probe (`deploy:smoke`'s async-transport concern and
+`deploy:queue -- probe`) NEVER runs against the execution queue. It
+executes its publish → pull → ack round trip on a **dedicated
+operator-owned probe queue** (`ZECK_PROBE_QUEUE_ID`): a queue reserved
+for probe traffic, provisioned exactly like the execution queue (HTTP
+pull consumer enabled, token scopes `queues_read` + `queues_write`),
+carrying no application state and therefore not part of the
+environment's authoritative resource inventory.
+
+The probe acknowledges **exactly the one message it published in that
+run** (exact probe-tag match). Anything else it happens to lease — an
+execution delivery, another probe's message, foreign noise — is never
+acknowledged and never re-queued; the lease expires (the transport's
+documented crash-recovery mechanism) and the message returns for its
+rightful consumer. Configuration guards enforce the boundary fail
+closed: `probe()` without `ZECK_PROBE_QUEUE_ID` refuses, and a probe
+queue equal to the execution queue (`ZECK_PROBE_QUEUE_ID ==
+ZECK_QUEUE_ID`) is rejected at configuration validation. A probe can
+therefore never consume, discard or delay genuine execution deliveries.
+(Probe-queue hygiene: leftover probe messages after a crashed probe are
+disposable transport noise on a noise-only queue and may be purged by
+the operator at will.)
+
+Attesting the execution queue's own pull path is the consumer's job,
+not the probe's: `deploy:queue -- consume` drains real deliveries
+through the idempotent governed consumer, and the gated live suite
+runs its port-flow verification on the probe queue.
+
+The transport model (the authority boundary): every dispatch has a
+durable PostgreSQL correlation record (`queue_transport.dispatch_envelopes`)
+committed BEFORE the external message is published; the message carries
+only a correlation pointer; consumption resolves the authoritative record
+from PostgreSQL and re-enters the governed execution path (the executions
+module's single write path) with a deterministic idempotency key —
+duplicate delivery, consumer crash and ack loss converge to exactly one
+authoritative effect. Queue state is transport progress evidence only.

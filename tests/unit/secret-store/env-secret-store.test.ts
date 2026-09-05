@@ -79,9 +79,21 @@ describe("the environment-materialization secret store", () => {
   });
 
   test("unmapped secret names fail closed (no silent expansion of the inventory)", async () => {
+    // queue-api-token is now a MAPPED D-03 secret (WORK-044) — the
+    // unmapped-name proof uses a name absent from the inventory.
     await expect(
-      localStore().resolve(asSecretReference("zeck-secret://local/queue-api-token")),
+      localStore().resolve(asSecretReference("zeck-secret://local/not-a-declared-secret")),
     ).rejects.toThrow(/no materialization variable/);
+  });
+
+  test("the queue-api-token secret resolves through the D-03 materialization map", async () => {
+    const store = createEnvSecretStore({
+      environment: "local",
+      env: { ...ENV, ZECK_QUEUE_API_TOKEN: "queue-token-material" },
+    });
+    const resolved = await store.resolve(asSecretReference("zeck-secret://local/queue-api-token"));
+    expect(resolved.plaintext).toBe("queue-token-material");
+    expect(resolved.classification).toBe("provider-credential");
   });
 
   test("the store side is read-only (writing secrets is not a platform capability)", async () => {

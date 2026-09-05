@@ -129,8 +129,10 @@ describe("D-02 fail-closed discrimination (WORK-043)", () => {
     expect((error as Error).message).toContain("ZECK_DATABASE_URL is not set");
     expect((error as Error).message).not.toContain("postgres://");
     // Weakened form C: an unmapped secret silently resolved.
+    // (queue-api-token is a MAPPED D-03 secret since WORK-044 — the
+    // unmapped-name proof uses a name absent from the inventory.)
     await expect(
-      local.resolve(asSecretReference("zeck-secret://local/queue-api-token")),
+      local.resolve(asSecretReference("zeck-secret://local/not-a-declared-secret")),
     ).rejects.toThrow(/no materialization variable/);
     // Weakened form D: secrets WRITTEN into the environment.
     await expect(
