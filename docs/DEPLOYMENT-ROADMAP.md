@@ -100,6 +100,8 @@ Acceptance:
 - credentials never enter Git history;
 - smoke checks identify each environment exactly.
 
+**Status:** COMPLETE — WORK-042 / PR #2 merged.
+
 ### D-02 — Database and artifact production path
 
 **Goal:** Connect Zeck authority to managed production-grade services.
@@ -121,6 +123,8 @@ Acceptance:
 - large bytes do not pass through PostgreSQL unnecessarily;
 - restore is tested, not merely documented.
 
+**Status:** COMPLETE — WORK-043 / PR #4 merged.
+
 ### D-03 — Asynchronous execution transport
 
 **Goal:** Make execution dispatch durable and restartable.
@@ -141,6 +145,8 @@ Acceptance:
 - duplicate delivery cannot duplicate authoritative effects;
 - a queued message is never mistaken for execution success.
 
+**Status:** COMPLETE — WORK-044 / PR #6 merged.
+
 ### D-04 — Durable orchestration
 
 **Goal:** Add long-lived orchestration for waits, callbacks, approvals, retries and deployment operations.
@@ -160,6 +166,8 @@ Acceptance:
 - workflow state remains subordinate to Zeck authority;
 - waiting executions survive process restarts;
 - large artifacts and secret values stay outside workflow state.
+
+**Status:** CURRENT — WORK-045 authorized/in-flight.
 
 ### D-05 — Execution worker deployment fabric
 
