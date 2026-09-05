@@ -42,7 +42,7 @@ Allowed:
 - retry and dead-letter behavior
 - bounded delivery/retry budgets
 - queue backlog inspection/metrics needed to operate the transport
-- replay tooling that re-enters the existing authoritative execution path
+- replay tooling that re-enters the existing governed execution path
 - execution-to-message correlation and provenance
 - failure/restart/crash recovery tests
 - provider outage/degraded-mode tests
@@ -144,7 +144,7 @@ The worker opens exactly one PR against `main` and does not merge it. Architect 
 - Roadmap phase: D-03 — Asynchronous execution transport
 - Canonical remote: `payswapdotorg/Zeck`
 - Required worker branch: `work/WORK-044-asynchronous-execution-transport`
-- Canonical issue: to be recorded at dispatch
+- Canonical issue: #5
 - Binding exact base: `44eaceca4de2af7d531fd1b9bad5a14b14d3b69e`
 - Worker must not modify `spec/development-state/*` during active implementation.
 - Worker must not merge its own PR.
