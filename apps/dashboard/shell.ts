@@ -112,8 +112,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       {
         label: "Deployments",
         path: "/deployments",
-        description: "Persistent availability surfaces (not exposed by the public API yet).",
-        keywords: ["deployment", "availability", "version", "channels"],
+        description:
+          "Persistent availability — the authority is not public yet; live session evidence from real runs.",
+        keywords: ["deployment", "availability", "version", "channels", "session", "realtime"],
         modes: PROFESSIONAL,
       },
       {

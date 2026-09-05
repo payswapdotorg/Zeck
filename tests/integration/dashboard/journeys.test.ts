@@ -85,6 +85,14 @@ interface FakeWorld {
   readonly cancelIndex: Map<string, { executionId: string; status: ExecutionReceipt["status"] }>;
   durableCreates: number;
   failAgentList: boolean;
+  /**
+   * WORK-040 correction (the Architect review of PR #72): a simulated
+   * NON-404 failure of the scoped events read for one execution id — the
+   * fail-closed regression proof (status 403 = the auth/policy class;
+   * anything else = the transport class). NEVER a 404: the 404 absence
+   * stays the world's own scope-checked miss below.
+   */
+  failEventList: { id: string; status: number } | null;
   /** Every scoped wire call's application selector (the (l) proof). */
   readonly scopedCalls: { path: string; application: string }[];
   /** Every create request body (the (s)/(x) proofs: budget, datasets, task). */
@@ -448,6 +456,15 @@ function createFakeApi(world: FakeWorld): typeof fetch {
       if (execution === undefined || execution.applicationId !== applicationId) {
         return executionNotFound();
       }
+      // WORK-040 correction: the simulated NON-404 events-read failure
+      // (403 POLICY_DENIED = the auth/policy class; PROVIDER_ERROR = the
+      // transport class) — the dashboard must FAIL CLOSED on it, never
+      // swallow it into an empty session projection.
+      if (world.failEventList?.id === id) {
+        return world.failEventList.status === 403
+          ? publicError(403, "POLICY_DENIED", "the scoped event read was denied")
+          : publicError(500, "PROVIDER_ERROR", "simulated event-read failure");
+      }
       if (events === undefined) {
         return executionNotFound();
       }
@@ -549,6 +566,119 @@ const ARTIFACT_F2 = "00000000-0000-7000-8000-0000000000f2";
 const SPEND_ID = "00000000-0000-7000-8000-0000000000d2";
 const ENV_ID = "00000000-0000-7000-8000-0000000000d3";
 const APPROVAL_ID = "00000000-0000-7000-8000-0000000000d4";
+// WORK-040 (an)–(au): the multimodal fixtures — computer-use, realtime,
+// media, training, economic, planning-decision, edge, and the
+// real-wire-prefixed long-running run.
+const COMPUTER_USE_ID = "00000000-0000-7000-8000-0000000000e5";
+const REALTIME_ID = "00000000-0000-7000-8000-0000000000e6";
+const MEDIA_ID = "00000000-0000-7000-8000-0000000000e7";
+const TRAINING_ID = "00000000-0000-7000-8000-0000000000e8";
+const ECONOMIC_ID = "00000000-0000-7000-8000-0000000000ed";
+const INSPECT_ID = "00000000-0000-7000-8000-0000000000ea";
+const EDGE_ID = "00000000-0000-7000-8000-0000000000eb";
+const PREFIXED_LONGRUN_ID = "00000000-0000-7000-8000-0000000000ec";
+
+/**
+ * WORK-040 (as): the full planning decision record — the REAL planner
+ * payload shape (PlanningDecisionRecord) as the public wire carries it
+ * inside the `planning.decision-recorded` event.
+ */
+const INSPECT_DECISION_PAYLOAD = {
+  decisionId: "decision-inspect-1",
+  plannerVersion: "1.4.2",
+  taskProfile: {
+    profileDigest: "sha256:profile-1",
+    kind: "extraction",
+    input: { description: "Batch the nightly statement exports" },
+    riskLevel: "moderate",
+    qualityTarget: 0.9,
+    maxCostMicroUsd: "4000000",
+    maxLatencyMs: 60000,
+    requiresSemanticReasoning: true,
+  },
+  policyInputs: { outcome: "allow", policySetId: "policy-set-7", policySetVersion: 3 },
+  capabilityResolution: {
+    satisfied: true,
+    catalogRevision: "rev-42",
+    satisfiedIds: ["cap-batch", "cap-verify"],
+    unmetIds: [],
+  },
+  deterministicSufficiency: {
+    outcome: "insufficient",
+    semanticReasoningRequired: true,
+    deterministicQualityEstimate: 0.62,
+  },
+  candidates: [
+    {
+      strategyId: "strategy-deterministic-batch",
+      plan: { planId: "plan-batch-1" },
+      expectedCostMicroUsd: "500000",
+      expectedQuality: 0.62,
+      expectedLatencyMs: 9000,
+      verificationStrategy: "digest-check",
+      routeRationale: {
+        code: "deterministic-quality-gap",
+        detail: "below the task quality target",
+      },
+      modelCalls: 0,
+      admissible: true,
+    },
+    {
+      strategyId: "strategy-hybrid-batch",
+      plan: { planId: "plan-batch-2" },
+      expectedCostMicroUsd: "3100000",
+      expectedQuality: 0.93,
+      expectedLatencyMs: 21000,
+      verificationStrategy: "digest-check",
+      routeRationale: {
+        code: "semantic-reasoning-required",
+        detail: "the task requires semantic reasoning",
+      },
+      modelCalls: 3,
+      admissible: false,
+      inadmissibleReason: "policy-cost-ceiling",
+    },
+  ],
+  selectedStrategyId: "strategy-deterministic-batch",
+  selectionRationale: "deterministic-first preference applied",
+  subgraphEvidence: [{ observationId: "obs-1" }, { observationId: "obs-2" }],
+  substrateSelection: {
+    outcome: "selected",
+    workloadClass: "batch",
+    admissible: [
+      {
+        substrateId: "substrate-batch-1",
+        version: "2.1.0",
+        adapterRef: "adapter.batch.compute",
+        resource: {
+          cpuMilliCores: 4000,
+          memoryMiB: 8192,
+          estimatedDurationMs: 30000,
+          estimatedCostMicroUsd: "1800000",
+        },
+        isolation: "process-isolated",
+        latencyClass: "batch",
+      },
+    ],
+    inadmissible: [
+      {
+        substrateId: "substrate-batch-2",
+        version: "1.0.0",
+        reason: "cost-above-ceiling",
+        detail: "the estimate exceeds the declared cost ceiling",
+      },
+    ],
+    selected: { substrateId: "substrate-batch-1", version: "2.1.0" },
+    rationale: "the only in-ceiling batch candidate",
+    after: {
+      policyInputsCaptured: true,
+      capabilityResolutionCaptured: true,
+      deterministicSufficiencyApplied: true,
+    },
+  },
+  recordedAt: "2026-09-15T12:00:07Z",
+  recordDigest: "sha256:decision-inspect-1",
+} as unknown as Record<string, unknown>;
 
 let world: FakeWorld;
 let base = "";
@@ -565,6 +695,7 @@ beforeAll(async () => {
     cancelIndex: new Map(),
     durableCreates: 0,
     failAgentList: false,
+    failEventList: null,
     scopedCalls: [],
     createCalls: [],
   };
@@ -909,6 +1040,351 @@ beforeAll(async () => {
     evs.forEach((entry, index) => {
       if (entry.type === "execution.created") {
         evs[index] = { ...entry, payload: { inputArtifactRefs: [ARTIFACT_F2] } };
+      }
+    });
+  }
+
+  // WORK-040 (an)–(at): the multimodal fixtures — every payload below is
+  // the REAL public wire shape (the prefixed step-event types the
+  // platform's eventTypeFor emits, and the payload keys the real
+  // producers write), so the journeys prove the surfaces against the
+  // actual wire vocabulary.
+  // (an): the computer-use run — an admitted browser session, its opened
+  // isolated environment (the zero inherited-host-state verdict), and a
+  // denied desktop session (journal-then-fail, the platform's reason).
+  seedExecution(world, {
+    id: COMPUTER_USE_ID,
+    status: "COMPLETED",
+    description: "Fill the vendor portal form",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.tool-requested",
+      "execution.tool-result",
+      "execution.tool-denied",
+      "execution.pass",
+    ],
+    cost: { totalMicroUsd: "3100000", currency: "usd" },
+  });
+  {
+    const evs = world.events.get(COMPUTER_USE_ID) ?? [];
+    const payloads: Record<string, Record<string, unknown>> = {
+      "execution.tool-requested": {
+        sessionId: "cu-session-1",
+        phase: "session-admitted",
+        mode: "browser",
+        deterministicFirst: true,
+        routeStageCount: 2,
+      },
+      "execution.tool-result": {
+        sessionId: "cu-session-1",
+        phase: "environment-opened",
+        mode: "browser",
+        environmentRef: "env-cu-9",
+        inheritedHostStateCount: 0,
+      },
+      "execution.tool-denied": {
+        denied: true,
+        sessionId: "cu-session-2",
+        mode: "desktop",
+        denialClass: "policy",
+        code: "POLICY_DENIED",
+        reason: "the requested desktop access exceeds the effective policy envelope",
+      },
+    };
+    evs.forEach((entry, index) => {
+      const payload = payloads[entry.type];
+      if (payload !== undefined) {
+        evs[index] = { ...entry, payload };
+      }
+    });
+  }
+  // (ao): the realtime/messaging run — a session started by a caller on
+  // the realtime rail, one routed turn, and the session completion (the
+  // deployments module's real payload vocabulary).
+  seedExecution(world, {
+    id: REALTIME_ID,
+    status: "COMPLETED",
+    description: "Support the ticket channel conversation",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.agent-session-started",
+      "execution.agent-action-recorded",
+      "execution.agent-session-completed",
+      "execution.pass",
+    ],
+  });
+  {
+    const evs = world.events.get(REALTIME_ID) ?? [];
+    const payloads: Record<string, Record<string, unknown>> = {
+      "execution.agent-session-started": {
+        callerRef: "caller-support-77",
+        railCapabilityId: "rail-realtime-voice-1",
+      },
+      "execution.agent-action-recorded": {
+        routeClass: "realtime-turn",
+        plannerOutcome: "routed",
+        reasonCodes: ["policy-allowed"],
+        responsePreview: "Here is the order status…",
+      },
+    };
+    evs.forEach((entry, index) => {
+      const payload = payloads[entry.type];
+      if (payload !== undefined) {
+        evs[index] = { ...entry, payload };
+      }
+    });
+  }
+  // (ap): the media run — a generation job submitted with verification
+  // required, its generated-output artifact, and the completion with the
+  // generation kind and the verified-by-authority marker.
+  seedExecution(world, {
+    id: MEDIA_ID,
+    status: "COMPLETED",
+    description: "Generate the campaign hero image",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.agent-session-started",
+      "execution.agent-action-recorded",
+      "execution.agent-session-completed",
+      "execution.pass",
+    ],
+    artifacts: [
+      {
+        id: ARTIFACT_F1,
+        digest: "digest-f1",
+        createdAt: "2026-09-15T12:03:40Z",
+      },
+    ],
+  });
+  {
+    const evs = world.events.get(MEDIA_ID) ?? [];
+    const payloads: Record<string, Record<string, unknown>> = {
+      "execution.agent-session-started": {
+        verificationMode: "required",
+        inputArtifactDigest: "sha256-media-input-1",
+        railCapabilityId: "rail-media-image-1",
+      },
+      "execution.agent-action-recorded": {
+        role: "generated-output",
+        descriptorDigest: "sha256-media-output-1",
+      },
+      "execution.agent-session-completed": {
+        generationKind: "image",
+        postprocessingDigest: "sha256-media-post-1",
+        verifiedByAuthority: true,
+      },
+    };
+    evs.forEach((entry, index) => {
+      const payload = payloads[entry.type];
+      if (payload !== undefined) {
+        evs[index] = { ...entry, payload };
+      }
+    });
+  }
+  // (aq): the training run — an admitted fine-tune workload with its
+  // resource/lineage facts, one training checkpoint (the metrics-digest
+  // vocabulary), and the completed attempt with settled usage.
+  seedExecution(world, {
+    id: TRAINING_ID,
+    status: "COMPLETED",
+    description: "Fine-tune the support classifier",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.sandbox-admitted",
+      "execution.checkpoint-recorded",
+      "execution.sandbox-completed",
+      "execution.pass",
+    ],
+    verification: [check(TRAINING_ID, 1, "PASS", 0.94)],
+    cost: { totalMicroUsd: "2500000", currency: "usd" },
+  });
+  {
+    const evs = world.events.get(TRAINING_ID) ?? [];
+    const payloads: Record<string, Record<string, unknown>> = {
+      "execution.sandbox-admitted": {
+        workloadId: "training-workload-1",
+        workloadKey: "workload-key-ft-1",
+        workloadKind: "fine-tune",
+        status: "running",
+        attempt: 1,
+        resource: { cpuMilliCores: 16000, memoryMiB: 65536 },
+        lineage: { datasetDigest: "sha256-dataset-1" },
+      },
+      "execution.checkpoint-recorded": {
+        checkpointIdentity: "cp-ft-1",
+        checkpointSequence: 1,
+        stepPosition: 1200,
+        metricsDigest: "sha256-metrics-ft-1",
+      },
+      "execution.sandbox-completed": {
+        workloadId: "training-workload-1",
+        workloadKey: "workload-key-ft-1",
+        workloadKind: "fine-tune",
+        status: "completed",
+        attempt: 1,
+        outcomeClass: "workload-completed",
+        stepsCompleted: 4800,
+        outputArtifactDigest: "sha256-model-ft-1",
+        usageMicroUsd: "2500000",
+      },
+    };
+    evs.forEach((entry, index) => {
+      const payload = payloads[entry.type];
+      if (payload !== undefined) {
+        evs[index] = { ...entry, payload };
+      }
+    });
+  }
+  // (ar): the economic run — the execution-bound provenance timeline
+  // (recorded → authorized → settled; the public payload carries the
+  // economicActionId ONLY — the real journalToExecutionLedger shape).
+  seedExecution(world, {
+    id: ECONOMIC_ID,
+    status: "COMPLETED",
+    description: "Pay the vendor invoice through the governed rail",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.economic-action-recorded",
+      "execution.economic-action-authorized",
+      "execution.economic-action-settled",
+      "execution.pass",
+    ],
+  });
+  {
+    const evs = world.events.get(ECONOMIC_ID) ?? [];
+    const payloads: Record<string, Record<string, unknown>> = {
+      "execution.economic-action-recorded": { economicActionId: "ea-vendor-1" },
+      "execution.economic-action-authorized": { economicActionId: "ea-vendor-1" },
+      "execution.economic-action-settled": { economicActionId: "ea-vendor-1" },
+    };
+    evs.forEach((entry, index) => {
+      const payload = payloads[entry.type];
+      if (payload !== undefined) {
+        evs[index] = { ...entry, payload };
+      }
+    });
+  }
+  // (as): the inspection run — a full planning decision record (the real
+  // planner payload: task profile, policy inputs, capability resolution,
+  // sufficiency, candidates, substrate selection, digest) on a batch run.
+  seedExecution(world, {
+    id: INSPECT_ID,
+    status: "COMPLETED",
+    description: "Batch the nightly statement exports",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "planning.decision-recorded",
+      "execution.start",
+      "execution.pass",
+    ],
+    route: {
+      provider: "neutral-p",
+      model: "neutral-m",
+      strategyClass: "hybrid",
+      modelCalls: 2,
+    },
+    cost: { totalMicroUsd: "1800000", currency: "usd" },
+  });
+  {
+    const evs = world.events.get(INSPECT_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "planning.decision-recorded") {
+        evs[index] = { ...entry, payload: INSPECT_DECISION_PAYLOAD };
+      }
+    });
+  }
+  // (at): the edge run — the same planning decision shape with an
+  // embodied workload class selected on a hardware-isolated realtime
+  // substrate (the boundary-sentence fixture).
+  seedExecution(world, {
+    id: EDGE_ID,
+    status: "COMPLETED",
+    description: "Inspect the assembly cell sensors",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "planning.decision-recorded",
+      "execution.start",
+      "execution.pass",
+    ],
+    verification: [check(EDGE_ID, 1, "PASS", 0.9)],
+  });
+  {
+    const evs = world.events.get(EDGE_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "planning.decision-recorded") {
+        evs[index] = {
+          ...entry,
+          payload: {
+            ...INSPECT_DECISION_PAYLOAD,
+            substrateSelection: {
+              outcome: "selected",
+              workloadClass: "embodied",
+              admissible: [
+                {
+                  substrateId: "substrate-embodied-cell",
+                  version: "3.1.0",
+                  adapterRef: "adapter.embodied.cell",
+                  resource: {
+                    cpuMilliCores: 2000,
+                    memoryMiB: 4096,
+                    estimatedDurationMs: 400,
+                    estimatedCostMicroUsd: "90000",
+                  },
+                  isolation: "hardware-isolated",
+                  latencyClass: "realtime",
+                },
+              ],
+              inadmissible: [],
+              selected: { substrateId: "substrate-embodied-cell", version: "3.1.0" },
+              rationale: "the only hardware-isolated realtime candidate",
+            },
+          },
+        };
+      }
+    });
+  }
+  // (au): the REAL-WIRE prefixed long-running fixture — the same
+  // checkpoint/resume vocabulary the platform's eventTypeFor emits
+  // (proving the W037-era workload view lights against the actual wire).
+  seedExecution(world, {
+    id: PREFIXED_LONGRUN_ID,
+    status: "RUNNING",
+    description: "Index the archive incrementally",
+    eventTypes: [
+      "execution.created",
+      "execution.authorize",
+      "execution.start",
+      "execution.checkpoint-recorded",
+      "execution.resume-recorded",
+    ],
+    cost: { totalMicroUsd: "400000", currency: "usd" },
+  });
+  {
+    const evs = world.events.get(PREFIXED_LONGRUN_ID) ?? [];
+    evs.forEach((entry, index) => {
+      if (entry.type === "execution.checkpoint-recorded") {
+        evs[index] = {
+          ...entry,
+          payload: {
+            checkpointSequence: 1,
+            lastEventPosition: 1500,
+            planId: "plan-prefixed-1",
+            planRevision: 1,
+            resourceClass: "standard",
+          },
+        };
       }
     });
   }
@@ -1544,6 +2020,15 @@ describe("(k) every page: one h1, the landmarks, the skip link first", () => {
     `/runs/${COMPLETED_ID}`,
     `/runs/${COMPLETED_ID}?tab=evidence`,
     `/runs/${COMPLETED_ID}?tab=activity`,
+    // WORK-040: the inspection tab and every modality run page carry the
+    // same complete accessible frame (one h1, landmarks, skip link).
+    `/runs/${COMPLETED_ID}?tab=inspection`,
+    `/runs/${COMPUTER_USE_ID}`,
+    `/runs/${REALTIME_ID}`,
+    `/runs/${MEDIA_ID}`,
+    `/runs/${TRAINING_ID}`,
+    `/runs/${ECONOMIC_ID}`,
+    `/runs/${EDGE_ID}`,
     "/agents",
     `/agents/${AGENT_ID}`,
     "/assets/artifacts",
@@ -2980,5 +3465,357 @@ describe("(am) the WORK-039 create-refusal journey (the governed create refused 
     const body = hiddenFieldsOf(review);
     const response = await postForm("/build/execution", body);
     expect(response.status).toBe(303);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (an) The WORK-040 computer-use journey: the access/risk envelope and
+//     the recorded session history on the run surface
+// ---------------------------------------------------------------------------
+
+describe("(an) the WORK-040 computer-use journey (the access/risk envelope)", () => {
+  test("the run page renders the access modes, the isolation verdict and the session history", async () => {
+    const page = await html(await get(`/runs/${COMPUTER_USE_ID}`));
+    expect(page).toContain("Computer use");
+    expect(page).toContain("deterministic");
+    expect(page).toContain("browser");
+    expect(page).toContain("desktop");
+    expect(page).toContain("cu-session-1");
+    expect(page).toContain("env-cu-9");
+    expect(page).toContain("Filesystem and network constraints (advanced)");
+    expect(page).toContain("Approval and risk before consequential interaction");
+  });
+
+  test("the recorded denial renders the platform's own reason verbatim", async () => {
+    const page = await html(await get(`/runs/${COMPUTER_USE_ID}`));
+    expect(page).toContain("POLICY_DENIED");
+    expect(page).toContain("the requested desktop access exceeds the effective policy envelope");
+  });
+
+  test("the section renders NO computer-use action (read-only by construction)", async () => {
+    const page = await html(await get(`/runs/${COMPUTER_USE_ID}`));
+    expect(page).toContain("This section never issues a computer-use action");
+    // No POST form exists inside ANY modality section (read-only by
+    // construction — the shell's command dialog lives outside them).
+    const sections = page.match(/<section class="modality-section"[\s\S]*?<\/section>/g) ?? [];
+    expect(sections.length).toBeGreaterThan(0);
+    for (const section of sections) {
+      expect(section).not.toContain("<form");
+    }
+  });
+
+  test("a run without computer-use events renders NO computer-use section", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).not.toContain("Computer use");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ao) The WORK-040 realtime/messaging journey: the Deployment/Session/
+//      Execution distinction and the live session provenance
+// ---------------------------------------------------------------------------
+
+describe("(ao) the WORK-040 realtime/messaging journey (the three-level distinction)", () => {
+  test("the run page distinguishes Deployment, Session and Execution with the session provenance", async () => {
+    const page = await html(await get(`/runs/${REALTIME_ID}`));
+    expect(page).toContain("Realtime and messaging sessions");
+    expect(page).toContain("Persistent availability");
+    expect(page).toContain("Session provenance");
+    expect(page).toContain("caller-support-77");
+    expect(page).toContain("rail-realtime-voice-1");
+    expect(page).toContain("realtime-turn");
+    expect(page).toContain("planner outcome routed");
+  });
+
+  test("every session fact links back to the canonical run context (AC9)", async () => {
+    const page = await html(await get(`/runs/${REALTIME_ID}`));
+    expect(page).toContain(`href="/runs/${REALTIME_ID}"`);
+    expect(page).toContain('href="/deployments"');
+  });
+
+  test("the deployments surface renders the three levels and the live session evidence", async () => {
+    // Open the realtime run first so it lands in this browser's recents
+    // (the shared jar carries the recents cookie to the deployments page).
+    const jar = new CookieJar();
+    await get(`/runs/${REALTIME_ID}`, jar);
+    const page = await html(await get("/deployments", jar));
+    expect(page).toContain("Availability and the governed work behind it");
+    expect(page).toContain("Deployment");
+    expect(page).toContain("Session");
+    expect(page).toContain("Execution");
+    expect(page).toContain(`href="/runs/${REALTIME_ID}"`);
+  });
+
+  test("the deployments surface renders the honest empty state without session evidence", async () => {
+    const page = await html(await get("/deployments"));
+    expect(page).toContain("No session evidence");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ap) The WORK-040 media journey: asynchronous work, digest-only
+//      lineage, verification and retry/cancel state
+// ---------------------------------------------------------------------------
+
+describe("(ap) the WORK-040 media journey (asynchronous media work)", () => {
+  test("the run page renders the job lifecycle with the digest references", async () => {
+    const page = await html(await get(`/runs/${MEDIA_ID}`));
+    expect(page).toContain("Media generation");
+    expect(page).toContain("job-submitted");
+    expect(page).toContain("sha256-media-input-1");
+    expect(page).toContain("sha256-media-output-1");
+    expect(page).toContain("job-completed");
+    expect(page).toContain("image");
+  });
+
+  test("the verification and retry/cancel state rides the run's own status and evidence", async () => {
+    const page = await html(await get(`/runs/${MEDIA_ID}`));
+    expect(page).toContain("verification results");
+    expect(page).toContain("verified by the verification authority");
+    expect(page).toContain("digest references only");
+  });
+
+  test("a run without media events renders NO media section", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).not.toContain("Media generation");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (aq) The WORK-040 training journey: resource selection, checkpoints as
+//      advanced detail, the four-state distinction preserved
+// ---------------------------------------------------------------------------
+
+describe("(aq) the WORK-040 training journey (training/accelerator work)", () => {
+  test("the run page renders the workload facts with the checkpoints as advanced detail", async () => {
+    const page = await html(await get(`/runs/${TRAINING_ID}`));
+    expect(page).toContain("Training / accelerator work");
+    expect(page).toContain("training-workload-1");
+    expect(page).toContain("fine-tune");
+    expect(page).toContain("workload-completed");
+    expect(page).toContain("Resource selection and checkpoints (advanced)");
+    expect(page).toContain("sha256-metrics-ft-1");
+    expect(page).toContain("$2.50");
+  });
+
+  test("the four states stay distinct — the release row stays the explicit absence", async () => {
+    const page = await html(await get(`/runs/${TRAINING_ID}`));
+    expect(page).toContain("never claims release");
+    // The four-state distinction (the W037 long-running section) renders
+    // the release row ONLY as the explicit absence — never a claim.
+    const releaseRow = page.match(
+      /<li>\s*<span class="distinction-state">Release approved[\s\S]*?<\/li>/,
+    );
+    expect(releaseRow).not.toBeNull();
+    expect(releaseRow?.[0]).toContain("Explicit absence");
+    expect(releaseRow?.[0]).not.toContain("Platform fact");
+  });
+
+  test("a run with only long-running checkpoints (no training vocabulary) renders NO training section", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_ID}`));
+    expect(page).not.toContain("Training / accelerator work");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (ar) The WORK-040 economic journey: the four-axis separation and the
+//      execution-bound provenance timeline (the envelope's honest absence)
+// ---------------------------------------------------------------------------
+
+describe("(ar) the WORK-040 economic journey (the four-axis separation)", () => {
+  test("the run page renders the four separate axes and the provenance timeline", async () => {
+    const page = await html(await get(`/runs/${ECONOMIC_ID}`));
+    expect(page).toContain("Economic actions");
+    expect(page).toContain("Bounded intent");
+    expect(page).toContain("Authorization");
+    expect(page).toContain("Settlement");
+    expect(page).toContain("Resource / outcome verification");
+    expect(page).toContain("ea-vendor-1");
+    expect(page).toContain("recorded");
+    expect(page).toContain("authorized");
+    expect(page).toContain("settled");
+  });
+
+  test("the bounded envelope renders as its honest absence — no fabricated amount, recipient or expiration", async () => {
+    const page = await html(await get(`/runs/${ECONOMIC_ID}`));
+    expect(page).toContain("do not cross the public execution wire");
+    expect(page).toContain("renders no economic action");
+  });
+
+  test("a run without economic events renders NO economic section", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).not.toContain("Economic actions");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (as) The WORK-040 inspection journey: the expert inspection tab
+// ---------------------------------------------------------------------------
+
+describe("(as) the WORK-040 inspection journey (the expert inspection tab)", () => {
+  test("the tab nav carries the Inspection tab on every run page", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}`));
+    expect(page).toContain(`href="/runs/${COMPLETED_ID}?tab=inspection"`);
+    expect(page).toContain("Inspection");
+  });
+
+  test("a run with a recorded planning decision renders the full inspection view", async () => {
+    const page = await html(await get(`/runs/${INSPECT_ID}?tab=inspection`));
+    expect(page).toContain("Inspection");
+    expect(page).toContain("strategy-deterministic-batch");
+    expect(page).toContain("deterministic-first preference applied");
+    expect(page).toContain("policy-set-7");
+    expect(page).toContain("rev-42");
+    expect(page).toContain("insufficient");
+    expect(page).toContain("substrate-batch-1");
+    expect(page).toContain("cost-above-ceiling");
+    expect(page).toContain("sha256:decision-inspect-1");
+    expect(page).toContain("policy-cost-ceiling");
+    expect(page).toContain('href="/trust/lineage"');
+    expect(page).toContain('href="/admin/audit"');
+  });
+
+  test("a run without a planning decision renders the honest absence — never a fabricated one", async () => {
+    const page = await html(await get(`/runs/${COMPLETED_ID}?tab=inspection`));
+    expect(page).toContain("No planning decision recorded");
+    expect(page).not.toContain("strategy-deterministic-batch");
+    expect(page).not.toContain("Selected approach");
+  });
+
+  test("the default flows are unchanged: the Result tab stays the landing view", async () => {
+    const page = await html(await get(`/runs/${INSPECT_ID}`));
+    expect(page).toContain("<h2>Result</h2>");
+    expect(page).not.toContain("<h2>Inspection</h2>");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (at) The WORK-040 edge journey: the local safety boundary
+// ---------------------------------------------------------------------------
+
+describe("(at) the WORK-040 edge journey (the local safety boundary)", () => {
+  test("the run page renders the boundary sentence and the workload-class evidence", async () => {
+    const page = await html(await get(`/runs/${EDGE_ID}`));
+    expect(page).toContain("Edge / embodied work");
+    expect(page).toContain("embodied");
+    expect(page).toContain("substrate-embodied-cell");
+    expect(page).toContain("hardware-isolated");
+    expect(page).toContain("Hard-real-time safety authority stays LOCAL");
+    expect(page).toContain("No command, actuation or override exists on this page");
+  });
+
+  test("the current physical command and local safety state are honest absences", async () => {
+    const page = await html(await get(`/runs/${EDGE_ID}`));
+    expect(page).toContain("Current physical command");
+    expect(page).toContain("does not cross the public wire");
+    expect(page).toContain("Local safety state");
+    expect(page).toContain("owned locally by the edge substrate");
+  });
+
+  test("a non-edge run renders NO edge section", async () => {
+    const page = await html(await get(`/runs/${INSPECT_ID}`));
+    expect(page).not.toContain("Edge / embodied work");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (au) The WORK-040 real-wire normalization journey: the platform's
+//      prefixed step-event types light the long-running view
+// ---------------------------------------------------------------------------
+
+describe("(au) the WORK-040 real-wire normalization journey (prefixed step events)", () => {
+  test("the prefixed checkpoint/resume events render the long-running workload section", async () => {
+    const page = await html(await get(`/runs/${PREFIXED_LONGRUN_ID}`));
+    expect(page).toContain("Long-running workload");
+    expect(page).toContain("Checkpoint 1 of 1");
+    expect(page).toContain("Recovered");
+    expect(page).toContain("resume-recorded");
+  });
+
+  test("the activity timeline labels the prefixed step events with the platform's own vocabulary", async () => {
+    const page = await html(await get(`/runs/${PREFIXED_LONGRUN_ID}?tab=activity`));
+    expect(page).toContain("Checkpoint recorded");
+    expect(page).toContain("Recovered (resume recorded)");
+  });
+
+  test("the unprefixed fixture vocabulary still lights the same view (one vocabulary)", async () => {
+    const page = await html(await get(`/runs/${LONGRUN_ID}`));
+    expect(page).toContain("Long-running workload");
+    expect(page).toContain("Checkpoint 2 of 2");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// (av) The WORK-040 correction journey (the Architect review of PR #72):
+//      the deployments fail-closed discipline on the scoped events read —
+//      ONLY the 404 absence renders as "no session facts"; every other
+//      events-read failure is surfaced, never swallowed
+// ---------------------------------------------------------------------------
+
+describe("(av) the WORK-040 correction journey (the fail-closed deployments events read)", () => {
+  test('an auth-class (403) events-read failure FAILS CLOSED — never a false "no session facts" success', async () => {
+    // A browser whose recents cookie carries the realtime run; the
+    // scoped events read for that run fails with 403 POLICY_DENIED
+    // (the auth/policy class). The authoritative read FAILED — the
+    // dashboard must surface it, not render a successful-looking
+    // overview with the run silently missing from session evidence.
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", REALTIME_ID);
+    world.failEventList = { id: REALTIME_ID, status: 403 };
+    try {
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(403);
+      const page = await html(response);
+      expect(page).toContain("Not authorized");
+      expect(page).toContain("The governed API denied this view");
+      // The false-success states never render: neither the overview
+      // section nor the session-evidence empty state (which would mask
+      // the failed read as "no session facts").
+      expect(page).not.toContain("Availability and the governed work behind it");
+      expect(page).not.toContain("No session evidence");
+    } finally {
+      world.failEventList = null;
+    }
+  });
+
+  test("a transport-class (500) events-read failure FAILS CLOSED (the 502 upstream surface)", async () => {
+    const jar = new CookieJar();
+    jar.set("zeck_recent_executions", REALTIME_ID);
+    world.failEventList = { id: REALTIME_ID, status: 500 };
+    try {
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(502);
+      const page = await html(response);
+      expect(page).toContain("Upstream failure");
+      expect(page).toContain("The Zeck API could not complete this view");
+      expect(page).not.toContain("Availability and the governed work behind it");
+      expect(page).not.toContain("No session evidence");
+    } finally {
+      world.failEventList = null;
+    }
+  });
+
+  test("the normal 404 absence stays the HONEST absence — the page renders, the run contributes no session row", async () => {
+    // The execution is live (its getExecution read succeeds — the recents
+    // prune does not fire) but its event stream 404s: the 404 IS the
+    // honest absence, so the overview renders normally and the empty
+    // session state is TRUTHFUL (the authoritative read said 404).
+    const eventsBackup = world.events.get(REALTIME_ID);
+    world.events.delete(REALTIME_ID);
+    try {
+      const jar = new CookieJar();
+      jar.set("zeck_recent_executions", REALTIME_ID);
+      const response = await get("/deployments", jar);
+      expect(response.status).toBe(200);
+      const page = await html(response);
+      expect(page).toContain("Availability and the governed work behind it");
+      expect(page).toContain("No session evidence");
+      expect(page).not.toContain("Not authorized");
+      expect(page).not.toContain("Upstream failure");
+    } finally {
+      if (eventsBackup !== undefined) {
+        world.events.set(REALTIME_ID, eventsBackup);
+      }
+    }
   });
 });

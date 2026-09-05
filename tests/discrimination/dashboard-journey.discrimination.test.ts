@@ -110,6 +110,183 @@ const result: ExecutionResult = {
   terminalAt: "2026-09-15T12:03:42Z",
 };
 
+// WORK-040 (D23–D26): the modality-carrying execution — the REAL wire
+// vocabulary (prefixed step-event types + the real producers' payload
+// keys) so the discrimination records prove the surfaces against the
+// actual shapes.
+const MODALITY_ID = "00000000-0000-7000-8000-0000000000e5";
+const modalityExecution: Execution = {
+  id: MODALITY_ID,
+  applicationId: APP_ID,
+  environmentId: null,
+  status: "COMPLETED",
+  task: { kind: "outcome", description: "Fill the vendor portal form" },
+  constraints: null,
+  metadata: {},
+  createdAt: NOW,
+  updatedAt: NOW,
+  terminalAt: "2026-09-15T12:03:42Z",
+};
+const modalityEvents: ExecutionEvent[] = [
+  {
+    eventId: "ev-m0",
+    executionId: MODALITY_ID,
+    type: "execution.created",
+    sequence: 1,
+    occurredAt: NOW,
+    payload: {},
+  },
+  {
+    eventId: "ev-m1",
+    executionId: MODALITY_ID,
+    type: "execution.tool-requested",
+    sequence: 2,
+    occurredAt: NOW,
+    payload: {
+      sessionId: "cu-1",
+      phase: "session-admitted",
+      mode: "browser",
+      deterministicFirst: true,
+      routeStageCount: 2,
+    },
+  },
+  {
+    eventId: "ev-m2",
+    executionId: MODALITY_ID,
+    type: "execution.tool-result",
+    sequence: 3,
+    occurredAt: NOW,
+    payload: {
+      sessionId: "cu-1",
+      phase: "environment-opened",
+      mode: "browser",
+      environmentRef: "env-cu-9",
+      inheritedHostStateCount: 0,
+    },
+  },
+  {
+    eventId: "ev-m3",
+    executionId: MODALITY_ID,
+    type: "execution.economic-action-recorded",
+    sequence: 4,
+    occurredAt: NOW,
+    payload: { economicActionId: "ea-1" },
+  },
+  {
+    eventId: "ev-m4",
+    executionId: MODALITY_ID,
+    type: "execution.economic-action-authorized",
+    sequence: 5,
+    occurredAt: NOW,
+    payload: { economicActionId: "ea-1" },
+  },
+  {
+    eventId: "ev-m5",
+    executionId: MODALITY_ID,
+    type: "execution.pass",
+    sequence: 6,
+    occurredAt: NOW,
+    payload: {},
+  },
+];
+const modalityResult: ExecutionResult = {
+  executionId: MODALITY_ID,
+  status: "COMPLETED",
+  route: null,
+  cost: { totalMicroUsd: "3100000", currency: "usd" },
+  usage: null,
+  outputArtifacts: [],
+  verification: [],
+  warnings: [],
+  terminalAt: "2026-09-15T12:03:42Z",
+};
+/** The inspection-carrying execution: a full planning decision record. */
+const INSPECT_ID = "00000000-0000-7000-8000-0000000000ea";
+const inspectExecution: Execution = {
+  id: INSPECT_ID,
+  applicationId: APP_ID,
+  environmentId: null,
+  status: "COMPLETED",
+  task: { kind: "outcome", description: "Batch the nightly statement exports" },
+  constraints: null,
+  metadata: {},
+  createdAt: NOW,
+  updatedAt: NOW,
+  terminalAt: "2026-09-15T12:03:42Z",
+};
+const inspectEvents: ExecutionEvent[] = [
+  {
+    eventId: "ev-i0",
+    executionId: INSPECT_ID,
+    type: "execution.created",
+    sequence: 1,
+    occurredAt: NOW,
+    payload: {},
+  },
+  {
+    eventId: "ev-i1",
+    executionId: INSPECT_ID,
+    type: "planning.decision-recorded",
+    sequence: 2,
+    occurredAt: NOW,
+    payload: {
+      decisionId: "decision-disc-1",
+      plannerVersion: "1.4.2",
+      taskProfile: { riskLevel: "moderate", qualityTarget: 0.9, requiresSemanticReasoning: true },
+      policyInputs: { outcome: "allow", policySetId: "policy-set-7", policySetVersion: 3 },
+      capabilityResolution: {
+        satisfied: true,
+        catalogRevision: "rev-42",
+        satisfiedIds: ["cap-a"],
+        unmetIds: [],
+      },
+      deterministicSufficiency: { outcome: "insufficient", semanticReasoningRequired: true },
+      candidates: [
+        {
+          strategyId: "strategy-det",
+          expectedCostMicroUsd: "500000",
+          expectedQuality: 0.62,
+          expectedLatencyMs: 9000,
+          routeRationale: { code: "deterministic-quality-gap", detail: "below" },
+          modelCalls: 0,
+          admissible: true,
+        },
+      ],
+      selectedStrategyId: "strategy-det",
+      selectionRationale: "deterministic-first preference applied",
+      subgraphEvidence: [{ observationId: "obs-1" }],
+      substrateSelection: {
+        outcome: "no-substrate-required",
+        workloadClass: null,
+        admissible: [],
+        inadmissible: [],
+        selected: null,
+        rationale: "",
+      },
+      recordDigest: "sha256:decision-disc-1",
+    },
+  },
+  {
+    eventId: "ev-i2",
+    executionId: INSPECT_ID,
+    type: "execution.pass",
+    sequence: 3,
+    occurredAt: NOW,
+    payload: {},
+  },
+];
+const inspectResult: ExecutionResult = {
+  executionId: INSPECT_ID,
+  status: "COMPLETED",
+  route: null,
+  cost: null,
+  usage: null,
+  outputArtifacts: [],
+  verification: [],
+  warnings: [],
+  terminalAt: "2026-09-15T12:03:42Z",
+};
+
 const fetchImpl = (async (input: string | URL, init?: RequestInit): Promise<Response> => {
   const url = new URL(String(input));
   const path = url.pathname;
@@ -177,6 +354,31 @@ const fetchImpl = (async (input: string | URL, init?: RequestInit): Promise<Resp
       return reply(200, events);
     }
     if (path === `/executions/${EXECUTION_ID}/verification`) {
+      return reply(200, []);
+    }
+    // The WORK-040 modality + inspection executions (same scoped rule).
+    if (path === `/executions/${MODALITY_ID}`) {
+      return reply(200, modalityExecution);
+    }
+    if (path === `/executions/${MODALITY_ID}/results`) {
+      return reply(200, modalityResult);
+    }
+    if (path === `/executions/${MODALITY_ID}/events`) {
+      return reply(200, modalityEvents);
+    }
+    if (path === `/executions/${MODALITY_ID}/verification`) {
+      return reply(200, []);
+    }
+    if (path === `/executions/${INSPECT_ID}`) {
+      return reply(200, inspectExecution);
+    }
+    if (path === `/executions/${INSPECT_ID}/results`) {
+      return reply(200, inspectResult);
+    }
+    if (path === `/executions/${INSPECT_ID}/events`) {
+      return reply(200, inspectEvents);
+    }
+    if (path === `/executions/${INSPECT_ID}/verification`) {
       return reply(200, []);
     }
   }
@@ -1074,5 +1276,209 @@ describe("D22 learning-authority mutation (learning never authorizes, never muta
     expect(html).toContain("Learning produces recommendations and evidence, never authorization");
     expect(html).not.toMatch(/<form[^>]*method="post"/);
     expect(html).not.toMatch(/apply (this|now)|promote now|authorize now/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D23 — expert-inspection fabrication (WORK-040 AC1/AC10): the planning
+// decision is the platform's own recorded payload — never status-derived,
+// never canned; a run without one renders the honest absence.
+// ---------------------------------------------------------------------------
+
+describe("D23 expert-inspection fabrication (the inspection is the recorded decision only)", () => {
+  test("MODULE: planningDecisionOf reads the LAST recorded decision payload — the status-derived and canned mutants differ on the same input", async () => {
+    const { planningDecisionOf } = await import("../../apps/dashboard/projection");
+    const decision = planningDecisionOf(inspectEvents);
+    expect(decision?.decisionId).toBe("decision-disc-1");
+    expect(decision?.selectedStrategyId).toBe("strategy-det");
+    expect(decision?.policySetId).toBe("policy-set-7");
+    // The fabricated mutants: deriving a decision from status, from a
+    // lifecycle event, or from nothing — each differs on the SAME input.
+    expect(planningDecisionOf(events)).toBeNull();
+    expect(planningDecisionOf(modalityEvents)).toBeNull();
+    expect(planningDecisionOf([])).toBeNull();
+  });
+
+  test("STATIC: the decision guard is the typed planning.decision-recorded event — the mutant widening it is flagged", () => {
+    const PROJECTION = appsSource("projection.ts");
+    expect(PROJECTION.includes('PLANNING_DECISION_EVENT_TYPE = "planning.decision-recorded"')).toBe(
+      true,
+    );
+    // The mutant: accepting ANY planning-ish event as the decision source.
+    const mutant = PROJECTION.replace(
+      'PLANNING_DECISION_EVENT_TYPE = "planning.decision-recorded"',
+      'PLANNING_DECISION_EVENT_TYPE = "execution.plan"',
+    );
+    expect(mutant.includes('PLANNING_DECISION_EVENT_TYPE = "execution.plan"')).toBe(true);
+    expect(mutant.includes('PLANNING_DECISION_EVENT_TYPE = "planning.decision-recorded"')).toBe(
+      false,
+    );
+  });
+
+  test("RUNTIME: a run with NO planning decision renders the honest absence — no fabricated candidates, substrate or rationale", async () => {
+    const page = await get(`/runs/${MODALITY_ID}?tab=inspection`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("No planning decision recorded");
+    expect(html).not.toContain("Selected approach");
+    expect(html).not.toContain("Candidate strategies");
+    expect(html).not.toContain("deterministic-first preference applied");
+  });
+
+  test("RUNTIME: the recorded decision renders its OWN facts on the inspection tab", async () => {
+    const page = await get(`/runs/${INSPECT_ID}?tab=inspection`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("strategy-det");
+    expect(html).toContain("policy-set-7");
+    expect(html).toContain("rev-42");
+    expect(html).toContain("insufficient");
+    expect(html).toContain("sha256:decision-disc-1");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D24 — modality fabrication (WORK-040 AC2–AC8/AC10): modality facts come
+// ONLY from the payloads that carry their own vocabulary; a lifecycle
+// event never produces a modality fact.
+// ---------------------------------------------------------------------------
+
+describe("D24 modality fabrication (the modality vocabulary is the payload's own)", () => {
+  test("MODULE: computerUseFactsOf ignores tool events without the computer-use vocabulary — the widening mutant differs", async () => {
+    const { computerUseFactsOf, trainingFactsOf, mediaFactsOf } = await import(
+      "../../apps/dashboard/projection"
+    );
+    // The real modality events produce their facts.
+    const computerUse = computerUseFactsOf(modalityEvents);
+    expect(computerUse.present).toBe(true);
+    expect(computerUse.sessions[0]?.mode).toBe("browser");
+    // A generic tool event (no session vocabulary) contributes nothing —
+    // BOTH tool events must lose the computer-use vocabulary.
+    const genericTool = modalityEvents.map((event) =>
+      event.type === "execution.tool-requested" || event.type === "execution.tool-result"
+        ? { ...event, payload: { toolId: "tool-7", outcome: "ok" } }
+        : event,
+    );
+    expect(computerUseFactsOf(genericTool).present).toBe(false);
+    // Lifecycle events never produce modality facts.
+    expect(computerUseFactsOf(events).present).toBe(false);
+    expect(trainingFactsOf(events).present).toBe(false);
+    expect(mediaFactsOf(events).present).toBe(false);
+  });
+
+  test("RUNTIME: a run with only lifecycle events renders NO modality sections (nothing invented)", async () => {
+    const page = await get(`/runs/${EXECUTION_ID}`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).not.toContain('class="modality-section"');
+    expect(html).not.toContain("Computer use");
+    expect(html).not.toContain("Economic actions");
+    expect(html).not.toContain("Media generation");
+    expect(html).not.toContain("Edge / embodied work");
+  });
+
+  test("RUNTIME: the modality run renders exactly its recorded sections — computer-use and economic, nothing more", async () => {
+    const page = await get(`/runs/${MODALITY_ID}`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("Computer use");
+    expect(html).toContain("Economic actions");
+    expect(html).not.toContain("Media generation");
+    expect(html).not.toContain("Realtime and messaging sessions");
+    expect(html).not.toContain("Edge / embodied work");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D25 — cloud-control fabrication (WORK-040 AC6/AC10): the edge surface
+// never implies cloud ownership of a hard-real-time safety loop; no
+// command, actuation or override affordance exists anywhere.
+// ---------------------------------------------------------------------------
+
+describe("D25 cloud-control fabrication (the safety loop stays local)", () => {
+  test("STATIC: the edge section carries the boundary sentence — the mutant removing it is flagged", () => {
+    const INSPECTION = appsSource("inspection.ts");
+    expect(
+      INSPECTION.includes("Hard-real-time safety authority stays LOCAL to the edge substrate"),
+    ).toBe(true);
+    expect(INSPECTION.includes("No command, actuation or override exists on this page")).toBe(true);
+    // The mutant: removing the boundary sentence (implying cloud control).
+    const mutant = INSPECTION.replace(
+      "Hard-real-time safety authority stays LOCAL to the edge substrate — this cloud surface inspects recorded facts and never owns, implies or issues real-time control of the safety loop. No command, actuation or override exists on this page.",
+      "The cloud controls the edge safety loop.",
+    );
+    expect(
+      mutant.includes("Hard-real-time safety authority stays LOCAL to the edge substrate"),
+    ).toBe(false);
+  });
+
+  test("STATIC: the modality module renders no POST form (read-only by construction — the form-adding mutant is flagged)", () => {
+    const INSPECTION = appsSource("inspection.ts");
+    expect(INSPECTION.includes("<form")).toBe(false);
+    expect(INSPECTION.includes('method="post"')).toBe(false);
+    expect(INSPECTION.includes('method="get"')).toBe(false);
+  });
+
+  test("RUNTIME: the modality and inspection journeys issue ZERO POST wire calls", async () => {
+    wireCalls.length = 0;
+    await get(`/runs/${MODALITY_ID}`);
+    await get(`/runs/${MODALITY_ID}?tab=inspection`);
+    await get(`/runs/${INSPECT_ID}?tab=inspection`);
+    await get("/deployments");
+    const posts = wireCalls.filter((call) => call.method === "POST");
+    expect(posts).toEqual([]);
+    expect(wireCalls.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D26 — economic-envelope fabrication (WORK-040 AC8/AC10): the public
+// payload carries the economicActionId ONLY — the bounded envelope
+// (purpose/recipient/amount/expiration) is the economics authority's own
+// record and is never guessed client-side.
+// ---------------------------------------------------------------------------
+
+describe("D26 economic-envelope fabrication (the envelope is never guessed)", () => {
+  test("MODULE: economicFactsOf reads the timeline rows from the recorded events ONLY — the envelope-fabricating mutants differ on the same input", async () => {
+    const { economicFactsOf } = await import("../../apps/dashboard/projection");
+    const facts = economicFactsOf(modalityEvents);
+    expect(facts.present).toBe(true);
+    expect(facts.timeline.map((row) => row.phase)).toEqual(["recorded", "authorized"]);
+    expect(facts.actionIds).toEqual(["ea-1"]);
+    // The fabricated mutants: deriving an economic fact from a lifecycle
+    // event, or from a non-economic payload.
+    expect(economicFactsOf(events).present).toBe(false);
+    expect(economicFactsOf([]).present).toBe(false);
+  });
+
+  test("MODULE: the derivation has NO envelope field to fabricate — the row shape is phase + id + timestamps", async () => {
+    const { economicFactsOf } = await import("../../apps/dashboard/projection");
+    const facts = economicFactsOf(modalityEvents);
+    const row = facts.timeline[0];
+    expect(row).not.toBeUndefined();
+    expect(Object.keys(row ?? {}).sort()).toEqual([
+      "economicActionId",
+      "occurredAt",
+      "phase",
+      "sequence",
+    ]);
+  });
+
+  test("RUNTIME: the economic section renders the timeline and the honest envelope absence — NO amount, recipient or expiration value", async () => {
+    const page = await get(`/runs/${MODALITY_ID}`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain("Economic actions");
+    expect(html).toContain("ea-1");
+    expect(html).toContain("do not cross the public execution wire");
+    // The bounded envelope values are nowhere to fabricate from: the
+    // section renders no money figure and no recipient/expiration field.
+    const economicSection = html.slice(
+      html.indexOf('id="economic-title"'),
+      html.indexOf("Why Zeck did it") === -1 ? html.length : html.indexOf("Why Zeck did it"),
+    );
+    expect(economicSection).not.toMatch(/\\$\\d/);
+    expect(economicSection).not.toContain("recipient:");
+    expect(economicSection).not.toContain("expires at:");
   });
 });

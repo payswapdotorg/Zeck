@@ -440,6 +440,20 @@ table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.87
   .spend-summary, .connection-facts { padding: var(--space-2) var(--space-3); }
 }
 
+/* WORK-040: the advanced-inspection and multimodal presentation — the
+ * modality sections (computer-use, realtime/messaging, media, edge,
+ * training, economic) on the run surface. Every rule consumes the same
+ * tokens; no one-off hierarchy; the timeline/distinction/table/glance
+ * primitives are reused as-is. */
+.modality-section { margin: var(--space-3) 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-raised); }
+.modality-section h2, .modality-section h3 { margin-top: 0; }
+.modality-section .timeline li { grid-template-columns: 12rem 1fr; }
+.modality-section table.data td.mono, .modality-section table.data th.mono { font-family: var(--font-mono); font-size: 0.875rem; word-break: break-all; }
+@media (max-width: 640px) {
+  .modality-section { padding: var(--space-2) var(--space-3); }
+  .modality-section .timeline li { grid-template-columns: 1fr; gap: var(--space-1); }
+}
+
 .timeline { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .timeline li {
   display: grid;
