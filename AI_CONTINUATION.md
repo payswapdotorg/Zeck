@@ -16,9 +16,9 @@ Read `docs/LLM-ARCHITECT-HANDOFF.md` immediately after `AGENTS.md`.
 
 The UX v2 sequence is complete through **WORK-041**. The deployment/runtime roadmap is active under approved **Deployment & Runtime Architecture D1.0**.
 
-**D-00 complete. D-01 complete through WORK-042. D-02 is now the sole authorized in-flight deployment phase through WORK-043.**
+**D-00 complete. D-01 complete through WORK-042. D-02 complete through WORK-043. D-03 is now the sole authorized in-flight deployment phase through WORK-044.**
 
-Current frontier: `eligible=[]`, `inFlight=["WORK-043"]`, `blocked=[]`.
+Current frontier: `eligible=[]`, `inFlight=["WORK-044"]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -31,10 +31,10 @@ No deployment phase may be skipped, reordered or inferred from chat. Each phase 
 - `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 - `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment sequence.
 - `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-- `spec/work-orders/WORK-043.md` — authoritative current implementation scope.
-- GitHub Issue #3 — canonical WORK-043 dispatch record on this remote.
+- `spec/work-orders/WORK-044.md` — authoritative current implementation scope.
+- GitHub Issue #5 — canonical WORK-044 dispatch record on this remote.
 
-The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination. Commercial production must use commercially permitted plans; free-tier eligibility is not an architectural authority.
+The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination.
 
 ## D-01 completion
 
@@ -45,14 +45,25 @@ The reference topology is Vercel for experience/delivery, Neon PostgreSQL for au
 - Worker final head: `c61392260024244db7bab723e9f018d7c582e9a8`
 - Post-merge governance state: finalized
 
-## D-02 dispatch
+## D-02 completion
 
 - Work Order: `WORK-043`
 - Canonical issue: #3
-- Required branch: `work/WORK-043-database-artifact-production-path`
-- Dependency: `WORK-042`
+- PR: #4
+- Implementation head: `0a99e6c65a21742672dc4e6ce4fbe5dd8e5db5cc`
+- Final implementation-branch head: `84e6ef9cf32f514537bfdfbf59c0a84968d488d0`
+- Merge commit: `2175bc6c73ad0a8d4b5ab2efb6a8930cfdb01b17`
+- Provider-specific live Neon/R2 verification: NOT RUN in worker environment due unavailable provider credentials; protocol and real-PostgreSQL evidence retained.
+- Post-merge governance state: finalized
+
+## D-03 dispatch
+
+- Work Order: `WORK-044`
+- Canonical issue: #5
+- Required branch: `work/WORK-044-asynchronous-execution-transport`
+- Dependency: `WORK-043`
 - Status: `AUTHORIZED / IN-FLIGHT`
-- Exact dispatch base: to be recorded in the final dispatch binding before worker checkout
+- Exact dispatch base: `44eaceca4de2af7d531fd1b9bad5a14b14d3b69e`
 
 ## Recovery sequence
 
