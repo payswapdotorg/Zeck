@@ -1,6 +1,6 @@
 # WORK-040 — Advanced inspection and multimodal work experience
 
-Status: PENDING
+Status: IN-FLIGHT
 
 Owner: Architect-assigned implementation worker
 
@@ -120,3 +120,14 @@ Evidence must identify exact revisions, expert/modality routes, authority source
 # Completion
 
 Worker opens a PR but does not merge. Completion requires architect acceptance, exact-head verification and post-merge finalization.
+
+# Dispatch Record
+
+- Issue: #71
+- Dispatch status: AUTHORIZED / IN-FLIGHT
+- Work Order was promoted from PENDING to IN-FLIGHT by the Architect before worker branch creation.
+- Binding exact base: `85b1b39a540787c9cad7df31415d2b550acf26db`
+- Required worker branch: `work/WORK-040-advanced-inspection-multimodal-work`
+- Worker must not modify `spec/development-state/*` during active work.
+- Worker must not merge its own PR.
+- Worker may implement only this Work Order and its declared surfaces.
