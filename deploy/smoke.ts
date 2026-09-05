@@ -53,6 +53,10 @@ import {
   createCloudflareQueuesTransport,
   loadCloudflareQueuesRuntimeConfig,
 } from "../src/platform/queue/cloudflare-queues";
+import {
+  createCloudflareWorkflowsTransport,
+  loadCloudflareWorkflowsRuntimeConfig,
+} from "../src/platform/workflow/cloudflare-workflows";
 import { gitRevision, hasFlag, loadManifest, optionalBranch, requireEnvironment } from "./lib";
 
 const DEFAULT_DATA_ROOT = join(
@@ -191,6 +195,8 @@ async function probeProviderEnvironment(
       probes.push(await probeProviderObjectStore(manifest, environment, contract));
     } else if (concern === "async-transport") {
       probes.push(await probeProviderAsyncTransport(manifest, environment, contract));
+    } else if (concern === "durable-orchestration") {
+      probes.push(await probeProviderDurableOrchestration(manifest, environment, contract));
     } else {
       probes.push({
         concern,
@@ -413,6 +419,60 @@ async function probeProviderAsyncTransport(
       concern: "async-transport",
       status: "unavailable",
       detail: `queue transport probe failed closed: ${(error as Error).message.slice(0, 140)}`,
+    };
+  }
+}
+
+/**
+ * The D-04 durable-orchestration probe: when the materialized
+ * workflow-api-token secret (ZECK_WORKFLOW_API_TOKEN) and its
+ * reference binding exist, run the REAL orchestration round trip
+ * (create → observe → terminate) on the DEDICATED operator-owned
+ * probe workflow — never the orchestration workflow. Without
+ * materialization the concern reports unattested (unavailable —
+ * fail closed; the declared orchestration-paused degradation keeps
+ * it non-authoritative either way).
+ */
+async function probeProviderDurableOrchestration(
+  _manifest: ReturnType<typeof loadManifest>,
+  _environment: EnvironmentId,
+  contract: ReturnType<typeof evaluateEnvironmentContract>,
+): Promise<DependencyProbeResult> {
+  void _manifest;
+  void _environment;
+  const tokenBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_WORKFLOW_API_TOKEN_REF",
+  );
+  const apiToken = process.env.ZECK_WORKFLOW_API_TOKEN;
+  const accountId = process.env.ZECK_CLOUDFLARE_ACCOUNT_ID;
+  const workflowName = process.env.ZECK_WORKFLOW_NAME;
+  const probeName = process.env.ZECK_WORKFLOW_PROBE_NAME;
+  const notMaterialized = !tokenBound
+    ? "ZECK_SECRET_WORKFLOW_API_TOKEN_REF is not materialized (the environment-scoped reference binding is a precondition)"
+    : apiToken === undefined || apiToken.length === 0
+      ? "ZECK_WORKFLOW_API_TOKEN is not set (the materialized workflow-api-token secret value is absent)"
+      : accountId === undefined || accountId.length === 0
+        ? "ZECK_CLOUDFLARE_ACCOUNT_ID is not set (provider-account metadata; see deploy/manifests/variables.json)"
+        : workflowName === undefined || workflowName.length === 0
+          ? "ZECK_WORKFLOW_NAME is not set (the environment's deployed workflow name; see deploy/README.md)"
+          : probeName === undefined || probeName.length === 0
+            ? "ZECK_WORKFLOW_PROBE_NAME is not set (the dedicated operator-owned probe workflow; the orchestration probe never targets the orchestration workflow — see deploy/README.md)"
+            : null;
+  if (notMaterialized !== null) {
+    return { concern: "durable-orchestration", status: "unavailable", detail: notMaterialized };
+  }
+  try {
+    const transport = createCloudflareWorkflowsTransport({
+      ...loadCloudflareWorkflowsRuntimeConfig(process.env),
+      requestTimeoutMs: 15_000,
+    });
+    const probe = await transport.probe();
+    return { concern: "durable-orchestration", status: "ready", detail: probe.detail };
+  } catch (error) {
+    return {
+      concern: "durable-orchestration",
+      status: "unavailable",
+      detail: `workflow orchestration probe failed closed: ${(error as Error).message.slice(0, 140)}`,
     };
   }
 }

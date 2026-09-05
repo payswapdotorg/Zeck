@@ -52,15 +52,15 @@
       "concern": "durable-orchestration",
       "authorityRole": "non-authoritative",
       "owningPort": "workflow",
-      "portStatus": "planned",
-      "plannedPhase": "D-04",
+      "portStatus": "established",
       "substitutionTarget": "durable workflow engine",
       "degradation": {
         "authority": "non-authoritative",
         "onFailure": "degraded",
         "mode": "orchestration-paused",
         "effect": "Waiting orchestrations pause; execution status, budget state, policy state and ledger state remain authoritative in PostgreSQL and resume on recovery."
-      }
+      },
+      "portContract": "src/platform/workflow/port.ts"
     },
     {
       "id": "upstash-redis",

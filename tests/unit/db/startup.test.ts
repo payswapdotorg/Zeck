@@ -59,27 +59,31 @@ function fakePort(responses: {
 }
 
 describe("startup validation (fake port)", () => {
-  test("the shipped migration set is the repository's 25-file deterministic set", () => {
+  test("the shipped migration set is the repository's 26-file deterministic set", () => {
     const migrations = shippedMigrations();
     // 24 files through WORK-043 (0015 burned) + 0026_queue_transport
-    // (WORK-044 / D-03: the queue_transport correlation schema).
-    expect(migrations.length).toBe(25);
+    // (WORK-044 / D-03: the queue_transport correlation schema) +
+    // 0027_workflow_orchestration (WORK-045 / D-04: the durable
+    // orchestration correlation schema).
+    expect(migrations.length).toBe(26);
     expect(migrations[0]?.version).toBe(1);
-    expect(migrations[24]?.version).toBe(26);
+    expect(migrations[25]?.version).toBe(27);
     // Versions are strictly ascending with the burned 0015 gap.
     const versions = migrations.map((file) => file.version);
     expect(new Set(versions).size).toBe(versions.length);
     expect(versions).not.toContain(15);
   });
 
-  test("authoritativeSchemas derives the 17-schema compatibility surface from the migration SQL", () => {
+  test("authoritativeSchemas derives the 18-schema compatibility surface from the migration SQL", () => {
     const schemas = authoritativeSchemas(shippedMigrations());
-    expect(schemas).toHaveLength(17);
+    expect(schemas).toHaveLength(18);
     expect(schemas).toContain("platform");
     expect(schemas).toContain("identity");
     expect(schemas).toContain("deployments");
     // The D-03 transport correlation schema (WORK-044).
     expect(schemas).toContain("queue_transport");
+    // The D-04 durable orchestration correlation schema (WORK-045).
+    expect(schemas).toContain("workflow_orchestration");
     expect(schemas).toEqual([...schemas].sort());
   });
 

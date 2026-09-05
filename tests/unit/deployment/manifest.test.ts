@@ -96,12 +96,16 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
     expect(neon?.degradation.authority).toBe("authoritative");
     expect(neon?.degradation.onFailure).toBe("fail-closed");
     const planned = manifest.providers.filter((p) => p.portStatus === "planned");
-    // D-03 (cloudflare-queues) landed with WORK-044: established with
-    // a real port contract; D-04 remains the next planned port.
-    expect(planned.map((p) => p.plannedPhase).sort()).toEqual(["D-04"]);
+    // D-03 (cloudflare-queues) landed with WORK-044 and D-04
+    // (cloudflare-workflows) landed with WORK-045: both established
+    // with real port contracts; every declared port is landed.
+    expect(planned.map((p) => p.plannedPhase).sort()).toEqual([]);
     const queues = manifest.providers.find((p) => p.id === "cloudflare-queues");
     expect(queues?.portStatus).toBe("established");
     expect(queues?.portContract).toBe("src/platform/queue/port.ts");
+    const workflows = manifest.providers.find((p) => p.id === "cloudflare-workflows");
+    expect(workflows?.portStatus).toBe("established");
+    expect(workflows?.portContract).toBe("src/platform/workflow/port.ts");
   });
 
   test("owns resources per environment with preview per-branch isolation", () => {

@@ -2,7 +2,7 @@
   "name": "@pectoraux/ai-execution-os",
   "private": true,
   "version": "0.1.0",
-  "description": "AI Execution OS — governed, provider-independent AI execution infrastructure",
+  "description": "AI Execution OS \u2014 governed, provider-independent AI execution infrastructure",
   "packageManager": "bun@1.3.4",
   "scripts": {
     "governance:check": "python3 scripts/governance-check.py",
@@ -21,7 +21,8 @@
     "deploy:migrate": "bun deploy/migrate.ts",
     "deploy:backup": "bun deploy/backup.ts",
     "deploy:restore": "bun deploy/restore.ts",
-    "deploy:queue": "bun deploy/queue.ts"
+    "deploy:queue": "bun deploy/queue.ts",
+    "deploy:workflow": "bun deploy/workflow.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
