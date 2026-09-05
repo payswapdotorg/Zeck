@@ -173,9 +173,57 @@ export function statusSymbol(status: string): string {
   }
 }
 
+/**
+ * The executions-owned step-event command vocabulary (WORK-010…032) as
+ * the PUBLIC wire spells them: every step event's wire type is
+ * `execution.<command>` (the platform's own `eventTypeFor`). WORK-040
+ * normalizes BOTH spellings — the real prefixed wire type and the bare
+ * command string the WORK-037-era fixtures recorded — to ONE vocabulary
+ * so the same derivation reads fixtures and the real wire identically
+ * (never a second status language: the names are the platform's own).
+ */
+const STEP_EVENT_COMMANDS: ReadonlySet<string> = new Set([
+  "tool-requested",
+  "tool-result",
+  "tool-denied",
+  "agent-session-started",
+  "agent-action-recorded",
+  "agent-session-completed",
+  "verification-requested",
+  "verification-recorded",
+  "human-evaluation-requested",
+  "human-decision-recorded",
+  "comparison-recorded",
+  "sandbox-admitted",
+  "sandbox-denied",
+  "sandbox-completed",
+  "economic-action-recorded",
+  "economic-action-denied",
+  "economic-action-authorized",
+  "economic-action-settled",
+  "economic-action-failed",
+  "checkpoint-recorded",
+  "interruption-requested",
+  "wake-up-scheduled",
+  "wake-up-applied",
+  "resume-recorded",
+  "resume-denied",
+]);
+
+/** The canonical step-event command of a wire event type (both spellings). */
+export function normalizeStepEventType(eventType: string): string {
+  if (eventType.startsWith("execution.")) {
+    const command = eventType.slice("execution.".length);
+    if (STEP_EVENT_COMMANDS.has(command)) {
+      return command;
+    }
+  }
+  return eventType;
+}
+
 /** Known command events → friendly stage labels; unknown types stay verbatim. */
 export function eventStageLabel(eventType: string): string {
-  switch (eventType) {
+  switch (normalizeStepEventType(eventType)) {
     case "execution.created":
       return "Created";
     case "execution.authorize":
@@ -928,7 +976,7 @@ export function deriveWorkloadFacts(events: readonly ExecutionEvent[]): Workload
   let lastCheckpoint: WorkloadCheckpointFact | null = null;
   let recovery: WorkloadRecoveryFact | null = null;
   for (const event of ordered) {
-    if (event.type === "checkpoint-recorded") {
+    if (normalizeStepEventType(event.type) === "checkpoint-recorded") {
       checkpointCount += 1;
       const payload = event.payload as Record<string, unknown>;
       const sequence =
@@ -945,7 +993,7 @@ export function deriveWorkloadFacts(events: readonly ExecutionEvent[]): Workload
       };
       continue;
     }
-    const kind = WORKLOAD_RECOVERY_EVENT_KINDS[event.type];
+    const kind = WORKLOAD_RECOVERY_EVENT_KINDS[normalizeStepEventType(event.type)];
     if (kind !== undefined) {
       recovery = { kind, occurredAt: event.occurredAt, source: event.type };
     }
@@ -1686,4 +1734,758 @@ export function learningAuthorityRows(): readonly LearningAuthorityRow[] {
       backed: true,
     },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// WORK-040 — advanced inspection + multimodal derivations (pure view-models
+// over the public wire shapes ONLY; every fact below is read from the
+// recorded event payloads exactly as the platform writes them — never
+// re-derived, never approximated, absent fields stay absent).
+// ---------------------------------------------------------------------------
+
+/**
+ * The planning-decision event type (the platform's own public type —
+ * `PLANNING_DECISION_EVENT_TYPE`): the durable record the planner appends
+ * while a run is in a planning phase. Its payload is the FULL planning
+ * decision record; this derivation reads the closed set of fields the
+ * inspection surface presents, each null-safe (a missing field renders as
+ * its own absence — never a guess).
+ */
+export const PLANNING_DECISION_EVENT_TYPE = "planning.decision-recorded";
+
+/** One candidate strategy as the planning record carried it (AC1). */
+export interface PlanningCandidateFact {
+  readonly strategyId: string;
+  readonly expectedCostMicroUsd: string | null;
+  readonly expectedQuality: number | null;
+  readonly expectedLatencyMs: number | null;
+  readonly verificationStrategy: string | null;
+  readonly modelCalls: number | null;
+  readonly admissible: boolean;
+  /** The typed inadmissible reason (only when admissible is false). */
+  readonly inadmissibleReason: string | null;
+  readonly routeRationaleCode: string | null;
+  readonly routeRationaleDetail: string | null;
+}
+
+/** One admissible substrate candidate with its resource characteristics. */
+export interface SubstrateCandidateFact {
+  readonly substrateId: string;
+  readonly version: string | null;
+  readonly adapterRef: string | null;
+  readonly isolation: string | null;
+  readonly latencyClass: string | null;
+  readonly cpuMilliCores: number | null;
+  readonly memoryMiB: number | null;
+  readonly estimatedDurationMs: number | null;
+  readonly estimatedCostMicroUsd: string | null;
+}
+
+/** One inadmissible substrate candidate with its TYPED reason. */
+export interface SubstrateRejectionFact {
+  readonly substrateId: string;
+  readonly version: string | null;
+  readonly reason: string | null;
+  readonly detail: string | null;
+}
+
+/** The substrate-selection record as the planning decision carried it. */
+export interface SubstrateSelectionFact {
+  readonly outcome: string | null;
+  readonly workloadClass: string | null;
+  readonly admissible: readonly SubstrateCandidateFact[];
+  readonly inadmissible: readonly SubstrateRejectionFact[];
+  readonly selectedSubstrateId: string | null;
+  readonly selectedVersion: string | null;
+  readonly rationale: string | null;
+}
+
+/** The planning decision fact (AC1 — the expert inspection source). */
+export interface PlanningDecisionFact {
+  readonly decisionId: string | null;
+  readonly plannerVersion: string | null;
+  readonly sequence: number;
+  readonly occurredAt: string;
+  /** The task profile's risk level (the platform's own vocabulary). */
+  readonly riskLevel: string | null;
+  readonly qualityTarget: number | null;
+  readonly maxCostMicroUsd: string | null;
+  readonly maxLatencyMs: number | null;
+  readonly requiresSemanticReasoning: boolean | null;
+  /** The effective-policy admission capture (allow/deny + set identity). */
+  readonly policyOutcome: string | null;
+  readonly policySetId: string | null;
+  readonly policySetVersion: string | null;
+  /** The capability resolution capture. */
+  readonly capabilitySatisfied: boolean | null;
+  readonly capabilityCatalogRevision: string | null;
+  readonly unmetCapabilityIds: readonly string[];
+  readonly satisfiedCapabilityCount: number | null;
+  /** The deterministic-first sufficiency decision. */
+  readonly sufficiencyOutcome: string | null;
+  readonly semanticReasoningRequired: boolean | null;
+  readonly deterministicQualityEstimate: number | null;
+  readonly candidates: readonly PlanningCandidateFact[];
+  readonly selectedStrategyId: string | null;
+  readonly selectionRationale: string | null;
+  readonly subgraphEvidenceCount: number;
+  readonly substrate: SubstrateSelectionFact | null;
+  /** The record's own integrity anchor (the platform's digest). */
+  readonly recordDigest: string | null;
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function booleanOrNull(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function stringArrayOrNull(value: unknown): string[] | null {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const ids = value.filter((entry): entry is string => typeof entry === "string");
+  return ids.length === value.length ? ids : null;
+}
+
+function candidatesOf(record: Readonly<Record<string, unknown>>): readonly PlanningCandidateFact[] {
+  const raw = record.candidates;
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.flatMap((entry) => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      return [];
+    }
+    const candidate = entry as Readonly<Record<string, unknown>>;
+    const rationale =
+      candidate.routeRationale === null || typeof candidate.routeRationale !== "object"
+        ? null
+        : (candidate.routeRationale as Readonly<Record<string, unknown>>);
+    return [
+      {
+        strategyId: stringOrNull(candidate.strategyId) ?? "(unnamed strategy)",
+        expectedCostMicroUsd: stringOrNull(candidate.expectedCostMicroUsd),
+        expectedQuality: numberOrNull(candidate.expectedQuality),
+        expectedLatencyMs: numberOrNull(candidate.expectedLatencyMs),
+        verificationStrategy: stringOrNull(candidate.verificationStrategy),
+        modelCalls: numberOrNull(candidate.modelCalls),
+        admissible: candidate.admissible === true,
+        inadmissibleReason: stringOrNull(candidate.inadmissibleReason),
+        routeRationaleCode: rationale === null ? null : stringOrNull(rationale.code),
+        routeRationaleDetail: rationale === null ? null : stringOrNull(rationale.detail),
+      },
+    ];
+  });
+}
+
+function substrateSelectionOf(
+  record: Readonly<Record<string, unknown>>,
+): SubstrateSelectionFact | null {
+  const raw = record.substrateSelection;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const selection = raw as Readonly<Record<string, unknown>>;
+  const readCandidate = (entry: unknown): SubstrateCandidateFact | null => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      return null;
+    }
+    const candidate = entry as Readonly<Record<string, unknown>>;
+    const resource =
+      candidate.resource === null || typeof candidate.resource !== "object"
+        ? null
+        : (candidate.resource as Readonly<Record<string, unknown>>);
+    return {
+      substrateId: stringOrNull(candidate.substrateId) ?? "(unnamed substrate)",
+      version: stringOrNull(candidate.version),
+      adapterRef: stringOrNull(candidate.adapterRef),
+      isolation: stringOrNull(candidate.isolation),
+      latencyClass: stringOrNull(candidate.latencyClass),
+      cpuMilliCores: resource === null ? null : numberOrNull(resource.cpuMilliCores),
+      memoryMiB: resource === null ? null : numberOrNull(resource.memoryMiB),
+      estimatedDurationMs: resource === null ? null : numberOrNull(resource.estimatedDurationMs),
+      estimatedCostMicroUsd:
+        resource === null ? null : stringOrNull(resource.estimatedCostMicroUsd),
+    };
+  };
+  const readRejection = (entry: unknown): SubstrateRejectionFact | null => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      return null;
+    }
+    const rejection = entry as Readonly<Record<string, unknown>>;
+    return {
+      substrateId: stringOrNull(rejection.substrateId) ?? "(unnamed substrate)",
+      version: stringOrNull(rejection.version),
+      reason: stringOrNull(rejection.reason),
+      detail: stringOrNull(rejection.detail),
+    };
+  };
+  const selected =
+    selection.selected === null || typeof selection.selected !== "object"
+      ? null
+      : (selection.selected as Readonly<Record<string, unknown>>);
+  return {
+    outcome: stringOrNull(selection.outcome),
+    workloadClass: stringOrNull(selection.workloadClass),
+    admissible: Array.isArray(selection.admissible)
+      ? selection.admissible.flatMap((entry) => {
+          const candidate = readCandidate(entry);
+          return candidate === null ? [] : [candidate];
+        })
+      : [],
+    inadmissible: Array.isArray(selection.inadmissible)
+      ? selection.inadmissible.flatMap((entry) => {
+          const rejection = readRejection(entry);
+          return rejection === null ? [] : [rejection];
+        })
+      : [],
+    selectedSubstrateId: selected === null ? null : stringOrNull(selected.substrateId),
+    selectedVersion: selected === null ? null : stringOrNull(selected.version),
+    rationale: stringOrNull(selection.rationale),
+  };
+}
+
+/**
+ * The recorded planning decision of a run's public event stream — the
+ * LAST `planning.decision-recorded` envelope's payload, read field by
+ * field (the real planner's own record). Null when the stream carries
+ * none (no planning decision is invented or approximated).
+ */
+export function planningDecisionOf(events: readonly ExecutionEvent[]): PlanningDecisionFact | null {
+  const decision = chronologicalEvents(events)
+    .reverse()
+    .find((event) => event.type === PLANNING_DECISION_EVENT_TYPE);
+  if (decision === undefined) {
+    return null;
+  }
+  const record = decision.payload as Readonly<Record<string, unknown>>;
+  const taskProfile =
+    record.taskProfile === null || typeof record.taskProfile !== "object"
+      ? null
+      : (record.taskProfile as Readonly<Record<string, unknown>>);
+  const policyInputs =
+    record.policyInputs === null || typeof record.policyInputs !== "object"
+      ? null
+      : (record.policyInputs as Readonly<Record<string, unknown>>);
+  const capabilityResolution =
+    record.capabilityResolution === null || typeof record.capabilityResolution !== "object"
+      ? null
+      : (record.capabilityResolution as Readonly<Record<string, unknown>>);
+  const sufficiency =
+    record.deterministicSufficiency === null || typeof record.deterministicSufficiency !== "object"
+      ? null
+      : (record.deterministicSufficiency as Readonly<Record<string, unknown>>);
+  const unmetIds =
+    capabilityResolution === null ? null : stringArrayOrNull(capabilityResolution.unmetIds);
+  const satisfiedIds =
+    capabilityResolution === null ? null : stringArrayOrNull(capabilityResolution.satisfiedIds);
+  const subgraph = Array.isArray(record.subgraphEvidence) ? record.subgraphEvidence.length : 0;
+  return {
+    decisionId: stringOrNull(record.decisionId),
+    plannerVersion: stringOrNull(record.plannerVersion),
+    sequence: decision.sequence,
+    occurredAt: decision.occurredAt,
+    riskLevel: taskProfile === null ? null : stringOrNull(taskProfile.riskLevel),
+    qualityTarget: taskProfile === null ? null : numberOrNull(taskProfile.qualityTarget),
+    maxCostMicroUsd: taskProfile === null ? null : stringOrNull(taskProfile.maxCostMicroUsd),
+    maxLatencyMs: taskProfile === null ? null : numberOrNull(taskProfile.maxLatencyMs),
+    requiresSemanticReasoning:
+      taskProfile === null ? null : booleanOrNull(taskProfile.requiresSemanticReasoning),
+    policyOutcome: policyInputs === null ? null : stringOrNull(policyInputs.outcome),
+    policySetId: policyInputs === null ? null : stringOrNull(policyInputs.policySetId),
+    policySetVersion:
+      policyInputs === null
+        ? null
+        : policyInputs.policySetVersion === undefined || policyInputs.policySetVersion === null
+          ? null
+          : String(policyInputs.policySetVersion),
+    capabilitySatisfied:
+      capabilityResolution === null ? null : booleanOrNull(capabilityResolution.satisfied),
+    capabilityCatalogRevision:
+      capabilityResolution === null ? null : stringOrNull(capabilityResolution.catalogRevision),
+    unmetCapabilityIds: unmetIds ?? [],
+    satisfiedCapabilityCount: satisfiedIds === null ? null : satisfiedIds.length,
+    sufficiencyOutcome: sufficiency === null ? null : stringOrNull(sufficiency.outcome),
+    semanticReasoningRequired:
+      sufficiency === null ? null : booleanOrNull(sufficiency.semanticReasoningRequired),
+    deterministicQualityEstimate:
+      sufficiency === null ? null : numberOrNull(sufficiency.deterministicQualityEstimate),
+    candidates: candidatesOf(record),
+    selectedStrategyId: stringOrNull(record.selectedStrategyId),
+    selectionRationale: stringOrNull(record.selectionRationale),
+    subgraphEvidenceCount: subgraph,
+    substrate: substrateSelectionOf(record),
+    recordDigest: stringOrNull(record.recordDigest),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Computer-use facts (AC2 — the tool-axis step events' own payloads)
+// ---------------------------------------------------------------------------
+
+/** One computer-use session evidence row (the recorded payload facts). */
+export interface ComputerUseSessionFact {
+  readonly sessionId: string | null;
+  readonly mode: string | null;
+  readonly phase: string | null;
+  readonly environmentRef: string | null;
+  /** The isolation verdict: 0 = the environment inherited no host state. */
+  readonly inheritedHostStateCount: number | null;
+  readonly deterministicFirst: boolean | null;
+  readonly routeStageCount: number | null;
+  readonly occurredAt: string;
+  readonly sequence: number;
+}
+
+/** One computer-use denial (journal-then-fail: the recorded typed denial). */
+export interface ComputerUseDenialFact {
+  readonly sessionId: string | null;
+  readonly mode: string | null;
+  readonly denialClass: string | null;
+  readonly code: string | null;
+  readonly reason: string | null;
+  readonly occurredAt: string;
+  readonly sequence: number;
+}
+
+export interface ComputerUseFacts {
+  readonly sessions: readonly ComputerUseSessionFact[];
+  readonly denials: readonly ComputerUseDenialFact[];
+  readonly present: boolean;
+}
+
+/**
+ * The computer-use facts of a run's public event stream: the tool-axis
+ * step events (`tool-requested` / `tool-result` / `tool-denied`) whose
+ * payloads carry computer-use session evidence (sessionId, mode, phase,
+ * environmentRef, inheritedHostStateCount, deterministicFirst,
+ * routeStageCount) and the typed denials ({denied, denialClass, code,
+ * reason}) — exactly the real computer-use service's public payload
+ * shapes. Non-computer-use tool events (a payload without any of these
+ * keys) contribute nothing.
+ */
+export function computerUseFactsOf(events: readonly ExecutionEvent[]): ComputerUseFacts {
+  const sessions: ComputerUseSessionFact[] = [];
+  const denials: ComputerUseDenialFact[] = [];
+  for (const event of chronologicalEvents(events)) {
+    const command = normalizeStepEventType(event.type);
+    if (command !== "tool-requested" && command !== "tool-result" && command !== "tool-denied") {
+      continue;
+    }
+    const payload = event.payload as Readonly<Record<string, unknown>>;
+    if (payload.denied === true) {
+      denials.push({
+        sessionId: stringOrNull(payload.sessionId),
+        mode: stringOrNull(payload.mode),
+        denialClass: stringOrNull(payload.denialClass),
+        code: stringOrNull(payload.code),
+        reason: stringOrNull(payload.reason),
+        occurredAt: event.occurredAt,
+        sequence: event.sequence,
+      });
+      continue;
+    }
+    if (
+      payload.sessionId === undefined &&
+      payload.mode === undefined &&
+      payload.phase === undefined &&
+      payload.environmentRef === undefined &&
+      payload.inheritedHostStateCount === undefined &&
+      payload.deterministicFirst === undefined &&
+      payload.routeStageCount === undefined
+    ) {
+      continue;
+    }
+    sessions.push({
+      sessionId: stringOrNull(payload.sessionId),
+      mode: stringOrNull(payload.mode),
+      phase: stringOrNull(payload.phase),
+      environmentRef: stringOrNull(payload.environmentRef),
+      inheritedHostStateCount: numberOrNull(payload.inheritedHostStateCount),
+      deterministicFirst: booleanOrNull(payload.deterministicFirst),
+      routeStageCount: numberOrNull(payload.routeStageCount),
+      occurredAt: event.occurredAt,
+      sequence: event.sequence,
+    });
+  }
+  return { sessions, denials, present: sessions.length > 0 || denials.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Agent-session facts (AC3/AC4 — realtime, messaging and media evidence)
+// ---------------------------------------------------------------------------
+
+/** One agent-session evidence row (the recorded payload facts). */
+export interface AgentSessionEventFact {
+  readonly stage: "session-started" | "action" | "session-completed";
+  readonly occurredAt: string;
+  readonly sequence: number;
+  readonly callerRef: string | null;
+  readonly participantRef: string | null;
+  readonly railCapabilityId: string | null;
+  readonly routeClass: string | null;
+  readonly plannerOutcome: string | null;
+  readonly reasonCodes: readonly string[];
+  readonly responsePreview: string | null;
+}
+
+export interface AgentSessionFacts {
+  readonly events: readonly AgentSessionEventFact[];
+  readonly sessionCount: number;
+  readonly present: boolean;
+}
+
+/**
+ * The agent-session facts of a run's public event stream: the
+ * `agent-session-*` step events (the shared vocabulary realtime,
+ * messaging and media evidence ALL ride — the deployments module owns
+ * none of it). The payload fields are each modality's own: callerRef /
+ * participantRef / railCapabilityId (session starts), routeClass /
+ * plannerOutcome / reasonCodes / responsePreview (turns). Every field is
+ * read exactly as recorded; a payload without any known key contributes
+ * only its lifecycle stage.
+ */
+export function agentSessionFactsOf(events: readonly ExecutionEvent[]): AgentSessionFacts {
+  const rows: AgentSessionEventFact[] = [];
+  let sessionCount = 0;
+  for (const event of chronologicalEvents(events)) {
+    const command = normalizeStepEventType(event.type);
+    if (
+      command !== "agent-session-started" &&
+      command !== "agent-action-recorded" &&
+      command !== "agent-session-completed"
+    ) {
+      continue;
+    }
+    if (command === "agent-session-started") {
+      sessionCount += 1;
+    }
+    const payload = event.payload as Readonly<Record<string, unknown>>;
+    const reasonCodes = stringArrayOrNull(payload.reasonCodes) ?? [];
+    rows.push({
+      stage:
+        command === "agent-session-started"
+          ? "session-started"
+          : command === "agent-session-completed"
+            ? "session-completed"
+            : "action",
+      occurredAt: event.occurredAt,
+      sequence: event.sequence,
+      callerRef: stringOrNull(payload.callerRef),
+      participantRef: stringOrNull(payload.participantRef),
+      railCapabilityId: stringOrNull(payload.railCapabilityId),
+      routeClass: stringOrNull(payload.routeClass),
+      plannerOutcome: stringOrNull(payload.plannerOutcome),
+      reasonCodes,
+      responsePreview: stringOrNull(payload.responsePreview),
+    });
+  }
+  return { events: rows, sessionCount, present: rows.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Media-generation facts (AC4 — the media payload's own vocabulary)
+// ---------------------------------------------------------------------------
+
+/** One media job evidence row (the recorded payload facts). */
+export interface MediaJobEventFact {
+  readonly stage: "job-submitted" | "job-dispatched" | "observation" | "artifact" | "job-completed";
+  readonly occurredAt: string;
+  readonly sequence: number;
+  readonly generationKind: string | null;
+  readonly verificationMode: string | null;
+  readonly inputArtifactDigest: string | null;
+  readonly preprocessingDigest: string | null;
+  readonly postprocessingDigest: string | null;
+  readonly outputArtifactDigest: string | null;
+  readonly providerStateLabel: string | null;
+  readonly verifiedByAuthority: boolean | null;
+}
+
+export interface MediaFacts {
+  readonly events: readonly MediaJobEventFact[];
+  readonly present: boolean;
+}
+
+/**
+ * The media-generation facts of a run's public event stream: the
+ * `agent-session-*` events whose payloads carry the media vocabulary
+ * (generationKind, digests, providerStateLabel, verifiedByAuthority —
+ * exactly the real media service's public payload shapes). Artifact
+ * digests are REFERENCES ONLY; media content never rides the ledger.
+ */
+export function mediaFactsOf(events: readonly ExecutionEvent[]): MediaFacts {
+  const rows: MediaJobEventFact[] = [];
+  for (const event of chronologicalEvents(events)) {
+    const command = normalizeStepEventType(event.type);
+    if (
+      command !== "agent-session-started" &&
+      command !== "agent-action-recorded" &&
+      command !== "agent-session-completed"
+    ) {
+      continue;
+    }
+    const payload = event.payload as Readonly<Record<string, unknown>>;
+    const generationKind = stringOrNull(payload.generationKind);
+    // The media payload's own vocabulary (the real media service's public
+    // keys): a payload carrying ANY of these keys is media evidence; a
+    // realtime/messaging payload (callerRef, routeClass, …) is NOT.
+    const isMedia =
+      generationKind !== null ||
+      payload.verifiedByAuthority !== undefined ||
+      payload.postprocessingDigest !== undefined ||
+      payload.preprocessingDigest !== undefined ||
+      payload.inputArtifactDigest !== undefined ||
+      payload.verificationMode !== undefined ||
+      payload.providerStateLabel !== undefined ||
+      payload.role === "generated-output";
+    if (!isMedia) {
+      continue;
+    }
+    rows.push({
+      stage:
+        command === "agent-session-started"
+          ? "job-submitted"
+          : command === "agent-session-completed"
+            ? "job-completed"
+            : payload.role === "generated-output"
+              ? "artifact"
+              : payload.preprocessingDigest !== undefined ||
+                  payload.providerStateLabel !== undefined
+                ? "job-dispatched"
+                : "observation",
+      occurredAt: event.occurredAt,
+      sequence: event.sequence,
+      generationKind,
+      verificationMode: stringOrNull(payload.verificationMode),
+      inputArtifactDigest: stringOrNull(payload.inputArtifactDigest),
+      preprocessingDigest: stringOrNull(payload.preprocessingDigest),
+      postprocessingDigest: stringOrNull(payload.postprocessingDigest),
+      outputArtifactDigest:
+        payload.role === "generated-output" ? stringOrNull(payload.descriptorDigest) : null,
+      providerStateLabel: stringOrNull(payload.providerStateLabel),
+      verifiedByAuthority: booleanOrNull(payload.verifiedByAuthority),
+    });
+  }
+  return { events: rows, present: rows.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Training/accelerator facts (AC7 — the training payload's own vocabulary)
+// ---------------------------------------------------------------------------
+
+/** One training checkpoint evidence row (the recorded payload facts). */
+export interface TrainingCheckpointFact {
+  readonly checkpointSequence: number | null;
+  readonly stepPosition: number | null;
+  readonly metricsDigest: string | null;
+  readonly occurredAt: string;
+}
+
+export interface TrainingFacts {
+  readonly workloadId: string | null;
+  readonly workloadKind: string | null;
+  readonly status: string | null;
+  readonly attempt: number | null;
+  readonly admitted: boolean;
+  readonly denied: boolean;
+  readonly denialCode: string | null;
+  readonly denialReason: string | null;
+  readonly outcomeClass: string | null;
+  readonly stepsCompleted: number | null;
+  readonly outputArtifactDigest: string | null;
+  readonly usageMicroUsd: string | null;
+  readonly checkpoints: readonly TrainingCheckpointFact[];
+  readonly present: boolean;
+}
+
+/**
+ * The training/accelerator facts of a run's public event stream: the
+ * `sandbox-*` step events whose payloads carry the training workload
+ * vocabulary (workloadId, workloadKind, attempt, resource, outcomeClass,
+ * stepsCompleted, usageMicroUsd — exactly the real training service's
+ * public payload shapes) plus the training checkpoints
+ * (`checkpoint-recorded` with checkpointSequence/stepPosition/
+ * metricsDigest). Non-training sandbox events (a payload without the
+ * workload vocabulary) contribute nothing.
+ */
+export function trainingFactsOf(events: readonly ExecutionEvent[]): TrainingFacts {
+  let workloadId: string | null = null;
+  let workloadKind: string | null = null;
+  let status: string | null = null;
+  let attempt: number | null = null;
+  let admitted = false;
+  let denied = false;
+  let denialCode: string | null = null;
+  let denialReason: string | null = null;
+  let outcomeClass: string | null = null;
+  let stepsCompleted: number | null = null;
+  let outputArtifactDigest: string | null = null;
+  let usageMicroUsd: string | null = null;
+  const checkpoints: TrainingCheckpointFact[] = [];
+  for (const event of chronologicalEvents(events)) {
+    const command = normalizeStepEventType(event.type);
+    const payload = event.payload as Readonly<Record<string, unknown>>;
+    if (
+      command === "sandbox-admitted" ||
+      command === "sandbox-denied" ||
+      command === "sandbox-completed"
+    ) {
+      if (
+        payload.workloadId === undefined &&
+        payload.workloadKey === undefined &&
+        payload.workloadKind === undefined
+      ) {
+        continue;
+      }
+      workloadId = stringOrNull(payload.workloadId) ?? workloadId;
+      workloadKind = stringOrNull(payload.workloadKind) ?? workloadKind;
+      status = stringOrNull(payload.status) ?? status;
+      attempt = numberOrNull(payload.attempt) ?? attempt;
+      if (command === "sandbox-admitted") {
+        admitted = true;
+      }
+      if (command === "sandbox-denied" && payload.denied === true) {
+        denied = true;
+        denialCode = stringOrNull(payload.code);
+        denialReason = stringOrNull(payload.reason);
+      }
+      if (command === "sandbox-completed") {
+        outcomeClass = stringOrNull(payload.outcomeClass) ?? outcomeClass;
+        stepsCompleted = numberOrNull(payload.stepsCompleted) ?? stepsCompleted;
+        outputArtifactDigest = stringOrNull(payload.outputArtifactDigest) ?? outputArtifactDigest;
+        usageMicroUsd = stringOrNull(payload.usageMicroUsd) ?? usageMicroUsd;
+      }
+      continue;
+    }
+    if (command === "checkpoint-recorded" && payload.metricsDigest !== undefined) {
+      checkpoints.push({
+        checkpointSequence: numberOrNull(payload.checkpointSequence),
+        stepPosition: numberOrNull(payload.stepPosition),
+        metricsDigest: stringOrNull(payload.metricsDigest),
+        occurredAt: event.occurredAt,
+      });
+    }
+  }
+  return {
+    workloadId,
+    workloadKind,
+    status,
+    attempt,
+    admitted,
+    denied,
+    denialCode,
+    denialReason,
+    outcomeClass,
+    stepsCompleted,
+    outputArtifactDigest,
+    usageMicroUsd,
+    checkpoints,
+    present: admitted || denied || outcomeClass !== null || checkpoints.length > 0,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Economic-action facts (AC8 — the execution-bound provenance timeline)
+// ---------------------------------------------------------------------------
+
+/** One economic-action provenance row (the event type IS the phase). */
+export interface EconomicTimelineRow {
+  readonly phase: "recorded" | "denied" | "authorized" | "settled" | "failed";
+  readonly economicActionId: string | null;
+  readonly occurredAt: string;
+  readonly sequence: number;
+}
+
+export interface EconomicFacts {
+  readonly timeline: readonly EconomicTimelineRow[];
+  readonly actionIds: readonly string[];
+  readonly present: boolean;
+}
+
+/**
+ * The economic-action facts of a run's public event stream: the
+ * `economic-action-*` step events — the execution-bound provenance
+ * timeline. The public payload carries the economicActionId (the
+ * provenance link); the bounded envelope (purpose, recipient, amount,
+ * expiration), the authorization result and the settlement correlation
+ * are the economics authority's own records and do NOT cross this wire —
+ * this derivation never guesses them.
+ */
+export function economicFactsOf(events: readonly ExecutionEvent[]): EconomicFacts {
+  const phases: Readonly<Record<string, EconomicTimelineRow["phase"]>> = {
+    "economic-action-recorded": "recorded",
+    "economic-action-denied": "denied",
+    "economic-action-authorized": "authorized",
+    "economic-action-settled": "settled",
+    "economic-action-failed": "failed",
+  };
+  const timeline: EconomicTimelineRow[] = [];
+  for (const event of chronologicalEvents(events)) {
+    const phase = phases[normalizeStepEventType(event.type)];
+    if (phase === undefined) {
+      continue;
+    }
+    timeline.push({
+      phase,
+      economicActionId: stringOrNull(
+        (event.payload as Readonly<Record<string, unknown>>).economicActionId,
+      ),
+      occurredAt: event.occurredAt,
+      sequence: event.sequence,
+    });
+  }
+  const actionIds = [
+    ...new Set(
+      timeline.map((row) => row.economicActionId).filter((id): id is string => id !== null),
+    ),
+  ];
+  return { timeline, actionIds, present: timeline.length > 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Edge/embodied facts (AC6 — the workload-class evidence + the boundary)
+// ---------------------------------------------------------------------------
+
+export interface EdgeFacts {
+  readonly workloadClass: string | null;
+  readonly substrateId: string | null;
+  readonly isolation: string | null;
+  readonly latencyClass: string | null;
+  readonly present: boolean;
+}
+
+/**
+ * The edge/embodied facts of a run: the workload class the planning
+ * decision's substrate selection recorded (the platform's own frozen
+ * vocabulary: edge / embodied), with the selected substrate's isolation
+ * and latency characteristics. The current physical command and the
+ * local safety state are NOT public facts — the boundary sentence (the
+ * hard-real-time safety loop stays local) renders on the surface; this
+ * derivation never manufactures a command or safety fact.
+ */
+export function edgeFactsOf(decision: PlanningDecisionFact | null): EdgeFacts {
+  const workloadClass = decision?.substrate?.workloadClass ?? null;
+  const isEdge = workloadClass === "edge" || workloadClass === "embodied";
+  const substrate = decision?.substrate ?? null;
+  const selected =
+    substrate === null
+      ? null
+      : (substrate.admissible.find(
+          (candidate) => candidate.substrateId === substrate.selectedSubstrateId,
+        ) ?? null);
+  return {
+    workloadClass: workloadClass,
+    substrateId: isEdge ? (substrate?.selectedSubstrateId ?? null) : null,
+    isolation: isEdge ? (selected?.isolation ?? null) : null,
+    latencyClass: isEdge ? (selected?.latencyClass ?? null) : null,
+    present: isEdge,
+  };
 }

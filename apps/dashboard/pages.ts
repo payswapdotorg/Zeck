@@ -71,6 +71,7 @@ import {
   redirectResult,
   serializeCookie,
 } from "./http";
+import { deploymentSessionExecutionSection, inspectionPanel, modalitySections } from "./inspection";
 import { type ExperienceMode, modeCookieHeader, modeOf } from "./modes";
 import {
   type AgentSelectionFact,
@@ -78,6 +79,7 @@ import {
   addRecent,
   agentGlanceFacts,
   agentSelectionFacts,
+  agentSessionFactsOf,
   approvalQueueFacts,
   buildExecutionRequest,
   buildWorkloadRequest,
@@ -85,6 +87,7 @@ import {
   competenceDetailFacts,
   competenceDiscoveryFacts,
   completionExplainerRows,
+  computerUseFactsOf,
   consumesArtifact,
   currentStageLabel,
   DEPLOYMENT_EXECUTION_DISTINCTION,
@@ -94,6 +97,8 @@ import {
   deriveVerificationChip,
   deriveWorkloadFacts,
   durationMs,
+  economicFactsOf,
+  edgeFactsOf,
   environmentFacts,
   evaluationStatusRows,
   eventStageLabel,
@@ -101,9 +106,11 @@ import {
   inputArtifactRefsOf,
   isTerminal,
   looksLikeExecutionId,
+  mediaFactsOf,
   type PolicyDenialFact,
   parseAttachmentRefs,
   parseRecents,
+  planningDecisionOf,
   policyDenialOf,
   providerCategoryFacts,
   QUALITY_OPTIONS,
@@ -114,6 +121,7 @@ import {
   safeTaskPairs,
   serializeRecents,
   sumMicroUsd,
+  trainingFactsOf,
   validateExecutionForm,
   validateWorkloadForm,
   WORKLOAD_FORM_KEYS,
@@ -1246,7 +1254,31 @@ async function deploymentsOverviewPage(
   client: ZeckClient,
   ctx: HttpContext,
 ): Promise<HandlerResult> {
-  void client;
+  /**
+   * WORK-040 AC3: the live session evidence from this browser's recents
+   * scope — for each recent run, the agent-session events (the realtime/
+   * messaging/media vocabulary) are read through the governed client and
+   * counted; every row links back to the canonical execution context.
+   */
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const sessionRuns: {
+    readonly executionId: string;
+    readonly sessionCount: number;
+    readonly lastActivity: string | null;
+  }[] = [];
+  for (const execution of recents.executions) {
+    const sessionFacts = agentSessionFactsOf(
+      await client.listEvents(execution.id).catch(() => [] as readonly ExecutionEvent[]),
+    );
+    if (sessionFacts.present) {
+      sessionRuns.push({
+        executionId: execution.id,
+        sessionCount: sessionFacts.sessionCount,
+        lastActivity: sessionFacts.events[sessionFacts.events.length - 1]?.occurredAt ?? null,
+      });
+    }
+  }
   const content = `${pageHead({
     title: "Deployments",
     path: "/deployments",
@@ -1258,6 +1290,7 @@ ${unavailableState(
   "The public API exposes no deployment authority — no deployment inventory, availability, health, version or channel facts. Nothing is fabricated here: when the deployment authority ships, this page projects its facts live (availability, version, health, channels/endpoints, activity) — never an execution status in their place.",
   "a public deployment authority projection (inventory and detail)",
 )}
+${deploymentSessionExecutionSection({ sessionRuns })}
 <h2>The live governed work today</h2>
 <p>Executions are live: <a href="/runs">open the runs surface</a> or look one up by id. Agents are live and read-only: <a href="/agents">open the agent inventory</a>.</p>
 ${lookupForm()}`;
@@ -1384,6 +1417,7 @@ function tabNav(executionId: string, activeTab: string): string {
   ${tab("result", "Result")}
   ${tab("evidence", "Evidence")}
   ${tab("activity", "Activity")}
+  ${tab("inspection", "Inspection")}
 </nav>`;
 }
 
@@ -1503,6 +1537,23 @@ async function executionDetailPage(client: ZeckClient, ctx: HttpContext): Promis
   const workloadBlock = workload.present
     ? longRunningWorkloadSection({ execution, result, workload })
     : "";
+  /**
+   * WORK-040: the inspection + modality derivations, computed ONCE —
+   * every fact below is this run's own public event stream, read
+   * through the pure projection functions only.
+   */
+  const decision = planningDecisionOf(events);
+  const modalities = modalitySections({
+    executionId: execution.id,
+    status: execution.status,
+    environmentId: execution.environmentId,
+    computerUse: computerUseFactsOf(events),
+    agentSessions: agentSessionFactsOf(events),
+    media: mediaFactsOf(events),
+    edge: edgeFactsOf(decision),
+    training: trainingFactsOf(events),
+    economic: economicFactsOf(events),
+  });
   const header = executionHeader({
     execution,
     durationMs: durationMs(execution.createdAt, execution.terminalAt, Date.now()),
@@ -1552,7 +1603,10 @@ ${confirmationCard({
     );
   }
   const tabParam = ctx.query.get("tab") ?? "result";
-  const tab = tabParam === "evidence" || tabParam === "activity" ? tabParam : "result";
+  const tab =
+    tabParam === "evidence" || tabParam === "activity" || tabParam === "inspection"
+      ? tabParam
+      : "result";
   const viewParam = ctx.query.get("view") ?? "";
   const view = viewParam === "events" || viewParam === "raw" ? viewParam : "";
   let panel: string;
@@ -1626,6 +1680,19 @@ ${warnings}`,
 )}`;
   } else if (tab === "activity") {
     panel = activityView(execution, events, view);
+  } else if (tab === "inspection") {
+    /**
+     * WORK-040 AC1: the expert inspection view — the recorded planning
+     * decision (plan, capabilities, effective policy, route, compute
+     * substrate), the events/lineage/audit cross-links. Deep internals
+     * sit inside collapsed disclosures (progressive disclosure); the
+     * default flows are unchanged (the Result view stays primary).
+     */
+    panel = inspectionPanel({
+      executionId: execution.id,
+      environmentId: execution.environmentId,
+      decision,
+    });
   } else {
     panel = `<h2>Result</h2>
 ${resultSurface({
@@ -1643,6 +1710,7 @@ ${resultSurface({
 ${header}
 ${workloadBlock}
 ${denial === null ? "" : blockedExplanation(denial)}
+${modalities}
 ${whyPanel({ execution, result, events })}
 ${tabNav(execution.id, tab)}
 ${panel}`;
