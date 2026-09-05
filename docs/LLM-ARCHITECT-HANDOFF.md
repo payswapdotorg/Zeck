@@ -2,14 +2,20 @@
 
 **Purpose:** Durable, repository-resident handoff for a fresh LLM Architect. Conversation history is never authoritative.
 
+## Canonical remote
+
+- Repository: `payswapdotorg/Zeck`
+- `pectoraux/Zeck` is historical upstream/reference only.
+- The canonical-remote declaration is `docs/FORK-CANONICAL-REMOTE.md`.
+
 ## Current state
 
-- Repository: `pectoraux/Zeck`
 - Core architecture: **v1.0**, frozen after approval.
 - Deployment/runtime architecture: **D1.0**, approved and authoritative for deployment concerns, subordinate to v1.0.
 - UX v2 implementation wave: **complete through WORK-041**.
 - Current implementation order: **WORK-042 — Reproducible deployment infrastructure foundation**.
-- GitHub Issue: **#75**, authorized/in-flight.
+- Canonical GitHub Issue: **#1**, authorized/in-flight on `payswapdotorg/Zeck`.
+- Historical upstream issue: #75 — not authoritative for this remote.
 - Dispatch base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`.
 - Required worker branch: `work/WORK-042-deployment-infrastructure-foundation`.
 - Development frontier: `eligible=[]`, `inFlight=["WORK-042"]`, `blocked=[]`.
@@ -43,12 +49,12 @@ Commercial-use plan requirements and mutable vendor limits are evidence inputs a
 - Worker final head: `3fbb9db212376275ca50858a296234c25d15d46d`
 - PR: #74
 - Merge commit: `153b5f1c4de6180e5e56c421f5fdfcea7b855cf2`
-- Issue #73: closed as completed
+- Upstream issue #73: closed as completed
 
 ## WORK-042 dispatch
 
 - Work Order: `spec/work-orders/WORK-042.md`
-- Issue: #75
+- Canonical issue: #1
 - Status: AUTHORIZED / IN-FLIGHT
 - Exact dispatch base: `6bbb76e17ec17de41141db6ef9d41a641ea5cdb4`
 - Required branch: `work/WORK-042-deployment-infrastructure-foundation`
@@ -66,9 +72,9 @@ The worker may use the user's Composio-connected provider accounts to provision 
 6. Read `spec/architecture.md` and `spec/architecture-lock.md`.
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
-9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, and ACR-002.
+9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, ACR-002, and `docs/FORK-CANONICAL-REMOTE.md`.
 10. Read `spec/work-orders/WORK-042.md` in full.
-11. Inspect live Git refs, Issue #75, PRs and checks; verify exact ancestry.
+11. Inspect live Git refs, canonical Issue #1, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry.
 12. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
@@ -96,8 +102,8 @@ The worker may use the user's Composio-connected provider accounts to provision 
 
 ## Completion boundary
 
-WORK-042 is currently the only authorized deployment implementation order. Do not invent WORK-043 from chat. The next deployment phase must become executable only through a repository-approved Work Order with explicit dependency, surfaces, acceptance criteria and evidence contract.
+WORK-042 is currently the only authorized deployment implementation order. Do not invent the next deployment or product Work Order from chat. The next phase becomes executable only through a repository-approved Work Order with explicit dependency, surfaces, acceptance criteria and evidence contract.
 
 ## Fresh-session invariant
 
-A fresh LLM Architect must be able to recover Zeck, including the deployment stream, from repository artifacts and live GitHub state without any prior conversation transcript.
+A fresh LLM Architect must be able to recover Zeck, including the deployment stream and canonical remote, from repository artifacts and live GitHub state without any prior conversation transcript.
