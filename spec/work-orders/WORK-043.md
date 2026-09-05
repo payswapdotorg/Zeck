@@ -65,7 +65,7 @@ Forbidden:
 - modifying `spec/development-state/*` during active implementation
 - worker self-merge
 
-# Architecture invariants
+# Architecture Invariants
 
 - PostgreSQL remains the sole durable Zeck authority.
 - Neon is an infrastructure implementation of the existing database port.
@@ -78,7 +78,7 @@ Forbidden:
 - Backup/restore is tested against an actual recoverable database artifact or managed-provider restore mechanism available through the authorized environment.
 - Secret references remain environment-scoped and values remain externally materialized.
 
-# Acceptance criteria
+# Acceptance Criteria
 
 1. Zeck can start against a managed PostgreSQL instance using repository-defined configuration and the existing database port.
 2. All required migrations apply deterministically; startup fails closed on incompatible or unavailable authoritative state.
