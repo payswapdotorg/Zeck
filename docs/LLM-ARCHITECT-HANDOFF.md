@@ -1,25 +1,41 @@
 # Zeck — LLM Architect Handoff
 
-**Purpose:** This document is the durable, repository-resident handoff for a fresh LLM Architect. It is authoritative guidance for recovering the current engineering state without conversation history. Conversation history is never a source of truth.
+**Purpose:** Durable, repository-resident handoff for a fresh LLM Architect. This is designed to replace conversation history with repository evidence. Conversation history is never authoritative.
 
-## Current repository state
+## Current state at handoff
 
 - Repository: `pectoraux/Zeck`
 - Architecture: **v1.0**, frozen after approval.
-- Current `main`: `017e44f41eab9ce7a458843d39a38c895ba79800`
-- Current W041 worker branch: `work/WORK-041-ux-integration-hardening-release-gate`
-- Current W041 worker branch head: `017e44f41eab9ce7a458843d39a38c895ba79800`
-- `main` and W041 worker branch are therefore the same commit at handoff: **0/0 ahead/behind**.
-- Frontier: `eligible=[]`, `inFlight=["WORK-041"]`, `blocked=[]`.
 - Active Work Order: `spec/work-orders/WORK-041.md`.
 - Active issue: **#73**, `WORK-041 — UX integration hardening, usability and release gate`.
 - Assurance: **HIGH_ASSURANCE**.
+- Development frontier: `eligible=[]`, `inFlight=["WORK-041"]`, `blocked=[]`.
+- W033–W040 are complete; W041 is the sole in-flight Work Order and the final currently-defined UX v2 Work Order.
 
-### Dispatch-history nuance that must not be “fixed”
+### W041 dispatch identity
 
-`017e44f41eab9ce7a458843d39a38c895ba79800` is the final dispatch-state commit and has parent `bcc46ee402da33ca478d7cb860352c28b97b1080`. Its commit message is `chore(governance): bind WORK-041 to dispatch pin` and its only file change is the W041 Work Order's binding-base text. The Work Order's Dispatch Record therefore names `bcc46ee402da33ca478d7cb860352c28b97b1080` as the binding exact base, while the **operational branch/main starting point is the final dispatch commit `017e44f…` itself**. This is intentional history, not a repository inconsistency.
+The **final W041 dispatch-state commit** is:
 
-Do not move `main`, recreate the branch, or rewrite the Work Order merely to make those two SHAs equal. The worker branch is correctly pinned to the final dispatch state.
+`017e44f41eab9ce7a458843d39a38c895ba79800`
+
+At dispatch, both `main` and
+`work/WORK-041-ux-integration-hardening-release-gate` pointed to that commit, so the worker started from the exact final dispatch state.
+
+The W041 Work Order's Dispatch Record names:
+
+`bcc46ee402da33ca478d7cb860352c28b97b1080`
+
+as its **binding exact base** because `017e44f…` is the Architect commit `chore(governance): bind WORK-041 to dispatch pin`, whose parent is `bcc46ee…` and whose only change is the Work Order's dispatch-base text. This history is intentional.
+
+### Architect-only documentation commits after dispatch
+
+After W041 was dispatched, Architect-owned documentation was added to `main` so this repository would remain self-describing across sessions. These commits are **not worker implementation commits** and are not part of the W041 dispatch root:
+
+- `5a7e2b88b3e30648e768b6cb299ae2a4d06ce123` — added this durable handoff.
+- `f420578624cf178470e6a66536731a23286e533a` — updated `AI_CONTINUATION.md`.
+- `99b5fc22ae61b623b76191229cd59379b606e181` — updated `AGENTS.md` to require the handoff.
+
+Therefore a fresh Architect must **read the live `main` ref** rather than assuming it still equals `017e44f…`. The active W041 worker branch remains deliberately rooted at the original dispatch pin. The worker branch and current `main` need not be identical after Architect-only documentation commits. Never rewrite history merely to eliminate this expected documentation-only ancestry.
 
 ## Completed UX wave
 
@@ -35,7 +51,7 @@ The UX v2 roadmap is serialized through W041:
 - W040 — Advanced inspection and multimodal work — complete
 - **W041 — UX integration hardening, usability and release gate — in flight**
 
-W040 was accepted and merged as PR **#72**, with merge commit beginning `64bc1b11`. Its implementation/evidence records are preserved in `docs/work-items/WORK-040.md` and the development-state ledgers.
+W040 was accepted and merged as PR **#72**, merge commit beginning `64bc1b11`. Its evidence is preserved in `docs/work-items/WORK-040.md` and the development-state ledgers.
 
 ## W041 mandate
 
@@ -43,43 +59,44 @@ The only authorized implementation is the final UX v2 integration/release gate d
 
 ### Objective
 
-Consolidate the complete UX v2 realization into a coherent production-quality product and prove that the accumulated surfaces behave as one system across navigation, Work, Build, Trust, Control, Improve, and advanced modality views.
+Consolidate the full UX v2 realization into one coherent production-quality experience and prove the accumulated surfaces behave as one product across Home, Work, Build, Trust, Control, Improve, and advanced modality views.
 
 ### Allowed scope
 
-- Cross-route consistency fixes.
-- Navigation/context restoration.
-- Loading, empty, error, and permission-state consistency.
-- Responsive breakpoint refinements.
-- Keyboard, screen-reader, and focus refinements.
-- Visual hierarchy and density corrections.
-- Performance improvements that do not alter domain semantics.
-- End-to-end journey stabilization.
-- Browser/visual verification harnesses and evidence.
+- cross-route consistency;
+- navigation/context restoration;
+- loading/empty/error/permission consistency;
+- responsive breakpoint refinements;
+- keyboard/screen-reader/focus refinements;
+- visual hierarchy and density corrections;
+- performance improvements that do not alter domain semantics;
+- end-to-end journey stabilization;
+- browser/visual verification and evidence harnesses.
 
 ### Forbidden scope
 
-- New product domains or major feature surfaces.
-- Backend module changes.
-- New execution, policy, budget, verification, or tenant authority.
-- Client-side registries/caches used as truth.
-- Raw credentials/secrets.
-- Architecture changes.
-- Requirement ownership changes.
-- Worker self-merge.
+- new product domains or major feature surfaces;
+- backend module changes;
+- new execution/policy/budget/verification/tenant authority;
+- client-side registries or caches used as truth;
+- raw credentials/secrets;
+- architecture changes;
+- requirement ownership changes;
+- worker self-merge.
 
-### Non-negotiable architecture invariants
+### Architecture invariants
 
 - Dashboard remains a projection over public API/SDK authorities.
-- Execution/Work semantics remain canonical across all modalities.
+- Execution/Work semantics remain canonical across modalities.
 - UX v2 remains outcome-first with progressive disclosure.
 - Trust claims remain evidence-backed.
 - Consequential actions remain governed and consequence-aware.
-- Expert depth must remain available without contaminating default flows.
+- Expert depth is available without contaminating default flows.
+- Browser/UI state remains ephemeral and non-authoritative.
 
 ## Required W041 verification
 
-Before Architect acceptance, independently verify the worker's evidence against the actual final PR head. Required proof includes:
+Before Architect acceptance, independently verify the worker's claims against the exact final PR head:
 
 1. `python3 scripts/governance-check.py`.
 2. `bun run typecheck`.
@@ -93,105 +110,100 @@ Before Architect acceptance, independently verify the worker's evidence against 
 10. Secret-exposure discrimination.
 11. Performance sanity checks.
 12. Full suite **twice consecutively at the exact final head**.
-13. Exact changed-file inventory, including explicit confirmation that no forbidden surface changed.
-14. Exact branch/base ancestry, zero worker merge commits, and worker did not merge its own PR.
+13. Exact changed-file inventory against declared surfaces.
+14. Exact ancestry: PR against `main`, worker did not merge itself, and evidence is tied to the final head.
 
-The Architect must review the actual diff rather than trusting the worker's written summary. Evidence is valid only for the exact revision it names.
+Worker summaries are evidence pointers, not acceptance.
 
 ## Governance loop after W041 submission
 
-When the worker opens a PR:
-
-1. Verify the PR targets `main` and its merge-base is the exact dispatch base `017e44f41eab9ce7a458843d39a38c895ba79800` unless the repository's governance records explicitly show a later Architect-only state commit that became the binding base.
-2. Cross-check the PR changed-file list against the Work Order's declared surfaces.
-3. Inspect the complete diff for authority/transport/secret/architecture violations.
-4. Verify CI and the worker's exact-head evidence.
-5. Independently rerun or obtain the required evidence wherever possible.
-6. Approve only after all acceptance criteria and checkpoint contracts pass.
-7. Merge only as Architect.
-8. After merge, finalize `spec/development-state/program-state.json`, `frontier-state.json`, and `checkpoint-state.json` against the **actual merge identity**.
-9. Update the completed Work Order/evidence record if required by the state model.
-10. Close issue #73 only after post-merge finalization is complete.
-11. Re-run the governance checker after state finalization.
-12. Only then determine whether any successor Work Order exists. W041 is the current final roadmap item; do not invent W042 without a formal architecture/work-order decision.
+1. Read the live `main` ref and active branch ref.
+2. Identify the original W041 dispatch pin from the Work Order/issue and distinguish any later Architect-only commits.
+3. Inspect the PR base/head, merge-base, commit count, and merge commits.
+4. Cross-check Git and GitHub changed-file inventories.
+5. Inspect the complete diff for forbidden scope and authority/transport/secret violations.
+6. Verify CI and exact-head worker evidence.
+7. Independently rerun or obtain required evidence where possible.
+8. Approve only after all acceptance criteria/checkpoint contracts pass.
+9. Merge only as Architect.
+10. Finalize `program-state.json`, `frontier-state.json`, and `checkpoint-state.json` against the **actual merge identity**.
+11. Update the Work Order/evidence record as required by the state model.
+12. Close issue #73 only after post-merge finalization.
+13. Re-run `python3 scripts/governance-check.py` after state finalization.
+14. Re-derive the frontier. Do not invent W042.
 
 ## Canonical repository recovery order
 
-A fresh Architect should recover state in this order:
+A fresh Architect should read:
 
 1. `AGENTS.md`
 2. `AI_CONTINUATION.md`
-3. `README.md`
-4. `IMPLEMENTATION.md`
-5. `spec/worker-runbook.md`
-6. `docs/ARCHITECT-RUNBOOK.md`
-7. `spec/architecture.md`
-8. `spec/architecture-lock.md`
-9. All four files under `spec/development-state/`
-10. `spec/requirement-traceability.md`
-11. Relevant ADRs
-12. Current Work Order(s), especially `spec/work-orders/WORK-041.md`
-13. Current GitHub refs, open PRs/issues, and CI
-14. `python3 scripts/governance-check.py`
+3. `docs/LLM-ARCHITECT-HANDOFF.md`
+4. `README.md`
+5. `IMPLEMENTATION.md`
+6. `spec/worker-runbook.md`
+7. `docs/ARCHITECT-RUNBOOK.md`
+8. `spec/architecture.md`
+9. `spec/architecture-lock.md`
+10. `spec/development-state/program-state.json`
+11. `spec/development-state/dependency-state.json`
+12. `spec/development-state/frontier-state.json`
+13. `spec/development-state/checkpoint-state.json`
+14. `spec/requirement-traceability.md`
+15. Relevant ADRs
+16. Active Work Order(s), especially `spec/work-orders/WORK-041.md`
+17. Live Git refs, PRs, issues, checks, and exact commit ancestry
+18. `python3 scripts/governance-check.py`
 
 ## Repository truth hierarchy
 
-When sources disagree, prefer them in this order:
+When sources disagree, prefer:
 
-1. Actual Git refs and commit ancestry.
-2. Repository-resident development-state JSON.
-3. The frozen architecture and architecture lock.
-4. The active Work Order.
-5. Verified CI/test/browser evidence bound to exact revisions.
-6. Other repository documentation.
-7. Conversation history — **never authoritative**.
+1. actual Git refs and commit ancestry;
+2. repository-resident development-state JSON;
+3. frozen architecture and architecture lock;
+4. active Work Order;
+5. exact-revision CI/test/browser evidence;
+6. other repository documentation;
+7. conversation history — **never authoritative**.
 
-## Important lessons from W037–W040
+## Lessons that remain standing
 
 ### Evidence/file-count discipline
 
-Whenever a worker reports a changed-file count, independently compare both:
+Cross-check worker-reported file counts against both:
 
 - `git diff --name-only <exact-base>..<exact-head>`
 - GitHub's PR changed-file listing.
 
-Do not accept an evidence package whose count or breakdown differs from either source.
+### Shared-state discipline
 
-### Worker-owned development state is forbidden
-
-Implementation branches must not modify `spec/development-state/*` during active work. Shared development state is Architect-owned.
+Workers must not modify `spec/development-state/*` during active work. Shared state is Architect-owned.
 
 ### Authority boundaries
 
 - Policy remains the authorization boundary.
-- Economic/accounting truth remains owned by the platform authorities.
+- Accounting/economic truth remains canonical to its authority.
 - BYOK credentials remain secret-mediated.
 - Learning remains advisory and cannot become authorization.
 - Edge hard-real-time safety remains local where required.
-- Modality surfaces inspect recorded facts; they do not create alternate lifecycle or policy semantics.
-- Browser/UI state is ephemeral and non-authoritative.
+- Modality views inspect recorded facts and do not create alternate semantics.
+- Browser presentation state is not authority.
 
-### Fail-closed behavior
+### Fail-closed discipline
 
-A missing record may be rendered honestly as absence. An authorization/scope/transport failure must not be silently converted into absence. Errors outside the explicitly handled not-found cases must remain observable.
+Only an explicitly recognized not-found/absence condition may collapse into an empty presentation. Scope/authentication/authorization/transport failures must remain observable. W040 included a concrete review lesson on this point.
 
 ### Exact-head evidence
 
-A green check on an earlier commit is not proof for a later commit. Treat the exact final head as the verification identity for every gate.
+Evidence and CI on an earlier revision do not prove a later revision. Every acceptance decision is bound to the exact final head being merged.
 
-## Known W040 architectural follow-up context
+## Completion boundary
 
-During W040 implementation review, a fail-closed defect was identified in the deployments session read path: catching every `listEvents()` failure and converting it to an empty result would have hidden application-scope/auth failures. That issue was remediated before acceptance/merge. The lesson remains a standing review rule for W041 and all future work: **only explicitly recognized absence should collapse to an empty presentation; authorization/scope/transport failures must propagate.**
+W041 is the final currently-defined UX v2 Work Order. Once W041 is accepted and finalized, stop and re-derive the frontier. There is no currently authorized W042.
 
-## Completion boundary after W041
-
-W041 is the final currently-defined UX v2 Work Order. After W041 is accepted and finalized, the Architect must re-derive the frontier from repository state rather than assuming a next implementation item. There is no authorized W042 in the current roadmap.
-
-A future successor must therefore either:
-
-- conclude the implementation wave and leave the repository in a completed state, or
-- formally create/approve a new architecture/work-order generation before implementation proceeds.
+A future generation requires a formally approved new Work Order and, where necessary, a new architecture decision/version.
 
 ## Fresh-session invariant
 
-A competent fresh LLM Architect must be able to continue from this repository using these artifacts, Git history, and live GitHub state without any prior conversation transcript.
+A fresh LLM Architect must be able to recover and continue this repository from these artifacts, Git history, and live GitHub state without any prior conversation transcript.
