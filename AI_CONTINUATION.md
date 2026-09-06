@@ -16,9 +16,9 @@ Read `docs/LLM-ARCHITECT-HANDOFF.md` immediately after `AGENTS.md`.
 
 The UX v2 sequence is complete through **WORK-041**. The deployment/runtime roadmap is active under approved **Deployment & Runtime Architecture D1.0**.
 
-**D-00 complete. D-01 complete through WORK-042. D-02 complete through WORK-043. D-03 complete through WORK-044. D-04 complete through WORK-045. D-05 is authorized and in-flight through WORK-046.**
+**D-00 complete. D-01 complete through WORK-042. D-02 complete through WORK-043. D-03 complete through WORK-044. D-04 complete through WORK-045. D-05 complete through WORK-046 / PR #10. D-06 is authorized and in-flight through WORK-047 / Issue #11.**
 
-Current frontier: `eligible=[]`, `inFlight=["WORK-046"]`, `blocked=[]`.
+Current frontier: `eligible=[]`, `inFlight=["WORK-047"]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -31,17 +31,17 @@ No deployment phase may be skipped, reordered or inferred from chat. Each phase 
 - `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 - `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment sequence.
 - `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-- `spec/work-orders/WORK-046.md` — authoritative current implementation scope.
-- GitHub Issue #9 — canonical WORK-046 dispatch record on this remote.
+- `spec/work-orders/WORK-047.md` — authoritative current implementation scope.
+- GitHub Issue #11 — canonical WORK-047 dispatch record on this remote.
 
-The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination.
+The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination/cache.
 
 ## D-01 completion
 
 - Work Order: `WORK-042`
 - Canonical issue: #1
 - PR: #2
-- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f9`
+- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f`
 - Worker final head: `c61392260024244db7bab723e9f018d7c582a9e8`
 - Post-merge governance state: finalized
 
@@ -86,18 +86,33 @@ The reference topology is Vercel for experience/delivery, Neon PostgreSQL for au
 - Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; documented real-HTTP protocol and invalid-token 401 reachability/classification evidence retained.
 - Post-merge program/frontier state: finalized.
 
-## D-05 dispatch
+## D-05 completion
 
 - Work Order: `WORK-046`
 - Canonical issue: #9
 - Required branch: `work/WORK-046-execution-worker-deployment-fabric`
 - Dependency: `WORK-045`
 - Assurance: HIGH_ASSURANCE
-- Status: AUTHORIZED / IN-FLIGHT
+- Status: COMPLETE
 - Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9`
-- The worker branch was created directly from the exact dispatch base above. The subsequent handoff/issue-documentation commits on `main` are not part of the worker branch and do not change its authorized base.
+- Corrected final implementation head: `d5e7a25a51aba4d4664348209bfb6393c7dc15d0`
+- PR: #10
+- Merge commit: `5d26365ee9b8e55f41b923328443ae746205757a`
+- Architect blocking finding corrected in Revision 1: external container runner identity is now execution/sandbox scoped and deterministic; distinct identical executions cannot collapse while same-run replay converges.
+- Exact corrected-head verification: governance/deployment checks PASS; full PostgreSQL-backed suite passed twice consecutively at the final head; live container-runner and Cloudflare success remained NOT RUN where credentials were unavailable and were not claimed as PASS.
+- Post-merge program/frontier state: finalized.
 
-D-05 is limited to the execution-plane worker service, provider/runtime adapters, container `ComputeEnvironment`, durable execution leases/heartbeats and stale-worker fencing, cancellation, drain/shutdown, bounded concurrency and quotas, restart/re-acquisition recovery, and optional governed customer-runner registration. Workers remain executors; PostgreSQL and existing execution authorities remain authoritative.
+## D-06 dispatch
+
+- Work Order: `WORK-047`
+- Canonical issue: #11
+- Required branch: `work/WORK-047-production-delivery-observability-release-control`
+- Dependency: `WORK-046`
+- Assurance: HIGH_ASSURANCE
+- Status: AUTHORIZED / IN-FLIGHT
+- Exact authorization base: `5d26365ee9b8e55f41b923328443ae746205757a`
+
+D-06 is limited to production delivery, observability and release control: exact commit/deployment identity, environment promotion gates, migration gating, health/smoke gates, bounded telemetry, error monitoring, rollback controls and cost/quota alerts. D-07 and unrelated product/runtime work remain forbidden.
 
 ## Recovery sequence
 
