@@ -1,6 +1,6 @@
 # WORK-046 — Execution worker deployment fabric
 
-Status: PENDING — Architect authorized for dispatch after state registration
+Status: AUTHORIZED / IN-FLIGHT
 
 Owner: Implementation worker; Architect retains review, merge and state-finalization authority
 
