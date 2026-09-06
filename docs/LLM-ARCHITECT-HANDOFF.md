@@ -120,7 +120,8 @@ Reference topology:
 - Dependency: WORK-045
 - Required branch: `work/WORK-046-execution-worker-deployment-fabric`
 - Assurance: HIGH_ASSURANCE
-- Exact dispatch base: **the final `main` revision after this activation document update and immediately before branch creation; this SHA is recorded on Issue #9 and by the branch ref.**
+- Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9`
+- The branch was created directly from this exact SHA before subsequent documentation-only mainline commits.
 
 D-05 scope is the execution-plane worker service, provider/runtime adapters, container `ComputeEnvironment`, durable execution leases/heartbeats and stale-worker fencing, cancellation, worker drain/shutdown, bounded concurrency and per-environment quotas, restart/re-acquisition recovery, and optional governed customer-runner registration.
 
