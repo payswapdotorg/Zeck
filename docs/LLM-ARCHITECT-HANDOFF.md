@@ -17,11 +17,11 @@
 - D-01 reproducible infrastructure foundation: complete through WORK-042 / PR #2.
 - D-02 database and artifact production path: complete through WORK-043 / PR #4.
 - D-03 asynchronous execution transport: complete through WORK-044 / PR #6.
-- Current implementation order: **WORK-045 — Durable orchestration (D-04)**.
-- Canonical GitHub Issue: **#7**, authorized/in-flight on `payswapdotorg/Zeck`.
-- Required worker branch: `work/WORK-045-durable-orchestration`.
-- Exact dispatch base: `6cfbd936475a457886a174adeb457faf9b974ce9`.
-- Development frontier: `eligible=[]`, `inFlight=["WORK-045"]`, `blocked=[]`.
+- D-04 durable orchestration: complete through WORK-045 / PR #8.
+- Current implementation order: **none authorized**.
+- Canonical GitHub Issue: **#7**, closed as completed on `payswapdotorg/Zeck`.
+- WORK-045 merge commit: `0067c72c8179a6f880f5477789958370376b8de9`.
+- Development frontier: `eligible=[]`, `inFlight=[]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -30,7 +30,7 @@ D-00 Architecture/contract — COMPLETE
 D-01 Reproducible infrastructure foundation — COMPLETE (WORK-042)
 D-02 Database + artifact production path — COMPLETE (WORK-043)
 D-03 Asynchronous execution transport — COMPLETE (WORK-044)
-D-04 Durable orchestration — CURRENT (WORK-045)
+D-04 Durable orchestration — COMPLETE (WORK-045)
 D-05 Execution worker deployment fabric
 D-06 Production delivery, observability and release control
 D-07 Resilience, disaster recovery and provider exit
@@ -44,7 +44,7 @@ Workers may not skip, reorder or infer phases from chat. A phase becomes executa
 1. `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 2. `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment implementation sequence.
 3. `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-4. `spec/work-orders/WORK-045.md` — authoritative executable scope for the active increment.
+4. `spec/work-orders/WORK-045.md` — authoritative completed D-04 scope.
 
 Core principle:
 
@@ -95,19 +95,23 @@ Reference topology:
 - Live Cloudflare successful round-trip: NOT RUN due unavailable provider credentials; fail-closed provider reachability evidence retained.
 - Post-merge program/dependency/frontier state finalized by Architect; repository governance check passes on main.
 
-## WORK-045 / D-04 dispatch
+## WORK-045 / D-04 completion
 
 - Work Order: `spec/work-orders/WORK-045.md`
 - Canonical issue: #7
-- Status: AUTHORIZED / IN-FLIGHT
+- Status: COMPLETE
 - Dependency: WORK-044
 - Required branch: `work/WORK-045-durable-orchestration`
 - Assurance: HIGH_ASSURANCE
 - Exact dispatch base: `6cfbd936475a457886a174adeb457faf9b974ce9`
-
-D-04 scope is limited to durable orchestration: provider-neutral workflow abstraction, durable execution/workflow correlation, waits, callbacks, approvals, bounded retries, timeout/expiration, state compaction, provider-limit handling, and restart/resume recovery. Workflow state remains non-authoritative and large artifact bytes/secrets remain outside it.
-
-Workers must not implement D-05 worker fabric, D-06 release/observability expansion, unrelated product runtime work, or a second execution state machine.
+- Implementation head: `b8a9536d662e9195c3044304fb61829360856048`
+- PR: #8
+- Merge commit: `0067c72c8179a6f880f5477789958370376b8de9`
+- Architect acceptance completed before merge.
+- Full regression at exact implementation head: 330 files / 4573 tests, 4562 passed, 11 skipped, 0 failed, twice consecutively.
+- Governance and deployment validation: PASS at exact implementation head.
+- Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; real-HTTP protocol evidence and invalid-token 401 reachability/classification evidence retained.
+- Post-merge program/frontier state finalized by Architect; no successor Work Order is currently authorized.
 
 ## Fresh-session recovery order
 
@@ -120,9 +124,8 @@ Workers must not implement D-05 worker fabric, D-06 release/observability expans
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
 9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, ACR-002, and `docs/FORK-CANONICAL-REMOTE.md`.
-10. Read `spec/work-orders/WORK-045.md` in full.
-11. Inspect live Git refs, canonical Issue #7, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry.
-12. Run `python3 scripts/governance-check.py` before changing state or implementation.
+10. Inspect complete Work Orders and live Git refs, Issues, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry and current frontier.
+11. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
 
@@ -152,7 +155,7 @@ Workers must not implement D-05 worker fabric, D-06 release/observability expans
 
 ## Completion boundary
 
-WORK-045 is currently the only authorized deployment implementation order. Do not invent D-05 or any product-runtime Work Order during active D-04 implementation. The next phase becomes executable only after D-04 acceptance, merge and post-merge finalization through a new repository-approved Work Order.
+WORK-045 / D-04 is complete and its post-merge state is finalized. Do not invent or activate D-05, a product-runtime Work Order, or any successor implementation order solely from conversation. The next phase becomes executable only after the Architect creates and registers a new repository-approved Work Order, with explicit dependencies, declared surfaces, acceptance criteria and evidence requirements, and updates the authoritative frontier.
 
 ## Fresh-session invariant
 
