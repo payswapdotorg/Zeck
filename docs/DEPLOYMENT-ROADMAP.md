@@ -1,271 +1,102 @@
-# Zeck — Deployment Roadmap
+# Zeck Deployment Roadmap
 
-**Status:** AUTHORITATIVE / APPROVED
-**Architecture:** Deployment & Runtime Architecture D1.0
-**Parent:** `spec/architecture.md` v1.0 (frozen)
-**Approved:** 2026-09-05
+Deployment & Runtime Architecture **D1.0** is subordinate to frozen core architecture **v1.0**. This document is the authoritative deployment sequence; chat does not authorize phase changes.
 
-## Source-of-truth rule
+## D-00 — Architecture and deployment contract
 
-This roadmap is the authoritative sequence for implementing Zeck deployment infrastructure. `docs/DEPLOYMENT-ARCHITECTURE.md` is the authoritative target architecture. `ACR-002` records the architectural approval.
+**Goal:** approve the deployment/runtime architecture and its authority boundaries.
 
-No worker may infer deployment work from chat. Each roadmap phase becomes executable only through an approved repository Work Order with explicit surfaces, dependencies, acceptance criteria and evidence requirements.
+**Status:** COMPLETE.
 
-## Strategic objective
+## D-01 — Reproducible infrastructure foundation
 
-Reach a commercially deployable, low-cost, provider-portable Zeck platform without allowing hosting infrastructure to become domain authority.
+**Goal:** define reproducible, environment-separated infrastructure and provider adapters.
 
-The roadmap optimizes for five properties:
+**Scope:** repository-defined environments; deployment manifests; provider-neutral configuration; secret references; bootstrap and validation; self-hosting boundary.
 
-1. lowest sensible operating cost during early product development;
-2. fast environment creation and teardown;
-3. durable authority and recovery;
-4. safe autonomous execution;
-5. clean provider substitution as Zeck grows.
+**Status:** COMPLETE — WORK-042 / PR #2, merge `b75e23bacf9a9ace76e88e643ea2a272f588a0f9`.
 
-## Provider strategy
+## D-02 — Database and artifact production path
 
-### Reference development stack
+**Goal:** establish authoritative PostgreSQL production state and durable artifact storage.
 
-- Vercel Hobby for personal/non-commercial experience previews;
-- Neon Free for disposable databases;
-- Cloudflare R2 Free for development artifacts;
-- Cloudflare Queues Free for development dispatch transport;
-- Cloudflare Workflows Free where orchestration fits its limits;
-- Upstash Redis Free for ephemeral coordination;
-- Clerk/Resend free tiers where permitted by their current terms.
+**Scope:** managed PostgreSQL adapter; deterministic migrations; backup/restore tooling; Cloudflare R2 artifact path; large-byte separation from PostgreSQL.
 
-### Reference commercial MVP stack
+**Acceptance:** authority remains in PostgreSQL; large bytes do not pass through PostgreSQL unnecessarily; restore is tested, not merely documented.
 
-- Vercel Pro or equivalent commercially permitted experience/API hosting;
-- Neon Launch PostgreSQL;
-- Cloudflare R2;
-- Cloudflare Queues + Workers + Workflows;
-- Upstash pay-as-you-go or appropriate fixed tier;
-- Clerk and Resend at the minimum commercial tier required by actual usage.
+**Status:** COMPLETE — WORK-043 / PR #4, merge `2175bc6c73ad0a8d4b5ab2efb6a8930cfdb01b17`.
 
-### Growth stack
+## D-03 — Asynchronous execution transport
 
-- dedicated control-plane compute;
-- independently scalable execution workers;
-- stronger sandbox isolation;
-- regional worker pools;
-- automated DR;
-- provider redundancy for critical external services.
+**Goal:** make execution dispatch durable and restartable.
 
-## Roadmap phases
+**Scope:** queue adapter; durable dispatch records; idempotent consumers; retry/dead-letter behavior; queue metrics; replay tooling; execution-to-message correlation.
 
-### D-00 — Architecture and deployment contract
+**Acceptance:** worker crashes are recoverable; duplicate delivery cannot duplicate authoritative effects; a queued message is never mistaken for execution success.
 
-**Goal:** Freeze the operational deployment target before implementation starts.
+**Status:** COMPLETE — WORK-044 / PR #6, merge `985ca850faaa620cf3df05675f7af74e2073f188`.
 
-Deliverables:
+## D-04 — Durable orchestration
 
-- D1.0 deployment architecture;
-- provider substitution matrix;
-- environment model;
-- secret/reference model;
-- deployment naming conventions;
-- resource ownership conventions;
-- cost-control policy;
-- failure/degraded-mode rules.
+**Goal:** add long-lived orchestration for waits, callbacks, approvals, retries and deployment operations.
 
-**Gate:** Repository contains one authoritative deployment target and no contradictory deployment guidance.
+**Scope:** workflow adapter; execution/workflow correlation; resume-after-failure; human-in-the-loop waits; timeout/expiration; state compaction; provider-limit monitoring.
 
-**Status:** COMPLETE — this roadmap and D1.0 architecture are approved by the Architect.
+**Acceptance:** workflow state remains subordinate to Zeck authority; waiting executions survive process restarts; large artifacts and secret values stay outside workflow state.
 
-### D-01 — Reproducible infrastructure foundation
+**Status:** COMPLETE — WORK-045 / PR #8, merge `0067c72c8179a6f880f5477789958370376b8de9`.
 
-**Goal:** Make every required infrastructure resource reproducible from repository-controlled configuration.
+## D-05 — Execution worker deployment fabric
 
-Scope:
+**Goal:** deploy actual model/tool/agent/program execution outside request lifecycle.
 
-- provider projects/accounts/resource naming;
-- environment separation;
-- Neon projects/branches;
-- R2 buckets;
-- Redis databases;
-- queues/workflows;
-- Vercel projects;
-- configuration manifests;
-- environment variable contracts;
-- secret references;
-- health endpoints;
-- deployment identifiers.
+**Scope:** worker service; provider adapters in worker runtime; container `ComputeEnvironment`; execution leases/heartbeats; cancellation; worker drain/shutdown; concurrency controls; per-environment quotas; optional customer runner registration.
 
-Acceptance:
+**Acceptance:** no long-running execution depends on an HTTP request staying open; worker failure converges to durable execution state; untrusted code receives no ambient credentials or unrestricted host access.
 
-- no required production behavior depends on undocumented console configuration;
-- resources can be recreated from repository instructions/configuration;
-- credentials never enter Git history;
-- smoke checks identify each environment exactly.
+**Status:** COMPLETE — WORK-046 / PR #10, merge `5d26365ee9b8e55f41b923328443ae746205757a`. Revision 1 corrected execution-scoped external runner identity/idempotency before acceptance.
 
-**Status:** COMPLETE — WORK-042 / PR #2 merged.
+## D-06 — Production delivery, observability and release control
 
-### D-02 — Database and artifact production path
+**Goal:** make deployments safe to promote, inspect, roll back and audit.
 
-**Goal:** Connect Zeck authority to managed production-grade services.
+**Scope:** GitHub-to-provider CI/CD; local → CI → preview → staging → production promotion controls; exact commit/deployment identity; migration gating; health/smoke gates; OpenTelemetry-compatible traces/metrics/logs; error monitoring; quota/cost alerts; release rollback.
 
-Scope:
+**Acceptance:** every production deployment maps to an exact Git commit; failed releases can be rolled back without changing durable domain state; operational alerts exist before resource exhaustion; preview/staging/production credentials and state remain isolated.
 
-- Neon PostgreSQL adapter/configuration;
-- migrations and startup checks;
-- transaction/connection-pool validation;
-- R2 `ObjectStore` adapter/configuration;
-- signed upload/download flow where applicable;
-- artifact hash/integrity checks;
-- retention/cleanup jobs;
-- backup/restore procedures.
+**Status:** COMPLETE — WORK-047 / Issue #11 / PR #12, merge `ad27648ebf78f868a749cdbc924f84e20dd62161`.
 
-Acceptance:
+Exact synchronized GitHub Actions at the accepted head passed: Repository Governance; Deployment Validation; Deployment Release Control. Live provider/OTLP infrastructure not available in the worker environment remains explicitly NOT RUN rather than claimed as PASS.
 
-- authority remains in PostgreSQL;
-- large bytes do not pass through PostgreSQL unnecessarily;
-- restore is tested, not merely documented.
+## D-07 — Resilience, disaster recovery and provider exit
 
-**Status:** COMPLETE — WORK-043 / PR #4 merged.
+**Goal:** prove Zeck can survive infrastructure loss and provider substitution.
 
-### D-03 — Asynchronous execution transport
+**Work Order:** `WORK-048`.
 
-**Goal:** Make execution dispatch durable and restartable.
+**Issue:** #13.
 
-Scope:
+**Required branch:** `work/WORK-048-resilience-disaster-recovery-provider-exit`.
 
-- queue adapter;
-- durable dispatch records;
-- idempotent consumers;
-- retry/dead-letter behavior;
-- queue backlog metrics;
-- replay tooling;
-- execution-to-message correlation.
+**Dependency:** WORK-047.
 
-Acceptance:
+**Scope:** PostgreSQL recovery drills; artifact recovery drills; queue/workflow replay; regional worker evacuation; provider outage simulations; R2 → alternate S3-compatible store migration proof; PostgreSQL → alternate managed PostgreSQL proof; Vercel → alternate web/API host proof; documented/measured RTO/RPO by environment.
 
-- worker crashes are recoverable;
-- duplicate delivery cannot duplicate authoritative effects;
-- a queued message is never mistaken for execution success.
+**Acceptance:** authority can be restored from repository-defined procedures; provider replacement changes adapters/configuration rather than domain semantics; disaster recovery evidence is repeatable; recovery and replay preserve identity, provenance, idempotency and tenant isolation.
 
-**Status:** COMPLETE — WORK-044 / PR #6 merged.
+**Status:** AUTHORIZED / PENDING — D-07 became executable only after WORK-047 was accepted, merged and post-merge state finalized.
 
-### D-04 — Durable orchestration
+## D-08 — Growth and enterprise hardening
 
-**Goal:** Add long-lived orchestration for waits, callbacks, approvals, retries and deployment operations.
+**Goal:** move from lean MVP operations to high-assurance multi-tenant infrastructure.
 
-Scope:
+**Scope:** regional/data-residency deployment; private connectivity; runtime tenant isolation; stronger compute isolation; dedicated customer runners; high-availability database topology; advanced audit/compliance controls; independent provider redundancy.
 
-- workflow adapter;
-- execution/workflow correlation;
-- resume-after-failure behavior;
-- human-in-the-loop waits;
-- timeout/expiration handling;
-- orchestration state compaction;
-- provider-limit monitoring.
+**Gate:** D-08 may only begin after measured production usage, explicit availability/security requirements and an Architect-approved architecture extension.
 
-Acceptance:
-
-- workflow state remains subordinate to Zeck authority;
-- waiting executions survive process restarts;
-- large artifacts and secret values stay outside workflow state.
-
-**Status:** COMPLETE — WORK-045 / PR #8 merged.
-
-### D-05 — Execution worker deployment fabric
-
-**Goal:** Deploy actual model/tool/agent/program execution outside the request lifecycle.
-
-Scope:
-
-- worker service;
-- provider adapters in worker runtime;
-- container `ComputeEnvironment` implementation;
-- execution leases/heartbeats;
-- cancellation;
-- worker drain/shutdown;
-- concurrency controls;
-- per-environment quotas;
-- optional customer runner registration.
-
-Acceptance:
-
-- no long-running execution depends on an HTTP request staying open;
-- worker failure converges to durable execution state;
-- untrusted code receives no ambient credentials or unrestricted host access.
-
-**Status:** COMPLETE — WORK-046 / PR #10 merged at `5d26365ee9b8e55f41b923328443ae746205757a`. Revision 1 corrected the execution-scoped external runner identity/idempotency defect before acceptance.
-
-### D-06 — Production delivery, observability and release control
-
-**Goal:** Make deployments safe to promote, inspect, roll back and audit.
-
-Scope:
-
-- GitHub-to-provider CI/CD;
-- preview → staging → production promotion;
-- exact commit/deployment identity;
-- migration gating;
-- health/smoke gates;
-- OpenTelemetry traces/metrics/logs;
-- error monitoring;
-- alert thresholds;
-- deployment rollback;
-- cost/quota alerts.
-
-Acceptance:
-
-- every production deployment maps to an exact Git commit;
-- failed releases can be rolled back without changing domain state;
-- operational alerts exist before resource exhaustion.
-
-**Status:** CURRENT / AUTHORIZED — WORK-047 / Issue #11. Exact authorization base: `5d26365ee9b8e55f41b923328443ae746205757a`. Required branch: `work/WORK-047-production-delivery-observability-release-control`.
-
-### D-07 — Resilience, DR and provider exit
-
-**Goal:** Prove Zeck can survive infrastructure loss and provider substitution.
-
-Scope:
-
-- PostgreSQL recovery drills;
-- artifact recovery drills;
-- queue/workflow replay;
-- regional worker evacuation;
-- provider outage simulations;
-- R2 → alternate S3 store migration proof;
-- PostgreSQL → alternate managed PostgreSQL proof;
-- Vercel → alternate web/API host proof;
-- documented RTO/RPO by environment.
-
-Acceptance:
-
-- authority can be restored from repository-defined procedures;
-- provider replacement changes adapters/configuration rather than domain semantics;
-- disaster recovery evidence is repeatable.
-
-**Status:** BLOCKED — D-07 is not authorized until D-06 is complete and post-merge state is finalized.
-
-### D-08 — Growth and enterprise hardening
-
-**Goal:** Move from lean MVP operations to high-assurance multi-tenant infrastructure.
-
-Scope:
-
-- regional/data-residency deployment;
-- private connectivity;
-- tenant isolation at runtime;
-- stronger compute isolation;
-- dedicated customer runners;
-- high-availability database topology;
-- advanced audit and compliance controls;
-- independent provider redundancy.
-
-Gate:
-
-D-08 may only begin after measured production usage, explicit availability/security requirements and an Architect-approved architecture extension.
-
-**Status:** BLOCKED — downstream of D-07 and explicit architecture extension requirements.
+**Status:** BLOCKED — downstream of D-07 and its explicit architecture-extension gate.
 
 ## Execution ordering
-
-The default dependency chain is:
 
 ```text
 D-00
@@ -279,22 +110,13 @@ D-00
   -> D-08
 ```
 
-Some phases may be split into parallel Work Orders when their declared surfaces do not conflict. The Architect must derive concurrency from actual repository state; the roadmap does not authorize unsafe parallelism.
+Some phases may be split into parallel Work Orders when their declared surfaces do not conflict. The Architect derives concurrency from actual repository state; the roadmap does not authorize unsafe parallelism.
 
 ## Free-tier operating doctrine
 
-Free tiers are treated as **development accelerators**, not durability or availability guarantees.
+Free tiers are development accelerators, not durability or availability guarantees.
 
-The implementation must:
-
-- meter usage;
-- alert before quota exhaustion;
-- make limits visible;
-- avoid automatic uncontrolled paid overage where a provider permits hard caps;
-- keep production resources isolated from disposable free-tier resources;
-- preserve migration paths before a free tier becomes operationally critical.
-
-The goal is not to make Zeck permanently free. The goal is to postpone fixed infrastructure spend until product usage justifies it while preserving production-grade architecture.
+The implementation must meter usage, alert before quota exhaustion, make limits visible, avoid uncontrolled paid overage where hard caps exist, isolate production resources from disposable free-tier resources, and preserve migration paths before a free tier becomes operationally critical.
 
 ## Environment promotion
 
@@ -313,16 +135,14 @@ Promotion requires successful checks appropriate to the phase. Production does n
 Deployment architecture is complete when:
 
 1. all production resources are repository-defined;
-2. the control plane and execution plane can be deployed independently;
+2. control and execution planes can be deployed independently;
 3. durable authority has tested backup/restore;
 4. execution dispatch is restartable and idempotent;
 5. artifacts survive compute loss;
 6. secrets are provider-managed and never source-controlled;
-7. observability can reconstruct an execution end-to-end;
-8. production releases are exact-commit attributable and rollbackable;
-9. provider limits and spend are actively monitored;
-10. at least one replacement implementation has been demonstrated for each critical provider category.
+7. end-to-end observability can reconstruct executions without secrets;
+8. releases are attributable to exact commits and rollbackable without domain mutation;
+9. active spend/quota monitoring prevents uncontrolled overage;
+10. at least one replacement implementation is demonstrated for each critical provider category.
 
-## Change-control rule
-
-This roadmap can be amended only by the Architect through a repository-resident architecture/roadmap change. Workers may not add, remove or reorder deployment phases by implementation convenience.
+Provider access that is unavailable is recorded as **NOT RUN**, never converted into a PASS.
