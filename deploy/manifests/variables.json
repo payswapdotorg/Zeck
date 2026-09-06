@@ -257,6 +257,99 @@
       "required": false,
       "credentialShaped": false,
       "description": "Per-request timeout for queue transport HTTP calls. Bounded [100,120000]; default 10000."
+    },
+    {
+      "name": "ZECK_WORKFLOW_NAME",
+      "type": "workflow-resource-name",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "Cloudflare Workflows name (the deployed workflow script name, up to 64 characters) the environment's orchestration instances run on, behind the workflow orchestration port. Ordinary non-secret provider-resource configuration; the name is deterministic from deploy/manifests/resources.json (kind cf-workflow) and resolved at deployment time. See deploy/README.md for the workflow-code contract."
+    },
+    {
+      "name": "ZECK_WORKFLOW_PROBE_NAME",
+      "type": "workflow-resource-name",
+      "required": false,
+      "credentialShaped": false,
+      "environments": ["preview", "staging", "production"],
+      "description": "Cloudflare Workflows name of the DEDICATED operator-owned probe workflow used by the orchestration round-trip verification (deploy:smoke and deploy:workflow probe). Must be a workflow reserved for probe traffic and MUST differ from ZECK_WORKFLOW_NAME (equal values are rejected fail-closed): the probe never targets the orchestration workflow, and it only ever creates, observes and terminates its own exact instance, so application orchestration can never be consumed, discarded or delayed by a probe. The probe workflow carries no application state and is not part of the environment's authoritative resource inventory."
+    },
+    {
+      "name": "ZECK_WORKFLOW_API_BASE_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Workflow orchestration REST API base URL override. Defaults to https://api.cloudflare.com/client/v4; override only for local protocol gateways in verification."
+    },
+    {
+      "name": "ZECK_WORKFLOW_API_TOKEN",
+      "type": "workflow-api-token",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's workflow-api-token secret (the Cloudflare API token with Workflows write for the environment's workflow). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_WORKFLOW_API_TOKEN_REF; resolution happens immediately before the authorized workflow adapter call (src/platform/secret-store/adapters/env-secret-store.ts)."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_START_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum provider instance-start attempts for one orchestration wait before the wait becomes deferred (explicit, recoverable \u2014 the declared orchestration-paused degradation). Repository default 3; bounded [1,100]; no unbounded instance starts exist."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_SIGNAL_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum provider-signal delivery attempts for one resolving notification before delivery stops (the wait is already settled authoritatively; the compaction run terminates the lingering instance). Repository default 3; bounded [1,100]."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_EFFECT_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum governed-effect application attempts for one wait resolution (transient failures only; permanent governed refusals land immediately as abandoned waits with the exact reason). Repository default 3; bounded [1,100]."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_REPLACEMENTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum replacements issued from one orchestration wait lineage (bounded re-arm of abandoned/superseded waits; the root lineage budget). Repository default 3; bounded [1,100]."
+    },
+    {
+      "name": "ZECK_WORKFLOW_RETRY_BACKOFF_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Base backoff in milliseconds for the deterministic linear retry schedule (attempt * base, capped at 60s) across instance starts, signal deliveries and effect applications. Repository default 500."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_PAYLOAD_BYTES",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum canonical bytes for orchestration pointer/signal payloads (reference-only: ids, keys, digests). Repository default 4096; bounded [256,65536]; large artifact bytes and secret values never enter workflow state \u2014 enforced fail-closed before any wire call."
+    },
+    {
+      "name": "ZECK_WORKFLOW_MAX_RETAINED_NOTIFICATIONS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum notification rows retained per wait before refused/stale notifications fold into the durable folded_notifications counter (bounded, inspectable orchestration state). Repository default 32; bounded [1,10000]."
+    },
+    {
+      "name": "ZECK_WORKFLOW_REQUEST_TIMEOUT_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Per-request timeout for workflow orchestration HTTP calls. Bounded [100,120000]; default 10000."
+    },
+    {
+      "name": "ZECK_WORKFLOW_WAIT_TIMEOUT_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Default wait deadline in milliseconds applied when arming orchestration waits (the deadline elapses through the governed expiration path \u2014 never by the provider's clock). 0 disables the deadline (the wait resolves only by notification); bounded [0,2592000000] (30 days); repository default 0."
     }
   ]
 }

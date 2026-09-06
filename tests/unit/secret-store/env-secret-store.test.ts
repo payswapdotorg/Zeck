@@ -96,6 +96,18 @@ describe("the environment-materialization secret store", () => {
     expect(resolved.classification).toBe("provider-credential");
   });
 
+  test("the workflow-api-token secret resolves through the D-04 materialization map", async () => {
+    const store = createEnvSecretStore({
+      environment: "local",
+      env: { ...ENV, ZECK_WORKFLOW_API_TOKEN: "workflow-token-material" },
+    });
+    const resolved = await store.resolve(
+      asSecretReference("zeck-secret://local/workflow-api-token"),
+    );
+    expect(resolved.plaintext).toBe("workflow-token-material");
+    expect(resolved.classification).toBe("provider-credential");
+  });
+
   test("the store side is read-only (writing secrets is not a platform capability)", async () => {
     await expect(
       localStore().store({ material: "new-secret", classification: "provider-credential" }),

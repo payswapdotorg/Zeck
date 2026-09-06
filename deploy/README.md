@@ -1,4 +1,4 @@
-# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043, D-03 / WORK-044)
+# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043, D-03 / WORK-044, D-04 / WORK-045)
 
 Reproducible, environment-separated infrastructure configuration for Zeck,
 per `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0) and `docs/DEPLOYMENT-ROADMAP.md`
@@ -87,6 +87,12 @@ bun run deploy:queue -- republish --environment local     # bounded crash/outage
 bun run deploy:queue -- replay --environment local --envelope <uuid>   # bounded replay of a dead-lettered lineage
 bun run deploy:queue -- consume --environment local --batches 1        # drain deliveries (idempotent, governed)
 bun run deploy:queue -- probe --environment preview       # real transport round-trip on the dedicated probe queue
+# D-04 (WORK-045): the durable-orchestration operator surface
+bun run deploy:workflow -- inspect --environment local    # orchestration snapshot + provider limits (read-only)
+bun run deploy:workflow -- scan --environment local       # arm waits for waiting executions (correlation-first)
+bun run deploy:workflow -- recover --environment local    # restart/outage recovery + due deadlines (governed)
+bun run deploy:workflow -- compact --environment local    # terminate instances of terminal waits (bounded state)
+bun run deploy:workflow -- probe --environment preview    # real orchestration round-trip on the dedicated probe workflow
 ```
 
 ## Local environment reproduction (fresh checkout)
@@ -291,3 +297,113 @@ from PostgreSQL and re-enters the governed execution path (the executions
 module's single write path) with a deterministic idempotency key —
 duplicate delivery, consumer crash and ack loss converge to exactly one
 authoritative effect. Queue state is transport progress evidence only.
+
+## The D-04 runtime configuration (durable orchestration)
+
+The durable orchestration (Cloudflare Workflows behind the
+provider-neutral `src/platform/workflow/port.ts`) is configured exactly
+like the D-02/D-03 paths: ordinary variables for the endpoint identity,
+one environment-materialized secret for the credential, and
+repository-declared bounded budgets.
+
+```bash
+# reference binding (non-secret URI, environment-scoped):
+export ZECK_SECRET_WORKFLOW_API_TOKEN_REF='zeck-secret://<environment>/workflow-api-token'
+
+# materialized secret value (credential-shaped; environment-only, never committed):
+export ZECK_WORKFLOW_API_TOKEN='<cloudflare api token with Workers Scripts write>'
+
+# ordinary (non-secret) orchestration configuration:
+export ZECK_CLOUDFLARE_ACCOUNT_ID='<32-hex account id>'
+export ZECK_WORKFLOW_NAME='<deployed workflow script name, up to 64 chars>'
+
+# the DEDICATED operator-owned probe workflow (required by deploy:smoke's
+# durable-orchestration probe and deploy:workflow probe — never the
+# orchestration workflow):
+export ZECK_WORKFLOW_PROBE_NAME='<dedicated probe workflow name>'
+
+# bounded budgets (repository defaults: 3 / 3 / 3 / 3 / 500ms — all optional):
+export ZECK_WORKFLOW_MAX_START_ATTEMPTS=3    # then: deferred (recoverable, explicit)
+export ZECK_WORKFLOW_MAX_SIGNAL_ATTEMPTS=3   # then: delivery stops (compaction terminates)
+export ZECK_WORKFLOW_MAX_EFFECT_ATTEMPTS=3   # then: abandoned with the exact reason
+export ZECK_WORKFLOW_MAX_REPLACEMENTS=3      # bounded re-arm per wait lineage
+export ZECK_WORKFLOW_RETRY_BACKOFF_MS=500
+
+# bounded state (reference-only payloads; bounded notification retention):
+export ZECK_WORKFLOW_MAX_PAYLOAD_BYTES=4096
+export ZECK_WORKFLOW_MAX_RETAINED_NOTIFICATIONS=32
+
+# default wait deadline (0 = none; bounded [0, 30 days]):
+export ZECK_WORKFLOW_WAIT_TIMEOUT_MS=0
+```
+
+Provider prerequisites (account-plane, operator-owned): the workflow
+Worker script is deployed under the deterministic name from
+`resources.json` (kind `cf-workflow`, e.g.
+`zeck-<environment>[-<branch>]-orchestration`), and the token carries
+`Workers Scripts Write`. `deploy:smoke` probes the real orchestration
+(create → observe → terminate round-trip) when the materialization is
+present and reports the honest `orchestration-paused` degraded mode
+otherwise — the authoritative execution, budget, policy and ledger
+state in PostgreSQL is untouched either way.
+
+### The workflow-code contract (account-plane)
+
+The deployed workflow script is operator-plane infrastructure: Zeck's
+machinery drives it purely through the port contract (instance start
+with a reference-only pointer payload; observe; event signals
+`zeck.callback` / `zeck.approval` / `zeck.deadline` / `zeck.supersede`;
+termination). The contract the workflow code must honor: **hold the
+wait** (`sleep` bounded by the deadline), **await the events**, and
+**never act on execution state** — instance completion is never
+execution success, and Zeck never relies on the instance for
+continuation (the PostgreSQL wait record is the authority). Orphaned
+instances from a crash between provider-accept and the armed mark are
+bounded waste (provider retention is 30 days documented); they are
+traceable by the deterministic instance hint `zeck-w-<digest>-a<attempt>`
+and disposable at operator discretion — instances are non-authoritative
+transport state.
+
+### The orchestration probe and the dedicated probe workflow
+
+The orchestration probe (`deploy:smoke`'s durable-orchestration concern
+and `deploy:workflow -- probe`) NEVER runs against the orchestration
+workflow. It executes its create → observe → terminate round trip on a
+**dedicated operator-owned probe workflow** (`ZECK_WORKFLOW_PROBE_NAME`):
+a workflow reserved for probe traffic, carrying no application state and
+not part of the environment's authoritative resource inventory.
+
+The probe terminates **exactly the one instance it created in that run**
+(exact instance identity). It never signals, pauses, restarts or
+terminates any other instance — instances are addressed by id, and the
+probe only ever addresses ids it created itself. Configuration guards
+enforce the boundary fail closed: `probe()` without
+`ZECK_WORKFLOW_PROBE_NAME` refuses, and a probe workflow equal to the
+orchestration workflow (`ZECK_WORKFLOW_PROBE_NAME == ZECK_WORKFLOW_NAME`)
+is rejected at configuration validation. A probe can therefore never
+consume, discard or delay genuine orchestration.
+
+### The orchestration model (the authority boundary)
+
+Every orchestration wait has a durable PostgreSQL correlation record
+(`workflow_orchestration.waits`) committed BEFORE any provider workflow
+instance is created or relied upon; the instance receives only a
+reference-only correlation pointer (ids + digests; large artifact bytes
+and secrets never enter workflow state). Resolution notifications
+(callbacks, human approvals) are deduplicated by their deterministic key
+with exactly ONE accepted notification per wait (first resolution wins,
+physically enforced); the governed effect re-enters the executions
+module's single write path with a deterministic idempotency key —
+duplicate notifications, crash-after-mutation, restart recovery and
+provider retries all converge to exactly one authoritative effect.
+Deadlines elapse through the governed expiration path on the
+PostgreSQL deadline (never the provider's clock). Waiting executions
+survive process and provider-worker restarts: recovery scans
+(`deploy:workflow -- recover`) re-drive deferred instance starts,
+re-apply pending governed effects and re-deliver undelivered provider
+signals, all from PostgreSQL authority. Terminal waits have their
+provider instances terminated by the compaction run
+(`deploy:workflow -- compact`); refused-notification evidence folds
+into a durable counter beyond the retention bound (bounded, inspectable
+state). Workflow state is orchestration progress evidence only — it
+never establishes execution success.
