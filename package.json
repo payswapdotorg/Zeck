@@ -23,7 +23,8 @@
     "deploy:restore": "bun deploy/restore.ts",
     "deploy:queue": "bun deploy/queue.ts",
     "deploy:workflow": "bun deploy/workflow.ts",
-    "deploy:worker": "bun deploy/worker.ts"
+    "deploy:worker": "bun deploy/worker.ts",
+    "deploy:release": "bun deploy/release.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",

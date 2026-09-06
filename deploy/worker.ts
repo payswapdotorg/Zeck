@@ -121,6 +121,10 @@ import {
 import { SqlComputeWorkerStore } from "../src/platform/compute/pg-store";
 import { parseConnectionConfig } from "../src/platform/db/connection";
 import { PgDatabasePort } from "../src/platform/db/pg-database-port";
+import type { EnvironmentId } from "../src/platform/deployment/naming";
+import { loadTelemetryConfig } from "../src/platform/observability/config";
+import { createOtlpExporter } from "../src/platform/observability/otlp";
+import { BoundedTelemetrySink, bindSinkEnvironment } from "../src/platform/observability/telemetry";
 import {
   createCloudflareQueuesTransport,
   loadCloudflareQueuesRuntimeConfig,
@@ -264,13 +268,50 @@ function containerRuntimeConfig(): ContainerRuntimeClientConfig | null {
 }
 
 /**
+ * The D-06 worker telemetry composition: the bounded sink over the
+ * OTLP exporter when ZECK_OTLP_ENDPOINT is configured (the bearer
+ * token resolved through the environment-scoped secret store
+ * immediately before export composition — never logged), else the
+ * noop exporter (the declared logs-only degraded mode). The sink is
+ * environment-bound; the fabric emits through the seam.
+ */
+async function workerTelemetrySink(environment: EnvironmentId): Promise<BoundedTelemetrySink> {
+  const config = loadTelemetryConfig(process.env);
+  let token: string | undefined;
+  const reference = process.env.ZECK_SECRET_OTLP_AUTH_TOKEN_REF;
+  if (reference !== undefined && reference.trim() !== "") {
+    const store = createEnvSecretStore({ environment, env: process.env });
+    const secret = await store.resolve(asSecretReference(reference));
+    token = secret.plaintext;
+  }
+  const exporter =
+    config.endpoint === null
+      ? undefined
+      : createOtlpExporter({
+          endpoint: config.endpoint,
+          token,
+          requestTimeoutMs: config.requestTimeoutMs,
+        });
+  const sink = new BoundedTelemetrySink({
+    exporter: exporter ?? { export: async () => ({ kind: "accepted", accepted: 0 }) },
+  });
+  return sink;
+}
+
+/**
  * The D-05 worker composition (the process's own composition root):
- * every governed authority REAL and fail-closed.
+ * every governed authority REAL and fail-closed. The D-06 telemetry
+ * seam is composed here (bounded, environment-bound, optional).
  */
 async function composeWorker(
   db: PgDatabasePort,
   applicationId: string,
-): Promise<{ fabric: ExecutionWorkerFabric; workerId: string }> {
+  environment: EnvironmentId,
+): Promise<{
+  fabric: ExecutionWorkerFabric;
+  workerId: string;
+  telemetry: BoundedTelemetrySink;
+}> {
   const generateId = createUuidv7Generator();
 
   // Policies: the REAL authority behind BOTH admission seams, seeded
@@ -370,6 +411,7 @@ async function composeWorker(
   });
   const lease = createWorkerLeaseAuthority({ service: longRunning });
   const workerId = generateId();
+  const telemetry = await workerTelemetrySink(environment);
   const fabric = createExecutionWorkerFabric(
     {
       workerActorId: TOOL_WORKER_ACTOR_ID,
@@ -399,16 +441,21 @@ async function composeWorker(
       policy,
       generateId,
       now: () => new Date(),
+      telemetry: bindSinkEnvironment(telemetry, environment),
     },
     {
       workerId,
       applicationId,
       kind: "first-party",
       declaredConcurrency: policy.maxInFlightPerWorker,
-      metadata: { tool: "deploy/worker", composed: "d05-worker-fabric" },
+      metadata: {
+        tool: "deploy/worker",
+        composed: "d05-worker-fabric",
+        telemetry: "d06-observability",
+      },
     },
   );
-  return { fabric, workerId };
+  return { fabric, workerId, telemetry };
 }
 
 async function main(): Promise<void> {
@@ -629,13 +676,15 @@ async function main(): Promise<void> {
     process.exit(2);
   }
   await withAuthoritativeDatabase(environment, async (db) => {
-    const { fabric, workerId } = await composeWorker(db, applicationId);
+    const { fabric, workerId, telemetry } = await composeWorker(db, applicationId, environment);
     await fabric.register();
 
     if (command === "run-once") {
       const consume = await fabric.consumeBatch();
       const recovery = await fabric.recover();
       await fabric.heartbeat();
+      await telemetry.flush();
+      const telemetryStats = telemetry.stats();
       console.log(
         JSON.stringify(
           {
@@ -646,6 +695,7 @@ async function main(): Promise<void> {
             workerId,
             consume,
             recovery,
+            telemetry: telemetryStats,
           },
           null,
           2,
@@ -698,6 +748,7 @@ async function main(): Promise<void> {
 
     if (command === "recover") {
       const recovery = await fabric.recover();
+      await telemetry.flush();
       console.log(
         JSON.stringify(
           {
@@ -726,9 +777,17 @@ async function main(): Promise<void> {
         workerId,
         applicationId,
         startedAt: new Date().toISOString(),
+        telemetry:
+          "bounded sink composed (OTLP when ZECK_OTLP_ENDPOINT is configured; logs-only otherwise)",
         note: "worker service running; SIGTERM/SIGINT triggers the bounded graceful drain",
       }),
     );
+    // The D-06 bounded flush cadence (time-based; the interval is
+    // unref'd — it never holds the process open).
+    const flushTimer = setInterval(() => {
+      void telemetry.flush().catch(() => undefined);
+    }, 5000);
+    flushTimer.unref?.();
     const signal = AbortSignal.abort();
     void signal;
     const controller = new AbortController();
@@ -739,6 +798,8 @@ async function main(): Promise<void> {
     process.once("SIGTERM", () => shutdown("sigterm"));
     process.once("SIGINT", () => shutdown("sigint"));
     await fabric.runForever(controller.signal);
+    clearInterval(flushTimer);
+    await telemetry.flush();
     console.log(
       JSON.stringify({
         tool: "deploy/worker",

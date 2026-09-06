@@ -45,6 +45,7 @@
  */
 
 import type { DatabasePort } from "../db/port";
+import type { TelemetrySink } from "../observability/port";
 import type { DispatchEnvelope, QueueRetryPolicy, QueueTransportPort } from "../queue/port";
 
 // ---------------------------------------------------------------------------
@@ -865,6 +866,15 @@ export interface ExecutionWorkerFabricDeps {
   readonly now: () => Date;
   /** Sleep seam (tests substitute a no-op; deterministic loop cadence). */
   readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * OPTIONAL bounded telemetry seam (WORK-047 / D-06): observation
+   * only, never authority. The fabric emits reference-only
+   * correlation facts (execution/correlation-key/claim ids and the
+   * bounded disposition vocabulary) through bounded, non-throwing
+   * emissions; the composition binds the deployment environment
+   * (bindSinkEnvironment). Absent ⇒ zero behavioral change.
+   */
+  readonly telemetry?: TelemetrySink;
 }
 
 /** The typed transport the fabric drives (pull/settle composition). */

@@ -177,11 +177,14 @@ describe("D-05 worker-fabric architecture boundaries (WORK-046)", () => {
       for (const specifier of imports) {
         // The compute plane's platform dependencies: the DatabasePort
         // authority, the queue transport contract, the sandbox seam's
-        // container contracts — never a module, never an integration.
+        // container contracts, the D-06 observability sink seam (the
+        // OPTIONAL telemetry port — observation only, WORK-047) —
+        // never a module, never an integration.
         const legal =
           specifier.startsWith("../db/") ||
           specifier.startsWith("../queue/") ||
           specifier.startsWith("../sandbox/") ||
+          specifier.startsWith("../observability/") ||
           specifier.startsWith("./");
         expect(legal, `${file} imports ${specifier}`).toBe(true);
       }

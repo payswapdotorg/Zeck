@@ -470,6 +470,42 @@
       "credentialShaped": false,
       "holds": "zeck-secret://<environment>/container-runner-token",
       "description": "Reference to the environment's container-runner token (the runner daemon's bearer credential behind the platform ContainerRuntimeClient)."
+    },
+    {
+      "name": "ZECK_OTLP_ENDPOINT",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Base URL of the OpenTelemetry-compatible collector receiving OTLP/HTTP-JSON traces, metrics and logs (any self-hosted or managed OTLP endpoint). Unset is the declared logs-only degraded mode \u2014 never an error."
+    },
+    {
+      "name": "ZECK_OTLP_AUTH_TOKEN",
+      "type": "otlp-bearer-token",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's OTLP collector bearer token. Credential-shaped: environment-only storage, never committed, never logged. The non-secret reference binding is ZECK_SECRET_OTLP_AUTH_TOKEN_REF; resolution happens immediately before the authorized export call."
+    },
+    {
+      "name": "ZECK_OTLP_REQUEST_TIMEOUT_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Per-request timeout for OTLP export calls. Bounded [100,120000]; default 5000."
+    },
+    {
+      "name": "ZECK_TELEMETRY_FLUSH_EVERY",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Buffered telemetry records before a sink flush. Bounded [8,512]; default 50. Buffer maxima, attribute counts, value lengths, message lengths and export batches are hard-bounded constants in the observability port (an unbounded policy is unrepresentable)."
+    },
+    {
+      "name": "ZECK_SECRET_OTLP_AUTH_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/otlp-auth-token",
+      "description": "Reference to the environment's OTLP collector bearer token behind the telemetry exporter."
     }
   ]
 }

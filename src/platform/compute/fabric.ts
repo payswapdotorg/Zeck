@@ -58,6 +58,8 @@
  * widens authority: it composes the four module seams and never
  * writes execution state itself.
  */
+
+import type { TelemetrySink } from "../observability/port";
 import { payloadDigestOf } from "../queue/correlation";
 import type { DispatchEnvelope } from "../queue/port";
 import type {
@@ -236,6 +238,23 @@ export class ExecutionWorkerFabric {
     this.policy = deps.policy;
     this.identity = identity;
     this.sleep = deps.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  }
+
+  /**
+   * The D-06 telemetry seam: bounded, non-throwing, observation-only.
+   * Absent sink ⇒ zero emissions and zero behavioral change.
+   */
+  private async emitTelemetry(emit: (sink: TelemetrySink) => Promise<void>): Promise<void> {
+    const sink = this.deps.telemetry;
+    if (sink === undefined) {
+      return;
+    }
+    try {
+      await emit(sink);
+    } catch {
+      // Telemetry is observation, never authority: a sink failure is
+      // swallowed (the sink itself counts its own drops/rejects).
+    }
   }
 
   // -------------------------------------------------------------- registration
@@ -446,6 +465,32 @@ export class ExecutionWorkerFabric {
       report,
       { envelope: current },
     );
+    // D-06: the delivery-disposition observation (the bounded
+    // disposition vocabulary; reference-only correlation).
+    await this.emitTelemetry(async (sink) => {
+      const now = this.deps.now().toISOString();
+      const correlation = {
+        executionId: facts.executionId,
+        correlationKey: current.correlationKey,
+        tenantId: facts.tenantId,
+        applicationId: facts.applicationId,
+      };
+      await sink.emitSpan({
+        name: "zeck.worker.disposition",
+        status: outcome === "dead-letter" ? "error" : "ok",
+        startedAt: now,
+        endedAt: now,
+        correlation,
+        attributes: { disposition: outcome },
+      });
+      await sink.emitMetric({
+        name: "zeck.worker.dispositions",
+        kind: "counter",
+        value: 1,
+        correlation,
+        attributes: { disposition: outcome },
+      });
+    });
     if (outcome === "settled") {
       // The envelope was consumed at claim admission: the durable claim
       // + lease carried the work; the delivery ACKS whatever the work's
@@ -573,6 +618,28 @@ export class ExecutionWorkerFabric {
     const claim = acquisition.claim;
     report.claimed += 1;
     this.inFlight += 1;
+    // D-06: the claim-admission observation (reference-only facts).
+    await this.emitTelemetry((sink) => {
+      const now = this.deps.now().toISOString();
+      return sink.emitSpan({
+        name: "zeck.worker.claim",
+        status: "ok",
+        startedAt: now,
+        endedAt: now,
+        correlation: {
+          executionId: facts.executionId,
+          correlationKey: options?.envelope?.correlationKey,
+          claimId: claim.id,
+          tenantId: facts.tenantId,
+          applicationId: facts.applicationId,
+        },
+        attributes: {
+          claimEpoch: String(claim.claimEpoch),
+          computeEnvironmentId,
+          outcome: "admitted",
+        },
+      });
+    });
     try {
       // 2. The durable execution lease (the single fencing system).
       const leaseOutcome = await this.deps.lease.acquire({
@@ -956,6 +1023,21 @@ export class ExecutionWorkerFabric {
         report.failedAbandoned += 1;
       }
     }
+    // D-06: the recovery-scan observation (bounded counters only).
+    await this.emitTelemetry((sink) =>
+      sink.emitMetric({
+        name: "zeck.worker.recovered",
+        kind: "counter",
+        value: report.executed + report.converged,
+        correlation: {},
+        attributes: {
+          candidates: String(report.candidates),
+          abandonedClaims: String(report.abandonedClaims),
+          sweptWorkers: String(report.sweptWorkers),
+          failedAbandoned: String(report.failedAbandoned),
+        },
+      }),
+    );
     return {
       ...report,
       claimRefusals: [...report.claimRefusals.entries()].map(([kind, count]) => ({
@@ -1075,6 +1157,21 @@ export class ExecutionWorkerFabric {
     detail: string,
     attemptNo: number,
   ): Promise<void> {
+    // D-06: the bounded dead-letter observation (actionable signal for
+    // the error-monitoring alert thresholds).
+    await this.emitTelemetry((sink) =>
+      sink.emitLog({
+        level: "warn",
+        message: `dispatch envelope dead-lettered: ${detail.slice(0, 120)}`,
+        correlation: {
+          executionId: envelope.executionId,
+          correlationKey: envelope.correlationKey,
+          tenantId: envelope.tenantId,
+          applicationId: envelope.applicationId,
+        },
+        attributes: { reason },
+      }),
+    );
     await this.deps.correlation.deadLetter(
       envelope.id,
       reason,

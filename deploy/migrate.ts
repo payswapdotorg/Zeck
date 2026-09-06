@@ -22,8 +22,15 @@
  * Usage:
  *   bun run deploy:migrate -- --environment local
  *   bun run deploy:migrate -- --environment staging
+ *
+ * WORK-047 / D-06: resolveDatabaseUrl is EXPORTED for the release
+ * gate evaluators (the migration gate connects to the same
+ * environment-scoped authoritative endpoint).
  */
 
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { redactConnectionString } from "../src/platform/db/connection";
 import { startAuthoritativeDatabase } from "../src/platform/db/startup";
 import { evaluateEnvironmentContract } from "../src/platform/deployment/env-contract";
@@ -40,7 +47,7 @@ function localDatabaseUrl(adminUrl: string, databaseName: string): string {
   return `${withoutDb}/${databaseName}`;
 }
 
-async function resolveDatabaseUrl(environment: string): Promise<string> {
+export async function resolveDatabaseUrl(environment: string): Promise<string> {
   if (environment === "local") {
     const adminUrl = process.env.ZECK_PG_ADMIN_URL;
     if (adminUrl === undefined || adminUrl.length === 0) {
@@ -115,7 +122,13 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(`error: ${(error as Error).message}`);
-  process.exit(1);
-});
+const IS_ENTRY =
+  process.argv[1] !== undefined &&
+  resolve(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+
+if (IS_ENTRY) {
+  main().catch((error: unknown) => {
+    console.error(`error: ${(error as Error).message}`);
+    process.exit(1);
+  });
+}

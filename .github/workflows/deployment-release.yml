@@ -1,0 +1,117 @@
+name: Deployment Release Control
+
+# WORK-047 / D-06: the GitHub-to-provider CI/CD release-control path.
+#
+# CI/CD is a MECHANISM over the repository-defined release surfaces —
+# it never becomes release authority (the durable release ledger is
+# PostgreSQL, driven through deploy/release.ts; every step below
+# invokes repository-resident tooling only: the SELF-HOSTING
+# BOUNDARY — a self-hosted operator runs the identical commands with
+# equivalent effect).
+#
+# pull_request (fast path): record the release, run the fast evidence
+# gates, and PROVE the enforcement (a promotion without its gate
+# evidence must be refused).
+#
+# push to main (the ladder): record the release, run the full CI gate
+# set (governance, typecheck, lint, the full suite), promote through
+# the local→ci ladder with journal + pointer, and publish the release
+# inspection artifact. Provider-environment promotion (preview →
+# staging → production) happens from the operator environments with
+# their own credentials and ledgers — never in this workflow.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  release-control:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ZECK_ENVIRONMENT: local
+      ZECK_PG_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
+      ZECK_LOCAL_DATA_ROOT: /tmp/zeck-ci-release
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.4'
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Bootstrap local environment (the release ledger's database)
+        run: bun run deploy:bootstrap -- --environment local
+      - name: Converge the authoritative schema (the release ledger's migrations)
+        run: bun run deploy:migrate -- --environment local
+      - name: Record the release (exact commit + environment identity)
+        run: bun run deploy:release -- record --environment local --actor ci-${{ github.sha }}
+      - name: "Gate: validation (the deployment configuration evidence)"
+        run: bun run deploy:release -- gate run --kind validation --environment ci --actor ci-${{ github.sha }}
+      - name: "Gate: identity-audit (the exact-revision deployment identity)"
+        run: bun run deploy:release -- gate run --kind identity-audit --environment local --actor ci-${{ github.sha }}
+      - name: "Enforcement proof: promotion without gate evidence MUST be refused"
+        run: |
+          set +e
+          bun run deploy:release -- promote --to ci --actor ci-${{ github.sha }} > /tmp/refusal.json 2>&1
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "FATAL: the ungated promotion was accepted (the promotion gate is broken)"
+            exit 1
+          fi
+          grep -q "missing required gate evidence" /tmp/refusal.json
+          echo "The ungated promotion was refused exactly as required:"
+          grep "missing required gate evidence" /tmp/refusal.json || true
+      - name: "Gate: governance-check (checkout evidence)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- gate run --kind governance-check --environment ci --actor ci-${{ github.sha }}
+      - name: "Gate: typecheck (checkout evidence)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- gate run --kind typecheck --environment ci --actor ci-${{ github.sha }}
+      - name: "Gate: lint (checkout evidence)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- gate run --kind lint --environment ci --actor ci-${{ github.sha }}
+      - name: "Gate: full-test-suite (checkout evidence, real PostgreSQL)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- gate run --kind full-test-suite --environment ci --actor ci-${{ github.sha }}
+      - name: "Promote: local -> ci (journal + evidence-gated)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- promote --to ci --actor ci-${{ github.sha }}
+      - name: "Attach: the ci-gates evidence (this workflow's conclusion at the exact head)"
+        if: github.event_name == 'push'
+        run: |
+          cat > /tmp/ci-gates.json <<EOT
+          {"workflow": "Deployment Release Control", "runId": ${{ github.run_id }}, "runAttempt": ${{ github.run_attempt }}, "headSha": "${{ github.sha }}", "conclusion": "the gates of this run (governance-check, typecheck, lint, full-test-suite, validation, identity-audit) all passed at this exact revision", "recordedBy": "ci-${{ github.sha }}"}
+          EOT
+          bun run deploy:release -- gate attach --kind ci-gates --environment preview --evidence-file /tmp/ci-gates.json --actor ci-${{ github.sha }}
+      - name: "Inspect: the release ledger state"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- inspect --environment local > release-inspection.json
+      - name: "Alerts: quota/operational alert evaluation (fail on critical)"
+        if: github.event_name == 'push'
+        run: bun run deploy:release -- alerts --environment local
+      - name: Upload release inspection artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-inspection-${{ github.sha }}
+          path: release-inspection.json

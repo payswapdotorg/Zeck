@@ -138,13 +138,14 @@ describe("the D-02 production-path boundaries (WORK-043)", () => {
     // (WORK-044 / D-03: the queue_transport correlation schema) +
     // 0027_workflow_orchestration (WORK-045 / D-04: the durable
     // orchestration correlation schema) + 0028_compute_worker_fabric
-    // (WORK-046 / D-05: the compute_plane worker coordination schema).
+    // (WORK-046 / D-05: the compute_plane worker coordination schema)
+    // + 0029_release_control (WORK-047 / D-06: the release ledger).
     // The count stays pinned — every future migration is a reviewed,
     // disclosed extension of this expectation.
-    expect(migrations).toHaveLength(27);
+    expect(migrations).toHaveLength(28);
     expect(migrations[0]).toMatch(/^0001_/);
-    expect(migrations[migrations.length - 1]).toMatch(/^0028_compute_worker_fabric/);
-    expect(migrations[migrations.length - 2]).toMatch(/^0027_workflow_orchestration/);
+    expect(migrations[migrations.length - 1]).toMatch(/^0029_release_control/);
+    expect(migrations[migrations.length - 2]).toMatch(/^0028_compute_worker_fabric/);
     expect(migrations.map((name) => name.slice(0, 4))).not.toContain("0015");
   });
 

@@ -83,7 +83,7 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
     const manifest = loadDeploymentManifest(realReader());
     // D-05 (zeck-container-runner) landed with WORK-046: established
     // with the platform ContainerRuntimeClient port contract.
-    expect(manifest.providers).toHaveLength(7);
+    expect(manifest.providers).toHaveLength(8);
     for (const provider of manifest.providers) {
       expect(provider.substitutionTarget.length).toBeGreaterThan(0);
       expect(provider.degradation.mode.length).toBeGreaterThan(0);
@@ -168,7 +168,7 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
       "database-url",
     ]);
     for (const environment of ["preview", "staging", "production"] as const) {
-      expect(manifest.secretReferences[environment]).toHaveLength(9);
+      expect(manifest.secretReferences[environment]).toHaveLength(10);
     }
     // Reference namespaces are environment-scoped by construction: the
     // same logical name exists per environment, but the URI namespace
