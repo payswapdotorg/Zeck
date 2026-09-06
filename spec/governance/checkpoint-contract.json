@@ -15,6 +15,12 @@
     {"id":"LEARNING-NONAUTHORITY","area":"learning cannot weaken authority","severity":"blocking","proofClasses":["static","dynamic"]},
     {"id":"IMPLEMENTATION-COMPLETENESS","area":"work-order completeness","severity":"blocking","proofClasses":["static","dynamic"]},
     {"id":"SELF-HOSTING-BOUNDARY","area":"repository development governance","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
-    {"id":"ECONOMIC-AUTHORITY-BOUNDARY","area":"economic action authorization and payment rail authority","severity":"blocking","proofClasses":["static","dynamic","discrimination"]}
+    {"id":"ECONOMIC-AUTHORITY-BOUNDARY","area":"economic action authorization and payment rail authority","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"RELEASE-IDENTITY","area":"release identity","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"PROMOTION-GATES","area":"promotion gate enforcement","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"MIGRATION-SAFETY","area":"migration safety","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"OBSERVABILITY-BOUNDARY","area":"observability authority boundary","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"ROLLBACK-SAFETY","area":"rollback authority isolation","severity":"blocking","proofClasses":["static","dynamic","discrimination"]},
+    {"id":"COST-QUOTA-GUARDS","area":"cost and quota guardrails","severity":"blocking","proofClasses":["static","dynamic","discrimination"]}
   ]
 }
