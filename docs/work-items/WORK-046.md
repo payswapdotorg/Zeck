@@ -2,7 +2,7 @@
 
 Work Order: `WORK-046` (spec/work-orders/WORK-046.md) · Canonical remote: **`payswapdotorg/Zeck`** · Canonical issue: **#9** · Assurance: **HIGH_ASSURANCE** · Governing architecture: Deployment & Runtime Architecture **D1.0** (subordinate to frozen v1.0), roadmap phase **D-05**.
 
-Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9` (verified present; the worker branch was created at exactly that SHA and carries the D-05 implementation commit + this evidence document; zero merge commits). Branch: `work/WORK-046-execution-worker-deployment-fabric` · **Final head: this doc's commit**. One PR, opened by the worker, **not merged by the worker**.
+Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9` (verified present; the worker branch was created at exactly that SHA and carries the D-05 implementation commit + this evidence document; zero merge commits). Branch: `work/WORK-046-execution-worker-deployment-fabric` · **Final head: this doc's commit** (the D-05 implementation commit `0bb4c63...` carries the code; this doc's commit follows it on the same branch). One PR, opened by the worker, **not merged by the worker**.
 
 ## Baseline gate at the exact dispatch base (readiness checkpoint — BEFORE implementation)
 
