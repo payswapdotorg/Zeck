@@ -1,4 +1,4 @@
-# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043, D-03 / WORK-044, D-04 / WORK-045)
+# Zeck Deployment Foundation (D-01 / WORK-042, D-02 / WORK-043, D-03 / WORK-044, D-04 / WORK-045, D-05 / WORK-046, D-06 / WORK-047)
 
 Reproducible, environment-separated infrastructure configuration for Zeck,
 per `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0) and `docs/DEPLOYMENT-ROADMAP.md`
@@ -33,6 +33,10 @@ deploy/
   migrate.ts                 D-02: deterministic managed-PostgreSQL startup/migrations
   backup.ts                  D-02: logical backup of the authoritative state
   restore.ts                 D-02: the executed restore drill (create/migrate/restore/verify)
+  worker.ts                  D-05: the execution-worker process + operator surface
+  release.ts                 D-06: the release-control operator surface (record/gate/promote/rollback/inspect/status/alerts)
+  manifests/release-policy.json   D-06: the closed gate-kind vocabulary + per-phase entry gates
+  manifests/quota-guards.json     D-06: quota/operational alert thresholds (actionable, fail-closed)
 ```
 
 ## Environments
@@ -548,3 +552,134 @@ revoke|list` (the governed customer-runner registration lifecycle —
 attributable, revocable, NON-AUTHORITATIVE executor metadata; a
 customer-runner worker binds the registration and may only claim its
 own application's executions).
+
+## The D-06 runtime configuration (production delivery, observability and release control)
+
+D-06 (WORK-047) makes Zeck deployments safe to promote, inspect, roll
+back and audit **without moving authority into CI/CD, observability
+systems or provider control planes**. The durable release ledger is
+PostgreSQL (migration `0029_release_control.sql`, schema
+`release_control`); `deploy/release.ts` is the operator/CI surface over
+the governed store; the promotion ladder and per-phase requirements
+remain the D-01 `environments.json` truth, cross-checked fail-closed
+against `deploy/manifests/release-policy.json` at load time (drift
+between the two files is unrepresentable).
+
+### The release model
+
+- **RELEASE IDENTITY**: a release is the exact Git revision + the
+  manifest digest; its id is content-addressed
+  (`sha256(["zeck-release-v1", gitRevision, manifestDigest])`). A
+  release not tied to an exact 40-hex commit is rejected fail closed.
+  The per-environment deployment binding records the D-01 deployment
+  identity (idempotent; identity mismatch is a typed refusal — the
+  binding is immutable).
+- **EVIDENCE IS APPEND-ONLY**: gate results (`validation`, `typecheck`,
+  `lint`, `full-test-suite`, `governance-check`, `ci-gates`,
+  `migration`, `health`, `preview-smoke`, `staging-smoke`,
+  `identity-audit`, `deployment-identity-audit`, `architect-approval`)
+  are immutable attempts; the latest attempt per kind is the effective
+  result. Promotion decisions (including REFUSALS) and rollback events
+  are append-only journals. `architect-approval` and `ci-gates` are
+  attach-only (worker tooling records them; it never fabricates them).
+- **PROMOTION GATES**: promotion into a phase requires that phase's
+  entry gates (release-policy.json), the promotion journal decision,
+  and — for hosting environments — the activation is the pointer flip
+  through the governed store transaction. `ci` is a check phase
+  (journal, no hosting pointer).
+- **MIGRATION SAFETY**: the migration gate compares the target
+  database's `platform.schema_migrations` ledger with the release
+  revision's shipped set — unapplied shipped migrations (run
+  `deploy:migrate`), applied-but-unshipped migrations (the downgrade
+  hazard: the database is ahead of the code) and checksum drift all
+  fail closed; the ordered ledger digest is recorded in the evidence.
+- **ROLLBACK SAFETY**: `rollback` appends the rollback event and flips
+  the environment's active pointer in ONE transaction whose statements
+  address `release_control` exclusively — durable execution/business
+  state is untouched by construction (pinned by the isolation tests).
+  The rollback target must itself be a gate-passed deployment of that
+  environment (rollback never activates unproven state).
+- **COST/QUOTA GUARDS**: promotion refuses on ACTIVE CRITICAL alerts
+  (`deploy/manifests/quota-guards.json`: warn at 80%, critical at 95%
+  by default) evaluated from the authoritative stores only
+  (compute-plane live claims vs quotas, queue backlog, dead letters,
+  terminal-failed executions, database size). Provider-console quota
+  meters are out of scope without credentials and are never claimed.
+- **SELF-HOSTING BOUNDARY**: every command is repository tooling over
+  a self-hostable PostgreSQL; the OTLP observability export targets
+  any OpenTelemetry-compatible collector (self-hosted or managed);
+  CI/CD (`.github/workflows/deployment-release.yml`) invokes only
+  repository tools. A self-hosted operator runs the identical commands
+  with equivalent effect.
+
+### The operator surface
+
+```bash
+bun run deploy:release -- record   --environment local
+bun run deploy:release -- gate run   --kind validation --environment ci
+bun run deploy:release -- gate attach --kind ci-gates --environment preview --evidence-file ci.json
+bun run deploy:release -- promote  --to staging --actor release-operator
+bun run deploy:release -- rollback --environment staging --reason "incident rollback"
+bun run deploy:release -- inspect  --environment production
+bun run deploy:release -- status   --environment production
+bun run deploy:release -- alerts   --environment production
+```
+
+`status` is the promotion pre-flight (the ladder's required gates, the
+active deployment, the live alert evaluation); `alerts` exits 1 on a
+critical alert (CI-usable); `inspect` is the full ledger view (release
+identity, bindings, effective gates, promotion journal, rollbacks,
+active pointers).
+
+### The observability model (the authority boundary)
+
+- `src/platform/observability/` is a provider-neutral SINK: traces,
+  metrics and bounded structured logs carrying the STABLE correlation
+  identity (executionId, the D-03 dispatch correlation key, sandboxId,
+  claimId, releaseId, requestId). The trace id is DERIVED
+  deterministically from the primary business identity — an operator
+  reconstructs an execution end-to-end from the execution id alone.
+- Secrets never enter telemetry: secret-shaped attribute KEYS are
+  rejected outright; credential-shaped values are redacted before
+  buffering; rejected records are counted, never exported.
+- Boundedness is structural: buffer maxima, attribute counts, value
+  lengths, message lengths, export batches and retry attempts are
+  hard-bounded constants (an unbounded policy is unrepresentable);
+  overflow is dropped and counted.
+- The OTLP exporter (`otlp.ts`) speaks the OTLP/HTTP-JSON protocol
+  over plain fetch (zero new SDKs; the repository runtime imports stay
+  fastify + pg). 2xx accepts; 401/403/404 is permanent
+  misconfiguration; 429/5xx/network is transient with bounded retry.
+  Unconfigured endpoint = the declared `logs-only` degraded mode.
+- The instrumented seams are minimal and optional: the D-05 worker
+  fabric emits claim/disposition/dead-letter/recovery observations
+  (`ExecutionWorkerFabricDeps.telemetry`, absent = zero change), and
+  the API server emits one bounded log + metric per request
+  (`ApiServerDeps.telemetry`). The composition binds the deployment
+  environment (`bindSinkEnvironment`); records are rejected if they
+  arrive unbound.
+- Telemetry NEVER writes Zeck state: the observability plane has no
+  DatabasePort and no module imports; an exporter acceptance or a
+  dashboard state can never declare domain success (pinned by the
+  architecture and discrimination suites).
+
+### The D-06 configuration variables
+
+`ZECK_OTLP_ENDPOINT` (the collector base URL; unset = logs-only),
+`ZECK_OTLP_AUTH_TOKEN` + `ZECK_SECRET_OTLP_AUTH_TOKEN_REF` (the
+environment-scoped collector bearer token — resolved immediately
+before the export call, never logged),
+`ZECK_OTLP_REQUEST_TIMEOUT_MS` [100,120000] default 5000,
+`ZECK_TELEMETRY_FLUSH_EVERY` [8,512] default 50 (buffer maxima and
+attribute bounds are hard constants in the observability port).
+
+### The CI/CD convention (honest boundaries)
+
+The CI workflows run the checkout-scoped gates; the PostgreSQL-backed
+suites run in the worker environment against the real server (the
+repository's standing CI convention — the CI full-test-suite gate
+records the CI-runnable set). Live provider-environment promotion
+(preview/staging/production) requires the operator environment's
+materialized credentials and its own release ledger — never claimed as
+exercised by CI. Provider quota consoles are not queried (no
+credential); the quota guards read the authoritative stores only.

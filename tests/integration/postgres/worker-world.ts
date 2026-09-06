@@ -97,6 +97,7 @@ import {
 import { SqlComputeWorkerStore } from "../../../src/platform/compute/pg-store";
 import type { WorkerFabricPolicy, WorkerLeaseAuthority } from "../../../src/platform/compute/port";
 import type { DatabasePort } from "../../../src/platform/db/port";
+import type { TelemetrySink } from "../../../src/platform/observability/port";
 import { QueueCorrelationStore } from "../../../src/platform/queue/correlation";
 import { DurableDispatcher } from "../../../src/platform/queue/dispatcher";
 import type { QueueRetryPolicy } from "../../../src/platform/queue/port";
@@ -281,6 +282,8 @@ export interface WorkerFabricWorld {
     readonly runnerId?: string;
     readonly policy?: Partial<WorkerFabricPolicy>;
     readonly sleep?: (ms: number) => Promise<void>;
+    /** The D-06 bounded telemetry seam (observation only). */
+    readonly telemetry?: TelemetrySink;
   }) => Promise<ExecutionWorkerFabric>;
   /** The ledger events of one execution (provenance proofs). */
   eventsOf: (executionId: string) => Promise<readonly { readonly kind: string }[]>;
@@ -489,6 +492,7 @@ export async function seedWorkerFabricWorld(
     readonly runnerId?: string;
     readonly policy?: Partial<WorkerFabricPolicy>;
     readonly sleep?: (ms: number) => Promise<void>;
+    readonly telemetry?: TelemetrySink;
   }): Promise<ExecutionWorkerFabric> => {
     const fabricPolicy: WorkerFabricPolicy = { ...policy, ...(options?.policy ?? {}) };
     const workerId = options?.workerId ?? generateId();
@@ -523,6 +527,7 @@ export async function seedWorkerFabricWorld(
         generateId,
         now: () => new Date(),
         ...(options?.sleep === undefined ? {} : { sleep: options.sleep }),
+        ...(options?.telemetry === undefined ? {} : { telemetry: options.telemetry }),
       },
       {
         workerId,

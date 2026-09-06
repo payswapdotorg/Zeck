@@ -40,9 +40,10 @@ export const DEFAULT_MATERIALIZATION: Readonly<Record<string, string>> = Object.
   "queue-api-token": "ZECK_QUEUE_API_TOKEN",
   "workflow-api-token": "ZECK_WORKFLOW_API_TOKEN",
   "container-runner-token": "ZECK_CONTAINER_RUNNER_API_TOKEN",
+  "otlp-auth-token": "ZECK_OTLP_AUTH_TOKEN",
 });
 
-/** The classification map for the D-02..D-05 secret inventory. */
+/** The classification map for the D-02..D-06 secret inventory. */
 export const DEFAULT_CLASSIFICATIONS: Readonly<Record<string, SecretClassification>> =
   Object.freeze({
     "database-url": "provider-credential",
@@ -51,6 +52,7 @@ export const DEFAULT_CLASSIFICATIONS: Readonly<Record<string, SecretClassificati
     "queue-api-token": "provider-credential",
     "workflow-api-token": "provider-credential",
     "container-runner-token": "provider-credential",
+    "otlp-auth-token": "provider-credential",
   });
 
 export interface EnvSecretStoreDeps {

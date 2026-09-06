@@ -29,9 +29,10 @@
  * not attested.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { createConnection } from "node:net";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { probeContainerRunner } from "../src/platform/compute/container-runtime";
 import { parseConnectionConfig, redactConnectionString } from "../src/platform/db/connection";
@@ -48,6 +49,7 @@ import {
   type DependencyProbeResult,
   evaluateReadiness,
   expectedProbeConcerns,
+  type ReadinessReport,
 } from "../src/platform/deployment/readiness";
 import { createS3ObjectStore } from "../src/platform/object-store/s3-object-store";
 import {
@@ -532,11 +534,29 @@ async function probeProviderExecutionCompute(
   }
 }
 
-async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
-  const environment = requireEnvironment(argv);
-  const branch = optionalBranch(argv);
-  const allowDegraded = hasFlag(argv, "--allow-degraded");
+/**
+ * The smoke attestation (WORK-047 / D-06: exported for the release
+ * gate evaluators — the same evidence path, no duplication):
+ * identity + environment contract + readiness for one environment at
+ * the exact checkout revision.
+ */
+export interface SmokeAttestation {
+  readonly environment: EnvironmentId;
+  readonly gitRevision: string;
+  readonly identity: ReturnType<typeof deploymentIdentity>;
+  readonly environmentContract: {
+    readonly satisfied: boolean;
+    readonly problems: readonly string[];
+  };
+  readonly readiness: ReadinessReport;
+  /** True when overall is ready (or degraded with allowDegraded). */
+  readonly pass: boolean;
+}
+
+export async function runSmokeAttestation(
+  environment: EnvironmentId,
+  options?: { readonly branch?: string; readonly allowDegraded?: boolean },
+): Promise<SmokeAttestation> {
   const manifest = loadManifest();
   const revision = gitRevision();
 
@@ -546,17 +566,18 @@ async function main(): Promise<void> {
       ? await probeLocal(manifest)
       : await probeProviderEnvironment(manifest, environment);
   const slug =
-    environment === "preview" && branch !== undefined
-      ? previewBranchSlug(branch, namingConventionsOf(manifest).previewBranchSlugMaxLength)
+    environment === "preview" && options?.branch !== undefined
+      ? previewBranchSlug(options.branch, namingConventionsOf(manifest).previewBranchSlugMaxLength)
       : undefined;
 
-  // The control plane for the smoke tool is the tool itself executing
-  // over a valid, loaded manifest set at an exact revision.
+  // The control plane for the smoke attestation is the tool itself
+  // executing over a valid, loaded manifest set at an exact revision.
   const readiness = evaluateReadiness(manifest, { controlPlaneAvailable: true, probes });
   const identity = deploymentIdentity(manifest, revision, environment, slug);
-
-  const report = {
-    tool: "deploy/smoke",
+  const pass =
+    readiness.overall === "ready" ||
+    (options?.allowDegraded === true && readiness.overall === "degraded");
+  return {
     environment,
     gitRevision: revision,
     identity,
@@ -565,14 +586,34 @@ async function main(): Promise<void> {
       problems: contract.problems,
     },
     readiness,
+    pass,
   };
-  console.log(JSON.stringify(report, null, 2));
-
-  const pass = readiness.overall === "ready" || (allowDegraded && readiness.overall === "degraded");
-  process.exit(pass ? 0 : 1);
 }
 
-main().catch((error: unknown) => {
-  console.error(`error: ${(error as Error).message}`);
-  process.exit(1);
-});
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  const environment = requireEnvironment(argv);
+  const branch = optionalBranch(argv);
+  const allowDegraded = hasFlag(argv, "--allow-degraded");
+  const attestation = await runSmokeAttestation(environment, {
+    branch,
+    allowDegraded,
+  });
+  const report = {
+    tool: "deploy/smoke",
+    ...attestation,
+  };
+  console.log(JSON.stringify(report, null, 2));
+  process.exit(attestation.pass ? 0 : 1);
+}
+
+const IS_ENTRY =
+  process.argv[1] !== undefined &&
+  resolve(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+
+if (IS_ENTRY) {
+  main().catch((error: unknown) => {
+    console.error(`error: ${(error as Error).message}`);
+    process.exit(1);
+  });
+}

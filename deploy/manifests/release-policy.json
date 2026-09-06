@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck release promotion policy (WORK-047 / D-06). Repository truth for the CLOSED gate-kind vocabulary and the promotion entry gates per ladder phase. The ladder order and the per-phase requirements of environments.json remain the single source of truth for the ladder: this policy must COVER every environments.json promotion requirement (validated fail-closed at load time and by deploy:validate — drift is unrepresentable). CI/CD, provider control planes and dashboards drive this policy through the governed release-control store; they never redefine it.",
+  "gateKinds": [
+    {
+      "kind": "governance-check",
+      "scope": "checkout",
+      "evidence": "scripts/governance-check.py exit 0 at the exact release revision (the repository governance gate).",
+      "tool": "python3 scripts/governance-check.py"
+    },
+    {
+      "kind": "typecheck",
+      "scope": "checkout",
+      "evidence": "tsc --noEmit exit 0 at the exact release revision.",
+      "tool": "bun run typecheck"
+    },
+    {
+      "kind": "lint",
+      "scope": "checkout",
+      "evidence": "biome check . exit 0 at the exact release revision.",
+      "tool": "bun run lint"
+    },
+    {
+      "kind": "full-test-suite",
+      "scope": "checkout",
+      "evidence": "The full vitest suite exit 0 at the exact release revision (real PostgreSQL where the suite requires it).",
+      "tool": "bun run test"
+    },
+    {
+      "kind": "ci-gates",
+      "scope": "release",
+      "evidence": "The repository CI workflows concluded successfully at the exact release revision (workflow name, run id, conclusion, head sha — externally attached by CI).",
+      "tool": null
+    },
+    {
+      "kind": "validation",
+      "scope": "checkout",
+      "evidence": "deploy:validate valid at the exact release revision (manifests, naming, port contracts, secret scan, release policy, quota guards).",
+      "tool": "bun run deploy:validate"
+    },
+    {
+      "kind": "identity-audit",
+      "scope": "environment",
+      "evidence": "The deterministic deployment identity recomputes and matches the recorded environment binding (drift/tampering detection).",
+      "tool": "deploy:release gate run identity-audit"
+    },
+    {
+      "kind": "migration",
+      "scope": "environment",
+      "evidence": "The target environment's migration ledger is converged with the release revision's shipped set: no unapplied shipped migration, no applied-but-unshipped migration (downgrade hazard), checksums intact; the ordered ledger digest is recorded.",
+      "tool": "deploy:release gate run migration"
+    },
+    {
+      "kind": "health",
+      "scope": "environment",
+      "evidence": "The readiness evaluation of the target environment is 'ready' (control plane up, the authoritative PostgreSQL dependency ready, non-authoritative dependencies ready).",
+      "tool": "deploy:release gate run health"
+    },
+    {
+      "kind": "preview-smoke",
+      "scope": "environment",
+      "evidence": "deploy:smoke attestation passed for the preview environment at the exact release revision (identity + environment contract + readiness).",
+      "tool": "bun run deploy:smoke -- --environment preview"
+    },
+    {
+      "kind": "staging-smoke",
+      "scope": "environment",
+      "evidence": "deploy:smoke attestation passed for the staging environment at the exact release revision.",
+      "tool": "bun run deploy:smoke -- --environment staging"
+    },
+    {
+      "kind": "architect-approval",
+      "scope": "release",
+      "evidence": "The explicit, recorded Architect approval for promoting this exact release to production (approver identity + statement). Worker tooling records it; it never fabricates it.",
+      "tool": null
+    },
+    {
+      "kind": "deployment-identity-audit",
+      "scope": "environment",
+      "evidence": "The environment deployment binding passes the identity re-verification at promotion time (the environments.json staging requirement, bound to the identity-audit evaluator).",
+      "tool": "deploy:release gate run identity-audit"
+    }
+  ],
+  "entryGates": {
+    "local": ["validation"],
+    "ci": ["governance-check", "typecheck", "lint", "full-test-suite"],
+    "preview": ["ci-gates", "validation", "identity-audit"],
+    "staging": ["ci-gates", "validation", "preview-smoke", "migration", "health", "identity-audit"],
+    "production": [
+      "architect-approval",
+      "validation",
+      "staging-smoke",
+      "deployment-identity-audit",
+      "migration",
+      "health"
+    ]
+  }
+}

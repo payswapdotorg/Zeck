@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck quota guard and operational alert thresholds (WORK-047 / D-06; the free-tier operating doctrine: meter usage, alert BEFORE exhaustion, make limits visible, no uncontrolled paid overage). Snapshots are collected from the AUTHORITATIVE stores only (the compute-plane quota tables, the queue-transport envelope counts, the execution authority's terminal outcomes, the database size) — never from provider dashboards or control planes. Provider-side quota meters (Neon/Cloudflare consoles) are out of scope without credentials and are documented NOT RUN, never claimed.",
+  "guards": {
+    "compute-claims": {
+      "description": "Live worker claims per compute environment vs the environment quota (the D-05 hard cap; fail-closed at the limit — uncontrolled overage is unrepresentable).",
+      "warnAtPct": 80,
+      "criticalAtPct": 95
+    },
+    "queue-backlog": {
+      "description": "Pending dispatch envelopes vs the backlog bound (bounded re-delivery pressure).",
+      "warnAtPct": 80,
+      "criticalAtPct": 95
+    },
+    "database-size": {
+      "description": "pg_database_size of the authoritative store vs the declared size limit (provider plan ceiling declared by the operator; default 5 GiB).",
+      "warnAtPct": 80,
+      "criticalAtPct": 95,
+      "defaultLimitBytes": 5368709120
+    }
+  },
+  "operationalThresholds": [
+    {
+      "metric": "queue-dead-letters",
+      "window": "total",
+      "warnAbove": 10,
+      "criticalAbove": 100,
+      "action": "inspect dead letters with the D-03 inspection tooling (deploy/README.md D-03); dead letters are governed bounded failures — republish after the root cause is fixed"
+    },
+    {
+      "metric": "terminal-failed-executions",
+      "window": "total",
+      "warnAbove": 20,
+      "criticalAbove": 200,
+      "action": "inspect failed executions through the executions authority surface; a rising failure count is a runtime defect signal, not a deployment signal"
+    },
+    {
+      "metric": "release-gate-failures",
+      "window": "total",
+      "warnAbove": 2,
+      "criticalAbove": 10,
+      "action": "inspect the release gate evidence with deploy:release inspect; repeated gate failures block promotion by design (fail-closed)"
+    }
+  ]
+}

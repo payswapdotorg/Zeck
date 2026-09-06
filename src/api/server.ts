@@ -25,6 +25,7 @@
  * boundary).
  */
 
+import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { AgentRegistry } from "../modules/agents/public";
 import type { ScopeResolver } from "../modules/auth/public";
@@ -66,6 +67,42 @@ export interface ApiServerDeps {
    * computes it (see src/platform/deployment/readiness.ts).
    */
   readonly dependencyReadiness: () => Promise<readonly DependencyReadinessWire[]>;
+  /**
+   * OPTIONAL bounded request telemetry (WORK-047 / D-06): one log
+   * record + one metric per completed request (route, method,
+   * status, duration; reference-only — no headers, no bodies, no
+   * credentials). Absent ⇒ zero behavioral change. The composition
+   * passes the platform TelemetrySink (structurally satisfied — the
+   * seam stays inside the pinned src/api import boundary) bound to
+   * the deployment environment via bindSinkEnvironment.
+   */
+  readonly telemetry?: RequestTelemetrySeam;
+}
+
+/**
+ * The D-06 request-telemetry seam: structurally satisfied by the
+ * platform observability TelemetrySink (src/platform/observability/port.ts)
+ * — duplicated here ONLY as a type so the pinned src/api import
+ * boundary (module barrels, src/shared, fastify) stays untouched.
+ * Reference-only correlation: no headers, no bodies, no credentials.
+ */
+export interface RequestTelemetrySeam {
+  readonly emitLog: (log: {
+    readonly level: "debug" | "info" | "warn" | "error";
+    readonly message: string;
+    readonly timestamp?: string;
+    readonly correlation: { readonly requestId?: string };
+    readonly attributes: Readonly<Record<string, string>>;
+  }) => Promise<void>;
+  readonly emitMetric: (metric: {
+    readonly name: string;
+    readonly kind: "counter" | "gauge";
+    readonly value: number;
+    readonly unit?: string;
+    readonly timestamp?: string;
+    readonly correlation: { readonly requestId?: string };
+    readonly attributes: Readonly<Record<string, string>>;
+  }) => Promise<void>;
 }
 
 export interface ApiServer {
@@ -89,6 +126,49 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
     }
     routeTable.push({ method, url: route.url });
   });
+
+  // The D-06 request telemetry: bounded, non-throwing, one log + one
+  // metric per completed request (reference-only correlation).
+  const telemetry = deps.telemetry;
+  if (telemetry !== undefined) {
+    app.addHook("onRequest", async (request) => {
+      (request as { requestStartedAt?: [number, number] }).requestStartedAt = process.hrtime();
+    });
+    app.addHook("onResponse", async (request, reply) => {
+      try {
+        const startedAt =
+          (request as { requestStartedAt?: [number, number] }).requestStartedAt ?? process.hrtime();
+        const durationMs =
+          process.hrtime(startedAt)[0] * 1000 + process.hrtime(startedAt)[1] / 1_000_000;
+        const requestId = `req-${randomUUID()}`;
+        const correlation = { requestId };
+        const attributes = {
+          method: request.method,
+          route: request.routeOptions?.url ?? request.url.slice(0, 128),
+          status: String(reply.statusCode),
+          durationMs: durationMs.toFixed(1),
+        };
+        const now = new Date().toISOString();
+        await telemetry.emitLog({
+          level: reply.statusCode >= 500 ? "error" : "info",
+          message: `${request.method} ${request.routeOptions?.url ?? request.url.slice(0, 128)} ${reply.statusCode}`,
+          timestamp: now,
+          correlation,
+          attributes,
+        });
+        await telemetry.emitMetric({
+          name: "zeck.api.requests",
+          kind: "counter",
+          value: 1,
+          timestamp: now,
+          correlation,
+          attributes,
+        });
+      } catch {
+        // Telemetry is observation, never authority: never break a response.
+      }
+    });
+  }
 
   registerExecutionRoutes(app, {
     executions: deps.executions,

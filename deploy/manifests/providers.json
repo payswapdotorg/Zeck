@@ -107,6 +107,21 @@
         "mode": "execution-compute-unavailable",
         "effect": "Container sandbox dispatch fails closed (runtime-unavailable); the execution stays durably recoverable in PostgreSQL and re-dispatches on recovery. No unisolated or ambient-host execution is ever a fallback; the execution authority is untouched."
       }
+    },
+    {
+      "id": "otel-export",
+      "concern": "observability-export",
+      "authorityRole": "non-authoritative",
+      "owningPort": "telemetry",
+      "portStatus": "established",
+      "portContract": "src/platform/observability/port.ts",
+      "substitutionTarget": "any OpenTelemetry-compatible collector (self-hosted or managed); the OTLP/HTTP-JSON protocol is a transport standard, not a vendor control plane",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "logs-only",
+        "effect": "Telemetry export is unconfigured or unreachable; the sink degrades to bounded structured local logs with drop counters. Observability never blocks the control or execution planes and never becomes an authority."
+      }
     }
   ]
 }
