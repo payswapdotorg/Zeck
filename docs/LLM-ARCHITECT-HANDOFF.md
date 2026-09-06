@@ -18,9 +18,10 @@
 - D-02 database and artifact production path: complete through WORK-043 / PR #4.
 - D-03 asynchronous execution transport: complete through WORK-044 / PR #6.
 - D-04 durable orchestration: complete through WORK-045 / PR #8.
-- Current implementation order: **WORK-046 — Execution worker deployment fabric (D-05)**.
-- Canonical GitHub Issue: **#9**, authorized/in-flight on `payswapdotorg/Zeck`.
-- Development frontier: `eligible=[]`, `inFlight=["WORK-046"]`, `blocked=[]`.
+- D-05 execution worker deployment fabric: **complete through WORK-046 / PR #10**.
+- Current implementation order: **WORK-047 — Production delivery, observability and release control (D-06)**.
+- Canonical GitHub Issue: **#11**, authorized/in-flight on `payswapdotorg/Zeck`.
+- Development frontier: `eligible=[]`, `inFlight=["WORK-047"]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -30,8 +31,8 @@ D-01 Reproducible infrastructure foundation — COMPLETE (WORK-042)
 D-02 Database + artifact production path — COMPLETE (WORK-043)
 D-03 Asynchronous execution transport — COMPLETE (WORK-044)
 D-04 Durable orchestration — COMPLETE (WORK-045)
-D-05 Execution worker deployment fabric — CURRENT (WORK-046)
-D-06 Production delivery, observability and release control
+D-05 Execution worker deployment fabric — COMPLETE (WORK-046)
+D-06 Production delivery, observability and release control — CURRENT (WORK-047)
 D-07 Resilience, disaster recovery and provider exit
 D-08 Growth/enterprise hardening
 ```
@@ -43,7 +44,7 @@ Workers may not skip, reorder or infer phases from chat. A phase becomes executa
 1. `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 2. `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment implementation sequence.
 3. `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-4. `spec/work-orders/WORK-046.md` — authoritative executable scope for the active increment.
+4. `spec/work-orders/WORK-047.md` — authoritative current executable scope.
 
 Core principle:
 
@@ -64,7 +65,7 @@ Reference topology:
 - Canonical Issue: #1
 - PR: #2
 - Worker final head: `c61392260024244db7bab723e9f018d7c582a9e8`
-- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f9`
+- Merge commit: `b75e23bacf9a9ace76e88e643ea2a272f588a0f`
 - Post-merge program/frontier state finalized by Architect.
 
 ## WORK-043 / D-02 completion
@@ -80,8 +81,8 @@ Reference topology:
 
 ## WORK-044 / D-03 completion
 
-- Work Order: `spec/work-orders/WORK-044.md`
-- Canonical issue: #5
+- Work Order: `WORK-044`
+- Canonical Issue: #5
 - Status: COMPLETE
 - Dependency: WORK-043
 - Required branch: `work/WORK-044-asynchronous-execution-transport`
@@ -96,8 +97,8 @@ Reference topology:
 
 ## WORK-045 / D-04 completion
 
-- Work Order: `spec/work-orders/WORK-045.md`
-- Canonical issue: #7
+- Work Order: `WORK-045`
+- Canonical Issue: #7
 - Status: COMPLETE
 - Dependency: WORK-044
 - Required branch: `work/WORK-045-durable-orchestration`
@@ -110,22 +111,38 @@ Reference topology:
 - Full regression at exact implementation head: 330 files / 4573 tests, 4562 passed, 11 skipped, 0 failed, twice consecutively.
 - Governance and deployment validation: PASS at exact implementation head.
 - Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; real-HTTP protocol and invalid-token 401 reachability/classification evidence retained.
-- Post-merge program/frontier state finalized by Architect.
+- Post-merge program/frontier state: finalized.
 
-## WORK-046 / D-05 dispatch
+## WORK-046 / D-05 completion
 
-- Work Order: `spec/work-orders/WORK-046.md`
+- Work Order: `WORK-046`
 - Canonical issue: #9
-- Status: AUTHORIZED / IN-FLIGHT
-- Dependency: WORK-045
+- Status: COMPLETE
+- Dependency: `WORK-045`
 - Required branch: `work/WORK-046-execution-worker-deployment-fabric`
 - Assurance: HIGH_ASSURANCE
 - Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9`
-- The branch was created directly from this exact SHA before subsequent documentation-only mainline commits.
+- Corrected final implementation head: `d5e7a25a51aba4d4664348209bfb6393c7dc15d0`
+- PR: #10
+- Merge commit: `5d26365ee9b8e55f41b923328443ae746205757a`
+- Architect blocking finding corrected in Revision 1: external container runner identity is now execution/sandbox scoped and deterministic; distinct identical executions cannot collapse while same-run replay converges.
+- Exact corrected-head verification: governance/deployment checks PASS; full PostgreSQL-backed suite passed twice consecutively at the final head; live container-runner and Cloudflare success remained NOT RUN where credentials were unavailable and were not claimed as PASS.
+- Issue #9 closed as completed.
+- Post-merge program/dependency/frontier state finalized by Architect.
 
-D-05 scope is the execution-plane worker service, provider/runtime adapters, container `ComputeEnvironment`, durable execution leases/heartbeats and stale-worker fencing, cancellation, worker drain/shutdown, bounded concurrency and per-environment quotas, restart/re-acquisition recovery, and optional governed customer-runner registration.
+## WORK-047 / D-06 dispatch
 
-The worker remains an executor. PostgreSQL and the existing execution authority remain authoritative. Existing policy, capability, budget, secret mediation, tenant and verification controls cannot be bypassed. D-06, D-07 and unrelated product/runtime work are forbidden.
+- Work Order: `WORK-047`
+- Canonical issue: #11
+- Status: AUTHORIZED / IN-FLIGHT
+- Dependency: `WORK-046`
+- Required branch: `work/WORK-047-production-delivery-observability-release-control`
+- Assurance: HIGH_ASSURANCE
+- Exact authorization base: `5d26365ee9b8e55f41b923328443ae746205757a`
+
+D-06 is limited to production delivery, observability and release control: exact commit/deployment identity, environment promotion gates, migration gating, health/smoke gates, bounded telemetry, error monitoring, rollback controls, cost/quota alerts and operator inspection. D-07 and unrelated product/runtime work remain forbidden.
+
+The Work Order is executable only from the exact authorization base above. Subsequent Architect-only governance-document commits on `main` do not change that binding.
 
 ## Fresh-session recovery order
 
@@ -138,8 +155,8 @@ The worker remains an executor. PostgreSQL and the existing execution authority 
 7. Read all files under `spec/development-state/`.
 8. Read `spec/requirement-traceability.md` and relevant ADRs.
 9. Read `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, ACR-002, and `docs/FORK-CANONICAL-REMOTE.md`.
-10. Read `spec/work-orders/WORK-046.md` in full.
-11. Inspect live Git refs, canonical Issue #9, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry and current frontier.
+10. Read `spec/work-orders/WORK-047.md` in full.
+11. Inspect live Git refs, canonical Issue #11, PRs and checks on `payswapdotorg/Zeck`; verify exact ancestry and current frontier.
 12. Run `python3 scripts/governance-check.py` before changing state or implementation.
 
 ## Repository truth hierarchy
@@ -170,7 +187,7 @@ The worker remains an executor. PostgreSQL and the existing execution authority 
 
 ## Completion boundary
 
-WORK-046 is the only authorized implementation order. The next phase remains blocked until WORK-046 is accepted, merged and post-merge state is finalized through the Architect's normal governance loop.
+WORK-047 is the only authorized implementation order. The next phase remains blocked until WORK-047 is accepted, merged and post-merge state is finalized through the Architect's normal governance loop.
 
 ## Fresh-session invariant
 
