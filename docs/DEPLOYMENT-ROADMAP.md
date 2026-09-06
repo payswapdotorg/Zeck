@@ -191,7 +191,7 @@ Acceptance:
 - worker failure converges to durable execution state;
 - untrusted code receives no ambient credentials or unrestricted host access.
 
-**Status:** NEXT — eligible only through a repository-approved WORK-046 Work Order; not yet authorized.
+**Status:** COMPLETE — WORK-046 / PR #10 merged at `5d26365ee9b8e55f41b923328443ae746205757a`. Revision 1 corrected the execution-scoped external runner identity/idempotency defect before acceptance.
 
 ### D-06 — Production delivery, observability and release control
 
@@ -216,6 +216,8 @@ Acceptance:
 - failed releases can be rolled back without changing domain state;
 - operational alerts exist before resource exhaustion.
 
+**Status:** CURRENT / AUTHORIZED — WORK-047 / Issue #11. Exact authorization base: `5d26365ee9b8e55f41b923328443ae746205757a`. Required branch: `work/WORK-047-production-delivery-observability-release-control`.
+
 ### D-07 — Resilience, DR and provider exit
 
 **Goal:** Prove Zeck can survive infrastructure loss and provider substitution.
@@ -238,6 +240,8 @@ Acceptance:
 - provider replacement changes adapters/configuration rather than domain semantics;
 - disaster recovery evidence is repeatable.
 
+**Status:** BLOCKED — D-07 is not authorized until D-06 is complete and post-merge state is finalized.
+
 ### D-08 — Growth and enterprise hardening
 
 **Goal:** Move from lean MVP operations to high-assurance multi-tenant infrastructure.
@@ -256,6 +260,8 @@ Scope:
 Gate:
 
 D-08 may only begin after measured production usage, explicit availability/security requirements and an Architect-approved architecture extension.
+
+**Status:** BLOCKED — downstream of D-07 and explicit architecture extension requirements.
 
 ## Execution ordering
 
