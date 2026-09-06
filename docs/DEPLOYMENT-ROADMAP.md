@@ -167,7 +167,7 @@ Acceptance:
 - waiting executions survive process restarts;
 - large artifacts and secret values stay outside workflow state.
 
-**Status:** CURRENT — WORK-045 authorized/in-flight.
+**Status:** COMPLETE — WORK-045 / PR #8 merged.
 
 ### D-05 — Execution worker deployment fabric
 
@@ -190,6 +190,8 @@ Acceptance:
 - no long-running execution depends on an HTTP request staying open;
 - worker failure converges to durable execution state;
 - untrusted code receives no ambient credentials or unrestricted host access.
+
+**Status:** NEXT — eligible only through a repository-approved WORK-046 Work Order; not yet authorized.
 
 ### D-06 — Production delivery, observability and release control
 
