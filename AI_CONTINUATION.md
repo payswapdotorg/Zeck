@@ -16,9 +16,9 @@ Read `docs/LLM-ARCHITECT-HANDOFF.md` immediately after `AGENTS.md`.
 
 The UX v2 sequence is complete through **WORK-041**. The deployment/runtime roadmap is active under approved **Deployment & Runtime Architecture D1.0**.
 
-**D-00 complete. D-01 complete through WORK-042. D-02 complete through WORK-043. D-03 complete through WORK-044. D-04 complete through WORK-045. No successor deployment Work Order is currently authorized.**
+**D-00 complete. D-01 complete through WORK-042. D-02 complete through WORK-043. D-03 complete through WORK-044. D-04 complete through WORK-045. D-05 is authorized and in-flight through WORK-046.**
 
-Current frontier: `eligible=[]`, `inFlight=[]`, `blocked=[]`.
+Current frontier: `eligible=[]`, `inFlight=["WORK-046"]`, `blocked=[]`.
 
 ## Authoritative deployment sequence
 
@@ -31,8 +31,8 @@ No deployment phase may be skipped, reordered or inferred from chat. Each phase 
 - `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
 - `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment sequence.
 - `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-- `spec/work-orders/WORK-045.md` — authoritative completed D-04 scope.
-- GitHub Issue #7 — canonical WORK-045 dispatch/closure record on this remote.
+- `spec/work-orders/WORK-046.md` — authoritative current implementation scope.
+- GitHub Issue #9 — canonical WORK-046 dispatch record on this remote.
 
 The reference topology is Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination.
 
@@ -84,7 +84,19 @@ The reference topology is Vercel for experience/delivery, Neon PostgreSQL for au
 - Full regression at exact implementation head: 330 files / 4573 tests, 4562 passed, 11 skipped, 0 failed, twice consecutively.
 - Governance and deployment validation: PASS at exact implementation head; Issue #7 closed as completed.
 - Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; documented real-HTTP protocol evidence and invalid-token 401 reachability/classification evidence retained.
-- Post-merge program/frontier state: finalized; no successor deployment order authorized yet.
+- Post-merge program/frontier state: finalized.
+
+## D-05 dispatch
+
+- Work Order: `WORK-046`
+- Canonical issue: #9
+- Required branch: `work/WORK-046-execution-worker-deployment-fabric`
+- Dependency: `WORK-045`
+- Assurance: HIGH_ASSURANCE
+- Status: AUTHORIZED / IN-FLIGHT
+- Dispatch base: the final `main` revision immediately before creation of the required worker branch; recorded on Issue #9 and recovered from live Git refs.
+
+D-05 is limited to the execution-plane worker service, provider/runtime adapters, container `ComputeEnvironment`, durable execution leases/heartbeats and stale-worker fencing, cancellation, drain/shutdown, bounded concurrency and quotas, restart/re-acquisition recovery, and optional governed customer-runner registration. Workers remain executors; PostgreSQL and existing execution authorities remain authoritative.
 
 ## Recovery sequence
 
