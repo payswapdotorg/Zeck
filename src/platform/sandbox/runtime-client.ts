@@ -25,6 +25,27 @@ import type { ContainerConfiguration } from "./container-profile";
 export interface ContainerRunOptions {
   /** The admitted wall-clock bound (the client enforces it too). */
   readonly timeoutMs: number;
+  /**
+   * The durable execution-scoped identity of THIS logical run — the
+   * provider composes it from the sanitized runtime spec's binding
+   * (application/execution/sandbox ids). REQUIRED (never optional, no
+   * default): a runtime that derives an EXTERNAL run identifier MUST
+   * bind this identity into the derivation, because the container
+   * configuration alone does not identify the work —
+   *
+   *   - two DIFFERENT executions (or two different sandboxes) doing
+   *     identical work MUST NOT collapse into one external run: they
+   *     carry different run identities and therefore different
+   *     external run ids (cross-execution identity separation);
+   *   - a REPLAY of the same logical run (same execution, same
+   *     sandbox row, same admitted configuration) carries the SAME
+   *     run identity and MUST converge to the SAME external run id
+   *     (idempotent re-submission / observation convergence).
+   *
+   * The identity is provider-neutral and opaque to the runtime: no
+   * runner-protocol vocabulary crosses this seam.
+   */
+  readonly runIdentity: string;
 }
 
 export interface ContainerRunResult {
@@ -42,6 +63,13 @@ export interface ContainerRunResult {
  */
 export interface ContainerRuntimeClient {
   readonly runtimeId: string;
-  /** Execute exactly the validated configuration (fail closed on errors). */
+  /**
+   * Execute exactly the validated configuration (fail closed on
+   * errors). The options carry the execution-scoped `runIdentity`
+   * (see `ContainerRunOptions`): implementations that derive external
+   * run identifiers MUST bind it into the derivation — distinct
+   * logical runs never collapse into one external run, and a replay
+   * of the same logical run converges to the same external id.
+   */
   run(config: ContainerConfiguration, options: ContainerRunOptions): Promise<ContainerRunResult>;
 }

@@ -299,7 +299,22 @@ export interface WorkerFabricWorld {
 const sha256Hex = (value: string): string =>
   createHash("sha256").update(value, "utf8").digest("hex");
 
-export async function seedWorkerFabricWorld(db: DatabasePort): Promise<WorkerFabricWorld> {
+export interface WorkerFabricWorldOptions {
+  /**
+   * Replace the container-kind substrate. The controllable provider
+   * double is the default (the process/container substrates are
+   * protocol-tested separately); the external-run-identity regression
+   * (worker-external-run-identity.test.ts) wires the REAL
+   * `ContainerSandboxProvider` + the REAL container runtime client
+   * over a real in-process HTTP runner here.
+   */
+  readonly containerProvider?: SandboxProvider;
+}
+
+export async function seedWorkerFabricWorld(
+  db: DatabasePort,
+  options?: WorkerFabricWorldOptions,
+): Promise<WorkerFabricWorld> {
   const tenantId = generateId();
   const applicationId = generateId();
   const environmentId = generateId();
@@ -368,6 +383,11 @@ export async function seedWorkerFabricWorld(db: DatabasePort): Promise<WorkerFab
   const provider = new ControllableSandboxProvider();
   const providers = createSandboxProviderRegistry();
   providers.register(provider);
+  if (options?.containerProvider !== undefined) {
+    // The explicit substrate replaces the container-kind entry (the
+    // registry is keyed by runtime kind; the last registration wins).
+    providers.register(options.containerProvider);
+  }
   const sandboxService = createSandboxService({
     store: sandboxStore,
     admission: sandboxAdmission,

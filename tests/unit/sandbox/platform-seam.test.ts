@@ -17,7 +17,10 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { ContainerSandboxProvider } from "../../../src/modules/sandbox/adapters/container-provider";
+import {
+  ContainerSandboxProvider,
+  containerRunIdentity,
+} from "../../../src/modules/sandbox/adapters/container-provider";
 import type { SandboxRuntimeSpec } from "../../../src/modules/sandbox/ports/sandbox-provider";
 import {
   type ContainerConfiguration,
@@ -185,6 +188,112 @@ describe("container provider (the module-side projection)", () => {
     expect(config.env).toEqual([{ name: "MODE", value: "batch" }]);
     // secret REFERENCES never become values:
     expect(JSON.stringify(config)).not.toContain("conn-customer-api");
+  });
+
+  test("REGRESSION the run options carry the execution-scoped run identity (durable spec binding)", async () => {
+    const captured: { readonly runIdentity: string; readonly timeoutMs: number }[] = [];
+    const provider = new ContainerSandboxProvider({
+      client: {
+        runtimeId: "test-runtime",
+        async run(_config, options) {
+          captured.push({ runIdentity: options.runIdentity, timeoutMs: options.timeoutMs });
+          return {
+            exitCode: 0,
+            timedOut: false,
+            stdout: "done",
+            stderr: "",
+            stdoutDigest: "d",
+            durationMs: 12,
+          };
+        },
+      },
+    });
+    await provider.execute(spec);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.timeoutMs).toBe(60_000);
+    // The identity is the durable spec binding (application + parent
+    // execution + sandbox row) — the runtime client binds it into the
+    // external run id derivation.
+    expect(captured[0]?.runIdentity).toBe(
+      `zeck-run:00000000-0000-7000-8000-0000000000b1:00000000-0000-7000-8000-0000000000e1:00000000-0000-7000-8000-000000000001`,
+    );
+  });
+
+  test("REGRESSION distinct executions doing IDENTICAL work dispatch with DISTINCT run identities", async () => {
+    // The pre-revision defect (Architect finding on PR #10): the
+    // external runner id was derived from the configuration + timeout
+    // ALONE, so identical work from two different executions collapsed
+    // into one external run. The provider must hand the runtime the
+    // execution-scoped identity — the ONLY field separating these two
+    // dispatches (the built configurations are byte-identical).
+    const captured: { readonly runIdentity: string }[] = [];
+    const configurations: ContainerConfiguration[] = [];
+    const provider = new ContainerSandboxProvider({
+      client: {
+        runtimeId: "test-runtime",
+        async run(config, options) {
+          configurations.push(config);
+          captured.push({ runIdentity: options.runIdentity });
+          return {
+            exitCode: 0,
+            timedOut: false,
+            stdout: "done",
+            stderr: "",
+            stdoutDigest: "d",
+            durationMs: 12,
+          };
+        },
+      },
+    });
+    const executionA: SandboxRuntimeSpec = {
+      ...spec,
+      sandboxId: "00000000-0000-7000-8000-0000000000a1",
+      executionId: "00000000-0000-7000-8000-0000000000eA",
+    };
+    const executionB: SandboxRuntimeSpec = {
+      ...spec,
+      sandboxId: "00000000-0000-7000-8000-0000000000b2",
+      executionId: "00000000-0000-7000-8000-0000000000eB",
+    };
+    await provider.execute(executionA);
+    await provider.execute(executionB);
+    expect(configurations).toHaveLength(2);
+    // The configurations are IDENTICAL (identical work)…
+    expect(configurations[0]).toStrictEqual(configurations[1]);
+    // …but the run identities are DISTINCT (distinct executions/sandboxes):
+    expect(captured).toHaveLength(2);
+    expect(captured[0]?.runIdentity).not.toBe(captured[1]?.runIdentity);
+    expect(captured[0]?.runIdentity).toBe(containerRunIdentity(executionA));
+    expect(captured[1]?.runIdentity).toBe(containerRunIdentity(executionB));
+  });
+
+  test("REGRESSION the same logical run re-derives the SAME run identity (replay convergence)", async () => {
+    const captured: { readonly runIdentity: string }[] = [];
+    const provider = new ContainerSandboxProvider({
+      client: {
+        runtimeId: "test-runtime",
+        async run(_config, options) {
+          captured.push({ runIdentity: options.runIdentity });
+          return {
+            exitCode: 0,
+            timedOut: false,
+            stdout: "done",
+            stderr: "",
+            stdoutDigest: "d",
+            durationMs: 12,
+          };
+        },
+      },
+    });
+    // The sandbox row is the idempotency anchor: a replay of the same
+    // logical run re-presents the same durable binding — the same
+    // identity, therefore the same external run id (the runtime
+    // client's derivation is a pure function of identity + config +
+    // timeout).
+    await provider.execute(spec);
+    await provider.execute(spec);
+    expect(captured).toHaveLength(2);
+    expect(captured[0]?.runIdentity).toBe(captured[1]?.runIdentity);
   });
 });
 

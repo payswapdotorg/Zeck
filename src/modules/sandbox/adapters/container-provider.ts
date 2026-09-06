@@ -23,6 +23,12 @@
  *      "isolation guarantees cannot be established" is an honest
  *      `runtime-unavailable` failure, NEVER a permissive fallback to an
  *      unisolated execution (discrimination M18).
+ *   4. it dispatches with the execution-scoped RUN IDENTITY (see
+ *      `containerRunIdentity`): the runtime's external run id binds
+ *      the durable application/execution/sandbox binding, so distinct
+ *      executions doing identical work never collapse into one
+ *      external run, while a replay of the same logical run converges
+ *      to the same external run id.
  *
  * No container-runtime SDK is a declared dependency in this Work Order;
  * concrete runtimes (Docker/containerd/OCI/fleet runners — WORK-019)
@@ -45,6 +51,30 @@ import type {
 
 /** A safe base image for sandboxed execution (composition default). */
 export const DEFAULT_SANDBOX_IMAGE = "zeck-sandbox-base:1";
+
+/**
+ * The durable execution-scoped identity of one logical container run —
+ * the sanitized runtime spec's binding (application + parent execution
+ * + sandbox row). The runtime client binds this into its external run
+ * id derivation:
+ *
+ *   - DISTINCT executions / DISTINCT sandbox rows doing IDENTICAL
+ *     work produce DISTINCT identities and therefore DISTINCT external
+ *     runs (two Zeck executions never collapse into one runner run —
+ *     the configuration alone does not identify the work);
+ *   - a REPLAY of the same logical run re-derives the SAME identity
+ *     (the sandbox row is the idempotency anchor: re-selection
+ *     converges on the committed row, so applicationId, executionId
+ *     and sandboxId are all stable per logical run) and therefore the
+ *     SAME external run id (idempotent re-submission converges).
+ */
+export function containerRunIdentity(spec: {
+  readonly applicationId: string;
+  readonly executionId: string;
+  readonly sandboxId: string;
+}): string {
+  return `zeck-run:${spec.applicationId}:${spec.executionId}:${spec.sandboxId}`;
+}
 
 export interface ContainerSandboxProviderOptions {
   /**
@@ -136,8 +166,14 @@ export class ContainerSandboxProvider implements SandboxProvider {
       );
     }
 
+    // ---- 4. Dispatch with the execution-scoped run identity. ---------------
+    // The identity binds the external run to the durable execution/sandbox
+    // binding (spec identity): two executions doing identical work never
+    // share a runner run, and a replay of this logical run re-derives the
+    // same identity (same external run id — idempotent convergence).
     const result = await this.client.run(configuration, {
       timeoutMs: limits.executionTimeoutMs,
+      runIdentity: containerRunIdentity(spec),
     });
     if (result.timedOut) {
       return {

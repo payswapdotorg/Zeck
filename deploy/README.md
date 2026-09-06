@@ -457,7 +457,7 @@ REST protocol (provider-neutral, no vendor SDK; the Zeck side is
 
 ```text
 POST {base}/v1/runs                      (auth: Bearer <token>)
-  body: {"runId": "<uuid>", "config": <ContainerConfiguration>, "timeoutMs": <int>}
+  body: {"runId": "<derived run id>", "config": <ContainerConfiguration>, "timeoutMs": <int>}
   -> 202 {"runId": "...", "accepted": true}          (accepted for execution)
   -> 400 (malformed configuration — permanent) / 401 / 403 (auth — permanent)
   -> 409 (the deterministic run id is already held — idempotent re-submission)
@@ -480,6 +480,26 @@ the bounded payload (deterministic evidence). `probeContainerRunner`
 (the `deploy:smoke` execution-compute concern) is an authenticated
 synthetic run-id GET: the expected 404 proves wire + credential without
 executing anything.
+
+**The run-id derivation (identity binding).** The external `runId` is
+derived by the Zeck client from the EXECUTION-SCOPED RUN IDENTITY
+together with the configuration and the admitted timeout:
+
+```text
+runId = "run-" + sha256([runIdentity, config, timeoutMs])[0:32]
+runIdentity = "zeck-run:<applicationId>:<executionId>:<sandboxId>"
+```
+
+The configuration alone does not identify the work: two DIFFERENT
+executions doing identical work carry different run identities and
+therefore different external run ids — they can never collapse into one
+runner run (the configuration-only derivation was the pre-revision
+defect). A replay of the SAME logical run (same execution, same sandbox
+row, same admitted configuration) re-derives the SAME run id — the
+idempotent 409 re-submission then converges on the held run. A runner
+implementation MUST treat the submitted `runId` as the idempotency key
+of the run (409 on re-submission of a held id) and never execute two
+logically distinct runs under one id.
 
 ### The worker model (the authority boundary)
 

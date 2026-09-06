@@ -26,6 +26,23 @@
  *        -> 404 (the runner no longer knows the run — PERMANENT, fail
  *           closed; the honest unknown-outcome class)
  *
+ * RUN IDENTITY (the cross-execution separation guarantee): the
+ * external `runId` is derived from the EXECUTION-SCOPED RUN IDENTITY
+ * (the provider composed it from the durable application/execution/
+ * sandbox binding — `ContainerRunOptions.runIdentity`) TOGETHER WITH
+ * the container configuration and the admitted timeout:
+ *
+ *   runId = "run-" + sha256([runIdentity, config, timeoutMs])[0:32]
+ *
+ * The configuration alone does NOT identify the work: two DIFFERENT
+ * Zeck executions doing identical work carry different run identities
+ * and therefore different external run ids — they can never collapse
+ * into one runner run (the pre-revision defect). A REPLAY of the same
+ * logical run (same identity, same admitted configuration) re-derives
+ * the SAME run id — the 409 idempotent re-submission then converges
+ * on the held run. A missing/oversized identity fails closed BEFORE
+ * any wire call (an unidentified run is never dispatched).
+ *
  * Failure classification (fail closed everywhere):
  *   - 400/401/403/404 + malformed envelopes        -> permanent
  *   - 429/5xx/network/timeout/poll-deadline        -> transient (bounded
@@ -94,6 +111,27 @@ export interface ContainerRuntimeClientConfig {
   readonly maxOutputBytes?: number;
   /** Sleep seam (tests substitute a no-op). */
   readonly sleep?: (ms: number) => Promise<void>;
+}
+
+/** Validate the run options (fail closed BEFORE any wire call). */
+function validateRunOptions(options: ContainerRunOptions): void {
+  if (typeof options?.runIdentity !== "string" || options.runIdentity.length === 0) {
+    throw new ContainerRuntimeConfigError(
+      "container run options require a non-empty runIdentity (the durable execution/sandbox binding; the provider composes it from the runtime spec identity)",
+    );
+  }
+  if (options.runIdentity.length > 256) {
+    throw new ContainerRuntimeConfigError("runIdentity must be bounded (max 256 characters)");
+  }
+  if (
+    typeof options?.timeoutMs !== "number" ||
+    !Number.isInteger(options.timeoutMs) ||
+    options.timeoutMs <= 0
+  ) {
+    throw new ContainerRuntimeConfigError(
+      "container run options require a positive integer timeoutMs",
+    );
+  }
 }
 
 const REQUEST_TIMEOUT_BOUNDS = { min: 100, max: 120_000 } as const;
@@ -239,7 +277,16 @@ export function createContainerRuntimeClient(
       configuration: ContainerConfiguration,
       options: ContainerRunOptions,
     ): Promise<ContainerRunResult> {
-      const runId = `run-${sha256Hex(JSON.stringify([configuration, options.timeoutMs])).slice(0, 32)}`;
+      // THE RUN IDENTITY BINDING (fail closed before any wire call):
+      // the external run id is derived from the execution-scoped
+      // identity FIRST, then the configuration and the admitted
+      // timeout — distinct executions doing identical work produce
+      // distinct run ids; a replay of the same logical run re-derives
+      // the same one (idempotent submission convergence).
+      validateRunOptions(options);
+      const runId = `run-${sha256Hex(
+        JSON.stringify([options.runIdentity, configuration, options.timeoutMs]),
+      ).slice(0, 32)}`;
       // 1. Submit the run (the config is ALREADY validated by the
       //    sandbox module's escape validator — the client sends it as-is).
       const submission = await request("/v1/runs", {

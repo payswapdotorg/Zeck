@@ -58,7 +58,7 @@ describe.skipIf(!LIVE)("container runner LIVE round trip (WORK-046 D-05)", () =>
         seccompProfile: "default",
         noNewPrivileges: true,
       },
-      { timeoutMs: 30_000 },
+      { timeoutMs: 30_000, runIdentity: "zeck-live-runner-probe:worker-fabric-live" },
     );
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("worker-fabric-live-probe");
