@@ -33,6 +33,7 @@ import { existsSync } from "node:fs";
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { Client } from "pg";
+import { probeContainerRunner } from "../src/platform/compute/container-runtime";
 import { parseConnectionConfig, redactConnectionString } from "../src/platform/db/connection";
 import { PgDatabasePort } from "../src/platform/db/pg-database-port";
 import { shippedMigrations } from "../src/platform/db/startup";
@@ -197,12 +198,14 @@ async function probeProviderEnvironment(
       probes.push(await probeProviderAsyncTransport(manifest, environment, contract));
     } else if (concern === "durable-orchestration") {
       probes.push(await probeProviderDurableOrchestration(manifest, environment, contract));
+    } else if (concern === "execution-compute") {
+      probes.push(await probeProviderExecutionCompute(manifest, environment, contract));
     } else {
       probes.push({
         concern,
         status: referencesReady ? "degraded" : "unavailable",
         detail: referencesReady
-          ? "secret references materialized; the D-04+ adapter for this concern is not landed (degraded by declared mode)"
+          ? "secret references materialized; the D-06+ adapter for this concern is not landed (degraded by declared mode)"
           : `secret references not materialized (${materialized}/${expected}); environment not provisioned`,
       });
     }
@@ -473,6 +476,58 @@ async function probeProviderDurableOrchestration(
       concern: "durable-orchestration",
       status: "unavailable",
       detail: `workflow orchestration probe failed closed: ${(error as Error).message.slice(0, 140)}`,
+    };
+  }
+}
+
+/**
+ * The D-05 execution-compute probe: when the runner URL and the
+ * materialized container-runner token (ZECK_CONTAINER_RUNNER_API_TOKEN)
+ * with its reference binding exist, run the REAL authenticated
+ * reachability probe (a synthetic run-id GET; the expected 404 proves
+ * wire + credential without executing anything). Without configuration
+ * the concern reports the exact unavailability (fail closed; the
+ * declared execution-compute-unavailable degradation keeps container
+ * sandbox dispatch closed — never an ambient fallback).
+ */
+async function probeProviderExecutionCompute(
+  _manifest: ReturnType<typeof loadManifest>,
+  _environment: EnvironmentId,
+  contract: ReturnType<typeof evaluateEnvironmentContract>,
+): Promise<DependencyProbeResult> {
+  void _manifest;
+  void _environment;
+  const referenceBound = contract.materializedReferences.some(
+    (reference) => reference.variable === "ZECK_SECRET_CONTAINER_RUNNER_TOKEN_REF",
+  );
+  const runnerUrl = process.env.ZECK_CONTAINER_RUNNER_URL;
+  const runnerToken = process.env.ZECK_CONTAINER_RUNNER_API_TOKEN;
+  const notConfigured = !referenceBound
+    ? "ZECK_SECRET_CONTAINER_RUNNER_TOKEN_REF is not materialized (the environment-scoped reference binding is a precondition)"
+    : runnerUrl === undefined || runnerUrl.length === 0
+      ? "ZECK_CONTAINER_RUNNER_URL is not set (the environment's container runner daemon; see deploy/README.md D-05)"
+      : runnerToken === undefined || runnerToken.length === 0
+        ? "ZECK_CONTAINER_RUNNER_API_TOKEN is not set (the materialized container-runner token value is absent)"
+        : null;
+  if (notConfigured !== null) {
+    return { concern: "execution-compute", status: "unavailable", detail: notConfigured };
+  }
+  try {
+    const probe = await probeContainerRunner({
+      baseUrl: runnerUrl as string,
+      apiToken: runnerToken as string,
+      requestTimeoutMs: 15_000,
+    });
+    return {
+      concern: "execution-compute",
+      status: probe.ok ? "ready" : "unavailable",
+      detail: probe.detail,
+    };
+  } catch (error) {
+    return {
+      concern: "execution-compute",
+      status: "unavailable",
+      detail: `container runner probe failed closed: ${(error as Error).message.slice(0, 140)}`,
     };
   }
 }

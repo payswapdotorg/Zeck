@@ -69,8 +69,9 @@ defineSuite<Ctx>(
       });
       try {
         // 24 through WORK-043 + 0026_queue_transport (WORK-044 / D-03)
-        // + 0027_workflow_orchestration (WORK-045 / D-04).
-        expect(handle.migrations.applied).toHaveLength(26);
+        // + 0027_workflow_orchestration (WORK-045 / D-04)
+        // + 0028_compute_worker_fabric (WORK-046 / D-05).
+        expect(handle.migrations.applied).toHaveLength(27);
         expect(handle.migrations.skipped).toBe(0);
         expect(handle.serverVersion).toContain("PostgreSQL 16");
         // Non-secret endpoint identity only.
@@ -94,8 +95,8 @@ defineSuite<Ctx>(
       });
       try {
         expect(second.migrations.applied).toHaveLength(0);
-        expect(second.migrations.skipped).toBe(26);
-        expect(second.migrations.applied.length + second.migrations.skipped).toBe(26);
+        expect(second.migrations.skipped).toBe(27);
+        expect(second.migrations.applied.length + second.migrations.skipped).toBe(27);
       } finally {
         await second.close();
       }

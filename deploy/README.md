@@ -407,3 +407,124 @@ provider instances terminated by the compaction run
 into a durable counter beyond the retention bound (bounded, inspectable
 state). Workflow state is orchestration progress evidence only — it
 never establishes execution success.
+
+## The D-05 runtime configuration (execution worker fabric)
+
+The execution worker (the `deploy:worker` process — the independently
+runnable execution-plane service) composes the D-02 database, the D-03
+queue transport, the executions authority, the sandbox admission chain
+and the container runner. Ordinary bounded variables for the fabric
+policy; one environment-materialized secret for the runner credential.
+
+```bash
+# the database + queue (the D-02/D-03 configuration, unchanged):
+export ZECK_DATABASE_URL='<connection string of the environment database>'
+export ZECK_QUEUE_API_TOKEN='<cloudflare api token with queues read+write>'
+export ZECK_QUEUE_ID='<32-hex queue id>'
+
+# the container runner (the execution-plane host; OPTIONAL — absent
+# means the container substrate reports unavailable and container
+# sandbox dispatch fails closed; the process substrate still executes):
+export ZECK_SECRET_CONTAINER_RUNNER_TOKEN_REF='zeck-secret://<environment>/container-runner-token'
+export ZECK_CONTAINER_RUNNER_API_TOKEN='<runner bearer token>'
+export ZECK_CONTAINER_RUNNER_URL='https://runner.internal.example'
+
+# bounded fabric policy (repository defaults — all optional):
+export ZECK_WORKER_LEASE_TTL_MS=60000         # per-claim lease TTL
+export ZECK_WORKER_HEARTBEAT_INTERVAL_MS=5000 # registration/claim/lease cadence
+export ZECK_WORKER_DEFAULT_ENV_QUOTA=8        # concurrent live claims per compute environment
+export ZECK_WORKER_MAX_CLAIM_ATTEMPTS=3       # bounded re-selection per execution
+export ZECK_WORKER_MAX_IN_FLIGHT=4            # per-worker concurrent work bound
+export ZECK_WORKER_MAX_DRAIN_MS=120000        # bounded graceful shutdown
+export ZECK_WORKER_CLAIM_VISIBILITY_MS=30000  # the dispatch pull visibility window
+export ZECK_WORKER_BATCH_SIZE=8               # deliveries per poll
+export ZECK_WORKER_STALE_AFTER_MS=90000       # heartbeat age -> offline/abandoned
+export ZECK_WORKER_MAX_OUTCOME_BYTES=2048     # bounded claim outcome detail
+export ZECK_WORKER_CLAIM_RETENTION_MS=604800000 # terminal-claim retention (7 days)
+
+# run the worker (one process per execution-plane host; the identity is
+# fresh per process — a restart registers a NEW worker identity and the
+# recovery scan re-drives its predecessor's abandoned claims):
+bun run deploy:worker -- run --environment <env> --application-id <uuid>
+```
+
+### The container-runner protocol (the execution-plane host contract)
+
+The concrete container runtime behind the v1.0 container
+`ComputeEnvironment` is a runner daemon implementing the documented
+REST protocol (provider-neutral, no vendor SDK; the Zeck side is
+`src/platform/compute/container-runtime.ts`):
+
+```text
+POST {base}/v1/runs                      (auth: Bearer <token>)
+  body: {"runId": "<uuid>", "config": <ContainerConfiguration>, "timeoutMs": <int>}
+  -> 202 {"runId": "...", "accepted": true}          (accepted for execution)
+  -> 400 (malformed configuration — permanent) / 401 / 403 (auth — permanent)
+  -> 409 (the deterministic run id is already held — idempotent re-submission)
+
+GET {base}/v1/runs/{runId}
+  -> 200 {"status": "running"}
+  -> 200 {"status": "succeeded"|"failed", "exitCode": <int>, "timedOut": <bool>,
+          "stdout": "<bounded>", "stderr": "<bounded>", "durationMs": <int>}
+  -> 404 (the runner no longer knows the run — the honest unknown-outcome
+          class; fail closed, never re-executed)
+```
+
+The runner receives ONLY already-validated `ContainerConfiguration`
+objects (the sandbox module's escape validator rejected privileged /
+host-mount / ambient-network / secret-shaped configurations BEFORE the
+wire — a configuration the validator would reject can never reach the
+runner). The runner enforces the admitted wall-clock bound and bounds
+its output payloads; Zeck truncates to its own byte bound and digests
+the bounded payload (deterministic evidence). `probeContainerRunner`
+(the `deploy:smoke` execution-compute concern) is an authenticated
+synthetic run-id GET: the expected 404 proves wire + credential without
+executing anything.
+
+### The worker model (the authority boundary)
+
+A worker is an executor, never an execution authority. The dispatch
+delivery is the wake-up: after the atomic claim admission (per-worker
+concurrency, per-environment quota, bounded re-selection attempts, ONE
+live claim per execution — all physically enforced in the
+`compute_plane` schema) and the durable execution lease acquisition
+(the executions module's single lease system, monotonic epochs), the
+delivery is settled and the durable claim + lease carry the work. The
+completion commits through the frozen transition service under the
+lease fence: success rides `verify` + `pass` with the MANDATORY
+verification binding (a runtime/provider success signal alone never
+completes an execution); failure rides the governed `fail`. A stale
+worker (expired / superseded / foreign / released lease) is fenced at
+the persistence boundary — its late completion NEVER becomes
+authoritative, and the recovery scan re-drives the execution (the
+deterministic sandbox identity replays the prior terminal outcome; no
+duplicate governed effect). Cancellation and termination flow through
+the existing governed interruption/termination paths; the worker only
+observes and converges. Drain stops new acquisition, bounds in-flight
+waiting, and abandons stragglers as recoverable claims — never lost,
+never duplicated.
+
+### The D-05 worker composition note (policy seeding)
+
+The policies module's durable store does not exist yet (future scope
+beyond D-05); the worker seeds the repository baseline policy set (the
+platform-scope permissive baseline the governed admission chain
+consumes) at boot through the REAL policy authority behind the sandbox
+admission seam — policy admission is REAL and fail-closed (a restricted
+set denies), never bypassed. When the durable policy store lands, the
+seed is replaced by the durable read; nothing else changes.
+
+### The operator surface
+
+`bun run deploy:worker --` subcommands: `run` (the worker process;
+SIGTERM triggers the bounded drain), `run-once` (one bounded
+consume + recover iteration — the exact-revision verification path),
+`inspect` (the read-only worker-plane snapshot: registrations, live
+claims, quotas, recoverable candidates), `sweep` (stale workers
+offline + stale claims abandoned, no re-drive), `recover` (the full
+recovery scan), `compact` (bounded terminal-claim retention), `quota`
+(per-compute-environment quota), `runner register|activate|suspend|
+revoke|list` (the governed customer-runner registration lifecycle —
+attributable, revocable, NON-AUTHORITATIVE executor metadata; a
+customer-runner worker binds the registration and may only claim its
+own application's executions).

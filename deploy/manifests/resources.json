@@ -67,14 +67,43 @@
         "maxLength": 63,
         "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
         "description": "Local Redis-compatible coordination service."
+      },
+      "container-runner": {
+        "suffix": "runner",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Container runner daemon implementing the documented Zeck container-runner REST protocol (execution plane; non-authoritative)."
+      },
+      "local-container-runner": {
+        "suffix": "runner",
+        "maxLength": 63,
+        "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$",
+        "description": "Local container runner daemon (optional; absent means the container substrate reports unavailable and dispatch fails closed)."
       }
     }
   },
   "resources": {
     "local": [
-      { "id": "postgres", "concern": "relational-state", "kind": "pg-database" },
-      { "id": "object-store", "concern": "artifact-bytes", "kind": "local-object-store" },
-      { "id": "redis", "concern": "ephemeral-coordination", "kind": "local-redis" }
+      {
+        "id": "postgres",
+        "concern": "relational-state",
+        "kind": "pg-database"
+      },
+      {
+        "id": "object-store",
+        "concern": "artifact-bytes",
+        "kind": "local-object-store"
+      },
+      {
+        "id": "redis",
+        "concern": "ephemeral-coordination",
+        "kind": "local-redis"
+      },
+      {
+        "id": "execution-runner",
+        "concern": "execution-compute",
+        "kind": "local-container-runner"
+      }
     ],
     "preview": [
       {
@@ -83,9 +112,24 @@
         "kind": "vercel-project",
         "perBranch": true
       },
-      { "id": "database", "concern": "relational-state", "kind": "neon-branch", "perBranch": true },
-      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket", "perBranch": true },
-      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue", "perBranch": true },
+      {
+        "id": "database",
+        "concern": "relational-state",
+        "kind": "neon-branch",
+        "perBranch": true
+      },
+      {
+        "id": "object-store",
+        "concern": "artifact-bytes",
+        "kind": "r2-bucket",
+        "perBranch": true
+      },
+      {
+        "id": "dispatch",
+        "concern": "async-transport",
+        "kind": "cf-queue",
+        "perBranch": true
+      },
       {
         "id": "orchestration",
         "concern": "durable-orchestration",
@@ -97,25 +141,97 @@
         "concern": "ephemeral-coordination",
         "kind": "upstash-redis",
         "perBranch": true
+      },
+      {
+        "id": "execution-runner",
+        "concern": "execution-compute",
+        "kind": "container-runner",
+        "perBranch": true
       }
     ],
     "staging": [
-      { "id": "experience", "concern": "experience-delivery", "kind": "vercel-project" },
-      { "id": "database-project", "concern": "relational-state", "kind": "neon-project" },
-      { "id": "database", "concern": "relational-state", "kind": "neon-branch" },
-      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket" },
-      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue" },
-      { "id": "orchestration", "concern": "durable-orchestration", "kind": "cf-workflow" },
-      { "id": "redis", "concern": "ephemeral-coordination", "kind": "upstash-redis" }
+      {
+        "id": "experience",
+        "concern": "experience-delivery",
+        "kind": "vercel-project"
+      },
+      {
+        "id": "database-project",
+        "concern": "relational-state",
+        "kind": "neon-project"
+      },
+      {
+        "id": "database",
+        "concern": "relational-state",
+        "kind": "neon-branch"
+      },
+      {
+        "id": "object-store",
+        "concern": "artifact-bytes",
+        "kind": "r2-bucket"
+      },
+      {
+        "id": "dispatch",
+        "concern": "async-transport",
+        "kind": "cf-queue"
+      },
+      {
+        "id": "orchestration",
+        "concern": "durable-orchestration",
+        "kind": "cf-workflow"
+      },
+      {
+        "id": "redis",
+        "concern": "ephemeral-coordination",
+        "kind": "upstash-redis"
+      },
+      {
+        "id": "execution-runner",
+        "concern": "execution-compute",
+        "kind": "container-runner"
+      }
     ],
     "production": [
-      { "id": "experience", "concern": "experience-delivery", "kind": "vercel-project" },
-      { "id": "database-project", "concern": "relational-state", "kind": "neon-project" },
-      { "id": "database", "concern": "relational-state", "kind": "neon-branch" },
-      { "id": "object-store", "concern": "artifact-bytes", "kind": "r2-bucket" },
-      { "id": "dispatch", "concern": "async-transport", "kind": "cf-queue" },
-      { "id": "orchestration", "concern": "durable-orchestration", "kind": "cf-workflow" },
-      { "id": "redis", "concern": "ephemeral-coordination", "kind": "upstash-redis" }
+      {
+        "id": "experience",
+        "concern": "experience-delivery",
+        "kind": "vercel-project"
+      },
+      {
+        "id": "database-project",
+        "concern": "relational-state",
+        "kind": "neon-project"
+      },
+      {
+        "id": "database",
+        "concern": "relational-state",
+        "kind": "neon-branch"
+      },
+      {
+        "id": "object-store",
+        "concern": "artifact-bytes",
+        "kind": "r2-bucket"
+      },
+      {
+        "id": "dispatch",
+        "concern": "async-transport",
+        "kind": "cf-queue"
+      },
+      {
+        "id": "orchestration",
+        "concern": "durable-orchestration",
+        "kind": "cf-workflow"
+      },
+      {
+        "id": "redis",
+        "concern": "ephemeral-coordination",
+        "kind": "upstash-redis"
+      },
+      {
+        "id": "execution-runner",
+        "concern": "execution-compute",
+        "kind": "container-runner"
+      }
     ]
   },
   "previewBranching": {
