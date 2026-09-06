@@ -83,7 +83,7 @@ The reference topology is Vercel for experience/delivery, Neon PostgreSQL for au
 - Merge commit: `0067c72c8179a6f880f5477789958370376b8de9`
 - Full regression at exact implementation head: 330 files / 4573 tests, 4562 passed, 11 skipped, 0 failed, twice consecutively.
 - Governance and deployment validation: PASS at exact implementation head; Issue #7 closed as completed.
-- Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; documented real-HTTP protocol evidence and invalid-token 401 reachability/classification evidence retained.
+- Live Cloudflare Workflows successful round-trip: NOT RUN due unavailable provider credentials; documented real-HTTP protocol and invalid-token 401 reachability/classification evidence retained.
 - Post-merge program/frontier state: finalized.
 
 ## D-05 dispatch
@@ -94,7 +94,8 @@ The reference topology is Vercel for experience/delivery, Neon PostgreSQL for au
 - Dependency: `WORK-045`
 - Assurance: HIGH_ASSURANCE
 - Status: AUTHORIZED / IN-FLIGHT
-- Dispatch base: the final `main` revision immediately before creation of the required worker branch; recorded on Issue #9 and recovered from live Git refs.
+- Exact dispatch base: `e6b417fd5c9dfaf6fb00135a62d529cc9ccc6db9`
+- The worker branch was created directly from the exact dispatch base above. The subsequent handoff/issue-documentation commits on `main` are not part of the worker branch and do not change its authorized base.
 
 D-05 is limited to the execution-plane worker service, provider/runtime adapters, container `ComputeEnvironment`, durable execution leases/heartbeats and stale-worker fencing, cancellation, drain/shutdown, bounded concurrency and quotas, restart/re-acquisition recovery, and optional governed customer-runner registration. Workers remain executors; PostgreSQL and existing execution authorities remain authoritative.
 
