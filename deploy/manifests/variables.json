@@ -350,6 +350,126 @@
       "required": false,
       "credentialShaped": false,
       "description": "Default wait deadline in milliseconds applied when arming orchestration waits (the deadline elapses through the governed expiration path \u2014 never by the provider's clock). 0 disables the deadline (the wait resolves only by notification); bounded [0,2592000000] (30 days); repository default 0."
+    },
+    {
+      "name": "ZECK_WORKER_LEASE_TTL_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Execution-lease TTL granted per worker claim acquisition (milliseconds). Repository default 60000; bounded [1000,3600000]. The lease is the executions module's single fencing system; a stale worker can never commit an authoritative effect."
+    },
+    {
+      "name": "ZECK_WORKER_HEARTBEAT_INTERVAL_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Worker registration/claim heartbeat and lease-renewal cadence (milliseconds). Repository default 5000; bounded [100,60000]. Heartbeat loss beyond ZECK_WORKER_STALE_AFTER_MS makes the worker offline and its claims recoverable."
+    },
+    {
+      "name": "ZECK_WORKER_DEFAULT_ENV_QUOTA",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Default per-compute-environment concurrent live-claim quota (applied when no explicit quota row exists; per-environment overrides live in compute_plane.environment_quotas). Repository default 8; bounded [1,512]."
+    },
+    {
+      "name": "ZECK_WORKER_MAX_CLAIM_ATTEMPTS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum worker claim attempts per execution (bounded re-selection; exhaustion records the honest governed failure through the executions authority). Repository default 3; bounded [1,10]."
+    },
+    {
+      "name": "ZECK_WORKER_MAX_IN_FLIGHT",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum concurrent in-flight work items per worker process (the registration's declared concurrency; also physically enforced as live claims per worker). Repository default 4; bounded [1,128]."
+    },
+    {
+      "name": "ZECK_WORKER_MAX_DRAIN_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Bounded drain deadline on worker shutdown (stop accepting new work; in-flight items converge or are abandoned recoverable for fresh workers). Repository default 120000; bounded [1000,600000]."
+    },
+    {
+      "name": "ZECK_WORKER_CLAIM_VISIBILITY_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Queue visibility window for the claim-acquisition pull (milliseconds): the message is the wake-up; the durable claim + lease carry the work after admission. Repository default 30000; bounded [1000,600000]."
+    },
+    {
+      "name": "ZECK_WORKER_BATCH_SIZE",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum dispatch deliveries pulled per worker poll batch. Repository default 8; bounded [1,32]."
+    },
+    {
+      "name": "ZECK_WORKER_STALE_AFTER_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "A worker registration (or live claim) whose heartbeat age exceeds this bound is swept offline (worker) / abandoned (claim) by the recovery scan. Repository default 90000; bounded [1000,3600000]."
+    },
+    {
+      "name": "ZECK_WORKER_MAX_OUTCOME_BYTES",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Maximum canonical bytes for worker-claim outcome/detail payloads (reference-only: ids, keys, digests, bounded reasons). Repository default 2048; bounded [128,8192]."
+    },
+    {
+      "name": "ZECK_WORKER_CLAIM_RETENTION_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Retention window for TERMINAL claim rows of terminal executions before compaction removes them (bounded retained worker metadata). Repository default 604800000 (7 days); bounded [3600000,7776000000]."
+    },
+    {
+      "name": "ZECK_CONTAINER_RUNNER_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Base URL of the container runner daemon implementing the documented Zeck container-runner REST protocol (deploy/README.md D-05) behind the platform ContainerRuntimeClient. The worker's container ComputeEnvironment fails closed without it \u2014 unisolated execution is never a fallback."
+    },
+    {
+      "name": "ZECK_CONTAINER_RUNNER_API_TOKEN",
+      "type": "container-runner-token",
+      "required": false,
+      "credentialShaped": true,
+      "description": "Materialized value of the environment's container-runner token (the runner daemon's bearer credential). Credential-shaped: environment-only storage, never committed. The non-secret reference binding is ZECK_SECRET_CONTAINER_RUNNER_TOKEN_REF; resolution happens immediately before the authorized runner call."
+    },
+    {
+      "name": "ZECK_CONTAINER_RUNNER_REQUEST_TIMEOUT_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Per-request timeout for container-runner HTTP calls. Bounded [100,120000]; default 10000."
+    },
+    {
+      "name": "ZECK_CONTAINER_RUNNER_POLL_INTERVAL_MS",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Poll interval while observing an executing container run. Bounded [50,5000]; default 250."
+    },
+    {
+      "name": "ZECK_CONTAINER_RUNNER_MAX_OUTPUT_BYTES",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Bounded stdout/stderr payload size for container-run observations (bytes; truncated deterministically on the boundary). Bounded [256,65536]; default 4096."
+    },
+    {
+      "name": "ZECK_SECRET_CONTAINER_RUNNER_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/container-runner-token",
+      "description": "Reference to the environment's container-runner token (the runner daemon's bearer credential behind the platform ContainerRuntimeClient)."
     }
   ]
 }

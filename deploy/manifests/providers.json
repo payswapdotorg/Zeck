@@ -92,6 +92,21 @@
         "mode": "delivery-degraded",
         "effect": "The experience layer is unreachable; control-plane and execution-plane authority are unaffected."
       }
+    },
+    {
+      "id": "zeck-container-runner",
+      "concern": "execution-compute",
+      "authorityRole": "non-authoritative",
+      "owningPort": "container-runtime",
+      "portStatus": "established",
+      "portContract": "src/platform/sandbox/runtime-client.ts",
+      "substitutionTarget": "any runner daemon implementing the documented container-runner REST protocol (first-party fleet runner or a governed customer runner)",
+      "degradation": {
+        "authority": "non-authoritative",
+        "onFailure": "degraded",
+        "mode": "execution-compute-unavailable",
+        "effect": "Container sandbox dispatch fails closed (runtime-unavailable); the execution stays durably recoverable in PostgreSQL and re-dispatches on recovery. No unisolated or ambient-host execution is ever a fallback; the execution authority is untouched."
+      }
     }
   ]
 }

@@ -35,6 +35,7 @@ describe("deterministic naming over the real manifest (AC2)", () => {
     const conventions = namingConventionsOf(manifest);
     const names = computeResourceNames(conventions, "local", manifest.resources.local);
     expect(names.map((n) => `${n.kind}=${n.name}`).sort()).toEqual([
+      "local-container-runner=zeck-local-runner",
       "local-object-store=zeck-local-artifacts",
       "local-redis=zeck-local-redis",
       "pg-database=zeck_local",
@@ -48,6 +49,7 @@ describe("deterministic naming over the real manifest (AC2)", () => {
     expect(staging.map((n) => `${n.kind}=${n.name}`).sort()).toEqual([
       "cf-queue=zeck-staging-executions",
       "cf-workflow=zeck-staging-orchestration",
+      "container-runner=zeck-staging-runner",
       "neon-branch=zeck-staging",
       "neon-project=zeck-staging",
       "r2-bucket=zeck-staging-artifacts",
@@ -74,6 +76,7 @@ describe("deterministic naming over the real manifest (AC2)", () => {
     expect(names.map((n) => `${n.kind}=${n.name}`).sort()).toEqual([
       "cf-queue=zeck-preview-work-work-042-deployment-executions",
       "cf-workflow=zeck-preview-work-work-042-deployment-orchestration",
+      "container-runner=zeck-preview-work-work-042-deployment-runner",
       "neon-branch=zeck-preview-work-work-042-deployment",
       "r2-bucket=zeck-preview-work-work-042-deployment-artifacts",
       "upstash-redis=zeck-preview-work-work-042-deployment-redis",

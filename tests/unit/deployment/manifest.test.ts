@@ -81,7 +81,9 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
 
   test("maps every concern to a provider with an owning port and substitution target", () => {
     const manifest = loadDeploymentManifest(realReader());
-    expect(manifest.providers).toHaveLength(6);
+    // D-05 (zeck-container-runner) landed with WORK-046: established
+    // with the platform ContainerRuntimeClient port contract.
+    expect(manifest.providers).toHaveLength(7);
     for (const provider of manifest.providers) {
       expect(provider.substitutionTarget.length).toBeGreaterThan(0);
       expect(provider.degradation.mode.length).toBeGreaterThan(0);
@@ -106,36 +108,44 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
     const workflows = manifest.providers.find((p) => p.id === "cloudflare-workflows");
     expect(workflows?.portStatus).toBe("established");
     expect(workflows?.portContract).toBe("src/platform/workflow/port.ts");
+    const runner = manifest.providers.find((p) => p.id === "zeck-container-runner");
+    expect(runner?.portStatus).toBe("established");
+    expect(runner?.portContract).toBe("src/platform/sandbox/runtime-client.ts");
   });
 
   test("owns resources per environment with preview per-branch isolation", () => {
     const manifest = loadDeploymentManifest(realReader());
     expect(manifest.resources.local.map((r) => r.kind).sort()).toEqual([
+      "local-container-runner",
       "local-object-store",
       "local-redis",
       "pg-database",
     ]);
-    // Preview carries SIX per-branch resources (the Neon BRANCH is the
+    // Preview carries SEVEN per-branch resources (the Neon BRANCH is the
     // database resource; preview branches descend from the staging
-    // project — resources.json previewBranching).
+    // project — resources.json previewBranching; the container runner
+    // is the D-05 execution-plane host).
     expect(manifest.resources.preview.map((r) => r.concern).sort()).toEqual([
       "artifact-bytes",
       "async-transport",
       "durable-orchestration",
       "ephemeral-coordination",
+      "execution-compute",
       "experience-delivery",
       "relational-state",
     ]);
     for (const environment of ["staging", "production"] as const) {
       const concerns = manifest.resources[environment].map((r) => r.concern).sort();
-      // Staging/production carry SEVEN resources: the Neon project and
+      // Staging/production carry EIGHT resources: the Neon project and
       // its main branch are separate declared resources for the
-      // relational concern (the branch is the environment mechanism).
+      // relational concern (the branch is the environment mechanism),
+      // plus the D-05 container runner (execution-compute).
       expect(concerns).toEqual([
         "artifact-bytes",
         "async-transport",
         "durable-orchestration",
         "ephemeral-coordination",
+        "execution-compute",
         "experience-delivery",
         "relational-state",
         "relational-state",
@@ -151,11 +161,14 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
     }
   });
 
-  test("scopes secret references per environment with one local reference", () => {
+  test("scopes secret references per environment with the local set", () => {
     const manifest = loadDeploymentManifest(realReader());
-    expect(manifest.secretReferences.local.map((r) => r.name)).toEqual(["database-url"]);
+    expect(manifest.secretReferences.local.map((r) => r.name).sort()).toEqual([
+      "container-runner-token",
+      "database-url",
+    ]);
     for (const environment of ["preview", "staging", "production"] as const) {
-      expect(manifest.secretReferences[environment]).toHaveLength(8);
+      expect(manifest.secretReferences[environment]).toHaveLength(9);
     }
     // Reference namespaces are environment-scoped by construction: the
     // same logical name exists per environment, but the URI namespace
