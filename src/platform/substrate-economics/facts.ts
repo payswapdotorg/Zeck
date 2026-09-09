@@ -50,15 +50,14 @@ import { ISOLATION_LEVELS, type IsolationLevel } from "../execution-ir/constrain
 import type { CostBasisAttribution, CostClaim } from "../execution-ir/cost-model";
 import { validateCostClaim } from "../execution-ir/cost-model";
 import {
+  boundedDetail,
   MAX_SUBSTRATE_CANDIDATES,
   MAX_SUBSTRATE_LATENCY_MS,
+  rejectSubstrate,
   SUBSTRATE_ADAPTER_REF_PATTERN,
   SUBSTRATE_DESCRIPTION_MAX,
   SUBSTRATE_ID_PATTERN,
   SUBSTRATE_VERSION_PATTERN,
-  boundedDetail,
-  isSubstrateAvailabilityMode,
-  rejectSubstrate,
   type SubstrateAvailabilityMode,
 } from "./catalog";
 
@@ -104,17 +103,25 @@ export function validateSubstrateStartupFact(value: unknown): SubstrateStartupFa
     value.readinessMs < 0 ||
     value.readinessMs > MAX_SUBSTRATE_LATENCY_MS
   ) {
-    rejectSubstrate("substrate-fact-unbounded", "startup readinessMs must be finite in [0, 2^53-1]", {
-      got: boundedDetail(value.readinessMs),
-    });
+    rejectSubstrate(
+      "substrate-fact-unbounded",
+      "startup readinessMs must be finite in [0, 2^53-1]",
+      {
+        got: boundedDetail(value.readinessMs),
+      },
+    );
   }
   if (
     typeof value.startupCostMicroUsd !== "string" ||
     !MICRO_USD_PATTERN.test(value.startupCostMicroUsd)
   ) {
-    rejectSubstrate("substrate-fact-unbounded", "startup cost must be an integer micro-USD string", {
-      got: boundedDetail(value.startupCostMicroUsd),
-    });
+    rejectSubstrate(
+      "substrate-fact-unbounded",
+      "startup cost must be an integer micro-USD string",
+      {
+        got: boundedDetail(value.startupCostMicroUsd),
+      },
+    );
   }
   if (BigInt(value.startupCostMicroUsd) > MAX_COST_BIGINT) {
     rejectSubstrate("substrate-fact-unbounded", "startup cost exceeds the bounded money universe", {
@@ -125,15 +132,26 @@ export function validateSubstrateStartupFact(value: unknown): SubstrateStartupFa
   if (!isRecord(basis)) {
     rejectSubstrate("substrate-fact-unattributed", "startup fact must carry an estimation basis");
   }
-  if (typeof basis.basis !== "string" || !["observed", "estimated", "defaulted"].includes(basis.basis)) {
-    rejectSubstrate("substrate-fact-unattributed", "startup fact basis is outside the closed vocabulary", {
-      got: boundedDetail(basis.basis),
-    });
+  if (
+    typeof basis.basis !== "string" ||
+    !["observed", "estimated", "defaulted"].includes(basis.basis)
+  ) {
+    rejectSubstrate(
+      "substrate-fact-unattributed",
+      "startup fact basis is outside the closed vocabulary",
+      {
+        got: boundedDetail(basis.basis),
+      },
+    );
   }
   if (typeof basis.source !== "string" || basis.source.length === 0 || basis.source.length > 200) {
-    rejectSubstrate("substrate-fact-unattributed", "startup fact basis source must be bounded non-empty text", {
-      got: boundedDetail(basis.source),
-    });
+    rejectSubstrate(
+      "substrate-fact-unattributed",
+      "startup fact basis source must be bounded non-empty text",
+      {
+        got: boundedDetail(basis.source),
+      },
+    );
   }
   if (
     basis.evidenceDigest !== undefined &&
@@ -147,7 +165,9 @@ export function validateSubstrateStartupFact(value: unknown): SubstrateStartupFa
     basis: {
       basis: basis.basis as CostBasisAttribution["basis"],
       source: basis.source as string,
-      ...(basis.evidenceDigest === undefined ? {} : { evidenceDigest: basis.evidenceDigest as string }),
+      ...(basis.evidenceDigest === undefined
+        ? {}
+        : { evidenceDigest: basis.evidenceDigest as string }),
     },
   };
 }
@@ -214,21 +234,35 @@ export function validateSubstrateDescriptor(value: unknown): SubstrateDescriptor
     rejectSubstrate("substrate-descriptor-shape", "substrate descriptor must be an object");
   }
   if (typeof value.substrateId !== "string" || !SUBSTRATE_ID_PATTERN.test(value.substrateId)) {
-    rejectSubstrate("substrate-descriptor-shape", "substrateId must be a lowercase hyphen-dashed identifier", {
-      got: boundedDetail(value.substrateId),
-    });
+    rejectSubstrate(
+      "substrate-descriptor-shape",
+      "substrateId must be a lowercase hyphen-dashed identifier",
+      {
+        got: boundedDetail(value.substrateId),
+      },
+    );
   }
   if (typeof value.version !== "string" || !SUBSTRATE_VERSION_PATTERN.test(value.version)) {
     rejectSubstrate("substrate-descriptor-shape", "version must be major.minor.patch numerics", {
       got: boundedDetail(value.version),
     });
   }
-  if (typeof value.adapterRef !== "string" || !SUBSTRATE_ADAPTER_REF_PATTERN.test(value.adapterRef)) {
-    rejectSubstrate("substrate-descriptor-shape", "adapterRef must be an opaque neutral adapter reference", {
-      got: boundedDetail(value.adapterRef),
-    });
+  if (
+    typeof value.adapterRef !== "string" ||
+    !SUBSTRATE_ADAPTER_REF_PATTERN.test(value.adapterRef)
+  ) {
+    rejectSubstrate(
+      "substrate-descriptor-shape",
+      "adapterRef must be an opaque neutral adapter reference",
+      {
+        got: boundedDetail(value.adapterRef),
+      },
+    );
   }
-  if (typeof value.isolation !== "string" || !(ISOLATION_LEVELS as readonly string[]).includes(value.isolation)) {
+  if (
+    typeof value.isolation !== "string" ||
+    !(ISOLATION_LEVELS as readonly string[]).includes(value.isolation)
+  ) {
     rejectSubstrate("substrate-descriptor-vocabulary", "isolation must be on the frozen ladder", {
       got: boundedDetail(value.isolation),
     });
@@ -252,10 +286,16 @@ export function validateSubstrateDescriptor(value: unknown): SubstrateDescriptor
     value.description !== null &&
     (typeof value.description !== "string" || value.description.length > SUBSTRATE_DESCRIPTION_MAX)
   ) {
-    rejectSubstrate("substrate-descriptor-shape", `description must be at most ${SUBSTRATE_DESCRIPTION_MAX} characters`);
+    rejectSubstrate(
+      "substrate-descriptor-shape",
+      `description must be at most ${SUBSTRATE_DESCRIPTION_MAX} characters`,
+    );
   }
   if (typeof value.description === "string" && substrateContainsRawSecretValue(value.description)) {
-    rejectSubstrate("substrate-descriptor-shape", "description looks like it embeds a raw secret value");
+    rejectSubstrate(
+      "substrate-descriptor-shape",
+      "description looks like it embeds a raw secret value",
+    );
   }
   return {
     substrateId: value.substrateId,
@@ -263,13 +303,19 @@ export function validateSubstrateDescriptor(value: unknown): SubstrateDescriptor
     adapterRef: value.adapterRef,
     isolation: value.isolation as IsolationLevel,
     execution,
-    startup: { cold, ...(warm === undefined ? {} : { warm }), ...(snapshot === undefined ? {} : { snapshot }) },
+    startup: {
+      cold,
+      ...(warm === undefined ? {} : { warm }),
+      ...(snapshot === undefined ? {} : { snapshot }),
+    },
     description: value.description === undefined ? null : (value.description as string | null),
   };
 }
 
 /** The modes a validated descriptor offers (deterministic order). */
-export function offeredModes(descriptor: SubstrateDescriptor): readonly SubstrateAvailabilityMode[] {
+export function offeredModes(
+  descriptor: SubstrateDescriptor,
+): readonly SubstrateAvailabilityMode[] {
   const modes: SubstrateAvailabilityMode[] = ["cold"];
   if (descriptor.startup.warm !== undefined) {
     modes.push("warm");
@@ -321,7 +367,10 @@ export function validateSubstrateCandidateSet(
     rejectSubstrate("selection-candidate-set", "candidate set must be an array");
   }
   if (values.length > MAX_SUBSTRATE_CANDIDATES) {
-    rejectSubstrate("selection-candidate-set", `candidate set exceeds the bound of ${MAX_SUBSTRATE_CANDIDATES}`);
+    rejectSubstrate(
+      "selection-candidate-set",
+      `candidate set exceeds the bound of ${MAX_SUBSTRATE_CANDIDATES}`,
+    );
   }
   const seen = new Set<string>();
   const descriptors: SubstrateDescriptor[] = [];
@@ -329,9 +378,13 @@ export function validateSubstrateCandidateSet(
     const descriptor = validateSubstrateDescriptor(value);
     const key = `${descriptor.substrateId}@${descriptor.version}`;
     if (seen.has(key)) {
-      rejectSubstrate("selection-candidate-set", "substrate identities must be unique within a candidate set", {
-        substrateId: key,
-      });
+      rejectSubstrate(
+        "selection-candidate-set",
+        "substrate identities must be unique within a candidate set",
+        {
+          substrateId: key,
+        },
+      );
     }
     seen.add(key);
     descriptors.push(descriptor);

@@ -70,8 +70,7 @@ export const SUBSTRATE_ECONOMICS_INVARIANT_CODES = [
   "adapter-shape",
   "adapter-boundary",
 ] as const;
-export type SubstrateEconomicsInvariantCode =
-  (typeof SUBSTRATE_ECONOMICS_INVARIANT_CODES)[number];
+export type SubstrateEconomicsInvariantCode = (typeof SUBSTRATE_ECONOMICS_INVARIANT_CODES)[number];
 
 /** The typed, bounded substrate-economics error. */
 export class SubstrateEconomicsError extends Error {
@@ -172,12 +171,7 @@ export const AVAILABILITY_MODE_RANK: Readonly<Record<SubstrateAvailabilityMode, 
  * of the model: expected readiness latency must cover the FULL path
  * created → ready, never the boot time alone.
  */
-export const SUBSTRATE_READINESS_STATES = [
-  "created",
-  "scheduled",
-  "started",
-  "ready",
-] as const;
+export const SUBSTRATE_READINESS_STATES = ["created", "scheduled", "started", "ready"] as const;
 export type SubstrateReadinessState = (typeof SUBSTRATE_READINESS_STATES)[number];
 
 export function isSubstrateReadinessState(value: string): value is SubstrateReadinessState {

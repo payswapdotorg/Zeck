@@ -3,8 +3,9 @@
  * plane (WORK-054) — the closed descriptor set, explicit-basis
  * validation, bounded numbers, canonical identity.
  */
-import { describe, expect, test } from "vitest";
+
 import { createHash } from "node:crypto";
+import { describe, expect, test } from "vitest";
 import {
   AVAILABILITY_MODE_RANK,
   READINESS_STATE_RANK,
@@ -18,13 +19,15 @@ import {
   canonicalCandidateSetJson,
   canonicalSubstrateJson,
   offeredModes,
+  type SubstrateDescriptor,
   startupFactOf,
   validateSubstrateCandidateSet,
   validateSubstrateDescriptor,
-  type SubstrateDescriptor,
 } from "../../../../src/platform/substrate-economics/facts";
 
-const digest = { sha256Hex: (value: string) => createHash("sha256").update(value, "utf8").digest("hex") };
+const digest = {
+  sha256Hex: (value: string) => createHash("sha256").update(value, "utf8").digest("hex"),
+};
 
 /** A well-formed explicit-basis descriptor (the test corpus fixture). */
 function baseDescriptor(): SubstrateDescriptor {
@@ -253,9 +256,7 @@ describe("substrate facts: canonical identity", () => {
       substrateId: "cheap-process-c",
       isolation: "process",
     });
-    expect(canonicalCandidateSetJson([a, b, c])).toBe(
-      canonicalCandidateSetJson([c, b, a]),
-    );
+    expect(canonicalCandidateSetJson([a, b, c])).toBe(canonicalCandidateSetJson([c, b, a]));
   });
 
   test("a mutated fact changes the canonical identity (content addressing)", () => {
