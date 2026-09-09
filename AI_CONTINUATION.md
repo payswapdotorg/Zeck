@@ -25,9 +25,10 @@ For dispatch/review/orchestration behavior also read:
 - UX v2: complete through WORK-041.
 - D-00 through D-06: complete.
 - D-07 / WORK-048: COMPLETE — merged as PR #14 (merge commit c4051e2, implementation head c6dbb6f, dispatch base e5efa7e).
-- E1.1 / WORK-049: authorized through Issue #15.
+- E1.1 / WORK-049: COMPLETE — merged as PR #16 (merge commit 93ea53c, implementation head bca6db3, dispatch base b946ade).
+- E1.1 / WORK-050: authorized through Issue #17.
 
-Current frontier is `eligible=["WORK-049"]`, `inFlight=[]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-050"]`, `inFlight=[]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -83,11 +84,11 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-The D-07 deployment gate is complete. `WORK-049` (Execution IR and outcome-economics foundation, E1.1 stage 1) is the only currently executable Work Order.
+D-07 and E1.1 stage 1 are complete. `WORK-050` (Deterministic Execution Compiler, E1.1 stage 2) is the only currently executable Work Order.
 
-Required branch: `work/WORK-049-execution-ir-outcome-economics-foundation`.
+Required branch: `work/WORK-050-deterministic-execution-compiler`.
 
-The branch does not exist yet: the next worker creates it at exactly the current canonical `main` head (the WORK-048 merge) so the base is exact with no stale pre-dispatch documentation.
+The branch does not exist yet: the next worker creates it at exactly the current canonical `main` head (the WORK-049 merge) so the base is exact with no stale pre-dispatch documentation. After WORK-050, the three-worker wave {WORK-051, WORK-052, WORK-053 or WORK-054} becomes eligible per the charter's safe-waves rule.
 
 ## Recovery sequence
 
