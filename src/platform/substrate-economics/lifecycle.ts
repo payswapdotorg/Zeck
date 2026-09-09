@@ -50,7 +50,6 @@ import {
   isSubstrateReadinessState,
   MAX_READINESS_OBSERVATIONS,
   READINESS_FRESHNESS_WINDOW_BOUNDS,
-  READINESS_STATE_RANK,
   rejectSubstrate,
   SUBSTRATE_ID_PATTERN,
   type SubstrateAvailabilityMode,
