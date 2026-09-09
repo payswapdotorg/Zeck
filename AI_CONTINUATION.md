@@ -27,13 +27,13 @@ For dispatch/review/orchestration behavior also read:
 - D-07 / WORK-048: COMPLETE — merged as PR #14 (merge commit c4051e2, implementation head c6dbb6f, dispatch base e5efa7e).
 - E1.1 / WORK-049: COMPLETE — merged as PR #16 (merge commit 93ea53c, implementation head bca6db3, dispatch base b946ade).
 - E1.1 / WORK-050: COMPLETE — merged as PR #18 (merge commit 3d249a7, implementation head fc9e564, dispatch base f8b77f2).
-- E1.1 / WORK-051: authorized through Issue #19 (wave).
+- E1.1 / WORK-051: COMPLETE — merged as PR #24 (merge commit bd9a1b1, implementation head 91372f8, dispatch base 0a1322b).
 - E1.1 / WORK-052: authorized through Issue #20 (wave).
 - E1.1 / WORK-052: COMPLETE — merged as PR #22 (merge commit 9861a84, implementation head a4d3a97, dispatch base 0a1322b).
 - E1.1 / WORK-053: authorized through Issue #21 (wave; selected over WORK-054 by live surface/conflict analysis).
 - E1.1 / WORK-054: authorized through Issue #23 (dispatched into the slot freed by WORK-052).
 
-Current frontier is `eligible=["WORK-051", "WORK-053", "WORK-054"]`, `inFlight=["WORK-051", "WORK-053", "WORK-054"]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-053", "WORK-054"]`, `inFlight=["WORK-053", "WORK-054"]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -89,7 +89,7 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-D-07, E1.1 stages 1 and 2 are complete; wave members WORK-052 merged. In flight: WORK-051 (tool-surface plane) and WORK-053 (model-economics plane), both based at 0a1322b; WORK-054 (substrate/runtime adapters) authorized and dispatched at the post-WORK-052 head. The provider-SDK allowlist edit is WORK-054's only shared-file touch.
+D-07, E1.1 stages 1 and 2 are complete; wave members WORK-052 merged. In flight: WORK-053 (model-economics plane, branch at 0a1322b) and WORK-054 (substrate/runtime adapters, branch at 863887e). WORK-051 and WORK-052 are merged. The provider-SDK allowlist edit is WORK-054's only shared-file touch. WORK-055 authorizes only after BOTH 053 and 054 merge.
 
 Required branches:
 - `work/WORK-051-tool-surface-compiler-programmatic-execution` (base 0a1322b)

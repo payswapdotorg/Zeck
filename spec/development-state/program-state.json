@@ -1225,7 +1225,7 @@
     {
       "id": "WORK-051",
       "title": "Tool Surface Compiler and Programmatic Execution",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-050"
       ],
@@ -1237,6 +1237,13 @@
         "toolSurface": true,
         "programmaticExecution": true,
         "issue": 19
+      },
+      "mergedAs": {
+        "pr": 24,
+        "mergeCommit": "bd9a1b1db51905f7956ec067deaa090963e3cdde",
+        "implementationHead": "91372f8d2",
+        "finalBranchHead": "91372f8d2",
+        "baseRevision": "0a1322bdd4b500d482fecc77c1b019fba6d91797"
       }
     },
     {

@@ -3,12 +3,10 @@
   "status": "active",
   "governingArchitectureVersion": "v1.0",
   "eligible": [
-    "WORK-051",
     "WORK-053",
     "WORK-054"
   ],
   "inFlight": [
-    "WORK-051",
     "WORK-053",
     "WORK-054"
   ],
