@@ -28,7 +28,9 @@
  *    exists anywhere on the evidence path);
  *  - re-derivation drift is detected by the audit;
  *  - durable decision evidence outside the authoritative store (or
- *    tampered inside it) is rejected at read/audit time.
+ *    tampered inside it) is rejected at read/audit time;
+ *  - a lost append identity race converges against the durable winner
+ *    (replay or typed conflict) — never a raw error, never a duplicate.
  */
 
 import { readFileSync } from "node:fs";
@@ -183,10 +185,17 @@ interface StubRow {
 
 class StubDecisionDb implements DatabasePort {
   private readonly rows: StubRow[] = [];
+  /** When set, INSERT reports a lost unique race (0 rows) like ON CONFLICT. */
+  private loseInsertRace = false;
 
   /** Seed a durable row as if the store's own append had written it. */
   seed(row: StubRow): void {
     this.rows.push(row);
+  }
+
+  /** Simulate a concurrent winner of the identity race on the next append. */
+  simulateInsertRace(): void {
+    this.loseInsertRace = true;
   }
 
   async execute<T = Record<string, unknown>>(query: Query): Promise<QueryResult<T>> {
@@ -203,6 +212,11 @@ class StubDecisionDb implements DatabasePort {
     const sql = query.sql;
     const parameters = query.parameters ?? [];
     if (sql.includes("INSERT INTO execution_ir.optimization_decision_records")) {
+      if (this.loseInsertRace) {
+        // ON CONFLICT DO NOTHING with a concurrent winner: 0 rows.
+        this.loseInsertRace = false;
+        return { rows: [], rowCount: 0 };
+      }
       // The real store's insert parameter order (id, application,
       // tenant, execution, decision, plan, ir, revision, selected,
       // threshold, basis, payload, digest).
@@ -217,7 +231,8 @@ class StubDecisionDb implements DatabasePort {
             ? (JSON.parse(parameters[11] as string) as unknown)
             : parameters[11],
       });
-      return { rows: [], rowCount: 1 };
+      // RETURNING id: the insert reports exactly one row on success.
+      return { rows: [{ id: parameters[0] as string } as T], rowCount: 1 };
     }
     if (sql.includes("FROM execution_ir.optimization_decision_records")) {
       let selected = this.rows;
@@ -265,6 +280,19 @@ function storeFor(rows: StubRow[] = []): SqlOptimizationDecisionStore {
     nodeDigest,
     () => "00000000-0000-7000-8000-0000000000ee",
   );
+}
+
+/** The store plus its double, for identity-race simulation (D12). */
+function storeWithDb(): { store: SqlOptimizationDecisionStore; db: StubDecisionDb } {
+  const db = new StubDecisionDb();
+  return {
+    db,
+    store: new SqlOptimizationDecisionStore(
+      db,
+      nodeDigest,
+      () => "00000000-0000-7000-8000-0000000000ee",
+    ),
+  };
 }
 
 describe("execution-ir discrimination (WORK-049)", () => {
@@ -545,7 +573,12 @@ describe("execution-ir discrimination (WORK-049)", () => {
     // The store's surface is append/read ONLY: no admission,
     // authorization, allow/deny or reservation method exists.
     const surface = Object.getOwnPropertyNames(Object.getPrototypeOf(store)).filter(
-      (name) => name !== "constructor" && name !== "validateRow",
+      (name) =>
+        name !== "constructor" &&
+        // Private append/read helpers, not contract surface.
+        name !== "validateRow" &&
+        name !== "selectForUpdate" &&
+        name !== "convergeAgainstExisting",
     );
     expect(surface.sort()).toEqual(["append", "get", "listByExecution", "listByPlan"]);
 
@@ -698,5 +731,44 @@ describe("execution-ir discrimination (WORK-049)", () => {
       },
     ]);
     expect(hardViolations.map((violation) => violation.code)).toEqual(["latency-ceiling"]);
+  });
+
+  test("D12 a lost append identity race converges against the durable winner (never a raw error, never a duplicate)", async () => {
+    const record = buildOptimizationDecision(buildInput(), nodeDigest);
+
+    // Race case 1: the concurrent winner wrote IDENTICAL content — the
+    // loser's insert becomes a no-op and the append replays.
+    const identical = storeWithDb();
+    identical.db.seed({
+      application_id: record.applicationId,
+      decision_id: record.decisionId,
+      plan_id: record.planId,
+      execution_id: null,
+      record_digest: record.recordDigest,
+      payload: JSON.parse(JSON.stringify(record)) as unknown,
+    });
+    identical.db.simulateInsertRace();
+    const replayed = await identical.store.append(record);
+    expect(replayed).toMatchObject({ decisionId: record.decisionId, replayed: true });
+    // One durable row, not two: the lost race never duplicates evidence.
+    const listed = await identical.store.listByPlan(record.applicationId, record.planId);
+    expect(listed).toHaveLength(1);
+
+    // Race case 2: the concurrent winner wrote DIFFERENT content under the
+    // same decision identity — the loser fails closed with the typed
+    // conflict (never overwrites the winner).
+    const driftedWinner = storeWithDb();
+    driftedWinner.db.seed({
+      application_id: record.applicationId,
+      decision_id: record.decisionId,
+      plan_id: record.planId,
+      execution_id: null,
+      record_digest: "d".repeat(64),
+      payload: JSON.parse(JSON.stringify(record)) as unknown,
+    });
+    driftedWinner.db.simulateInsertRace();
+    await expect(driftedWinner.store.append(record)).rejects.toBeInstanceOf(
+      DecisionIdentityConflictError,
+    );
   });
 });

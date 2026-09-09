@@ -408,6 +408,36 @@ definePgSuite("execution-ir decisions (real PostgreSQL)", (ctx) => {
     await expect(world.store.append(drifted)).rejects.toBeInstanceOf(DecisionIdentityConflictError);
   });
 
+  test("CONCURRENT identical appends converge: N=8 parallel appends → exactly one durable row", async () => {
+    const world = await seedIrWorld(ctx.port);
+    const { record } = await buildDecisionFor(world, "concurrent-plan");
+
+    // Eight SIMULTANEOUS appends of the same decision record. The unique
+    // (application_id, decision_id) index + ON CONFLICT DO NOTHING serialize
+    // the identity race: exactly one appender inserts, the other seven see
+    // the durable winner and replay — never a raw unique-violation error,
+    // never a second row, never an overwrite.
+    const outcomes = await Promise.all(Array.from({ length: 8 }, () => world.store.append(record)));
+    expect(outcomes).toHaveLength(8);
+    expect(outcomes.every((outcome) => outcome.decisionId === record.decisionId)).toBe(true);
+    const inserted = outcomes.filter((outcome) => !outcome.replayed);
+    const replayed = outcomes.filter((outcome) => outcome.replayed);
+    expect(inserted).toHaveLength(1);
+    expect(replayed).toHaveLength(7);
+
+    // Exactly one durable row, carrying the identical digest.
+    const rows = await world.base.db.execute<{ count: string; record_digest: string }>({
+      sql: "SELECT count(*) AS count, min(record_digest) AS record_digest FROM execution_ir.optimization_decision_records WHERE decision_id = $1",
+      parameters: [record.decisionId],
+    });
+    expect(rows.rows[0]?.count).toBe("1");
+    expect(rows.rows[0]?.record_digest).toBe(record.recordDigest);
+
+    // And the converged evidence audits clean end-to-end.
+    const read = await world.store.get(world.base.applicationId, record.decisionId);
+    expect(read?.recordDigest).toBe(record.recordDigest);
+  });
+
   test("tenant isolation: another application's decisions are invisible", async () => {
     const world = await seedIrWorld(ctx.port);
     const { record } = await buildDecisionFor(world, "iso-plan");

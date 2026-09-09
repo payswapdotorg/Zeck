@@ -24,7 +24,7 @@
  *    construction (boundary-proven by the architecture tests).
  */
 
-import type { DatabasePort } from "../db/port";
+import type { DatabasePort, Transaction } from "../db/port";
 import type { OptimizationDecisionRecord } from "./decision-record";
 import { DecisionValidationError, validateOptimizationDecision } from "./decision-record";
 import type { IrDigestPort } from "./ir";
@@ -100,29 +100,24 @@ export class SqlOptimizationDecisionStore implements OptimizationDecisionStore {
     validateOptimizationDecision(record, this.digest);
 
     return this.db.transaction(async (tx) => {
-      const existing = await tx.execute<DecisionRow>({
-        sql: `SELECT id, application_id, tenant_id, execution_id, decision_id, plan_id, ir_id, record_digest, payload, recorded_at
-                FROM execution_ir.optimization_decision_records
-               WHERE application_id = $1 AND decision_id = $2
-               FOR UPDATE`,
-        parameters: [record.applicationId, record.decisionId],
-      });
-      if (existing.rows.length > 0) {
-        const row = existing.rows[0] as DecisionRow;
-        if (row.record_digest !== record.recordDigest) {
-          // Same decision identity, different content: fail closed —
-          // decision rows are never overwritten.
-          throw new DecisionIdentityConflictError(record.decisionId, record.applicationId);
-        }
-        // Idempotent bounded no-op: the identical decision replays.
-        return { decisionId: record.decisionId, replayed: true };
+      const existing = await this.selectForUpdate(tx, record.applicationId, record.decisionId);
+      if (existing !== null) {
+        return this.convergeAgainstExisting(existing, record);
       }
-      await tx.execute({
+      // ON CONFLICT DO NOTHING makes the append physically race-safe: if a
+      // concurrent appender of the same (application_id, decision_id) wins
+      // the unique race, this insert becomes a no-op (0 rows) instead of an
+      // error, and the re-read below converges against the winner under the
+      // lock — replay (identical content) or typed conflict (drift). Never
+      // overwrite, never duplicate, never an unguarded raw error.
+      const inserted = await tx.execute<{ id: string }>({
         sql: `INSERT INTO execution_ir.optimization_decision_records
                     (id, application_id, tenant_id, execution_id, decision_id, plan_id, ir_id,
                      plan_revision, selected_candidate_id, quality_threshold,
                      transformation_basis_code, payload, record_digest)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+              ON CONFLICT (application_id, decision_id) DO NOTHING
+              RETURNING id`,
         parameters: [
           this.generateId(),
           record.applicationId,
@@ -139,8 +134,47 @@ export class SqlOptimizationDecisionStore implements OptimizationDecisionStore {
           record.recordDigest,
         ],
       });
+      if (inserted.rows.length === 0) {
+        // A concurrent appender won the identity race: converge against
+        // the durable winner (replay or typed conflict).
+        const winner = await this.selectForUpdate(tx, record.applicationId, record.decisionId);
+        if (winner !== null) {
+          return this.convergeAgainstExisting(winner, record);
+        }
+        // Unreachable while the unique index exists (0 rows returned means
+        // a conflicting row won the race); fail closed rather than guess.
+        throw new DecisionIdentityConflictError(record.decisionId, record.applicationId);
+      }
       return { decisionId: record.decisionId, replayed: false };
     });
+  }
+
+  private async selectForUpdate(
+    tx: Transaction,
+    applicationId: string,
+    decisionId: string,
+  ): Promise<DecisionRow | null> {
+    const existing = await tx.execute<DecisionRow>({
+      sql: `SELECT id, application_id, tenant_id, execution_id, decision_id, plan_id, ir_id, record_digest, payload, recorded_at
+              FROM execution_ir.optimization_decision_records
+             WHERE application_id = $1 AND decision_id = $2
+             FOR UPDATE`,
+      parameters: [applicationId, decisionId],
+    });
+    return existing.rows[0] ?? null;
+  }
+
+  private convergeAgainstExisting(
+    row: DecisionRow,
+    record: OptimizationDecisionRecord,
+  ): DecisionAppendOutcome {
+    if (row.record_digest !== record.recordDigest) {
+      // Same decision identity, different content: fail closed —
+      // decision rows are never overwritten.
+      throw new DecisionIdentityConflictError(record.decisionId, record.applicationId);
+    }
+    // Idempotent bounded no-op: the identical decision replays.
+    return { decisionId: record.decisionId, replayed: true };
   }
 
   async get(applicationId: string, decisionId: string): Promise<OptimizationDecisionRecord | null> {
