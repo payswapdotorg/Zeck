@@ -53,8 +53,16 @@ export class ArtifactRecoveryError extends Error {
 export interface ArtifactInventoryEntry {
   readonly applicationId: string;
   readonly tenantId: string;
-  /** The content-addressed storage key (the authority's binding). */
+  /** The logical adoption key (the authority's binding; NOT the object-store key). */
   readonly artifactKey: string;
+  /**
+   * The CONTENT-ADDRESSED object-store key derived from the
+   * authoritative digest (the D-02 discipline: `zeck/artifacts/
+   * <tenant>/<2-hex shard>/<64-hex digest>` — the key shape the
+   * artifact namespace owns). The logical key never leaks into the
+   * store; the digest IS the content identity.
+   */
+  readonly storageKey: string;
   /** The authoritative sha256 content digest (64 lowercase hex). */
   readonly artifactDigest: string;
   /** The lineage parent digests (identity-bearing lineage). */
@@ -73,6 +81,31 @@ export interface ArtifactInventoryScan {
 }
 
 const DIGEST_SHAPE = /^[0-9a-f]{64}$/;
+const TENANT_SHAPE = /^[a-z0-9-]{1,64}$/;
+
+/**
+ * The content-addressed object-store key of one adoption entry — the
+ * D-02 artifact-namespace discipline: `zeck/artifacts/<tenant>/<2-hex
+ * shard>/<64-hex digest>`. Derived EXCLUSIVELY from authoritative
+ * columns (tenant binding + content digest); the logical adoption
+ * key never becomes a storage key.
+ */
+export function storageKeyOf(entry: {
+  readonly tenantId: string;
+  readonly artifactDigest: string;
+}): string {
+  if (!DIGEST_SHAPE.test(entry.artifactDigest)) {
+    throw new ArtifactRecoveryError(
+      `cannot derive a storage key: digest ${entry.artifactDigest} is malformed (authority drift)`,
+    );
+  }
+  if (!TENANT_SHAPE.test(entry.tenantId)) {
+    throw new ArtifactRecoveryError(
+      `cannot derive a storage key: tenant id ${entry.tenantId} is outside the artifact namespace shape`,
+    );
+  }
+  return `zeck/artifacts/${entry.tenantId}/${entry.artifactDigest.slice(0, 2)}/${entry.artifactDigest}`;
+}
 
 /**
  * Scan the authoritative adoption ledger (read-only; the recovery
@@ -104,10 +137,7 @@ export async function scanArtifactInventory(db: DatabasePort): Promise<ArtifactI
           (parent): parent is string => typeof parent === "string",
         )
       : [];
-    if (!DIGEST_SHAPE.test(row.artifact_digest)) {
-      malformedDigests.push(row.artifact_key);
-    }
-    entries.push({
+    const entry = {
       applicationId: row.application_id,
       tenantId: row.tenant_id,
       artifactKey: row.artifact_key,
@@ -117,6 +147,15 @@ export async function scanArtifactInventory(db: DatabasePort): Promise<ArtifactI
       jobId: row.job_id,
       executionId: row.execution_id,
       role: row.role,
+    };
+    if (!DIGEST_SHAPE.test(row.artifact_digest)) {
+      malformedDigests.push(row.artifact_key);
+    }
+    entries.push({
+      ...entry,
+      storageKey: DIGEST_SHAPE.test(row.artifact_digest)
+        ? storageKeyOf(entry)
+        : `malformed:${row.artifact_key}`,
     });
   }
   return { entries: Object.freeze(entries), malformedDigests: Object.freeze(malformedDigests) };
@@ -159,7 +198,7 @@ export async function verifyArtifactInventory(
       malformed.push(entry.artifactKey);
       continue;
     }
-    const stored = await store.get(entry.artifactKey);
+    const stored = await store.get(entry.storageKey);
     if (stored === null) {
       missing.push(entry.artifactKey);
       continue;
@@ -239,7 +278,7 @@ export async function recoverArtifactBytes(
     // 1. The target may already hold the correct content (idempotent
     //    re-run). A DIFFERENT digest at the same key is an identity
     //    collision — fail closed, never overwrite.
-    const atTarget = await target.get(entry.artifactKey);
+    const atTarget = await target.get(entry.storageKey);
     if (atTarget !== null) {
       const targetDigest = digest(atTarget.body);
       if (targetDigest === entry.artifactDigest) {
@@ -253,7 +292,7 @@ export async function recoverArtifactBytes(
       continue;
     }
     // 2. Fetch from the independent source (fail closed on loss).
-    const atSource = await source.get(entry.artifactKey);
+    const atSource = await source.get(entry.storageKey);
     if (atSource === null) {
       failures.push({
         key: entry.artifactKey,
@@ -273,10 +312,10 @@ export async function recoverArtifactBytes(
     }
     // 4. Restore at the SAME content-addressed key (identity
     //    preservation) and verify read-after-write.
-    await target.put(entry.artifactKey, atSource.body, {
+    await target.put(entry.storageKey, atSource.body, {
       contentType: atSource.contentType,
     });
-    const readBack = await target.get(entry.artifactKey);
+    const readBack = await target.get(entry.storageKey);
     if (readBack === null || digest(readBack.body) !== entry.artifactDigest) {
       failures.push({
         key: entry.artifactKey,
