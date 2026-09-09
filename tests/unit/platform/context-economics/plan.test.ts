@@ -119,7 +119,7 @@ describe("memoization cache planning", () => {
     expect(boundary.reuseCount).toBe(readMemoizationHooks(variant).hooks.length);
   });
 
-  test("content drift fails closed: freshness-content-mismatch", () => {
+  test("cross-tenant facts never match this tenant's plan (structural identity isolation)", () => {
     const variant = compiledVariant();
     // A fact keyed under the OTHER tenant's scope: same semantics, wrong tenant.
     const read = readMemoizationHooks(variant);

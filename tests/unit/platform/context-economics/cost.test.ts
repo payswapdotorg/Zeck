@@ -7,8 +7,8 @@
 
 import { describe, expect, test } from "vitest";
 import {
-  type ContextSegmentKind,
   ContextEconomicsError,
+  type ContextSegmentKind,
   MAX_CONTEXT_SEGMENTS,
   MAX_SEGMENT_TOKENS,
 } from "../../../../src/platform/context-economics/catalog";
@@ -18,8 +18,8 @@ import {
   validateContextComposition,
   validateContextPricingBasis,
 } from "../../../../src/platform/context-economics/cost";
-import type { CostBasisAttribution } from "../../../../src/platform/execution-ir/cost-model";
 import { canonicalJson } from "../../../../src/platform/execution-ir/canonical";
+import type { CostBasisAttribution } from "../../../../src/platform/execution-ir/cost-model";
 import { nodeDigest } from "./helpers";
 
 const OBSERVED = { basis: "observed" as const, source: "context.tokenizer" };
@@ -93,7 +93,9 @@ describe("context-cost measurement", () => {
   test("the composition is validated: unknown kinds are rejected", () => {
     expect(() =>
       validateContextComposition({
-        segments: [{ kind: "magic-prompt" as unknown as ContextSegmentKind, tokenCount: 1, basis: OBSERVED }],
+        segments: [
+          { kind: "magic-prompt" as unknown as ContextSegmentKind, tokenCount: 1, basis: OBSERVED },
+        ],
       }),
     ).toThrow(ContextEconomicsError);
   });
@@ -101,7 +103,13 @@ describe("context-cost measurement", () => {
   test("UNATTRIBUTED segments are rejected (the estimation-basis contract)", () => {
     expect(() =>
       validateContextComposition({
-        segments: [{ kind: "user-input", tokenCount: 1, basis: undefined as unknown as CostBasisAttribution }],
+        segments: [
+          {
+            kind: "user-input",
+            tokenCount: 1,
+            basis: undefined as unknown as CostBasisAttribution,
+          },
+        ],
       }),
     ).toThrow(/estimation basis/);
     expect(() =>
