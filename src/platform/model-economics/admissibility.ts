@@ -47,7 +47,8 @@ import { reject } from "./vocabulary";
  * per candidate in every selection result).
  */
 export const CANDIDATE_INADMISSIBLE_CODES = [
-  "quality-below-floor",
+  "quality-below-hard-floor",
+  "quality-below-assurance",
   "reliability-below-floor",
   "policy-forbidden-route",
   "budget-ceiling",
@@ -56,10 +57,21 @@ export const CANDIDATE_INADMISSIBLE_CODES = [
 ] as const;
 export type CandidateInadmissibleCode = (typeof CANDIDATE_INADMISSIBLE_CODES)[number];
 
-/** The effective governing facts of one selection (deterministic). */
+/**
+ * The effective governing facts of one selection (deterministic).
+ * The distinction between the HARD floor and the assurance threshold
+ * is evidence-honest: a candidate below the hard floor violates a
+ * governing constraint (record-excluded); a candidate below only the
+ * assurance threshold is recorded with its invalid evaluation (the
+ * "why the cheaper did not win" evidence).
+ */
 export interface GoverningFacts {
   /** The inviolable effective quality floor (max of all sources). */
   readonly qualityFloor: number;
+  /** The hard-constraint quality floor alone (0 when none declared). */
+  readonly hardQualityFloor: number;
+  /** The Work Order assurance threshold (the quality facts input). */
+  readonly assuranceThreshold: number;
   /** The effective reliability floor (hard constraints only). */
   readonly reliabilityFloor: number;
   /** Hard budget ceilings (integer micro-USD strings). */
@@ -96,6 +108,8 @@ export function governingFacts(
   constraints: readonly OptimizationConstraint[],
 ): GoverningFacts {
   const validated = validateConstraintSet(constraints);
+  const assuranceThreshold = qualityFacts.requiredQuality;
+  let hardQualityFloor = NO_FLOOR;
   let qualityFloor = qualityFacts.requiredQuality;
   let reliabilityFloor = NO_FLOOR;
   const budgetCeilingsMicroUsd: string[] = [];
@@ -110,6 +124,7 @@ export function governingFacts(
       case "quality": {
         const payload = constraint.payload as { minQuality?: number; minReliability?: number };
         if (payload.minQuality !== undefined) {
+          hardQualityFloor = Math.max(hardQualityFloor, payload.minQuality);
           qualityFloor = Math.max(qualityFloor, payload.minQuality);
         }
         if (payload.minReliability !== undefined) {
@@ -145,6 +160,8 @@ export function governingFacts(
   }
   return {
     qualityFloor,
+    hardQualityFloor,
+    assuranceThreshold,
     reliabilityFloor,
     budgetCeilingsMicroUsd,
     latencyCeilingsMs,
@@ -184,8 +201,14 @@ export function evaluateAdmissibility(
   const evaluation = evaluateCandidate(candidate, facts.qualityFloor);
   const claim = candidate.claim as CostClaim;
   const code = (() => {
+    if (claim.expectedQuality < facts.hardQualityFloor) {
+      return "quality-below-hard-floor" as const;
+    }
     if (claim.expectedQuality < facts.qualityFloor) {
-      return "quality-below-floor" as const;
+      // Above every hard floor but below the Work Order assurance
+      // threshold: inadmissible for selection, recorded with the
+      // invalid evaluation as comparison evidence.
+      return "quality-below-assurance" as const;
     }
     if (claim.expectedReliability < facts.reliabilityFloor) {
       return "reliability-below-floor" as const;
