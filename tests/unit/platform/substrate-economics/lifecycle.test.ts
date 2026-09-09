@@ -5,19 +5,19 @@
  * economics with the WORK-049 ceil formula.
  */
 import { describe, expect, test } from "vitest";
+import { SubstrateEconomicsError } from "../../../../src/platform/substrate-economics/catalog";
+import {
+  type SubstrateDescriptor,
+  validateSubstrateDescriptor,
+} from "../../../../src/platform/substrate-economics/facts";
 import {
   classifyReadiness,
   computeStartupExpectation,
   expectedExecutionEconomics,
+  type ReadinessObservation,
   validateReadinessObservation,
   validateReadinessObservations,
-  type ReadinessObservation,
 } from "../../../../src/platform/substrate-economics/lifecycle";
-import { SubstrateEconomicsError } from "../../../../src/platform/substrate-economics/catalog";
-import {
-  validateSubstrateDescriptor,
-  type SubstrateDescriptor,
-} from "../../../../src/platform/substrate-economics/facts";
 
 const NOW = 1_800_000_000_000;
 const FRESHNESS_MS = 30_000;
@@ -110,7 +110,12 @@ describe("readiness observations: validation", () => {
 
 describe("readiness classification: fail closed, never silently warm", () => {
   test("a fresh ready observation is the believed state", () => {
-    const classification = classifyReadiness([observation("ready", 1000)], "std-microvm-a", NOW, FRESHNESS_MS);
+    const classification = classifyReadiness(
+      [observation("ready", 1000)],
+      "std-microvm-a",
+      NOW,
+      FRESHNESS_MS,
+    );
     expect(classification.kind).toBe("observed");
     if (classification.kind === "observed") {
       expect(classification.state).toBe("ready");
@@ -131,7 +136,12 @@ describe("readiness classification: fail closed, never silently warm", () => {
   });
 
   test("a stale observation is unknown — readiness is NEVER assumed", () => {
-    const classification = classifyReadiness([observation("ready", 120_000)], "std-microvm-a", NOW, FRESHNESS_MS);
+    const classification = classifyReadiness(
+      [observation("ready", 120_000)],
+      "std-microvm-a",
+      NOW,
+      FRESHNESS_MS,
+    );
     expect(classification).toEqual({ kind: "unknown" });
   });
 
@@ -179,9 +189,9 @@ describe("readiness classification: fail closed, never silently warm", () => {
       [NOW, 3_600_001],
       [-1, FRESHNESS_MS],
     ] as const) {
-      expect(() =>
-        classifyReadiness([], "std-microvm-a", now, window),
-      ).toThrow(SubstrateEconomicsError);
+      expect(() => classifyReadiness([], "std-microvm-a", now, window)).toThrow(
+        SubstrateEconomicsError,
+      );
     }
   });
 });
@@ -198,7 +208,12 @@ describe("startup expectation: the bounded created→ready computation", () => {
 
   test("a fresh ready observation collapses ONLY the warm mode", () => {
     const descriptor = baseDescriptor();
-    const ready = classifyReadiness([observation("ready", 500)], "std-microvm-a", NOW, FRESHNESS_MS);
+    const ready = classifyReadiness(
+      [observation("ready", 500)],
+      "std-microvm-a",
+      NOW,
+      FRESHNESS_MS,
+    );
     const warm = computeStartupExpectation(descriptor, "warm", ready);
     expect(warm.readinessMs).toBe(0);
     expect(warm.startupCostMicroUsd).toBe("0");
@@ -215,7 +230,12 @@ describe("startup expectation: the bounded created→ready computation", () => {
 
   test("a started (not ready) observation collapses nothing — started ≠ ready", () => {
     const descriptor = baseDescriptor();
-    const started = classifyReadiness([observation("started", 500)], "std-microvm-a", NOW, FRESHNESS_MS);
+    const started = classifyReadiness(
+      [observation("started", 500)],
+      "std-microvm-a",
+      NOW,
+      FRESHNESS_MS,
+    );
     const warm = computeStartupExpectation(descriptor, "warm", started);
     expect(warm.readinessMs).toBe(400);
     expect(warm.warmCollapse).toBe(false);
@@ -250,7 +270,12 @@ describe("composite economics: bounded, BigInt-exact, WORK-049 formula", () => {
 
   test("the warm collapse reduces the composite to the bare execution claim", () => {
     const descriptor = baseDescriptor();
-    const ready = classifyReadiness([observation("ready", 500)], "std-microvm-a", NOW, FRESHNESS_MS);
+    const ready = classifyReadiness(
+      [observation("ready", 500)],
+      "std-microvm-a",
+      NOW,
+      FRESHNESS_MS,
+    );
     const economics = expectedExecutionEconomics(descriptor, "warm", ready);
     expect(economics.totalLatencyMs).toBe(3000);
     expect(economics.totalCostMicroUsd).toBe("400");

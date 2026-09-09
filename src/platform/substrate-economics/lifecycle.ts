@@ -46,21 +46,21 @@
 
 import type { CostBasisAttribution } from "../execution-ir/cost-model";
 import {
+  boundedDetail,
+  isSubstrateReadinessState,
   MAX_READINESS_OBSERVATIONS,
   READINESS_FRESHNESS_WINDOW_BOUNDS,
   READINESS_STATE_RANK,
-  SUBSTRATE_ID_PATTERN,
-  boundedDetail,
-  isSubstrateReadinessState,
   rejectSubstrate,
+  SUBSTRATE_ID_PATTERN,
   type SubstrateAvailabilityMode,
   type SubstrateReadinessState,
 } from "./catalog";
 import {
   offeredModes,
-  startupFactOf,
   type SubstrateDescriptor,
   type SubstrateStartupFact,
+  startupFactOf,
 } from "./facts";
 
 // ---------------------------------------------------------------------------
@@ -94,14 +94,22 @@ export function validateReadinessObservation(value: unknown): ReadinessObservati
     rejectSubstrate("readiness-observation-shape", "readiness observation must be an object");
   }
   if (typeof value.substrateId !== "string" || !SUBSTRATE_ID_PATTERN.test(value.substrateId)) {
-    rejectSubstrate("readiness-observation-shape", "observation substrateId must be a neutral slug", {
-      got: boundedDetail(value.substrateId),
-    });
+    rejectSubstrate(
+      "readiness-observation-shape",
+      "observation substrateId must be a neutral slug",
+      {
+        got: boundedDetail(value.substrateId),
+      },
+    );
   }
   if (typeof value.state !== "string" || !isSubstrateReadinessState(value.state)) {
-    rejectSubstrate("readiness-observation-shape", "observation state must be on the neutral readiness ladder", {
-      got: boundedDetail(value.state),
-    });
+    rejectSubstrate(
+      "readiness-observation-shape",
+      "observation state must be on the neutral readiness ladder",
+      {
+        got: boundedDetail(value.state),
+      },
+    );
   }
   if (
     typeof value.observedAtEpochMs !== "number" ||
@@ -109,10 +117,20 @@ export function validateReadinessObservation(value: unknown): ReadinessObservati
     !Number.isInteger(value.observedAtEpochMs) ||
     value.observedAtEpochMs < 0
   ) {
-    rejectSubstrate("readiness-observation-shape", "observedAtEpochMs must be a non-negative integer epoch");
+    rejectSubstrate(
+      "readiness-observation-shape",
+      "observedAtEpochMs must be a non-negative integer epoch",
+    );
   }
-  if (typeof value.source !== "string" || value.source.length === 0 || value.source.length > SOURCE_MAX) {
-    rejectSubstrate("readiness-observation-shape", "observation source must be bounded non-empty text");
+  if (
+    typeof value.source !== "string" ||
+    value.source.length === 0 ||
+    value.source.length > SOURCE_MAX
+  ) {
+    rejectSubstrate(
+      "readiness-observation-shape",
+      "observation source must be bounded non-empty text",
+    );
   }
   return {
     substrateId: value.substrateId,
@@ -133,7 +151,10 @@ export function validateReadinessObservations(
     rejectSubstrate("readiness-observation-shape", "readiness observations must be an array");
   }
   if (values.length > MAX_READINESS_OBSERVATIONS) {
-    rejectSubstrate("readiness-observation-shape", `readiness observations exceed the bound of ${MAX_READINESS_OBSERVATIONS}`);
+    rejectSubstrate(
+      "readiness-observation-shape",
+      `readiness observations exceed the bound of ${MAX_READINESS_OBSERVATIONS}`,
+    );
   }
   return values.map(validateReadinessObservation);
 }
@@ -144,7 +165,12 @@ export function validateReadinessObservations(
 
 /** The believed current readiness of one substrate. */
 export type ReadinessClassification =
-  | { readonly kind: "observed"; readonly state: SubstrateReadinessState; readonly observedAtEpochMs: number; readonly source: string }
+  | {
+      readonly kind: "observed";
+      readonly state: SubstrateReadinessState;
+      readonly observedAtEpochMs: number;
+      readonly source: string;
+    }
   | { readonly kind: "unknown" };
 
 /**
@@ -168,7 +194,10 @@ export function classifyReadiness(
     freshnessWindowMs < READINESS_FRESHNESS_WINDOW_BOUNDS.min ||
     freshnessWindowMs > READINESS_FRESHNESS_WINDOW_BOUNDS.max
   ) {
-    rejectSubstrate("readiness-observation-stale", "classification requires a bounded now and freshness window");
+    rejectSubstrate(
+      "readiness-observation-stale",
+      "classification requires a bounded now and freshness window",
+    );
   }
   let best: ReadinessObservation | null = null;
   for (const observation of observations) {
@@ -295,9 +324,13 @@ const MAX_MICRO_USD_BIGINT = 999999999999999999n;
 function addMicroUsd(left: string, right: string): string {
   const sum = BigInt(left) + BigInt(right);
   if (sum > MAX_MICRO_USD_BIGINT) {
-    rejectSubstrate("substrate-fact-unbounded", "composite cost exceeds the bounded money universe", {
-      sum: sum.toString(),
-    });
+    rejectSubstrate(
+      "substrate-fact-unbounded",
+      "composite cost exceeds the bounded money universe",
+      {
+        sum: sum.toString(),
+      },
+    );
   }
   return sum.toString();
 }
@@ -314,9 +347,13 @@ function ceilDivide(microUsd: string, reliability: number): string {
   }
   const quotient = (cost * 1000000000000n + scaled - 1n) / scaled;
   if (quotient > MAX_MICRO_USD_BIGINT) {
-    rejectSubstrate("substrate-fact-unbounded", "expected successful-resolution cost exceeds the money universe", {
-      quotient: quotient.toString(),
-    });
+    rejectSubstrate(
+      "substrate-fact-unbounded",
+      "expected successful-resolution cost exceeds the money universe",
+      {
+        quotient: quotient.toString(),
+      },
+    );
   }
   return quotient.toString();
 }
@@ -335,7 +372,10 @@ export function expectedExecutionEconomics(
   const startup = computeStartupExpectation(descriptor, mode, classification);
   const totalLatencyMs = startup.readinessMs + descriptor.execution.expectedLatencyMs;
   if (!Number.isFinite(totalLatencyMs) || totalLatencyMs < 0) {
-    rejectSubstrate("substrate-fact-unbounded", "composite latency must remain finite and non-negative");
+    rejectSubstrate(
+      "substrate-fact-unbounded",
+      "composite latency must remain finite and non-negative",
+    );
   }
   const totalCostMicroUsd = addMicroUsd(
     startup.startupCostMicroUsd,
