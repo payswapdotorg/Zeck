@@ -14,6 +14,7 @@ For dispatch/review/orchestration behavior also read:
 - `docs/LLM-TECH-LEAD-BOOTSTRAP.md`
 - `docs/LLM-TECH-LEAD-CONTRACT.md`
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
+- `docs/E1.1-RESEARCH-BASELINE.md`
 
 ## Current continuation pointer
 
@@ -25,126 +26,85 @@ For dispatch/review/orchestration behavior also read:
 - D-00 through D-06: complete.
 - D-07 / WORK-048: authorized through Issue #13.
 
-Current frontier: `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]` until live state changes.
+Current frontier remains `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]`.
 
-The exact current `main` SHA must always be fetched. Never hard-code a stale SHA from this file.
+## E1.1 architectural authority
 
-## Authoritative architecture navigation
+E1.1 is a refinement of E1.0, not a new independent platform generation. The single `Execution Compiler` is the optimization authority.
 
-- `docs/LLM-ARCHITECT-HANDOFF.md` — current architect state/navigation.
-- `docs/LLM-TECH-LEAD-BOOTSTRAP.md` — zero-context dispatch/review/merge guide.
-- `docs/LLM-TECH-LEAD-CONTRACT.md` — normative three-worker and zero-drift contract.
-- `docs/E1.1-IMPLEMENTATION-PROGRAM.md` — canonical post-D-07 implementation charter.
-- `docs/ROADMAP.md` — strategic roadmap.
-- `docs/adr/ADR-0017-procedural-competence-and-runtime-interoperability.md` — competence/runtime interoperability.
-- `docs/adr/ADR-0018-agentic-economic-actions-and-payment-rails.md` — agentic economics.
-- `docs/adr/ADR-0019-execution-intelligence-architecture.md` — E1.0.
-- `docs/adr/ADR-0020-economic-execution-intelligence-e1.1.md` — E1.1.
-- `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0.
-- `docs/architecture-changes/ACR-003-execution-intelligence-architecture.md` — E1.0.
-- `docs/architecture-changes/ACR-004-economic-execution-intelligence-e1.1.md` — E1.1.
+It optimizes the expected cost of successfully resolving a governed outcome while preserving hard quality, reliability, policy, capability, budget, tenant, verification, safety and side-effect constraints.
 
-## Deployment authority
+Do not create independent core authorities for model routing, tool routing, context optimization, cache optimization, agent optimization, sandbox optimization, retry optimization or cost optimization.
 
-- `docs/DEPLOYMENT-ARCHITECTURE.md`
-- `docs/DEPLOYMENT-ROADMAP.md`
-- `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`
-- `spec/work-orders/WORK-048.md`
-- GitHub Issue #13
+## E1.1 implementation charter
 
-Reference topology remains Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination/cache.
-
-## D-07 authorization
-
-`WORK-048` is the only current deployment implementation order.
-Required branch: `work/WORK-048-resilience-disaster-recovery-provider-exit`.
-
-D-07 covers PostgreSQL recovery, artifact recovery, queue/workflow replay, worker evacuation, outage simulation, alternate S3-compatible artifact storage, alternate managed PostgreSQL, alternate web/API hosting, and measured RTO/RPO evidence.
-
-D-08 remains blocked until D-07 completion, measured production usage, explicit availability/security requirements and any required architecture extension.
-
-## E1.1 implementation continuation
-
-E1.1 optimizes the **expected cost of successfully resolving a governed outcome**, not model-token price alone.
-
-There is one optimization authority: `Execution Compiler`.
-
-Do not create separate core authorities for model routing, tool routing, context optimization, cache optimization, agent optimization, sandbox optimization, retry optimization or cost optimization. These are compiler decisions over one Execution IR.
-
-The canonical post-D-07 sequence is defined exactly in `docs/E1.1-IMPLEMENTATION-PROGRAM.md`:
+`docs/E1.1-IMPLEMENTATION-PROGRAM.md` is the exact post-D-07 implementation charter.
 
 ```text
 WORK-048
-   ↓
-WORK-049  Execution IR + outcome economics
-   ↓
-WORK-050  Execution Compiler
-   ├──────────────┬──────────────┬──────────────┐
-   ▼              ▼              ▼
-WORK-051       WORK-052       WORK-053 / WORK-054
-Tool/program   Context/reuse  Model/agent and/or substrate
-   └──────────────┴──────────────┴──────────────┐
-                                                  ▼
-                                               WORK-055
-                                        failure + escalation + continuation
-                                                  ↓
-                                               WORK-056
-                                    competence + deterministicization
+  ↓
+WORK-049 → WORK-050
+              ├─ WORK-051
+              ├─ WORK-052
+              ├─ WORK-053
+              └─ WORK-054
+                    ↓
+                 WORK-055
+                    ↓
+                 WORK-056
 ```
 
-Each becomes executable only through an actual repository Work Order plus dependency/frontier authorization. Never invent a future Work Order from conversation or roadmap prose.
+Future stages become executable only when the Architect issues repository Work Orders and dependency/frontier state authorizes them. The charter is not permission to invent implementation work.
 
 ## Three-worker rule
 
-A fresh Tech Lead may dispatch **at most three concurrent implementation workers**.
+A fresh Tech Lead may dispatch at most **3 concurrent implementation workers**.
 
-Parallelism is permitted only after dependency, source-surface, migration, public-contract, test, package/configuration and architecture/governance conflict analysis proves mechanical reconciliation is possible.
+Parallelism requires live conflict analysis over dependencies, source surfaces, migrations, public contracts, tests, package/toolchain/configuration, provider manifests and architecture/governance artifacts.
 
-Workers never modify `spec/development-state/*` during active implementation. Workers never merge their own PRs.
+Workers do not modify `spec/development-state/*` during implementation and never merge their own PRs.
 
 ## No implementation drift
 
-Implementation must stop rather than silently reinterpret the architecture when it would require:
+Stop and request Architect amendment whenever implementation would require:
 
-- a new authority, durable state source, state machine, ledger or cache authority;
-- a v1.0 invariant change;
-- an E1.1 objective or Execution Compiler role change;
-- provider-specific domain semantics;
+- a new authority, durable state source, ledger, state machine or cache authority;
+- a frozen v1.0 invariant change;
+- a change to the E1.1 objective or Execution Compiler role;
+- provider-specific semantics entering domain modules;
 - weaker assurance;
-- undocumented dependencies/surfaces;
-- dishonest substitution of unavailable infrastructure evidence.
-
-Such changes require Architect amendment and, where architectural authority changes, the ACR/ADR process.
+- undocumented dependency/scope expansion;
+- dishonest evidence substitution for unavailable infrastructure.
 
 ## Provider/substrate rule
 
-E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. Their snapshots, warm pools, directory snapshots, readiness probes, scheduling and provider-local state are implementation mechanisms. Zeck may compare their bounded capability/cost/readiness/reliability facts but must not import provider authority into the domain model.
+E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. Provider snapshots, warm pools, directory snapshots, readiness probes, scheduling and provider-local state remain mechanisms rather than Zeck authorities.
 
-## Non-negotiables
+## Current deployment authority
 
-- One Work Order = one implementation branch = one PR.
-- Exact-revision evidence only.
-- Worker does not self-merge.
-- Frozen architecture cannot be silently rewritten.
-- Learning, competence, benchmarking, provider runtimes and payment rails do not become authorities.
-- Secrets never enter Git, logs, artifacts or public domain state.
+`WORK-048` remains the only executable deployment work until completion.
+
+Required branch: `work/WORK-048-resilience-disaster-recovery-provider-exit`.
+
+The branch is currently identical to canonical `main`, so the next worker can establish an exact base with no stale pre-dispatch documentation.
 
 ## Recovery sequence
 
-1. Read `AGENTS.md`.
-2. Read `AI_CONTINUATION.md`.
-3. Read `docs/LLM-ARCHITECT-HANDOFF.md`.
-4. Read `docs/LLM-TECH-LEAD-BOOTSTRAP.md`.
-5. Read `docs/LLM-TECH-LEAD-CONTRACT.md`.
-6. Read `docs/E1.1-IMPLEMENTATION-PROGRAM.md`.
-7. Read README/IMPLEMENTATION/worker and architect runbooks.
-8. Read architecture + lock.
-9. Read requirements + traceability.
-10. Read all development-state JSON.
-11. Read relevant ADRs/ACRs and Work Orders.
-12. Inspect live GitHub refs/PRs/issues/checks.
-13. Run `python3 scripts/governance-check.py`.
+1. `AGENTS.md`
+2. `AI_CONTINUATION.md`
+3. `docs/LLM-ARCHITECT-HANDOFF.md`
+4. `docs/LLM-TECH-LEAD-BOOTSTRAP.md`
+5. `docs/LLM-TECH-LEAD-CONTRACT.md`
+6. `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
+7. `docs/E1.1-RESEARCH-BASELINE.md`
+8. README/IMPLEMENTATION/worker and architect runbooks
+9. architecture + lock
+10. requirements + traceability
+11. all development-state JSON
+12. relevant ADRs/ACRs and Work Orders
+13. live GitHub refs/PRs/issues/checks
+14. `python3 scripts/governance-check.py`
 
 ## Fresh-session invariant
 
-A fresh LLM must recover architecture, frontier, Work Order authority, three-worker safety limit, E1.1 implementation sequence, provider boundary and review/merge protocol entirely from repository artifacts plus live GitHub state.
+A fresh LLM Tech Lead must recover the current architecture, frontier, Work Order authority, three-worker concurrency ceiling, E1.1 implementation sequence, provider boundary, evidence rules and merge/finalization protocol entirely from repository artifacts and live GitHub state.
