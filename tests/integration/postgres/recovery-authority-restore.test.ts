@@ -46,6 +46,9 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { expect, test } from "vitest";
+import { createBudgetRecoveryInvariants } from "../../../src/modules/budgets/adapters/recovery-invariants";
+import { createArtifactLedgerRecoveryInvariants } from "../../../src/modules/deployments/adapters/recovery-inventory";
+import { createExecutionRecoveryInvariants } from "../../../src/modules/executions/adapters/recovery-invariants";
 import { EXECUTION_STATES } from "../../../src/modules/executions/public";
 import {
   createLogicalBackup,
@@ -186,8 +189,12 @@ defineSuite<DrillContext>(
                 });
                 try {
                   const report = await verifyRecoveredAuthority(handle.port, {
-                    executionStatusVocabulary: EXECUTION_STATES,
                     expectedMigrationCount: shippedMigrations().length,
+                    moduleInvariants: [
+                      createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+                      createBudgetRecoveryInvariants(handle.port),
+                      createArtifactLedgerRecoveryInvariants(handle.port),
+                    ],
                   });
                   if (!report.verified) {
                     throw new Error(
@@ -238,8 +245,12 @@ defineSuite<DrillContext>(
 
         // A clean restore verifies BEFORE the tamper.
         const clean = await verifyRecoveredAuthority(handle.port, {
-          executionStatusVocabulary: EXECUTION_STATES,
           expectedMigrationCount: shippedMigrations().length,
+          moduleInvariants: [
+            createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+            createBudgetRecoveryInvariants(handle.port),
+            createArtifactLedgerRecoveryInvariants(handle.port),
+          ],
         });
         expect(clean.verified).toBe(true);
         expect(clean.checks.length).toBeGreaterThanOrEqual(12);
@@ -303,8 +314,12 @@ defineSuite<DrillContext>(
         });
 
         const report = await verifyRecoveredAuthority(handle.port, {
-          executionStatusVocabulary: EXECUTION_STATES,
           expectedMigrationCount: shippedMigrations().length,
+          moduleInvariants: [
+            createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+            createBudgetRecoveryInvariants(handle.port),
+            createArtifactLedgerRecoveryInvariants(handle.port),
+          ],
         });
         expect(report.verified).toBe(false);
         const failedChecks = new Set(report.violations.map((violation) => violation.check));

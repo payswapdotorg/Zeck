@@ -145,16 +145,27 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
         expect(legal, `${file} imports ${specifier}`).toBe(true);
       }
     }
-    // The module-side surface: exactly ONE new executions adapter
-    // implementing the platform seam type; no other module file
+    // The module-side surface: the DECLARED D-07 seam set (the
+    // worker-fabric precedent — module adapters implementing platform
+    // seam types over their own private tables); no other module file
     // references the recovery plane.
-    const seam = read("src/modules/executions/adapters/evacuation-seam.ts");
-    expect(seam).toContain("../../../platform/recovery/evacuation");
+    const DECLARED_SEAMS = [
+      "src/modules/executions/adapters/evacuation-seam.ts",
+      "src/modules/executions/adapters/recovery-invariants.ts",
+      "src/modules/budgets/adapters/recovery-invariants.ts",
+      "src/modules/deployments/adapters/recovery-inventory.ts",
+    ];
+    for (const seam of DECLARED_SEAMS) {
+      const content = read(seam);
+      expect(content, `${seam} must implement a platform seam type`).toContain(
+        "platform/recovery/",
+      );
+    }
     for (const file of listFiles("src/modules")) {
-      const content = read(file);
-      if (file === "src/modules/executions/adapters/evacuation-seam.ts") {
+      if (DECLARED_SEAMS.includes(file)) {
         continue;
       }
+      const content = read(file);
       expect(content, `${file} must not reference the recovery plane`).not.toContain(
         "platform/recovery/",
       );
@@ -185,11 +196,13 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
           `"${state}"`,
         );
       }
-      // The frozen vocabulary is INJECTED by the composition root
-      // (authority-verification), never hard-coded in the platform.
-      if (file === "src/platform/recovery/authority-verification.ts") {
-        expect(content).toContain("executionStatusVocabulary");
-      }
+      // The frozen vocabulary lives in the executions module (its own
+      // domain constant, injected by the composition root into the
+      // module's recovery-invariants seam) — never hard-coded in the
+      // platform recovery plane.
+      const seam = read("src/modules/executions/adapters/recovery-invariants.ts");
+      expect(seam).toContain("EXECUTION_STATES");
+      expect(seam).toContain("executionStatusVocabulary");
     }
   });
 

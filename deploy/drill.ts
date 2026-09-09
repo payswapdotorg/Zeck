@@ -47,7 +47,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client } from "pg";
+import { createBudgetRecoveryInvariants } from "../src/modules/budgets/adapters/recovery-invariants";
+import {
+  createArtifactInventorySource,
+  createArtifactLedgerRecoveryInvariants,
+} from "../src/modules/deployments/adapters/recovery-inventory";
 import { createLeaseEvacuationSeam } from "../src/modules/executions/adapters/evacuation-seam";
+import { createExecutionRecoveryInvariants } from "../src/modules/executions/adapters/recovery-invariants";
 import { SqlLongRunningExecutionStore } from "../src/modules/executions/adapters/sql-long-running-store";
 import { EXECUTION_STATES } from "../src/modules/executions/public";
 import { SqlComputeWorkerStore } from "../src/platform/compute/pg-store";
@@ -78,9 +84,7 @@ import { QueueCorrelationStore } from "../src/platform/queue/correlation";
 import { createDurableDispatcher } from "../src/platform/queue/dispatcher";
 import {
   recoverArtifactBytes,
-  scanArtifactInventory,
   verifyArtifactInventory,
-  verifyLineagePreservation,
 } from "../src/platform/recovery/artifact-recovery";
 import { verifyRecoveredAuthority } from "../src/platform/recovery/authority-verification";
 import { type DrillPhaseSpec, runRecoveryDrill } from "../src/platform/recovery/drill";
@@ -387,8 +391,12 @@ async function main(): Promise<void> {
         const handle = await startAuthoritativeDatabase(targetUrl, { poolOverrides: { max: 4 } });
         try {
           const report = await verifyRecoveredAuthority(handle.port, {
-            executionStatusVocabulary: EXECUTION_STATES,
             expectedMigrationCount: shippedMigrations().length,
+            moduleInvariants: [
+              createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+              createBudgetRecoveryInvariants(handle.port),
+              createArtifactLedgerRecoveryInvariants(handle.port),
+            ],
           });
           drillOutput = { ...drillOutput, authorityInvariants: report };
           if (!report.verified) {
@@ -435,7 +443,7 @@ async function main(): Promise<void> {
         "scan the authoritative adoption ledger (PostgreSQL is the recovery source of truth)",
       action: async () => {
         await withAuthorityPort(authorityUrl, async (port) => {
-          const scan = await scanArtifactInventory(port);
+          const scan = await createArtifactInventorySource(port).scan();
           if (scan.malformedDigests.length > 0) {
             throw new Error(
               `the authority carries malformed artifact digests (keys: ${scan.malformedDigests.join(", ")})`,
@@ -460,7 +468,7 @@ async function main(): Promise<void> {
         }
         const sourceStore = createS3ObjectStore(operativeConfig);
         await withAuthorityPort(authorityUrl, async (port) => {
-          const inventory = await scanArtifactInventory(port);
+          const inventory = await createArtifactInventorySource(port).scan();
           const alternateStore = createS3ObjectStore(alternate);
           const report = await recoverArtifactBytes(
             sourceStore,
@@ -487,13 +495,14 @@ async function main(): Promise<void> {
       action: async () => {
         const alternateStore = createS3ObjectStore(alternate);
         await withAuthorityPort(authorityUrl, async (port) => {
-          const inventory = await scanArtifactInventory(port);
+          const inventorySource = createArtifactInventorySource(port);
+          const inventory = await inventorySource.scan();
           const verification = await verifyArtifactInventory(
             alternateStore,
             inventory.entries,
             digestOf,
           );
-          const lineage = await verifyLineagePreservation(port, inventory.entries);
+          const lineage = await inventorySource.verifyLineagePreservation(inventory.entries);
           drillOutput = { ...drillOutput, targetVerification: verification, lineage };
           if (!verification.recovered) {
             throw new Error(

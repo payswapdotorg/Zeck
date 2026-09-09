@@ -9,37 +9,33 @@
  * DISABLED while the exact historical state is restored (write-once
  * guards protect LIVE mutations, not recovery). That is correct for
  * restore, and it means the restored rows were never re-validated
- * against the schema's own invariants. This module re-proves the
- * CRITICAL invariants as explicit queries — the D-07 gate that must
- * pass BEFORE an environment may be declared recovered:
+ * against the schema's own invariants. This gate re-proves the
+ * CRITICAL invariants as explicit queries — the D-07 check that must
+ * pass BEFORE an environment may be declared recovered.
  *
- *   1. migration history: exactly the shipped deterministic set;
- *   2. execution states: every row inside the frozen 14-state
- *      vocabulary (the state machine integrity);
- *   3. execution events: per-execution sequences are gapless
- *      1..last_event_sequence (append-only ledger completeness —
- *      a partial restore is DETECTED, not silently accepted);
- *   4. queue envelopes: closed 5-state vocabulary; `consumed` ⇒
- *      applied (the transport-vs-authority boundary);
- *   5. worker claims: at most ONE live claim per execution (the
- *      physical arbitration invariant); worker/claim vocabularies;
- *   6. budget wallets: no negative balances (the frozen budget
- *      invariant);
- *   7. artifact adoption ledger: digest shape + the artifact → job →
- *      deployment → application → tenant chain resolves (referential
- *      integrity across the restored FK-disabled boundary);
- *   8. workflow waits: closed state vocabulary + the terminal/armed
- *      instance binding.
+ * THE AUTHORITY SPLIT (the module-private table discipline — the
+ * WORK-046 worker-fabric seam precedent):
+ *
+ *   * THIS MODULE verifies the PLATFORM-owned schemas directly:
+ *     migration history, queue-transport envelopes (vocabulary +
+ *     consumed⇒applied), the compute plane (single live claim,
+ *     worker vocabulary) and the workflow waits.
+ *   * MODULE-owned tables (executions, budgets, deployments) are
+ *     module-private surface: their invariant checks are supplied by
+ *     the OWNING MODULE's adapter through the neutral
+ *     `ModuleInvariantSource` seam declared here (wired by the
+ *     composition root — deploy/drill and the test worlds), exactly
+ *     like the executions module already exposes its recovery scan
+ *     to the worker fabric.
  *
  * A tampered/incomplete/corrupted restore FAILS a check; the caller
  * (drill/CLI) then refuses the recovered declaration — unverified
  * recovery never becomes a PASS (Work Order discrimination
  * requirement).
  *
- * The module is pure platform: bounded SQL over the `DatabasePort`,
- * the execution vocabulary injected by the composition root (the
- * frozen vocabulary belongs to the architecture, not to a platform
- * default).
+ * The module is pure platform: bounded SQL over the `DatabasePort`
+ * for platform schemas only; module-private state enters ONLY
+ * through the injected seam violations.
  */
 
 import type { DatabasePort } from "../db/port";
@@ -58,14 +54,25 @@ export interface AuthorityVerificationReport {
   readonly verified: boolean;
 }
 
+/**
+ * One module-owned invariant check: the owning module's adapter
+ * verifies its own private tables and reports violations through
+ * this neutral seam (the platform never queries module tables
+ * directly).
+ */
+export interface ModuleInvariantSource {
+  /** The owning module id (evidence attribution). */
+  readonly module: string;
+  /** The check names this source owns (reported in `checks`). */
+  readonly checks: readonly string[];
+  verify(): Promise<readonly AuthorityInvariantViolation[]>;
+}
+
 export interface AuthorityVerificationInput {
-  /**
-   * The frozen execution state vocabulary (the composition root
-   * supplies the architecture-frozen list; fail closed on absence).
-   */
-  readonly executionStatusVocabulary: readonly string[];
   /** The expected shipped migration count (from the backup context). */
   readonly expectedMigrationCount: number;
+  /** The module-owned invariant checks (executions, budgets, artifact ledger). */
+  readonly moduleInvariants: readonly ModuleInvariantSource[];
 }
 
 const MAX_VIOLATION_DETAIL = 300;
@@ -87,11 +94,13 @@ export async function verifyRecoveredAuthority(
   db: DatabasePort,
   input: AuthorityVerificationInput,
 ): Promise<AuthorityVerificationReport> {
-  if (input.executionStatusVocabulary.length === 0) {
-    throw new Error("the frozen execution status vocabulary is required (composition root)");
-  }
   if (!Number.isInteger(input.expectedMigrationCount) || input.expectedMigrationCount < 1) {
     throw new Error("expectedMigrationCount must be a positive integer");
+  }
+  if (input.moduleInvariants.length === 0) {
+    throw new Error(
+      "the module-owned invariant checks are required (executions, budgets, artifact ledger — the composition root wires them)",
+    );
   }
   const violations: AuthorityInvariantViolation[] = [];
   const checks: string[] = [];
@@ -106,42 +115,8 @@ export async function verifyRecoveredAuthority(
     });
   }
 
-  // 2. Execution states inside the frozen vocabulary.
-  checks.push("execution-status-vocabulary");
-  const vocabulary = input.executionStatusVocabulary.map((state) => `'${state}'`).join(", ");
-  const badStatuses = await count(
-    db,
-    `SELECT count(*) AS count FROM executions.executions WHERE status NOT IN (${vocabulary})`,
-  );
-  if (badStatuses > 0) {
-    violations.push({
-      check: "execution-status-vocabulary",
-      detail: `${badStatuses} executions outside the frozen state vocabulary`,
-    });
-  }
-
-  // 3. Execution event ledger: gapless per-execution sequences.
-  checks.push("execution-event-gapless-sequences");
-  const gappedEvents = await count(
-    db,
-    `SELECT count(*) AS count FROM (
-       SELECT e.id
-       FROM executions.executions e
-       JOIN LATERAL (
-         SELECT count(*) AS rows, max(sequence) AS top
-         FROM executions.execution_events ev WHERE ev.execution_id = e.id
-       ) s ON true
-       WHERE s.rows <> s.top OR s.rows <> e.last_event_sequence
-     ) g`,
-  );
-  if (gappedEvents > 0) {
-    violations.push({
-      check: "execution-event-gapless-sequences",
-      detail: `${gappedEvents} executions with gapped or truncated event ledgers (incomplete restore)`,
-    });
-  }
-
-  // 4. Queue envelope vocabulary + consumed ⇒ applied boundary.
+  // 2. Queue envelopes (platform-owned): closed vocabulary + the
+  //    consumed ⇒ applied boundary.
   checks.push("queue-envelope-vocabulary");
   const badEnvelopeStates = await count(
     db,
@@ -167,7 +142,8 @@ export async function verifyRecoveredAuthority(
     });
   }
 
-  // 5. Worker claims: one live claim per execution; vocabularies.
+  // 3. The compute plane (platform-owned): one live claim per
+  //    execution; the worker vocabulary.
   checks.push("single-live-claim-per-execution");
   const duplicateLiveClaims = await count(
     db,
@@ -196,49 +172,8 @@ export async function verifyRecoveredAuthority(
     });
   }
 
-  // 6. Budget wallets: never negative (frozen invariant 8).
-  checks.push("budget-wallet-non-negative");
-  const negativeWallets = await count(
-    db,
-    "SELECT count(*) AS count FROM budgets.wallets WHERE balance_micro_usd < 0",
-  );
-  if (negativeWallets > 0) {
-    violations.push({
-      check: "budget-wallet-non-negative",
-      detail: `${negativeWallets} wallets with negative balances (corrupted restore)`,
-    });
-  }
-
-  // 7. Artifact adoption ledger: digest shape + chain resolution.
-  checks.push("artifact-adoption-digest-shape");
-  const badDigests = await count(
-    db,
-    "SELECT count(*) AS count FROM deployments.media_artifacts WHERE artifact_digest !~ '^[0-9a-f]{64}$'",
-  );
-  if (badDigests > 0) {
-    violations.push({
-      check: "artifact-adoption-digest-shape",
-      detail: `${badDigests} adoption rows with malformed digests`,
-    });
-  }
-  checks.push("artifact-adoption-chain-resolution");
-  const brokenChains = await count(
-    db,
-    `SELECT count(*) AS count FROM deployments.media_artifacts a
-     LEFT JOIN deployments.media_jobs j ON j.id = a.job_id
-     LEFT JOIN deployments.deployments d ON d.id = a.deployment_id
-     LEFT JOIN applications.applications app ON app.id = a.application_id AND app.tenant_id = a.tenant_id
-     LEFT JOIN applications.tenants t ON t.id = a.tenant_id
-     WHERE j.id IS NULL OR d.id IS NULL OR app.id IS NULL OR t.id IS NULL`,
-  );
-  if (brokenChains > 0) {
-    violations.push({
-      check: "artifact-adoption-chain-resolution",
-      detail: `${brokenChains} adoption rows with unresolvable job/deployment/application/tenant chains`,
-    });
-  }
-
-  // 8. Workflow wait vocabulary + terminal/armed instance binding.
+  // 4. Workflow waits (platform-owned): vocabulary + the terminal/
+  //    armed instance binding.
   checks.push("workflow-wait-vocabulary");
   const badWaitStates = await count(
     db,
@@ -262,6 +197,15 @@ export async function verifyRecoveredAuthority(
       check: "workflow-armed-instance-binding",
       detail: `${unboundArmed} pre-arm waits carrying a provider instance id (authority drift)`,
     });
+  }
+
+  // 5. The module-owned invariants (executions state machine + event
+  //    ledgers, budget non-negativity, the artifact adoption ledger)
+  //    through the neutral seams — the owning modules verify their
+  //    own private tables.
+  for (const source of input.moduleInvariants) {
+    checks.push(...source.checks);
+    violations.push(...(await source.verify()));
   }
 
   return {

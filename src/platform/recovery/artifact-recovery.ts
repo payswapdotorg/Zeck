@@ -38,7 +38,6 @@
  *   zero provider vocabulary in this module.
  */
 
-import type { DatabasePort } from "../db/port";
 import type { ObjectStorePort } from "../object-store/port";
 
 /** Fail-closed artifact recovery error (typed, never silent). */
@@ -108,57 +107,31 @@ export function storageKeyOf(entry: {
 }
 
 /**
- * Scan the authoritative adoption ledger (read-only; the recovery
- * source of truth — provider dashboards are never consulted).
+ * The artifact inventory source seam (the deployments module owns the
+ * adoption ledger — module-private tables; its adapter implements
+ * this neutral platform seam, the worker-fabric precedent). The
+ * recovery source of truth is ALWAYS the authority (the ledger), never
+ * a provider listing.
  */
-export async function scanArtifactInventory(db: DatabasePort): Promise<ArtifactInventoryScan> {
-  const result = await db.execute<{
-    readonly application_id: string;
-    readonly tenant_id: string;
-    readonly artifact_key: string;
-    readonly artifact_digest: string;
-    readonly parent_digests: unknown;
-    readonly deployment_id: string;
-    readonly job_id: string;
-    readonly execution_id: string;
-    readonly role: string;
-  }>({
-    sql: `SELECT application_id, tenant_id, artifact_key, artifact_digest,
-                 parent_digests, deployment_id, job_id, execution_id, role
-          FROM deployments.media_artifacts
-          ORDER BY application_id, artifact_key`,
-    parameters: [],
-  });
-  const malformedDigests: string[] = [];
-  const entries: ArtifactInventoryEntry[] = [];
-  for (const row of result.rows) {
-    const parents = Array.isArray(row.parent_digests)
-      ? (row.parent_digests as unknown[]).filter(
-          (parent): parent is string => typeof parent === "string",
-        )
-      : [];
-    const entry = {
-      applicationId: row.application_id,
-      tenantId: row.tenant_id,
-      artifactKey: row.artifact_key,
-      artifactDigest: row.artifact_digest,
-      parentDigests: Object.freeze([...parents]),
-      deploymentId: row.deployment_id,
-      jobId: row.job_id,
-      executionId: row.execution_id,
-      role: row.role,
-    };
-    if (!DIGEST_SHAPE.test(row.artifact_digest)) {
-      malformedDigests.push(row.artifact_key);
-    }
-    entries.push({
-      ...entry,
-      storageKey: DIGEST_SHAPE.test(row.artifact_digest)
-        ? storageKeyOf(entry)
-        : `malformed:${row.artifact_key}`,
-    });
-  }
-  return { entries: Object.freeze(entries), malformedDigests: Object.freeze(malformedDigests) };
+export interface ArtifactInventorySource {
+  /** Scan the authoritative adoption ledger (read-only). */
+  scan(): Promise<ArtifactInventoryScan>;
+  /**
+   * The lineage-preservation proof: every entry's lineage remains
+   * RESOLVABLE against the authority (the artifact digest still bound
+   * to its parents and its deployment chain in the ledger).
+   */
+  verifyLineagePreservation(
+    inventory: readonly ArtifactInventoryEntry[],
+  ): Promise<LineagePreservationReport>;
+}
+
+/** The lineage-preservation verification report (fail-closed). */
+export interface LineagePreservationReport {
+  readonly entries: number;
+  readonly preserved: number;
+  readonly broken: readonly string[];
+  readonly preservedAll: boolean;
 }
 
 /** The digest function seam (sha256 hex over bytes). */
@@ -332,55 +305,5 @@ export async function recoverArtifactBytes(
     alreadyIntact,
     failures: Object.freeze([...failures]),
     completed: inventory.length > 0 && failures.length === 0,
-  });
-}
-
-/**
- * The lineage-preservation proof for a recovered/substituted store:
- * every inventory entry's lineage must remain RESOLVABLE against the
- * authority — the artifact digest still bound to its parents and its
- * deployment chain in the (restored) PostgreSQL ledger. A migration
- * that dropped lineage fails here even when the bytes are intact.
- */
-export async function verifyLineagePreservation(
-  db: DatabasePort,
-  inventory: readonly ArtifactInventoryEntry[],
-): Promise<{
-  readonly entries: number;
-  readonly preserved: number;
-  readonly broken: readonly string[];
-  readonly preservedAll: boolean;
-}> {
-  const broken: string[] = [];
-  for (const entry of inventory) {
-    const result = await db.execute<{ readonly count: string }>({
-      sql: `SELECT count(*) AS count
-            FROM deployments.media_artifacts
-            WHERE artifact_key = $1
-              AND application_id = $2
-              AND artifact_digest = $3
-              AND deployment_id = $4
-              AND job_id = $5
-              AND execution_id = $6
-              AND parent_digests = $7::jsonb`,
-      parameters: [
-        entry.artifactKey,
-        entry.applicationId,
-        entry.artifactDigest,
-        entry.deploymentId,
-        entry.jobId,
-        entry.executionId,
-        JSON.stringify(entry.parentDigests),
-      ],
-    });
-    if (Number(result.rows[0]?.count ?? 0) !== 1) {
-      broken.push(entry.artifactKey);
-    }
-  }
-  return Object.freeze({
-    entries: inventory.length,
-    preserved: inventory.length - broken.length,
-    broken: Object.freeze([...broken]),
-    preservedAll: inventory.length > 0 && broken.length === 0,
   });
 }

@@ -58,6 +58,7 @@ import { createHash } from "node:crypto";
 import { Client } from "pg";
 import { beforeAll, expect, test } from "vitest";
 import { isArtifactDigest } from "../../../src/modules/artifacts/public";
+import { createArtifactInventorySource } from "../../../src/modules/deployments/adapters/recovery-inventory";
 import type { DatabasePort } from "../../../src/platform/db/port";
 import {
   createS3ObjectStore,
@@ -66,9 +67,7 @@ import {
 import {
   type ArtifactInventoryEntry,
   recoverArtifactBytes,
-  scanArtifactInventory,
   verifyArtifactInventory,
-  verifyLineagePreservation,
 } from "../../../src/platform/recovery/artifact-recovery";
 import { OutageSimulatedObjectStore } from "../../../src/platform/recovery/outage";
 import { type FakeS3Server, startFakeS3Server } from "../object-store/lib/fake-s3-server";
@@ -176,7 +175,7 @@ definePgSuite("the artifact-recovery / provider-exit drill (WORK-048 D-07 AC2+AC
     }
 
     // The authoritative inventory FIRST (the plan is the ledger).
-    const scan = await scanArtifactInventory(db);
+    const scan = await createArtifactInventorySource(db).scan();
     inventory = scan.entries;
     if (inventory.length < 1 || scan.malformedDigests.length > 0) {
       throw new Error("the inventory scan is empty or malformed (seed defect)");
@@ -220,7 +219,7 @@ definePgSuite("the artifact-recovery / provider-exit drill (WORK-048 D-07 AC2+AC
     expect(verification.recovered).toBe(true);
 
     // Lineage stays bound (the authority row is the inventory source).
-    const lineage = await verifyLineagePreservation(db, inventory);
+    const lineage = await createArtifactInventorySource(db).verifyLineagePreservation(inventory);
     expect(lineage.preservedAll).toBe(true);
     expect(lineage.broken).toEqual([]);
 
@@ -365,7 +364,7 @@ definePgSuite("the artifact-recovery / provider-exit drill (WORK-048 D-07 AC2+AC
       );
     });
     try {
-      const lineage = await verifyLineagePreservation(db, inventory);
+      const lineage = await createArtifactInventorySource(db).verifyLineagePreservation(inventory);
       expect(lineage.preservedAll).toBe(false);
       expect(lineage.broken).toContain(victim.artifactKey);
     } finally {
@@ -377,7 +376,7 @@ definePgSuite("the artifact-recovery / provider-exit drill (WORK-048 D-07 AC2+AC
         );
       });
     }
-    const healed = await verifyLineagePreservation(db, inventory);
+    const healed = await createArtifactInventorySource(db).verifyLineagePreservation(inventory);
     expect(healed.preservedAll).toBe(true);
   });
 
@@ -386,7 +385,7 @@ definePgSuite("the artifact-recovery / provider-exit drill (WORK-048 D-07 AC2+AC
     // not a recovery source: the inventory (PostgreSQL) decides what
     // must exist. Extra bytes change nothing about verification.
     await primary.store.put("zeck/foreign/orphan-bytes", Buffer.from("orphan", "utf8"));
-    const scan = await scanArtifactInventory(db);
+    const scan = await createArtifactInventorySource(db).scan();
     expect(scan.entries).toHaveLength(inventory.length);
     const verification = await verifyArtifactInventory(alternate.store, scan.entries, digestOf);
     expect(verification.recovered).toBe(true);
