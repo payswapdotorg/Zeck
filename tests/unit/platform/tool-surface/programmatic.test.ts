@@ -7,17 +7,24 @@
 
 import { describe, expect, test } from "vitest";
 import {
+  capabilityFactsFromConstraints,
+  policyToolFactsFromConstraints,
+  SELECTION_ORDER,
+  TOOL_REPRESENTATIONS,
+  ToolSurfaceError,
+  toolAllowedByPolicyFacts,
+  validateToolSurfaceConfig,
+} from "../../../../src/platform/tool-surface/catalog";
+import {
+  chunkPayload,
+  evaluateProgrammaticSpec,
   PROGRAMMATIC_BOUND_CAPS,
   PROGRAMMATIC_OPERATIONS,
   ProgrammaticError,
-  chunkPayload,
-  evaluateProgrammaticSpec,
+  type ProgrammaticSpec,
   validateProgrammaticInput,
   validateProgrammaticSpec,
-  type ProgrammaticSpec,
 } from "../../../../src/platform/tool-surface/programmatic";
-import { validateToolSurfaceConfig, ToolSurfaceError, TOOL_REPRESENTATIONS, SELECTION_ORDER } from "../../../../src/platform/tool-surface/catalog";
-import { capabilityFactsFromConstraints, policyToolFactsFromConstraints, toolAllowedByPolicyFacts } from "../../../../src/platform/tool-surface/catalog";
 
 const BOUNDS = {
   maxInputItems: 64,
@@ -105,7 +112,13 @@ describe("programmatic execution (WORK-051)", () => {
     expect(() => specOf("projection", { fields: [] })).toThrow(ProgrammaticError);
     expect(() => specOf("projection", { fields: ["a", "b", "UPPER"] })).toThrow(ProgrammaticError);
     expect(() =>
-      validateProgrammaticSpec({ specId: "Spec 1", stepId: "curate", operation: "filter", params: { field: "a", equals: 1 }, bounds: BOUNDS }),
+      validateProgrammaticSpec({
+        specId: "Spec 1",
+        stepId: "curate",
+        operation: "filter",
+        params: { field: "a", equals: 1 },
+        bounds: BOUNDS,
+      }),
     ).toThrow(ProgrammaticError);
   });
 
@@ -148,10 +161,9 @@ describe("programmatic execution (WORK-051)", () => {
       items: [1, 2, 3],
     });
     expect(count.value).toEqual({ count: 3 });
-    const sum = evaluateProgrammaticSpec(
-      specOf("aggregate", { metric: "sum", field: "n" }),
-      { items: [{ n: 1.5 }, { n: 2 }, { n: 0.5 }] },
-    );
+    const sum = evaluateProgrammaticSpec(specOf("aggregate", { metric: "sum", field: "n" }), {
+      items: [{ n: 1.5 }, { n: 2 }, { n: 0.5 }],
+    });
     expect(sum.value).toEqual({ sum: 4 });
     // Non-numeric fields fail closed typed.
     try {
@@ -166,9 +178,15 @@ describe("programmatic execution (WORK-051)", () => {
 
   test("the evaluator kernel: projection semantics", () => {
     const outcome = evaluateProgrammaticSpec(specOf("projection", { fields: ["a", "c"] }), {
-      items: [{ a: 1, b: 2, c: 3 }, { a: 4, c: 5 }],
+      items: [
+        { a: 1, b: 2, c: 3 },
+        { a: 4, c: 5 },
+      ],
     });
-    expect(outcome.value).toEqual([{ a: 1, c: 3 }, { a: 4, c: 5 }]);
+    expect(outcome.value).toEqual([
+      { a: 1, c: 3 },
+      { a: 4, c: 5 },
+    ]);
     try {
       evaluateProgrammaticSpec(specOf("projection", { fields: ["a"] }), { items: ["nope"] });
       expect.unreachable();
@@ -219,10 +237,7 @@ describe("programmatic execution (WORK-051)", () => {
     }
     // Deterministic chunking of the serialized payload.
     expect(chunkPayload("abcdefghij")).toEqual(["abcdefghij"]);
-    expect(chunkPayload("x".repeat(8192))).toEqual([
-      "x".repeat(4096),
-      "x".repeat(4096),
-    ]);
+    expect(chunkPayload("x".repeat(8192))).toEqual(["x".repeat(4096), "x".repeat(4096)]);
     expect(chunkPayload("")).toEqual([""]);
   });
 });
@@ -262,9 +277,7 @@ describe("tool-surface catalog (WORK-051)", () => {
         configSchema: 1,
         mcpEnabled: true,
         programmaticEnabled: true,
-        bindings: [
-          { toolId: "t", representations: { invented: { x: 1 } } },
-        ],
+        bindings: [{ toolId: "t", representations: { invented: { x: 1 } } }],
       }),
     ).toThrow(ToolSurfaceError);
     expect(() =>
@@ -272,9 +285,7 @@ describe("tool-surface catalog (WORK-051)", () => {
         configSchema: 1,
         mcpEnabled: true,
         programmaticEnabled: true,
-        bindings: [
-          { toolId: "t", representations: { cli: { command: "x".repeat(300) } } },
-        ],
+        bindings: [{ toolId: "t", representations: { cli: { command: "x".repeat(300) } } }],
       }),
     ).toThrow(ToolSurfaceError);
     // The canonical order is a permutation of the closed set and starts

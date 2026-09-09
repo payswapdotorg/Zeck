@@ -9,45 +9,86 @@
  */
 
 import { describe, expect, test } from "vitest";
+import { createIrPlanSource } from "../../../../src/modules/planning/adapters/ir-plan-source";
+import { buildPlan } from "../../../../src/modules/planning/public";
 import {
-  deriveToolSurface,
-  assertSurfaceMinimal,
-  auditToolSurface,
-  validateToolSurface,
-  type ToolSurface,
-} from "../../../../src/platform/tool-surface/derive";
-import { ToolSurfaceError } from "../../../../src/platform/tool-surface/catalog";
+  validateExecutionIrVariant,
+  variantFromIr,
+} from "../../../../src/platform/execution-compiler/variant";
+import type { OptimizationConstraint } from "../../../../src/platform/execution-ir/constraints";
+import { deriveExecutionIr } from "../../../../src/platform/execution-ir/ir";
 import {
   SELECTION_ORDER,
   TOOL_REPRESENTATIONS,
+  type ToolSurfaceConfig,
+  ToolSurfaceError,
 } from "../../../../src/platform/tool-surface/catalog";
-import { variantFromIr, validateExecutionIrVariant } from "../../../../src/platform/execution-compiler/variant";
-import type { OptimizationConstraint } from "../../../../src/platform/execution-ir/constraints";
-import { buildPlan } from "../../../../src/modules/planning/public";
+import {
+  assertSurfaceMinimal,
+  auditToolSurface,
+  deriveToolSurface,
+  type ToolSurface,
+  validateToolSurface,
+} from "../../../../src/platform/tool-surface/derive";
 import {
   allSevenConfig,
   cliConfig,
-  directConfig,
   digestValue,
+  directConfig,
   governedIr,
   needsOf,
   nodeDigest,
   satisfiedConstraints,
 } from "./world";
 
+const planSource = createIrPlanSource();
+
+function deriveExecutionIrOf(plan: ReturnType<typeof buildPlan>) {
+  return deriveExecutionIr(planSource.toPlanSnapshot(plan), nodeDigest);
+}
+
+/**
+ * A deep-mutable structural view of a tool surface for tampering tests:
+ * the validated type is readonly by construction; the JSON round-trip
+ * produces exactly this shape, and mutations are cast onto it so the
+ * validator's rejections can be proven (the readonly surface cannot be
+ * mutated in-type, which is itself part of the invariant).
+ */
+type Mutable<T> = {
+  -readonly [K in keyof T]: T[K] extends readonly (infer U)[]
+    ? Mutable<U>[]
+    : T[K] extends object
+      ? Mutable<T[K]>
+      : T[K];
+};
+
+function mutableCopy(surface: ToolSurface): Mutable<ToolSurface> {
+  return JSON.parse(JSON.stringify(surface)) as Mutable<ToolSurface>;
+}
+
+/** The first binding of a mutable copy, guarded (the fixture always carries one). */
+function firstBindingOf(copy: Mutable<ToolSurface>): Mutable<ToolSurface>["toolBindings"][number] {
+  const binding = copy.toolBindings[0];
+  if (binding === undefined) {
+    throw new Error("fixture surface must carry a first binding");
+  }
+  return binding;
+}
+
+/** The first programmatic decision of a mutable copy, guarded. */
+function firstDecisionOf(copy: Mutable<ToolSurface>): Mutable<ToolSurface>["programmatic"][number] {
+  const decision = copy.programmatic[0];
+  if (decision === undefined) {
+    throw new Error("fixture surface must carry a first programmatic decision");
+  }
+  return decision;
+}
+
 describe("tool-surface derivation (WORK-051)", () => {
   test("the closed representation set is exactly ADR-0019 §5's seven", () => {
     expect([...TOOL_REPRESENTATIONS]).toHaveLength(7);
     expect([...TOOL_REPRESENTATIONS]).toEqual(
-      expect.arrayContaining([
-        "direct",
-        "deferred",
-        "cli",
-        "script",
-        "code",
-        "mcp",
-        "competence",
-      ]),
+      expect.arrayContaining(["direct", "deferred", "cli", "script", "code", "mcp", "competence"]),
     );
     // The canonical selection order is a permutation of the set.
     expect([...SELECTION_ORDER]).toHaveLength(7);
@@ -95,9 +136,11 @@ describe("tool-surface derivation (WORK-051)", () => {
       "deferred:binding-absent",
     ]);
     // Minimality: the binding set IS the need set.
-    expect(needsOf(ir).map((n) => n.needId).sort()).toEqual(
-      surface.toolBindings.map((b) => b.needId).sort(),
-    );
+    expect(
+      needsOf(ir)
+        .map((n) => n.needId)
+        .sort(),
+    ).toEqual(surface.toolBindings.map((b) => b.needId).sort());
     assertSurfaceMinimal(surface, needsOf(ir), ir.steps);
   });
 
@@ -114,9 +157,9 @@ describe("tool-surface derivation (WORK-051)", () => {
     expect(cliSurface.toolBindings.find((b) => b.toolId === "web-retrieval")?.representation).toBe(
       "cli",
     );
-    expect(
-      cliSurface.toolBindings.find((b) => b.toolId === "web-retrieval")?.bindingRef,
-    ).toBe("fetch-cli");
+    expect(cliSurface.toolBindings.find((b) => b.toolId === "web-retrieval")?.bindingRef).toBe(
+      "fetch-cli",
+    );
     // With all seven materializable and MCP enabled, direct still wins
     // (lowest rank triple) — and every other representation records
     // lower-canonical-rank.
@@ -151,12 +194,12 @@ describe("tool-surface derivation (WORK-051)", () => {
         },
         digest: nodeDigest,
       });
-    expect(oneOf({ script: { scriptRef: "fetch-script" } }).toolBindings[0].representation).toBe(
+    expect(oneOf({ script: { scriptRef: "fetch-script" } }).toolBindings[0]?.representation).toBe(
       "script",
     );
-    expect(oneOf({ code: { api: "fetch-api" } }).toolBindings[0].representation).toBe("code");
-    expect(oneOf({ mcp: { server: "tools-mcp" } }).toolBindings[0].representation).toBe("mcp");
-    expect(oneOf({ deferred: { discoverable: true } }).toolBindings[0].representation).toBe(
+    expect(oneOf({ code: { api: "fetch-api" } }).toolBindings[0]?.representation).toBe("code");
+    expect(oneOf({ mcp: { server: "tools-mcp" } }).toolBindings[0]?.representation).toBe("mcp");
+    expect(oneOf({ deferred: { discoverable: true } }).toolBindings[0]?.representation).toBe(
       "deferred",
     );
   });
@@ -166,7 +209,7 @@ describe("tool-surface derivation (WORK-051)", () => {
     // web-retrieval: mcp + cli; parsing: mcp + cli. With the adapter
     // DISABLED, mcp records its typed rejection and cli is selected —
     // the honest fall-through, never a silent MCP requirement.
-    const config = {
+    const config: ToolSurfaceConfig = {
       configSchema: 1,
       mcpEnabled: false,
       programmaticEnabled: true,
@@ -187,13 +230,13 @@ describe("tool-surface derivation (WORK-051)", () => {
       config,
       digest: nodeDigest,
     });
-    expect(surface.toolBindings[0].representation).toBe("cli");
-    expect(
-      surface.toolBindings[0].rejected.find((r) => r.representation === "mcp")?.code,
-    ).toBe("mcp-adapter-disabled");
+    expect(surface.toolBindings[0]?.representation).toBe("cli");
+    expect(surface.toolBindings[0]?.rejected.find((r) => r.representation === "mcp")?.code).toBe(
+      "mcp-adapter-disabled",
+    );
     // parsing with ONLY an mcp binding and the adapter disabled → no
     // admissible representation → fail closed.
-    const onlyMcp = {
+    const onlyMcp: ToolSurfaceConfig = {
       configSchema: 1,
       mcpEnabled: false,
       programmaticEnabled: true,
@@ -362,11 +405,11 @@ describe("tool-surface derivation (WORK-051)", () => {
     // The plan declared filter work on `curate` (a transform step).
     expect(surface.programmatic).toHaveLength(1);
     const decision = surface.programmatic[0];
-    expect(decision.stepId).toBe("curate");
-    expect(decision.programmatic).toBe(true);
-    expect(decision.reason).toBe("declared");
-    expect(decision.spec?.operation).toBe("filter");
-    expect(decision.spec?.specId).toBe("curate-filter");
+    expect(decision?.stepId).toBe("curate");
+    expect(decision?.programmatic).toBe(true);
+    expect(decision?.reason).toBe("declared");
+    expect(decision?.spec?.operation).toBe("filter");
+    expect(decision?.spec?.specId).toBe("curate-filter");
     // Disabled programmatic execution records the honest decision.
     const disabled = deriveToolSurface({
       ir,
@@ -374,9 +417,9 @@ describe("tool-surface derivation (WORK-051)", () => {
       config: { ...directConfig(), programmaticEnabled: false },
       digest: nodeDigest,
     });
-    expect(disabled.programmatic[0].reason).toBe("disabled");
-    expect(disabled.programmatic[0].programmatic).toBe(false);
-    expect(disabled.programmatic[0].spec).not.toBeNull();
+    expect(disabled.programmatic[0]?.reason).toBe("disabled");
+    expect(disabled.programmatic[0]?.programmatic).toBe(false);
+    expect(disabled.programmatic[0]?.spec).not.toBeNull();
   });
 
   test("determinism and idempotence: identical inputs → byte-identical surface", () => {
@@ -409,22 +452,20 @@ describe("tool-surface derivation (WORK-051)", () => {
     const roundTripped = validateToolSurface(JSON.parse(JSON.stringify(surface)), nodeDigest);
     expect(roundTripped.surfaceId).toBe(surface.surfaceId);
     // Content tampering under a claimed identity fails.
-    const tampered = JSON.parse(JSON.stringify(surface)) as ToolSurface;
-    tampered.toolBindings[0].representation = "mcp";
+    const tampered = mutableCopy(surface);
+    firstBindingOf(tampered).representation = "mcp";
     expect(() => validateToolSurface(tampered, nodeDigest)).toThrow(ToolSurfaceError);
-    const tamperedDigest = JSON.parse(JSON.stringify(surface)) as ToolSurface;
+    const tamperedDigest = mutableCopy(surface);
     tamperedDigest.toolBindings.push({
-      ...tamperedDigest.toolBindings[0],
+      ...firstBindingOf(tamperedDigest),
       needId: "ghost",
       stepId: "ghost",
     });
     expect(() => validateToolSurface(tamperedDigest, nodeDigest)).toThrow(ToolSurfaceError);
     // The selected representation must not appear in its own rejected
     // list.
-    const selfRejected = JSON.parse(JSON.stringify(surface)) as ToolSurface;
-    selfRejected.toolBindings[0].rejected = [
-      { representation: "direct", code: "binding-absent" },
-    ];
+    const selfRejected = mutableCopy(surface);
+    firstBindingOf(selfRejected).rejected = [{ representation: "direct", code: "binding-absent" }];
     expect(() => validateToolSurface(selfRejected, nodeDigest)).toThrow(ToolSurfaceError);
   });
 
@@ -438,17 +479,21 @@ describe("tool-surface derivation (WORK-051)", () => {
     });
     const needs = needsOf(ir);
     // Superset: an extra binding beyond the declared needs.
-    const superset = JSON.parse(JSON.stringify(surface)) as ToolSurface;
-    superset.toolBindings.push({ ...superset.toolBindings[0], needId: "ghost", stepId: "ghost" });
+    const superset = mutableCopy(surface);
+    superset.toolBindings.push({
+      ...firstBindingOf(superset),
+      needId: "ghost",
+      stepId: "ghost",
+    });
     expect(() => assertSurfaceMinimal(superset, needs, ir.steps)).toThrow(ToolSurfaceError);
     // Subset: a dropped binding.
-    const subset = JSON.parse(JSON.stringify(surface)) as ToolSurface;
+    const subset = mutableCopy(surface);
     subset.toolBindings = subset.toolBindings.slice(0, 1);
     expect(() => assertSurfaceMinimal(subset, needs, ir.steps)).toThrow(ToolSurfaceError);
     // A programmatic decision referencing an unknown step.
-    const ghostStep = JSON.parse(JSON.stringify(surface)) as ToolSurface;
+    const ghostStep = mutableCopy(surface);
     ghostStep.programmatic = [
-      { ...ghostStep.programmatic[0], stepId: "ghost", stepClass: "transform" },
+      { ...firstDecisionOf(ghostStep), stepId: "ghost", stepClass: "transform" },
     ];
     expect(() => assertSurfaceMinimal(ghostStep, needs, ir.steps)).toThrow(ToolSurfaceError);
   });
@@ -478,15 +523,6 @@ describe("tool-surface derivation (WORK-051)", () => {
     const violations = auditToolSurface(drifted, input);
     expect(violations.map((v) => v.code)).toContain("derivation-mismatch");
     // An invalid surface value is reported, not thrown.
-    expect(auditToolSurface({ nonsense: true }, input)[0].code).toBe("surface-invalid");
+    expect(auditToolSurface({ nonsense: true }, input)[0]?.code).toBe("surface-invalid");
   });
 });
-
-import { createIrPlanSource } from "../../../../src/modules/planning/adapters/ir-plan-source";
-import { deriveExecutionIr } from "../../../../src/platform/execution-ir/ir";
-
-const planSource = createIrPlanSource();
-
-function deriveExecutionIrOf(plan: ReturnType<typeof buildPlan>) {
-  return deriveExecutionIr(planSource.toPlanSnapshot(plan), nodeDigest);
-}

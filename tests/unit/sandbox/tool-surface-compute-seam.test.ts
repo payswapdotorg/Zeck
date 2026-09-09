@@ -11,22 +11,25 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { createToolSurfaceComputeSeam } from "../../../src/modules/sandbox/adapters/tool-surface-compute-seam";
+import { createNodeDigest } from "../../../src/modules/planning/adapters/node-digest";
 import { InMemorySandboxStore } from "../../../src/modules/sandbox/adapters/in-memory-sandbox-store";
+import { ProcessSandboxProvider } from "../../../src/modules/sandbox/adapters/process-provider";
+import {
+  createToolSurfaceComputeSeam,
+  PROGRAMMATIC_ARGV_MARKER,
+} from "../../../src/modules/sandbox/adapters/tool-surface-compute-seam";
 import { createEnvironmentCatalog } from "../../../src/modules/sandbox/application/environment-catalog";
 import { createSandboxService } from "../../../src/modules/sandbox/application/sandbox-service";
-import { ProcessSandboxProvider } from "../../../src/modules/sandbox/adapters/process-provider";
 import type { ComputeEnvironmentSpec } from "../../../src/modules/sandbox/domain/environment";
 import { createSandboxProviderRegistry } from "../../../src/modules/sandbox/ports/sandbox-provider";
 import { runProgrammaticExecution } from "../../../src/platform/tool-surface/executor";
 import {
-  ProgrammaticError,
   evaluateProgrammaticSpec,
-  validateProgrammaticSpec,
+  ProgrammaticError,
   type ProgrammaticSpec,
+  validateProgrammaticSpec,
 } from "../../../src/platform/tool-surface/programmatic";
 import type { ResultStepFacts } from "../../../src/platform/tool-surface/results";
-import { createNodeDigest } from "../../../src/modules/planning/adapters/node-digest";
 import {
   ACTOR_ID,
   APPLICATION_ID,
@@ -51,7 +54,12 @@ const PROCESS_SPEC: ComputeEnvironmentSpec = {
 };
 
 const STEPS: readonly ResultStepFacts[] = [
-  { stepId: "curate", stepClass: "transform", computationType: "deterministic", sideEffectClass: "pure" },
+  {
+    stepId: "curate",
+    stepClass: "transform",
+    computationType: "deterministic",
+    sideEffectClass: "pure",
+  },
 ];
 
 interface World {
@@ -72,12 +80,6 @@ function world(): World {
   providers.register(new ProcessSandboxProvider());
   let counter = 0;
   const generateId = () => `00000000-0000-7000-8000-${String(++counter).padStart(12, "0")}`;
-  const catalog = createEnvironmentCatalog({
-    store,
-    generateId,
-    now: () => new Date(),
-    hashSpec: (canonical) => `digest:${canonical.length}`,
-  });
   const service = createSandboxService({
     store,
     admission,
@@ -102,12 +104,19 @@ async function seededWorld(): Promise<World> {
   w.ledger.seedExecution(EXECUTION_ID, "RUNNING");
   const catalog = createEnvironmentCatalog({
     store: w.store,
-    generateId: () => `00000000-0000-7000-8000-${String(Math.random()).slice(2, 14).padStart(12, "0")}`,
+    generateId: () =>
+      `00000000-0000-7000-8000-${String(Math.random()).slice(2, 14).padStart(12, "0")}`,
     now: () => new Date(),
     hashSpec: (canonical) => `digest:${canonical.length}`,
   });
   const record = await catalog.register(
-    { applicationId: APPLICATION_ID, tenantId: TENANT_ID, slug: "programmatic-runtime", name: "Programmatic runtime", spec: PROCESS_SPEC },
+    {
+      applicationId: APPLICATION_ID,
+      tenantId: TENANT_ID,
+      slug: "programmatic-runtime",
+      name: "Programmatic runtime",
+      spec: PROCESS_SPEC,
+    },
     `prog-env-${APPLICATION_ID}`,
     ACTOR,
   );
@@ -135,15 +144,29 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
     const result = await runProgrammaticExecution(
       {
         spec: specOf("filter", { field: "status", equals: "ok" }),
-        input: { items: [{ status: "ok", n: 1 }, { status: "bad", n: 2 }, { status: "ok", n: 3 }] },
-        scope: { executionId: EXECUTION_ID, environmentId: w.environmentId, idempotencyKey: "prog-run-1", actor: ACTOR },
+        input: {
+          items: [
+            { status: "ok", n: 1 },
+            { status: "bad", n: 2 },
+            { status: "ok", n: 3 },
+          ],
+        },
+        scope: {
+          executionId: EXECUTION_ID,
+          environmentId: w.environmentId,
+          idempotencyKey: "prog-run-1",
+          actor: ACTOR,
+        },
         surfaceId: null,
         steps: STEPS,
       },
       seam,
       nodeDigest,
     );
-    expect(result.value).toEqual([{ status: "ok", n: 1 }, { status: "ok", n: 3 }]);
+    expect(result.value).toEqual([
+      { status: "ok", n: 1 },
+      { status: "ok", n: 3 },
+    ]);
     expect(result.provenance.sandboxId).not.toBeNull();
     // Durable evidence: the admitted + completed ledger envelopes and
     // the terminal sandbox row in the store.
@@ -153,11 +176,16 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
     expect(record?.status).toBe("completed");
     expect(record?.outputDigest).toBe(result.provenance.outputDigest);
     // The task carried the runner shim + the argv-carried payloads (no
-    // ambient env entries).
+    // ambient env entries). The POSIX `--` separator protects the
+    // marker from the runner's own CLI parsing; the spec crossed as
+    // ONE bounded argv argument after the marker.
     expect(Object.keys(record?.runtimeMetadata.task.publicEnv ?? {})).toEqual([]);
     expect(record?.runtimeMetadata.task.args[0]).toBe("-e");
-    expect(record?.runtimeMetadata.task.args[1]).toContain("programmatic-data");
-    expect(record?.runtimeMetadata.task.args[2]).toBe("programmatic-data");
+    expect(record?.runtimeMetadata.task.args[2]).toBe("--");
+    expect(record?.runtimeMetadata.task.args[3]).toBe(PROGRAMMATIC_ARGV_MARKER);
+    expect(JSON.parse(record?.runtimeMetadata.task.args[4] ?? "null")).toMatchObject({
+      operation: "filter",
+    });
   });
 
   test("the same idempotency key replays the same durable outcome (no re-execution)", async () => {
@@ -170,7 +198,12 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
     const input = {
       spec: specOf("aggregate", { metric: "sum", field: "n" }),
       input: { items: [{ n: 1 }, { n: 2 }, { n: 3.5 }] },
-      scope: { executionId: EXECUTION_ID, environmentId: w.environmentId, idempotencyKey: "prog-replay", actor: ACTOR },
+      scope: {
+        executionId: EXECUTION_ID,
+        environmentId: w.environmentId,
+        idempotencyKey: "prog-replay",
+        actor: ACTOR,
+      },
       surfaceId: null,
       steps: STEPS,
     };
@@ -198,7 +231,12 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
         {
           spec: specOf("filter", { field: "status", equals: "ok" }),
           input: { items: [] },
-          scope: { executionId: EXECUTION_ID, environmentId: w.environmentId, idempotencyKey: "prog-denied", actor: ACTOR },
+          scope: {
+            executionId: EXECUTION_ID,
+            environmentId: w.environmentId,
+            idempotencyKey: "prog-denied",
+            actor: ACTOR,
+          },
           surfaceId: null,
           steps: STEPS,
         },
@@ -234,7 +272,12 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
     });
     await expect(
       seam.runProgrammaticWork({
-        scope: { executionId: EXECUTION_ID, environmentId: w.environmentId, idempotencyKey: "prog-timeout", actor: ACTOR },
+        scope: {
+          executionId: EXECUTION_ID,
+          environmentId: w.environmentId,
+          idempotencyKey: "prog-timeout",
+          actor: ACTOR,
+        },
         spec: longSpec,
         input: { items: [] },
       }),
@@ -248,7 +291,10 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
       catalog: makeCatalog(w),
       options: { environmentId: w.environmentId, runnerCommand: process.execPath },
     });
-    const corpus: readonly { readonly spec: ProgrammaticSpec; readonly items: readonly unknown[] }[] = [
+    const corpus: readonly {
+      readonly spec: ProgrammaticSpec;
+      readonly items: readonly unknown[];
+    }[] = [
       {
         spec: specOf("fan-out", {}),
         items: ["a", { b: 1 }, null, 42],
@@ -277,7 +323,10 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
       },
       {
         spec: specOf("projection", { fields: ["a", "c"] }),
-        items: [{ a: 1, b: 2, c: 3 }, { a: 4, c: 5 }],
+        items: [
+          { a: 1, b: 2, c: 3 },
+          { a: 4, c: 5 },
+        ],
       },
       {
         // Chunked crossing: an input large enough to span multiple argv
@@ -336,7 +385,12 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
         {
           spec: tight,
           input: { items: [1, 2, 3] },
-          scope: { executionId: EXECUTION_ID, environmentId: w.environmentId, idempotencyKey: "prog-tight", actor: ACTOR },
+          scope: {
+            executionId: EXECUTION_ID,
+            environmentId: w.environmentId,
+            idempotencyKey: "prog-tight",
+            actor: ACTOR,
+          },
           surfaceId: null,
           steps: STEPS,
         },

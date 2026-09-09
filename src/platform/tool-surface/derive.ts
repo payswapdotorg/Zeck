@@ -89,7 +89,7 @@ export interface SurfaceProvenance {
 /** One skipped representation, with exactly one closed rejection code. */
 export interface RepresentationRejection {
   readonly representation: ToolRepresentation;
-  readonly code: "binding-absent" |"mcp-adapter-disabled" |"lower-canonical-rank";
+  readonly code: "binding-absent" | "mcp-adapter-disabled" | "lower-canonical-rank";
 }
 
 /** The selected representation binding for ONE declared tool need. */
@@ -243,7 +243,11 @@ export function deriveToolSurface(input: DeriveToolSurfaceInput): ToolSurface {
     let selected: { representation: ToolRepresentation; bindingRef: string | null } | null = null;
     const evaluate = (
       representation: ToolRepresentation,
-    ): { admissible: boolean; bindingRef: string | null; code: RepresentationRejection["code"] | null } => {
+    ): {
+      admissible: boolean;
+      bindingRef: string | null;
+      code: RepresentationRejection["code"] | null;
+    } => {
       const reps = binding?.representations;
       if (reps === undefined) {
         return { admissible: false, bindingRef: null, code: "binding-absent" };

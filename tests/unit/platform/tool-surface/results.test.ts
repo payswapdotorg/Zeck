@@ -7,13 +7,16 @@
 
 import { describe, expect, test } from "vitest";
 import {
+  ProgrammaticError,
+  validateProgrammaticSpec,
+} from "../../../../src/platform/tool-surface/programmatic";
+import {
   bindResultToPlan,
   buildCompactResult,
+  type ResultStepFacts,
   roundTripCompactResult,
   validateCompactResult,
-  type ResultStepFacts,
 } from "../../../../src/platform/tool-surface/results";
-import { ProgrammaticError, validateProgrammaticSpec } from "../../../../src/platform/tool-surface/programmatic";
 import { nodeDigest } from "./world";
 
 function filterSpec() {
@@ -27,10 +30,30 @@ function filterSpec() {
 }
 
 const STEPS: readonly ResultStepFacts[] = [
-  { stepId: "curate", stepClass: "transform", computationType: "deterministic", sideEffectClass: "pure" },
-  { stepId: "gen", stepClass: "call-model", computationType: "probabilistic", sideEffectClass: "model-inference" },
-  { stepId: "fetch", stepClass: "call-tool", computationType: "deterministic", sideEffectClass: "external-effect" },
-  { stepId: "check", stepClass: "verify", computationType: "deterministic", sideEffectClass: "verification" },
+  {
+    stepId: "curate",
+    stepClass: "transform",
+    computationType: "deterministic",
+    sideEffectClass: "pure",
+  },
+  {
+    stepId: "gen",
+    stepClass: "call-model",
+    computationType: "probabilistic",
+    sideEffectClass: "model-inference",
+  },
+  {
+    stepId: "fetch",
+    stepClass: "call-tool",
+    computationType: "deterministic",
+    sideEffectClass: "external-effect",
+  },
+  {
+    stepId: "check",
+    stepClass: "verify",
+    computationType: "deterministic",
+    sideEffectClass: "verification",
+  },
 ];
 
 describe("compact structured results (WORK-051)", () => {
@@ -60,7 +83,14 @@ describe("compact structured results (WORK-051)", () => {
     const spec = filterSpec();
     // filter must produce an array.
     expect(() =>
-      buildCompactResult({ spec, value: { count: 1 }, sandboxId: null, outputDigest: null, surfaceId: null, digest: nodeDigest }),
+      buildCompactResult({
+        spec,
+        value: { count: 1 },
+        sandboxId: null,
+        outputDigest: null,
+        surfaceId: null,
+        digest: nodeDigest,
+      }),
     ).toThrow(ProgrammaticError);
     // aggregate must be a single-metric record.
     const aggregateSpec = validateProgrammaticSpec({
@@ -71,10 +101,24 @@ describe("compact structured results (WORK-051)", () => {
       bounds: { maxInputItems: 64, maxIterations: 512, maxOutputBytes: 8192, wallClockMs: 5000 },
     });
     expect(() =>
-      buildCompactResult({ spec: aggregateSpec, value: [1, 2], sandboxId: null, outputDigest: null, surfaceId: null, digest: nodeDigest }),
+      buildCompactResult({
+        spec: aggregateSpec,
+        value: [1, 2],
+        sandboxId: null,
+        outputDigest: null,
+        surfaceId: null,
+        digest: nodeDigest,
+      }),
     ).toThrow(ProgrammaticError);
     expect(() =>
-      buildCompactResult({ spec: aggregateSpec, value: { count: 1, extra: 2 }, sandboxId: null, outputDigest: null, surfaceId: null, digest: nodeDigest }),
+      buildCompactResult({
+        spec: aggregateSpec,
+        value: { count: 1, extra: 2 },
+        sandboxId: null,
+        outputDigest: null,
+        surfaceId: null,
+        digest: nodeDigest,
+      }),
     ).toThrow(ProgrammaticError);
     // fan-out units carry {index, item}.
     const fanOutSpec = validateProgrammaticSpec({
@@ -85,7 +129,14 @@ describe("compact structured results (WORK-051)", () => {
       bounds: { maxInputItems: 64, maxIterations: 512, maxOutputBytes: 8192, wallClockMs: 5000 },
     });
     expect(() =>
-      buildCompactResult({ spec: fanOutSpec, value: [{ index: 0 }], sandboxId: null, outputDigest: null, surfaceId: null, digest: nodeDigest }),
+      buildCompactResult({
+        spec: fanOutSpec,
+        value: [{ index: 0 }],
+        sandboxId: null,
+        outputDigest: null,
+        surfaceId: null,
+        digest: nodeDigest,
+      }),
     ).toThrow(ProgrammaticError);
   });
 
@@ -100,7 +151,10 @@ describe("compact structured results (WORK-051)", () => {
     expect(() =>
       buildCompactResult({
         spec,
-        value: [{ status: "ok", n: 1 }, { status: "ok", n: 2 }],
+        value: [
+          { status: "ok", n: 1 },
+          { status: "ok", n: 2 },
+        ],
         sandboxId: null,
         outputDigest: null,
         surfaceId: null,
@@ -161,7 +215,10 @@ describe("compact structured results (WORK-051)", () => {
     const spec = filterSpec();
     const result = buildCompactResult({
       spec,
-      value: [{ status: "ok", n: 1 }, { status: "ok", n: 2 }],
+      value: [
+        { status: "ok", n: 1 },
+        { status: "ok", n: 2 },
+      ],
       sandboxId: "sandbox-9",
       outputDigest: "c".repeat(64),
       surfaceId: null,

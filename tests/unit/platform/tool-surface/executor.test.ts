@@ -9,13 +9,16 @@
 
 import { describe, expect, test } from "vitest";
 import { runProgrammaticExecution } from "../../../../src/platform/tool-surface/executor";
-import { ProgrammaticError, validateProgrammaticSpec } from "../../../../src/platform/tool-surface/programmatic";
+import {
+  ProgrammaticError,
+  validateProgrammaticSpec,
+} from "../../../../src/platform/tool-surface/programmatic";
+import type { ResultStepFacts } from "../../../../src/platform/tool-surface/results";
 import type {
   ProgrammaticSandboxObservation,
   ProgrammaticSandboxRequest,
   SandboxComputeSeam,
 } from "../../../../src/platform/tool-surface/seams";
-import type { ResultStepFacts } from "../../../../src/platform/tool-surface/results";
 import { nodeDigest } from "./world";
 
 const EXECUTION_ID = "00000000-0000-7000-8000-0000000000e1";
@@ -27,8 +30,18 @@ const ACTOR = {
 };
 
 const STEPS: readonly ResultStepFacts[] = [
-  { stepId: "curate", stepClass: "transform", computationType: "deterministic", sideEffectClass: "pure" },
-  { stepId: "gen", stepClass: "call-model", computationType: "probabilistic", sideEffectClass: "model-inference" },
+  {
+    stepId: "curate",
+    stepClass: "transform",
+    computationType: "deterministic",
+    sideEffectClass: "pure",
+  },
+  {
+    stepId: "gen",
+    stepClass: "call-model",
+    computationType: "probabilistic",
+    sideEffectClass: "model-inference",
+  },
 ];
 
 function filterSpec() {
@@ -42,7 +55,12 @@ function filterSpec() {
 }
 
 function input() {
-  return { items: [{ status: "ok", n: 1 }, { status: "bad", n: 2 }] };
+  return {
+    items: [
+      { status: "ok", n: 1 },
+      { status: "bad", n: 2 },
+    ],
+  };
 }
 
 function fakeSeam(
@@ -74,7 +92,12 @@ describe("programmatic execution executor (WORK-051)", () => {
       {
         spec: filterSpec(),
         input: input(),
-        scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: "run-1", actor: ACTOR },
+        scope: {
+          executionId: EXECUTION_ID,
+          environmentId: ENVIRONMENT_ID,
+          idempotencyKey: "run-1",
+          actor: ACTOR,
+        },
         surfaceId: "b".repeat(64),
         steps: STEPS,
       },
@@ -91,8 +114,8 @@ describe("programmatic execution executor (WORK-051)", () => {
     expect(result.resultDigest).toMatch(/^[0-9a-f]{64}$/);
     // The seam received the VALIDATED spec and the bounded input.
     expect(seam.requests).toHaveLength(1);
-    expect(seam.requests[0].spec.operation).toBe("filter");
-    expect(seam.requests[0].input.items).toHaveLength(2);
+    expect(seam.requests[0]?.spec.operation).toBe("filter");
+    expect(seam.requests[0]?.input.items).toHaveLength(2);
   });
 
   test("fail-closed validation before anything crosses (unbounded input)", async () => {
@@ -102,7 +125,12 @@ describe("programmatic execution executor (WORK-051)", () => {
         {
           spec: filterSpec(),
           input: { items: new Array(65).fill({ status: "ok" }) },
-          scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: "run-2", actor: ACTOR },
+          scope: {
+            executionId: EXECUTION_ID,
+            environmentId: ENVIRONMENT_ID,
+            idempotencyKey: "run-2",
+            actor: ACTOR,
+          },
           surfaceId: null,
           steps: STEPS,
         },
@@ -157,7 +185,12 @@ describe("programmatic execution executor (WORK-051)", () => {
           {
             spec: filterSpec(),
             input: input(),
-            scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: `run-${code}`, actor: ACTOR },
+            scope: {
+              executionId: EXECUTION_ID,
+              environmentId: ENVIRONMENT_ID,
+              idempotencyKey: `run-${code}`,
+              actor: ACTOR,
+            },
             surfaceId: null,
             steps: STEPS,
           },
@@ -195,7 +228,12 @@ describe("programmatic execution executor (WORK-051)", () => {
           {
             spec: filterSpec(),
             input: input(),
-            scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: `run-${code}`, actor: ACTOR },
+            scope: {
+              executionId: EXECUTION_ID,
+              environmentId: ENVIRONMENT_ID,
+              idempotencyKey: `run-${code}`,
+              actor: ACTOR,
+            },
             surfaceId: null,
             steps: STEPS,
           },
@@ -214,7 +252,11 @@ describe("programmatic execution executor (WORK-051)", () => {
     const seam = fakeSeam(() => ({
       status: "completed",
       sandboxId: "sandbox-6",
-      stdout: JSON.stringify({ ok: false, code: "iteration-exceeded", message: "iteration bound exceeded" }),
+      stdout: JSON.stringify({
+        ok: false,
+        code: "iteration-exceeded",
+        message: "iteration bound exceeded",
+      }),
       outputDigest: null,
       failure: null,
       durationMs: 4,
@@ -225,7 +267,12 @@ describe("programmatic execution executor (WORK-051)", () => {
         {
           spec: filterSpec(),
           input: input(),
-          scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: "run-iter", actor: ACTOR },
+          scope: {
+            executionId: EXECUTION_ID,
+            environmentId: ENVIRONMENT_ID,
+            idempotencyKey: "run-iter",
+            actor: ACTOR,
+          },
           surfaceId: null,
           steps: STEPS,
         },
@@ -248,7 +295,12 @@ describe("programmatic execution executor (WORK-051)", () => {
         {
           spec: filterSpec(),
           input: input(),
-          scope: { executionId: EXECUTION_ID, environmentId: ENVIRONMENT_ID, idempotencyKey: "run-bind", actor: ACTOR },
+          scope: {
+            executionId: EXECUTION_ID,
+            environmentId: ENVIRONMENT_ID,
+            idempotencyKey: "run-bind",
+            actor: ACTOR,
+          },
           surfaceId: null,
           steps: STEPS.slice(1),
         },

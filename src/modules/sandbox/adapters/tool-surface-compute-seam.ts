@@ -169,6 +169,10 @@ export function createToolSurfaceComputeSeam(deps: ToolSurfaceComputeSeamDeps): 
       // ---- 3. Durable sandbox admission + dispatch (the ONLY execution).
       // The task: the generic bounded runner shim + the validated spec
       // and chunked input as argv DATA (never the ambient environment).
+      // The POSIX `--` separator terminates the RUNNER's own CLI parsing
+      // (both node and bun consume unseparated flag-looking tokens as
+      // their own options): everything after it crosses verbatim into
+      // the child's process.argv, where the shim finds the marker.
       let created: Awaited<ReturnType<SandboxService["createSandboxExecution"]>>;
       try {
         created = await service.createSandboxExecution(
@@ -180,6 +184,7 @@ export function createToolSurfaceComputeSeam(deps: ToolSurfaceComputeSeamDeps): 
               args: [
                 ...runnerArgs,
                 PROGRAMMATIC_RUNNER_SHIM,
+                "--",
                 PROGRAMMATIC_ARGV_MARKER,
                 specJson,
                 ...chunks,

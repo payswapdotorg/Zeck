@@ -5,11 +5,11 @@
  * tool-surface configurations covering all seven representations.
  */
 
+import { createIrPlanSource } from "../../../../src/modules/planning/adapters/ir-plan-source";
+import { buildPlan, createNodeDigest } from "../../../../src/modules/planning/public";
 import { canonicalJson } from "../../../../src/platform/execution-ir/canonical";
 import type { OptimizationConstraint } from "../../../../src/platform/execution-ir/constraints";
 import { deriveExecutionIr, type ExecutionIr } from "../../../../src/platform/execution-ir/ir";
-import { buildPlan, createNodeDigest } from "../../../../src/modules/planning/public";
-import { createIrPlanSource } from "../../../../src/modules/planning/adapters/ir-plan-source";
 import type { ToolSurfaceConfig } from "../../../../src/platform/tool-surface/catalog";
 import { extractToolNeeds, type ToolNeed } from "../../../../src/platform/tool-surface/needs";
 

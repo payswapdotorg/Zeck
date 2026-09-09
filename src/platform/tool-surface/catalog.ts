@@ -206,7 +206,9 @@ export type ToolSurfaceInvariantCode = (typeof TOOL_SURFACE_INVARIANT_CODES)[num
 const DETAIL_LIMIT = 200;
 
 function boundedDetail(value: unknown): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
+  // JSON.stringify(undefined) returns undefined (not a string): the
+  // nullish fallback keeps the detail bounded and total for EVERY input.
+  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
   return text.length > DETAIL_LIMIT ? `${text.slice(0, DETAIL_LIMIT)}…` : text;
 }
 
