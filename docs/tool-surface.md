@@ -214,6 +214,30 @@ The plane holds NO store, NO SQL, NO migration, NO state machine: the
 durable surfaces are the sandbox authority's own (every programmatic
 run is an admitted, dispatched, journaled sandbox execution).
 
+## Failure vocabulary (closed)
+
+Derivation failures are `ToolSurfaceError` with `invariant` from the closed
+11-code `TOOL_SURFACE_INVARIANT_CODES` vocabulary; programmatic failures
+are `ProgrammaticError` with `code` from the closed 14-code
+`PROGRAMMATIC_ERROR_CODES` vocabulary. Every code fails closed; nothing
+degrades silently (a disabled programmatic surface records the honest
+`disabled` decision; the plan still executes through its normal path).
+
+## Composition notes (operators)
+
+- The seam adapter is constructed per composition root with the concrete
+  runner command (`process.execPath` — the sandbox spawns argv without
+  PATH, so the absolute path is the honest wiring, the synthesis
+  precedent) and the registered process-class environment id.
+- The environment must grant `process-sandbox` (the capability gate) and
+  its admitted `executionTimeoutMs` must cover the declared wall-clock
+  bound.
+- Programmatic runs are idempotent per sandbox key: the same logical run
+  (same idempotency key + same crossing content) replays the same durable
+  outcome; concurrent same-key runs converge on exactly one durable row
+  through the authority's unique-index arbitration and one-shot dispatch
+  discipline (the losers fail closed — never a torn or duplicated effect).
+
 ## Where this goes next
 
 WORK-056 (competence-aware optimization and progressive
