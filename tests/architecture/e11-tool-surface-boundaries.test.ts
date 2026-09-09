@@ -265,6 +265,14 @@ describe("E1.1 tool-surface plane architecture boundaries (WORK-051)", () => {
   });
 
   test("T4 no second state machine and no new durable surface", () => {
+    // The SEAM ADAPTER stores nothing of its own either: no SQL, no
+    // db-port import (every durable effect belongs to the sandbox
+    // service it wraps — SANDBOX-BOUNDARY).
+    const adapter = read("src/modules/sandbox/adapters/tool-surface-compute-seam.ts");
+    expect(adapter).not.toMatch(
+      /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE)\b/,
+    );
+    expect(adapter).not.toContain("DatabasePort");
     for (const file of TOOL_SURFACE_FILES) {
       const content = read(file);
       for (const state of EXECUTION_STATES) {

@@ -10,14 +10,12 @@
  * (the two implementations cannot drift silently).
  */
 
+import { readFileSync, statSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { createNodeDigest } from "../../../src/modules/planning/adapters/node-digest";
 import { InMemorySandboxStore } from "../../../src/modules/sandbox/adapters/in-memory-sandbox-store";
 import { ProcessSandboxProvider } from "../../../src/modules/sandbox/adapters/process-provider";
-import {
-  createToolSurfaceComputeSeam,
-  PROGRAMMATIC_ARGV_MARKER,
-} from "../../../src/modules/sandbox/adapters/tool-surface-compute-seam";
+import { createToolSurfaceComputeSeam } from "../../../src/modules/sandbox/adapters/tool-surface-compute-seam";
 import { createEnvironmentCatalog } from "../../../src/modules/sandbox/application/environment-catalog";
 import { createSandboxService } from "../../../src/modules/sandbox/application/sandbox-service";
 import type { ComputeEnvironmentSpec } from "../../../src/modules/sandbox/domain/environment";
@@ -175,17 +173,45 @@ describe("tool-surface compute seam over the real sandbox service (WORK-051)", (
     const record = await w.service.getSandbox(APPLICATION_ID, result.provenance.sandboxId ?? "");
     expect(record?.status).toBe("completed");
     expect(record?.outputDigest).toBe(result.provenance.outputDigest);
-    // The task carried the runner shim + the argv-carried payloads (no
-    // ambient env entries). The POSIX `--` separator protects the
-    // marker from the runner's own CLI parsing; the spec crossed as
-    // ONE bounded argv argument after the marker.
+    // The task carried ONE argument: the content-addressed runner
+    // file (the spec + input are EMBEDDED constants inside it — the
+    // child reads no argv payload, no environment, no filesystem),
+    // with NO ambient env entries. The digest-pinned path records
+    // exactly which runner+payload content ran.
     expect(Object.keys(record?.runtimeMetadata.task.publicEnv ?? {})).toEqual([]);
-    expect(record?.runtimeMetadata.task.args[0]).toBe("-e");
-    expect(record?.runtimeMetadata.task.args[2]).toBe("--");
-    expect(record?.runtimeMetadata.task.args[3]).toBe(PROGRAMMATIC_ARGV_MARKER);
-    expect(JSON.parse(record?.runtimeMetadata.task.args[4] ?? "null")).toMatchObject({
-      operation: "filter",
-    });
+    const runPath = record?.runtimeMetadata.task.args[0];
+    expect(typeof runPath).toBe("string");
+    expect(runPath).toMatch(/zeck-prog-run-[0-9a-f]{32}[\\/]run\.mjs$/);
+    const runContent = readFileSync(String(runPath), "utf8");
+    expect(runContent).toContain('"operation":"filter"');
+    expect(runContent).toContain('"status":"ok"');
+    // The run file is idempotent: a second run with the SAME crossing
+    // content converges on the identical path (write-if-absent — the
+    // file was not rewritten).
+    const before = statSync(String(runPath));
+    await runProgrammaticExecution(
+      {
+        spec: specOf("filter", { field: "status", equals: "ok" }),
+        input: {
+          items: [
+            { status: "ok", n: 1 },
+            { status: "bad", n: 2 },
+            { status: "ok", n: 3 },
+          ],
+        },
+        scope: {
+          executionId: EXECUTION_ID,
+          environmentId: w.environmentId,
+          idempotencyKey: "prog-run-1-again",
+          actor: ACTOR,
+        },
+        surfaceId: null,
+        steps: STEPS,
+      },
+      seam,
+      nodeDigest,
+    );
+    expect(statSync(String(runPath)).mtimeMs).toBe(before.mtimeMs);
   });
 
   test("the same idempotency key replays the same durable outcome (no re-execution)", async () => {

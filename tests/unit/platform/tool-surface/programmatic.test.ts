@@ -16,12 +16,12 @@ import {
   validateToolSurfaceConfig,
 } from "../../../../src/platform/tool-surface/catalog";
 import {
-  chunkPayload,
   evaluateProgrammaticSpec,
   PROGRAMMATIC_BOUND_CAPS,
   PROGRAMMATIC_OPERATIONS,
   ProgrammaticError,
   type ProgrammaticSpec,
+  serializeInput,
   validateProgrammaticInput,
   validateProgrammaticSpec,
 } from "../../../../src/platform/tool-surface/programmatic";
@@ -227,7 +227,7 @@ describe("programmatic execution (WORK-051)", () => {
     }
   });
 
-  test("input validation: shape, item bound, serialized crossing bound", () => {
+  test("input validation: shape, item bound, serialized payload bound", () => {
     expect(() => validateProgrammaticInput({ notItems: [] }, BOUNDS)).toThrow(ProgrammaticError);
     try {
       validateProgrammaticInput({ items: new Array(65).fill(0) }, BOUNDS);
@@ -235,10 +235,10 @@ describe("programmatic execution (WORK-051)", () => {
     } catch (error) {
       expect((error as ProgrammaticError).code).toBe("input-unbounded");
     }
-    // Deterministic chunking of the serialized payload.
-    expect(chunkPayload("abcdefghij")).toEqual(["abcdefghij"]);
-    expect(chunkPayload("x".repeat(8192))).toEqual(["x".repeat(4096), "x".repeat(4096)]);
-    expect(chunkPayload("")).toEqual([""]);
+    // Deterministic serialization of the bounded payload (the exact
+    // bytes that get embedded in the content-addressed runner file).
+    expect(serializeInput([{ a: 1 }, "b"])).toEqual('{"items":[{"a":1},"b"]}');
+    expect(serializeInput([])).toEqual('{"items":[]}');
   });
 });
 

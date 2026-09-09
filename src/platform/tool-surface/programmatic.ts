@@ -18,9 +18,9 @@
  *    in-process reference implementation of the closed semantics: it
  *    enforces the input-item, iteration and output-byte bounds and
  *    returns typed, bounded failures. The module-side sandbox adapter
- *    ships the SAME closed semantics as the bounded runner program
- *    executed inside the dispatched sandbox process (the synthesis
- *    executor precedent); a dedicated test pins the two implementations
+ *    ships the SAME closed semantics as the bounded runner executed
+ *    inside the dispatched sandbox process (the synthesis executor
+ *    precedent); a dedicated test pins the two implementations
  *    together over a representative corpus so they cannot drift
  *    silently;
  *  - execution THROUGH the sandbox authority happens in `executor.ts`
@@ -34,9 +34,10 @@
  * The wall-clock bound is enforced by the sandbox authority itself (the
  * environment's `executionTimeoutMs` plus the service's defensive
  * timeout): a timed-out run surfaces as a typed sandbox failure. The
- * input-serialization bound below is the honest v1 bound for crossing
- * the sandbox task boundary in bounded argv chunks (4096 chars each,
- * the frozen task-argument bound).
+ * input-serialization bound below is the honest v1 bound for the
+ * payload crossing (the spec + input are embedded as constants inside
+ * the content-addressed runner script file the sandbox task names —
+ * see the seam adapter for the frozen-fingerprint rationale).
  */
 
 // ---------------------------------------------------------------------------
@@ -165,16 +166,14 @@ export const PROGRAMMATIC_BOUND_CAPS = {
 } as const;
 
 /**
- * The serialized-input bound (the honest v1 crossing bound: the input
- * crosses the sandbox task boundary in bounded argv chunks of the
- * frozen 4096-char task-argument size — 8 chunks).
+ * The serialized-input bound (the honest v1 payload bound: the input
+ * is embedded as a constant in the content-addressed runner script
+ * file the sandbox task names).
  */
 export const PROGRAMMATIC_INPUT_JSON_MAX = 32_768;
-export const PROGRAMMATIC_INPUT_CHUNK = 4096;
 
 /**
- * The serialized-spec bound (one argv chunk: the frozen task-argument
- * size).
+ * The serialized-spec bound (one bounded payload component).
  */
 export const PROGRAMMATIC_SPEC_JSON_MAX = 4096;
 
@@ -400,15 +399,6 @@ export function validateProgrammaticInput(
 /** Serialize the input deterministically (closed JSON universe). */
 export function serializeInput(items: readonly unknown[]): string {
   return JSON.stringify({ items });
-}
-
-/** Chunk a serialized payload into bounded argv-sized pieces. */
-export function chunkPayload(serialized: string): readonly string[] {
-  const chunks: string[] = [];
-  for (let index = 0; index < serialized.length; index += PROGRAMMATIC_INPUT_CHUNK) {
-    chunks.push(serialized.slice(index, index + PROGRAMMATIC_INPUT_CHUNK));
-  }
-  return chunks.length === 0 ? [""] : chunks;
 }
 
 // ---------------------------------------------------------------------------

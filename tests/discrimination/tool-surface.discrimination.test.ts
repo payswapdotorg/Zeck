@@ -70,13 +70,14 @@ import { runProgrammaticExecution } from "../../src/platform/tool-surface/execut
 import { extractToolNeeds } from "../../src/platform/tool-surface/needs";
 import {
   evaluateProgrammaticSpec,
+  PROGRAMMATIC_BOUND_CAPS,
   ProgrammaticError,
   type ProgrammaticSpec,
   validateProgrammaticInput,
   validateProgrammaticSpec,
 } from "../../src/platform/tool-surface/programmatic";
 import type { ResultStepFacts } from "../../src/platform/tool-surface/results";
-import { buildCompactResult } from "../../src/platform/tool-surface/results";
+import { buildCompactResult, checkTypedValue } from "../../src/platform/tool-surface/results";
 import type {
   ProgrammaticSandboxObservation,
   ProgrammaticSandboxRequest,
@@ -790,6 +791,96 @@ describe("tool-surface plane discrimination (WORK-051)", () => {
       nodeDigest,
     ).catch((error: unknown) => error);
     expect((nonMechanical as ProgrammaticError).code).toBe("result-shape");
+  });
+
+  test("D10 a NON-mechanical plan step cannot DECLARE programmatic work (unrepresentable, never silently ignored)", () => {
+    // Programmatic work binds ONLY to deterministic pure steps: a
+    // call-model step carrying a programmatic declaration fails the
+    // derivation closed (`programmatic-spec`) — the plan's own
+    // declared semantics exclude the work; no configuration can
+    // revive it.
+    const plan = buildPlan(
+      {
+        revision: 1,
+        strategyClass: "hybrid",
+        steps: [
+          {
+            id: "gen",
+            stepClass: "call-model",
+            capabilityId: "text-generation",
+            routeRef: { provider: "rail-a", model: "model-x" },
+            config: {
+              programmatic: {
+                specId: "gen-work",
+                stepId: "gen",
+                operation: "filter",
+                params: { field: "status", equals: "ok" },
+                bounds: {
+                  maxInputItems: 4,
+                  maxIterations: 8,
+                  maxOutputBytes: 512,
+                  wallClockMs: 500,
+                },
+              },
+            },
+          },
+        ],
+        edges: [],
+      },
+      digestValue,
+    );
+    const ir = deriveExecutionIr(planSource.toPlanSnapshot(plan), nodeDigest);
+    const error = caughtOf(() =>
+      deriveToolSurface({
+        ir,
+        constraints: [
+          {
+            constraintId: "capability-satisfaction",
+            kind: "capability",
+            enforcement: "hard",
+            source: { authority: "capability", catalogRevision: "rev-1" },
+            payload: { satisfiedIds: ["text-generation"], unmetIds: [] },
+          },
+        ],
+        config: {
+          configSchema: 1,
+          mcpEnabled: false,
+          programmaticEnabled: true,
+          bindings: [],
+        },
+        digest: nodeDigest,
+      }),
+    ) as ToolSurfaceError;
+    expect(error).toBeInstanceOf(ToolSurfaceError);
+    expect(error.invariant).toBe("programmatic-spec");
+  });
+
+  test("D11 the compact-result typed-value matrix: every operation's untyped shape is rejected", () => {
+    // The per-operation typed shapes are enforced at the value level
+    // (the compact-result contract): aggregates carry exactly one
+    // finite numeric metric; fan-out arrays carry {index, item} units;
+    // filter/projection arrays carry closed-universe records.
+    for (const [operation, value] of [
+      ["aggregate", { median: 1 }],
+      ["aggregate", [1, 2]],
+      ["aggregate", { count: "three" }],
+      ["aggregate", { count: 1, sum: 2 }],
+      ["fan-out", { index: 0 }],
+      ["fan-out", [{}]],
+      ["filter", { a: 1 }],
+      ["filter", ["scalar"]],
+      ["projection", "nope"],
+      ["filter", [{ a: undefined }]],
+    ] as const) {
+      const error = caughtOf(() =>
+        checkTypedValue(operation, value as unknown, PROGRAMMATIC_BOUND_CAPS.maxOutputBytes),
+      ) as ProgrammaticError;
+      expect(
+        error,
+        `operation ${operation} value ${JSON.stringify(value)} must be untyped`,
+      ).toBeInstanceOf(ProgrammaticError);
+      expect(error.code).toBe("output-untyped");
+    }
   });
 });
 
