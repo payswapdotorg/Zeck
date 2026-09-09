@@ -68,6 +68,7 @@ import {
 import { OutageSimulatedObjectStore } from "../../../src/platform/recovery/outage";
 import { definePgSuite } from "./harness";
 import { pollToCompletion, seedMediaWorld, submitMediaJob } from "./media-world";
+import { isArtifactDigest } from "../../../src/modules/artifacts/public";
 import { startFakeS3Server, type FakeS3Server } from "../object-store/lib/fake-s3-server";
 import type { DatabasePort } from "../../../src/platform/db/port";
 
@@ -162,9 +163,13 @@ definePgSuite(
       if (adoption.rows.length !== 1) {
         throw new Error("the adoption ledger row is missing (seed defect)");
       }
+      const ledgerDigest = adoption.rows[0]?.artifact_digest as string;
+      if (!isArtifactDigest(ledgerDigest)) {
+        throw new Error("the adoption digest is malformed (seed defect)");
+      }
       const record = await world.artifacts.getArtifact(
         { tenantId: world.tenantId },
-        adoption.rows[0]?.artifact_digest as string,
+        ledgerDigest,
       );
       artifactBytes = Buffer.from(record.canonicalContent, "utf8");
       if (digestOf(artifactBytes) !== adoption.rows[0]?.artifact_digest) {

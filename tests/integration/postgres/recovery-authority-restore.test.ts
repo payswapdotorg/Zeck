@@ -51,6 +51,7 @@ import {
   createLogicalBackup,
   type LogicalBackup,
   restoreDataIntoCurrentState,
+  type RestoreOutcome,
 } from "../../../src/platform/db/backup";
 import {
   authoritativeSchemas,
@@ -63,6 +64,7 @@ import { runRecoveryDrill } from "../../../src/platform/recovery/drill";
 import {
   evaluateDrillAgainstTarget,
   parseRecoveryTargets,
+  recoveryTargetFor,
 } from "../../../src/platform/recovery/rto-rpo";
 import { defineSuite } from "./define-suite";
 import { pollToCompletion, seedMediaWorld, submitMediaJob } from "./media-world";
@@ -73,7 +75,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const RECOVERY_TARGETS = parseRecoveryTargets(
   readFileSync(resolve(REPO_ROOT, "deploy/manifests/recovery-targets.json"), "utf8"),
 );
-const LOCAL_TARGET = RECOVERY_TARGETS.targets.local;
+const LOCAL_TARGET = recoveryTargetFor(RECOVERY_TARGETS, "local");
 
 interface DrillContext {
   readonly adminUrl: string;
@@ -140,7 +142,7 @@ defineSuite<DrillContext>(
     test("backup → fresh-target restore → D-07 invariant gate → drill recovered with measured RTO/RPO within the local target", async () => {
       const targetDatabase = await createDatabase(ctx.adminUrl);
       const targetUrl = `${ctx.adminUrl.replace(/\/[^/]*$/, "")}/${targetDatabase}`;
-      let restoreOutcome: Awaited<ReturnType<typeof restoreDataIntoCurrentState>> | null = null;
+      const drillState: { restoreOutcome: RestoreOutcome | null } = { restoreOutcome: null };
 
       // The drill: timed, verified phases over the REAL procedure —
       // exactly the `deploy:drill authority-loss` composition.
@@ -160,8 +162,12 @@ defineSuite<DrillContext>(
                   poolOverrides: { max: 4 },
                 });
                 try {
-                  restoreOutcome = await restoreDataIntoCurrentState(handle.port, ctx.backup);
-                  if (!restoreOutcome.verification.every((entry) => entry.verified)) {
+                  drillState.restoreOutcome = await restoreDataIntoCurrentState(
+                    handle.port,
+                    ctx.backup,
+                  );
+                  const outcome = drillState.restoreOutcome as RestoreOutcome;
+                  if (!outcome.verification.every((entry: { verified: boolean }) => entry.verified)) {
                     throw new Error("restore self-verification failed (checksum drift detected)");
                   }
                 } finally {
@@ -205,8 +211,10 @@ defineSuite<DrillContext>(
         "authority-invariants",
       ]);
       expect(drill.phases.every((phase) => phase.ok)).toBe(true);
-      expect(restoreOutcome?.verification.every((entry) => entry.verified)).toBe(true);
-      expect(restoreOutcome?.tables.length).toBe(ctx.backup.tables.length);
+      expect(drillState.restoreOutcome?.verification.every((entry) => entry.verified)).toBe(
+        true,
+      );
+      expect(drillState.restoreOutcome?.tables.length).toBe(ctx.backup.tables.length);
 
       // Measured objectives against the repository target (local).
       expect(drill.rtoMs).not.toBeNull();
