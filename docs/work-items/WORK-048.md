@@ -4,7 +4,7 @@ Work Order: `WORK-048` (`spec/work-orders/WORK-048.md` on `main` at the dispatch
 
 ## Dispatch, branch and ancestry
 
-Exact dispatch base: `e5efa7efe7f54c9744228b991a85d25da7a7869d` (the D-06 merge; verified — the required branch `work/WORK-048-resilience-disaster-recovery-provider-exit` was confirmed at exactly that SHA before any change). Final head: **`55d518bfc3f5e0bea975045f23e3cc485081bd91`** — **13 implementation commits, ZERO merge commits, ZERO `spec/` changes** (mechanically verified: `git log --merges e5efa7e..HEAD` → 0; `git diff --name-only e5efa7e..HEAD -- spec/` → 0). One PR, opened by the worker, **not merged by the worker**.
+Exact dispatch base: `e5efa7efe7f54c9744228b991a85d25da7a7869d` (the D-06 merge; verified — the required branch `work/WORK-048-resilience-disaster-recovery-provider-exit` was confirmed at exactly that SHA before any change). Final implementation head: **`55d518bfc3f5e0bea975045f23e3cc485081bd91`** (the last implementation commit; the branch carries it plus this evidence document on top). **14 commits, ZERO merge commits, ZERO `spec/` changes** (mechanically verified: `git log --merges e5efa7e..HEAD` → 0; `git diff --name-only e5efa7e..HEAD -- spec/` → 0). One PR, opened by the worker, **not merged by the worker**.
 
 ## Baseline gate at the exact dispatch base (readiness checkpoint — BEFORE implementation)
 
@@ -58,7 +58,7 @@ D-07: resilience, disaster recovery and provider exit — PostgreSQL stays the S
 
 ## Test battery and implementation evidence
 
-The D-07 battery at the final head `55d518b` (**all green, one consecutive run each**):
+The D-07 battery at the final implementation head `55d518b` (**all green, one consecutive run each**):
 
 - `bun run typecheck` — 0 errors.
 - `bun run lint` — biome clean, exit 0.
@@ -77,7 +77,7 @@ The executed CLI drills (real local PostgreSQL, `zeck_local` authority, 28/28 mi
 - `deploy:drill worker-evacuation --environment local --region region-a` → the fail-closed refusal (`no workers are registered for region "region-a"` — the populated-authority matrix is the integration suite's E1–E6).
 - `deploy:drill artifact-exit --environment local` → **NOT RUN** refusal (missing `ZECK_DRILL_ALTERNATE_OBJECT_STORE_*`; exit 2; never claimed as PASS).
 
-## Changed-file inventory (32 files, +6103/−3)
+## Changed-file inventory (32 implementation files, +6103/−3, plus this evidence document)
 
 Declared Change Surfaces only — recovery/restore tooling, artifact-recovery adapters, queue/workflow replay tooling, evacuation controls, outage harnesses, alternate-provider configuration, RTO/RPO evidence, D-07 tests, operator runbooks, and the declared minimal module seams:
 
