@@ -24,9 +24,10 @@ For dispatch/review/orchestration behavior also read:
 - Economic Execution Intelligence E1.1: approved by ACR-004/ADR-0020 and subordinate to v1.0/E1.0.
 - UX v2: complete through WORK-041.
 - D-00 through D-06: complete.
-- D-07 / WORK-048: authorized through Issue #13.
+- D-07 / WORK-048: COMPLETE — merged as PR #14 (merge commit c4051e2, implementation head c6dbb6f, dispatch base e5efa7e).
+- E1.1 / WORK-049: authorized through Issue #15.
 
-Current frontier remains `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-049"]`, `inFlight=[]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -82,11 +83,11 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-`WORK-048` remains the only executable deployment work until completion.
+The D-07 deployment gate is complete. `WORK-049` (Execution IR and outcome-economics foundation, E1.1 stage 1) is the only currently executable Work Order.
 
-Required branch: `work/WORK-048-resilience-disaster-recovery-provider-exit`.
+Required branch: `work/WORK-049-execution-ir-outcome-economics-foundation`.
 
-The branch is currently identical to canonical `main`, so the next worker can establish an exact base with no stale pre-dispatch documentation.
+The branch does not exist yet: the next worker creates it at exactly the current canonical `main` head (the WORK-048 merge) so the base is exact with no stale pre-dispatch documentation.
 
 ## Recovery sequence
 
