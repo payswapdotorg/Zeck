@@ -29,3 +29,4 @@
 export * from "./catalog";
 export * from "./facts";
 export * from "./lifecycle";
+export * from "./selection";
