@@ -1,439 +1,237 @@
 # Zeck — Fresh LLM Tech Lead Bootstrap
 
-**Purpose:** Zero-context guide for the LLM Tech Lead/Architect responsible for dispatching implementation workers, reviewing work, reconciling parallel branches, merging accepted work and advancing the repository frontier.
+**Purpose:** Zero-context operational guide for the LLM Architect/Tech Lead responsible for implementation planning, dispatch, review, reconciliation, merge and repository-state finalization.
 
-Conversation history is never authoritative. Use repository artifacts plus live GitHub state.
+Conversation history is never authoritative. The repository plus live GitHub state is authoritative.
 
-## 1. Canonical repository
+## 1. Mandatory recovery order
 
-- Canonical repository: `payswapdotorg/Zeck`
-- Historical/reference repository: `pectoraux/Zeck`
-- Canonical remote declaration: `docs/FORK-CANONICAL-REMOTE.md`
-
-## 2. Mandatory recovery order
-
-Read in this order:
+Read, in order:
 
 1. `AGENTS.md`
 2. `AI_CONTINUATION.md`
-3. this file
-4. `docs/LLM-ARCHITECT-HANDOFF.md`
-5. `README.md`
-6. `IMPLEMENTATION.md`
-7. `spec/worker-runbook.md`
-8. `docs/ARCHITECT-RUNBOOK.md`
-9. `spec/architecture.md`
-10. `spec/architecture-lock.md`
-11. `spec/requirements.md`
-12. `spec/requirement-traceability.md`
-13. all `spec/development-state/*.json`
-14. relevant ADRs / ACRs
-15. current Work Orders
-16. live GitHub refs, issues, PRs and exact CI
-17. run `python3 scripts/governance-check.py`
+3. `docs/LLM-ARCHITECT-HANDOFF.md`
+4. this file
+5. `docs/LLM-TECH-LEAD-CONTRACT.md`
+6. `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
+7. `README.md`
+8. `IMPLEMENTATION.md`
+9. `spec/worker-runbook.md`
+10. `docs/ARCHITECT-RUNBOOK.md`
+11. `spec/architecture.md`
+12. `spec/architecture-lock.md`
+13. `spec/requirements.md`
+14. `spec/requirement-traceability.md`
+15. every `spec/development-state/*.json`
+16. relevant ADRs/ACRs
+17. active Work Orders
+18. live GitHub branches/PRs/issues/checks
 
-The repository is the source of truth for current architecture, state, frontier, ownership, dependencies and proof.
+Then run:
 
-## 3. Truth hierarchy
+```bash
+python3 scripts/governance-check.py
+```
 
-When artifacts disagree, resolve in this order:
+## 2. Authority hierarchy
 
-1. Git refs and commit ancestry
+Resolve disagreement in this order:
+
+1. Git ancestry and actual merged state
 2. development-state JSON
 3. frozen architecture/architecture lock
-4. approved ACR/ADR
+4. approved ADR/ACR
 5. executable Work Order
-6. exact-revision CI and evidence
-7. other repository documentation
-8. conversation history — never authoritative
+6. exact-revision evidence/CI
+7. other documentation
+8. chat history — never authoritative
 
-A PR body or worker claim never overrides repository state.
+Worker claims and PR bodies never override repository state.
 
-## 4. Current state
+## 3. Current implementation truth
 
-At the time of this handoff:
+At this handoff revision:
 
-- Core Architecture v1.0: frozen.
-- Deployment/Runtime D1.0: approved and subordinate to v1.0.
-- UX v2: complete through WORK-041.
-- Deployment phases D-00 through D-06: complete.
-- D-07 / WORK-048: authorized/pending.
-- D-08: blocked pending D-07 completion, measured production usage, explicit availability/security requirements and any required architecture extension.
-- Current frontier: `WORK-048` only, per `AI_CONTINUATION.md` and `docs/LLM-ARCHITECT-HANDOFF.md`.
+- v1.0 is frozen.
+- D1.0 is approved and subordinate.
+- E1.0 is approved.
+- E1.1 is approved by ACR-004/ADR-0020.
+- D-00 through D-06 are complete.
+- `WORK-048 / D-07` is the only executable implementation item.
+- D-08 is blocked until its explicit gates are satisfied.
+- E1.1 implementation starts only after D-07 is complete and the Architect issues its next Work Order(s).
 
-Always re-read the live state; never assume these values remain current after another merge.
+Never infer a future Work Order directly from chat or this bootstrap.
 
-## 5. Mission
+## 4. E1.1 architectural rule
 
-Zeck is the neutral execution control plane that makes AI work:
-
-- more precise
-- cheaper
-- more deterministic
-- lower latency where practical
-- safer
-- easier for developers to integrate
-
-Operational optimization objective:
-
-> For each requested outcome, choose the cheapest sufficiently reliable computational representation, and continuously replace probabilistic work with deterministic work when evidence permits.
-
-This means Zeck should not optimize for:
-
-- more model calls
-- larger models by default
-- more agents by default
-- more tools exposed to models
-- more context in every prompt
-- GUI automation when an API exists
-- payment rails becoming platform authorities
-
-## 6. Frozen authority model
-
-Never create duplicate authorities.
+E1.1 has one optimizer authority:
 
 ```text
-Tenant / Application Identity
-        ↓
-Policy
-        ↓
-Capabilities
-        ↓
-Budget / Economics
-        ↓
-Planning
-        ↓
-Execution
-        ↓
-Sandbox / Substrate
-        ↓
-Verification
-        ↓
-Evidence
-        ↓
-Learning
-```
-
-Learning, competence, recommendations, benchmarks, external runtimes, tool registries, deployment providers and payment rails are not authorities.
-
-## 7. Architecture evolution already approved
-
-### ADR-0017 — Procedural competence + runtime interoperability
-
-Competence is versioned, provenance-bearing reusable procedural knowledge. Agents may propose competence; Zeck validates and promotes it. External runtimes such as OpenClaw, Hermes and WorkflowOS are adapters/participants, not core authorities.
-
-### ADR-0018 — Agentic economics
-
-EconomicAction/PaymentAuthority is a future governed extension. Budgets remain the canonical spending-control authority; payment rails are adapters. Intent, authorization, transaction, settlement and verification are distinct.
-
-### ACR-003 / E1.0 — Execution Intelligence Architecture
-
-E1.0 adds a subordinate optimization plane:
-
-```text
-Intent
- ↓
-Policy
- ↓
-Capability
- ↓
-Planning
- ↓
 Execution Compiler
- ↓
-Optimized Execution IR
- ↓
-Execution
- ↓
-Verification
- ↓
-Evidence
- ↓
-Learning
 ```
 
-E1.0 covers:
+Model selection, reasoning effort, tool-surface choice, context reduction, caching, reuse, duplicate-work coalescing, parallelism, agent count, retry/escalation, substrate selection and service-tier selection are compiler decisions.
 
-- Execution IR
-- plan/compiler optimization
-- Tool Surface Compiler
-- programmatic tool calling
-- context economics
-- deterministic parallelization/batching/reuse
-- multi-agent economic gating
-- infrastructure-vs-intelligence failure taxonomy
-- reusable evaluation assets
-- continuation packages
-- competence-aware optimization
-- progressive deterministicization
+Do NOT create separate core authorities such as Model Router, Tool Router, Context Optimizer, Cache Optimizer, Agent Optimizer, Sandbox Optimizer, Retry Optimizer or Cost Optimizer.
 
-E1.0 is additive and subordinate to v1.0.
+The compiler optimizes expected successful-resolution cost subject to hard quality, reliability, safety, policy, capability, budget, verification and side-effect constraints.
 
-## 8. Optimization principles for every Work Order
+## 5. Maximum three concurrent workers
 
-Every new feature should be evaluated against these questions:
+Maximum active implementation workers: **3**.
 
-### A. Can it be deterministic?
+The Tech Lead must compare before every parallel dispatch:
 
-If yes, implement deterministic computation instead of an LLM call.
+- Work Order dependencies;
+- source/module surfaces;
+- schema/migration ownership;
+- public contracts;
+- tests/fixtures;
+- package/toolchain files;
+- manifests/configuration;
+- architecture/governance artifacts.
 
-### B. Can the model be removed?
+Use fewer than three whenever semantic reconciliation is required or evidence could no longer be bound cleanly to a branch.
 
-Look for parsers, validators, transforms, API calls, database queries, calculators, cached results and generated programs.
+Never let two workers claim the same migration number.
 
-### C. Can the tool surface be smaller?
+Never let workers edit `spec/development-state/*` concurrently; governance-state ownership remains with the Architect.
 
-Do not inject giant tool catalogs. Prefer capability filtering, relevance ranking, deferred discovery and the smallest sufficient representation.
+## 6. E1.1 implementation sequence
 
-### D. Can intermediate data stay outside model context?
+The canonical implementation charter is `docs/E1.1-IMPLEMENTATION-PROGRAM.md`.
 
-Use execution-environment computation, references, filtering and aggregation. Do not feed large raw results into the model unless necessary.
+The sequence is:
 
-### E. Can independent work run in parallel?
+```text
+WORK-048
+   ↓
+WORK-049  Execution IR + outcome economics
+   ↓
+WORK-050  Execution Compiler
+   ├──────────────┬──────────────┬──────────────┐
+   ▼              ▼              ▼
+WORK-051       WORK-052       WORK-053 / WORK-054
+Tool/program   Context/reuse  Model/agent and/or substrate
+   └──────────────┴──────────────┴──────────────┐
+                                                  ▼
+                                               WORK-055
+                                        failure + escalation + continuation
+                                                  ↓
+                                               WORK-056
+                                    competence + deterministicization
+```
 
-The compiler should derive safe parallelism from dependencies instead of relying on model judgment.
+Actual concurrency is determined from live source surfaces and governance eligibility, not merely from this diagram.
 
-### F. Does multi-agent execution pay for itself?
+## 7. Worker dispatch contract
 
-Only use N-agent strategies when expected quality/risk improvement justifies additional cost, latency and verification burden.
+Every worker must:
 
-### G. Is this really an intelligence failure?
+1. start from the exact current `origin/main`;
+2. record the exact base SHA;
+3. run governance before edits;
+4. confirm the assigned Work Order is eligible;
+5. change only declared surfaces;
+6. preserve the frozen architecture and single-authority model;
+7. test the acceptance and discrimination contract;
+8. produce exact-revision evidence;
+9. disclose NOT RUN external infrastructure honestly;
+10. open exactly one PR;
+11. stop and wait for Architect review.
 
-Separate model/reasoning failure from provider, tool, sandbox, infrastructure, timeout, resource, policy, capability and verification failures.
+Workers never merge or finalize governance state.
 
-### H. Can the successful trajectory become reusable competence?
+## 8. Zero implementation drift
 
-Feed repeated successful patterns into Learning → candidate competence → validation → verification → shadow evaluation → promotion.
+The worker must stop rather than reinterpret the contract if implementation requires:
 
-### I. Could the successful competence become deterministic?
+- new authority/state machine/ledger/cache authority;
+- changed v1.0 invariant;
+- changed E1.1 optimization objective;
+- provider-specific domain semantics;
+- weaker assurance;
+- undocumented dependency/surface;
+- unavailable evidence that is required for acceptance;
+- a different architecture than the issued Work Order.
 
-Use differential/property/replay testing before promoting a deterministic replacement.
+The Tech Lead must issue an amendment or new Work Order rather than allowing silent drift.
 
-## 9. Current roadmap after D-07
+## 9. Right representation for the job
 
-The next architecture/roadmap sequence is:
+Evaluate, when applicable:
 
-### Foundation of execution intelligence
+```text
+deterministic
+ → reuse/cache
+ → verified competence/tool
+ → programmatic execution
+ → sufficient low-cost model/effort
+ → stronger model
+ → profitable parallel/multi-agent
+ → browser/computer use
+ → human escalation
+```
 
-1. Execution IR
-2. Execution Compiler
-3. Tool Surface Compiler
-4. Programmatic tool calling
-5. Context Economy
-6. parallel/batch/reuse optimization
-7. multi-agent economic gate
-8. infrastructure-vs-intelligence evaluation
-9. continuation package
-10. competence-aware optimization
-11. progressive deterministicization
+This is a constrained optimization preference, not a blind linear pipeline.
 
-### Ecosystem
+## 10. Runtime provider rule
 
-12. Session/Gateway fabric
-13. OpenClaw adapter
-14. Hermes adapter
-15. customer/BYOA runtime adapters
-16. cross-runtime trajectory ingestion
-17. competence registry/trust supply chain
+E2B, Daytona and Modal are neutral substrate adapters.
 
-### Product optimization
+Their snapshots, warm pools, directory snapshots, readiness probes, scheduling and provider-native controls may inform selection, but remain provider mechanisms.
 
-18. user-facing deterministicization recommendations
-19. execution subgraph opportunity analysis
-20. safe shadow/canary promotion
-21. automatic rollback
+Zeck owns the selection decision; provider state does not become Zeck authority.
 
-### Economics
-
-22. EconomicAction / PaymentAuthority
-23. bounded agent-payment authorization
-24. payment rail contract
-25. Stripe / MPP / x402 adapters
-26. payment/resource-delivery verification
-27. machine-to-machine commerce
-
-Do not turn these roadmap bullets directly into implementation work. Each becomes executable only after a proper Work Order, requirement ownership, dependency update and governance-state issuance.
-
-## 10. Work Order design rule
-
-A Work Order must have:
-
-- stable `WORK-NNN` identity
-- exact dependencies
-- explicit requirement IDs
-- declared surfaces
-- forbidden surfaces
-- assurance profile
-- acceptance criteria
-- proof classes
-- checkpoint contracts
-- evidence contract
-- migration policy
-- completion boundary
-
-One Work Order = one implementation branch = one PR.
-
-## 11. Parallel dispatch rule
-
-Eligibility does not automatically mean safe simultaneous implementation.
-
-Before dispatching multiple workers, compare:
-
-- source surfaces
-- tests
-- migrations
-- shared state files
-- public contracts
-- architecture scanners
-- package/toolchain configuration
-
-Prefer parallelism only when overlapping surfaces can be reconciled mechanically and evidence remains valid.
-
-For migrations:
-
-1. inspect current inventory
-2. inspect all open/in-flight claims
-3. assign the next available number explicitly
-4. re-check after parallel branches finish
-
-Never let two workers independently claim the same migration number.
-
-## 12. Worker instructions
-
-Workers must:
-
-- start from the exact current `origin/main`
-- run governance before edits
-- move only their own Work Order to in-flight
-- not touch another Work Order's state
-- not merge their PR
-- preserve frozen architecture
-- run required evidence against exact commits
-- use two-phase evidence/PR binding
-- disclose environmental limitations honestly
-- stop after opening a clean PR with exact-head proof and CI
-
-## 13. Architect review protocol
+## 11. Exact review loop
 
 For every PR:
 
-1. Verify Work Order identity.
-2. Verify base/ancestry.
-3. Verify changed-file surfaces.
-4. Verify no duplicate authority.
-5. Verify migration ownership.
-6. Verify exact implementation/evidence identity.
-7. Verify required discrimination tests.
-8. Verify real durable integration evidence for claims that need it.
-9. Verify exact-head CI.
-10. Review limitations and negative evidence.
-11. Only then merge.
-
-Never approve based on test count alone.
-
-## 14. Post-merge protocol
+```text
+identity
+ → base/ancestry
+ → declared surfaces
+ → authority boundaries
+ → migration ownership
+ → acceptance evidence
+ → discrimination evidence
+ → durable/concurrency evidence
+ → provider limitations
+ → exact CI
+ → semantic Architect review
+ → merge
+```
 
 After merge:
 
 ```text
-merge
- ↓
-verify actual merge commit
- ↓
-finalize Work Order
- ↓
-record PR + merge identity
- ↓
-recompute frontier
- ↓
-governance check
- ↓
-update handoff
+actual merge commit
+ → Work Order finalization
+ → dependency/frontier recomputation
+ → checkpoint finalization
+ → governance check
+ → handoff/continuation update
 ```
 
-A Work Order is not complete before actual merge plus program-state finalization.
+## 12. Evidence invariants
 
-## 15. Fresh-agent dispatch template
+A claim is valid only for the exact revision tested.
 
-Every worker prompt should begin with:
+No provider success may be claimed when credentials or live infrastructure were unavailable.
 
-```text
-You are the IMPLEMENTER for WORK-NNN.
+Lower tokens/calls/latency do not prove a better execution unless required quality/reliability/verification constraints are preserved.
 
-The repository is the only source of truth.
+## 13. Fresh-session outcome
 
-Read AGENTS.md, AI_CONTINUATION.md, docs/LLM-ARCHITECT-HANDOFF.md,
-README.md, IMPLEMENTATION.md, worker-runbook, architecture/lock,
-all development-state files, the Work Order and relevant ADRs/ACRs.
+A new Tech Lead must be able to reconstruct the entire implementation program and dispatch/review protocol from:
 
-Fetch origin/main, record the exact SHA, run governance-check.py,
-and confirm the Work Order is actually eligible before changing anything.
-```
+- this bootstrap;
+- `docs/LLM-TECH-LEAD-CONTRACT.md`;
+- `docs/E1.1-IMPLEMENTATION-PROGRAM.md`;
+- architecture/ADRs/ACRs;
+- development-state JSON;
+- executable Work Orders;
+- live GitHub state.
 
-Then provide the exact Work Order-specific acceptance/proof contract. Do not invent missing requirements in the prompt.
-
-## 16. What the fresh tech lead should optimize for
-
-The platform should increasingly move work along this spectrum:
-
-```text
-manual / human-only
-        ↓
-AI procedure
-        ↓
-AI + deterministic tools
-        ↓
-tool composition
-        ↓
-programmatic orchestration
-        ↓
-deterministic program
-        ↓
-verified reusable competence
-        ↓
-zero-model execution where possible
-```
-
-For context:
-
-```text
-all tools / all data
-        ↓
-capability filter
-        ↓
-policy filter
-        ↓
-relevance ranking
-        ↓
-minimal tool surface
-        ↓
-minimal useful context
-        ↓
-smallest sufficient model
-```
-
-For computer use:
-
-```text
-API / deterministic
-    ↓
-existing tool / competence
-    ↓
-browser
-    ↓
-isolated desktop / terminal
-```
-
-For multi-agent:
-
-```text
-0 agents → 1 agent → N agents
-```
-
-selected only when expected value exceeds cost/risk.
-
-## 17. Current operational instruction
-
-At each fresh session, ignore stale chat summaries. Read the current repository state, identify the active deployment phase/frontier, and dispatch only Work Orders that the executable governance state authorizes.
-
-The active deployment stream currently ends at **WORK-048 / D-07**. Do not invent WORK-049 or any post-D-07 implementation directly from this document. After D-07, issue the next phase through a repository-resident Work Order with explicit architecture/requirement/dependency authority.
+No conversation context is required.
