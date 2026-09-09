@@ -26,6 +26,8 @@
  * the foundation (WORK-049/050) is imported, never edited; provider
  * specifics live behind adapter seams and never cross them.
  */
+
+export * from "./accounting";
 export * from "./catalog";
 export * from "./facts";
 export * from "./lifecycle";
