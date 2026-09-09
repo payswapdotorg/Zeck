@@ -18,9 +18,9 @@ import { describe, expect, test } from "vitest";
 import {
   evaluateDrillAgainstTarget,
   parseRecoveryTargets,
+  type RecoveryDrillReport,
   RecoveryTargetError,
   recoveryTargetFor,
-  type RecoveryDrillReport,
 } from "../../../../src/platform/recovery/rto-rpo";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -104,7 +104,9 @@ describe("recovery-targets parsing (repository truth, fail-closed)", () => {
         "out-of-bound RTO",
         JSON.stringify({
           ...JSON.parse(VALID_DOCUMENT),
-          targets: { local: { rtoTargetMs: 10 ** 12, rpoTargetMs: 0, scope: "s", measurement: "m" } },
+          targets: {
+            local: { rtoTargetMs: 10 ** 12, rpoTargetMs: 0, scope: "s", measurement: "m" },
+          },
         }),
       ],
       [
@@ -179,7 +181,9 @@ describe("drill objective evaluation (measured claims, never prose)", () => {
     const evaluation = evaluateDrillAgainstTarget(reportOf({ rtoMs: 2000, rpoMs: 200 }), target);
     expect(evaluation.rtoWithinTarget).toBe(false);
     expect(evaluation.rpoWithinTarget).toBe(false);
-    expect(evaluation.breaches.join(" ")).toContain("measured RTO 2000ms exceeds the 1000ms target");
+    expect(evaluation.breaches.join(" ")).toContain(
+      "measured RTO 2000ms exceeds the 1000ms target",
+    );
     expect(evaluation.breaches.join(" ")).toContain("measured RPO 200ms exceeds the 100ms target");
   });
 

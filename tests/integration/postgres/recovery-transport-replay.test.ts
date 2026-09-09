@@ -49,22 +49,31 @@
  *      terminal per the REAL wait records), and the recovery is
  *      driven by PostgreSQL — the same durable state converges.
  */
-import { expect, test } from "vitest";
+
 import { Client } from "pg";
-import { createOrchestrationResolutionEffect } from "../../../src/modules/executions/adapters/workflow-effect";
+import { expect, test } from "vitest";
 import { createOrchestrationSource } from "../../../src/modules/executions/adapters/orchestration-source";
+import { createOrchestrationResolutionEffect } from "../../../src/modules/executions/adapters/workflow-effect";
 import { DurableDispatcher } from "../../../src/platform/queue/dispatcher";
 import { QueueTransportError } from "../../../src/platform/queue/port";
-import { createOrchestrationCoordinator } from "../../../src/platform/workflow/engine";
+import {
+  MessageLosingQueueTransport,
+  OutageSimulatedQueueTransport,
+} from "../../../src/platform/recovery/outage";
 import {
   planOrchestrationRecovery,
   planTransportRecovery,
 } from "../../../src/platform/recovery/transport-recovery";
-import { MessageLosingQueueTransport } from "../../../src/platform/recovery/outage";
-import { OutageSimulatedQueueTransport } from "../../../src/platform/recovery/outage";
+import { createOrchestrationCoordinator } from "../../../src/platform/workflow/engine";
 import { definePgSuite } from "./harness";
 import { generateId, seedWorkerFabricWorld } from "./worker-world";
-import { ORCHESTRATOR_ACTOR_ID, InMemoryWorkflowTransport, seedWorkflowWorld, TEST_BOUNDS, TEST_POLICY } from "./workflow-world";
+import {
+  InMemoryWorkflowTransport,
+  ORCHESTRATOR_ACTOR_ID,
+  seedWorkflowWorld,
+  TEST_BOUNDS,
+  TEST_POLICY,
+} from "./workflow-world";
 
 definePgSuite("queue/workflow replay after provider loss (WORK-048 D-07 AC3)", (ctx) => {
   const world = () => seedWorkerFabricWorld(ctx.port);
@@ -89,10 +98,7 @@ definePgSuite("queue/workflow replay after provider loss (WORK-048 D-07 AC3)", (
    * convention): governed start + live claim + short-TTL lease — the
    * exact in-flight state a lost transport/worker leaves behind.
    */
-  const interruptedWorker = async (
-    w: Awaited<ReturnType<typeof world>>,
-    executionId: string,
-  ) => {
+  const interruptedWorker = async (w: Awaited<ReturnType<typeof world>>, executionId: string) => {
     await w.service.transition(
       { ...w.scopeOf(executionId), command: "start", reason: "queue-transport-delivery" },
       `queue-consume:execution-dispatch:${executionId}`,
@@ -192,9 +198,7 @@ WHERE id = $1`,
       const execution = await w.service.getExecution(w.applicationId, executionId);
       expect(execution?.status).toBe("COMPLETED");
       const events = await w.eventsOf(executionId);
-      const completions = events.filter(
-        (event) => event.kind === "execution.pass",
-      );
+      const completions = events.filter((event) => event.kind === "execution.pass");
       expect(completions).toHaveLength(1);
       const lease = await w.lease.inspect(w.applicationId, executionId);
       expect(lease?.epoch).toBe(2); // fresh epoch — the stale pair is fenced forever
@@ -253,15 +257,15 @@ WHERE id = $1`,
     });
     expect(outcome.published).toBe(false);
     expect(outcome.envelope.publishAttempts).toBeGreaterThanOrEqual(1);
-    expect(
-      outcome.envelope.state === "recorded" || outcome.envelope.state === "backlogged",
-    ).toBe(true);
+    expect(outcome.envelope.state === "recorded" || outcome.envelope.state === "backlogged").toBe(
+      true,
+    );
     expect(outage.failedOperations).toBeGreaterThanOrEqual(1);
 
     // The typed error class is the transport-unavailable class.
-    await expect(outage.publish({ body: "probe", contentType: "application/json" })).rejects.toThrow(
-      QueueTransportError,
-    );
+    await expect(
+      outage.publish({ body: "probe", contentType: "application/json" }),
+    ).rejects.toThrow(QueueTransportError);
 
     // The durable plan classifies the envelope REPUBLISHABLE (the
     // outage's bounded backlog — never a lost intent).
@@ -355,10 +359,9 @@ VALUES ($1, 'execution-dispatch', $2, $3, $4, $5, '{}'::jsonb, $6, 'published', 
       );
       await expect(planTransportRecovery(ctx.port)).rejects.toThrow(/unknown state "spoofed"/);
     } finally {
-      await driftClient.query(
-        "DELETE FROM queue_transport.dispatch_envelopes WHERE id = $1",
-        [spoofedId],
-      );
+      await driftClient.query("DELETE FROM queue_transport.dispatch_envelopes WHERE id = $1", [
+        spoofedId,
+      ]);
       await driftClient.end();
     }
     const healed = await planTransportRecovery(ctx.port);

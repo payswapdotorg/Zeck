@@ -26,10 +26,10 @@
  */
 import { expect, test } from "vitest";
 import { DatabaseUnavailableError } from "../../../src/platform/db/errors";
-import { OutageSimulatedDatabase } from "../../../src/platform/recovery/outage";
 import { runRecoveryDrill } from "../../../src/platform/recovery/drill";
-import { seedWorkerFabricWorld } from "./worker-world";
+import { OutageSimulatedDatabase } from "../../../src/platform/recovery/outage";
 import { definePgSuite } from "./harness";
+import { seedWorkerFabricWorld } from "./worker-world";
 
 definePgSuite("provider-outage fail-closed drills (WORK-048 D-07 AC6)", (ctx) => {
   const world = (port?: typeof ctx.port) => seedWorkerFabricWorld(port ?? ctx.port);
@@ -47,12 +47,12 @@ definePgSuite("provider-outage fail-closed drills (WORK-048 D-07 AC6)", (ctx) =>
     // Every port operation fails with the AUTHORITY-UNAVAILABLE class
     // (queries AND transactions — no silent fallback, no local
     // promotion).
-    await expect(
-      w.service.getExecution(w.applicationId, executionId),
-    ).rejects.toThrow(DatabaseUnavailableError);
-    await expect(
-      w.db.execute({ sql: "SELECT 1", parameters: [] }),
-    ).rejects.toThrow(DatabaseUnavailableError);
+    await expect(w.service.getExecution(w.applicationId, executionId)).rejects.toThrow(
+      DatabaseUnavailableError,
+    );
+    await expect(w.db.execute({ sql: "SELECT 1", parameters: [] })).rejects.toThrow(
+      DatabaseUnavailableError,
+    );
     await expect(
       w.db.transaction(async (tx) => {
         await tx.execute({ sql: "SELECT 1", parameters: [] });

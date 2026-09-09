@@ -241,11 +241,12 @@ definePgSuite("regional worker evacuation, drain and fencing (WORK-048 D-07)", (
 
   test("E6 idempotent evacuation: a re-run selects nothing; unknown regions fail closed", async () => {
     const w = await world();
-    const regionA = await w.createFabric({ metadata: { region: "region-a-e6" } });
+    // One active worker in region-a-e6 (the evacuation target).
+    const target = await w.createFabric({ metadata: { region: "region-a-e6" } });
     const evacuator = evacuatorFor(w);
 
     const first = await evacuator.evacuate({ region: "region-a-e6", mode: "fence" });
-    expect(first.selectedWorkers).toHaveLength(1);
+    expect(first.selectedWorkers).toEqual([target.worker?.workerId]);
     const second = await evacuator.evacuate({ region: "region-a-e6", mode: "fence" });
     expect(second.selectedWorkers).toHaveLength(0);
     expect(second.abandonedClaims).toHaveLength(0);

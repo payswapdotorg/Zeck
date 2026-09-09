@@ -35,13 +35,23 @@
 
 import { createHash } from "node:crypto";
 import { describe, expect, test } from "vitest";
+import { DatabaseUnavailableError } from "../../src/platform/db/errors";
+import type { DatabasePort, Query, QueryResult } from "../../src/platform/db/port";
+import type { ObjectStorePort, StoredObject } from "../../src/platform/object-store/port";
+import { S3ObjectStoreError } from "../../src/platform/object-store/s3-object-store";
+import type { QueueTransportPort } from "../../src/platform/queue/port";
+import { QueueTransportError } from "../../src/platform/queue/port";
 import {
+  type ArtifactInventoryEntry,
   ArtifactRecoveryError,
   recoverArtifactBytes,
   storageKeyOf,
   verifyArtifactInventory,
-  type ArtifactInventoryEntry,
 } from "../../src/platform/recovery/artifact-recovery";
+import {
+  EvacuationConfigError,
+  RegionalWorkerEvacuator,
+} from "../../src/platform/recovery/evacuation";
 import {
   OutageSimulatedDatabase,
   OutageSimulatedObjectStore,
@@ -51,16 +61,8 @@ import {
   planTransportRecovery,
   TransportRecoveryError,
 } from "../../src/platform/recovery/transport-recovery";
-import { EvacuationConfigError, RegionalWorkerEvacuator } from "../../src/platform/recovery/evacuation";
-import { DatabaseUnavailableError } from "../../src/platform/db/errors";
-import { S3ObjectStoreError } from "../../src/platform/object-store/s3-object-store";
-import { QueueTransportError } from "../../src/platform/queue/port";
-import type { DatabasePort, Query, QueryResult } from "../../src/platform/db/port";
-import type { ObjectStorePort, StoredObject } from "../../src/platform/object-store/port";
-import type { QueueTransportPort } from "../../src/platform/queue/port";
 
-const digestOf = (bytes: Uint8Array): string =>
-  createHash("sha256").update(bytes).digest("hex");
+const digestOf = (bytes: Uint8Array): string => createHash("sha256").update(bytes).digest("hex");
 
 const sha256Of = (text: string): string => digestOf(Buffer.from(text, "utf8"));
 
@@ -137,7 +139,9 @@ describe("D-07 discrimination — the storage-key derivation guards", () => {
 
   test("a well-formed entry derives the content-addressed D-02 key shape", () => {
     const entry = entryOf();
-    expect(entry.storageKey).toMatch(/^zeck\/artifacts\/[a-z0-9-]{1,64}\/[0-9a-f]{2}\/[0-9a-f]{64}$/);
+    expect(entry.storageKey).toMatch(
+      /^zeck\/artifacts\/[a-z0-9-]{1,64}\/[0-9a-f]{2}\/[0-9a-f]{64}$/,
+    );
     expect(entry.storageKey.endsWith(entry.artifactDigest)).toBe(true);
   });
 });
@@ -176,15 +180,13 @@ describe("D-07 discrimination — the artifact byte migration protections", () =
 
   test("target IDENTITY COLLISION: different bytes at the key are never overwritten", async () => {
     const source = new MemoryObjectStore([[entry.storageKey, bytes]]);
-    const target = new MemoryObjectStore([
-      [entry.storageKey, Buffer.from("foreign", "utf8")],
-    ]);
+    const target = new MemoryObjectStore([[entry.storageKey, Buffer.from("foreign", "utf8")]]);
     const report = await recoverArtifactBytes(source, target, [entry], digestOf);
     expect(report.completed).toBe(false);
     expect(report.failures[0]?.reason).toContain("target identity collision");
-    expect(Buffer.from((await target.get(entry.storageKey) as StoredObject).body).toString()).toBe(
-      "foreign",
-    );
+    expect(
+      Buffer.from(((await target.get(entry.storageKey)) as StoredObject).body).toString(),
+    ).toBe("foreign");
   });
 
   test("a LYING store (wrong bytes returned after put) fails read-after-write", async () => {
@@ -198,9 +200,7 @@ describe("D-07 discrimination — the artifact byte migration protections", () =
         putCount += 1;
       },
       get: async (key) =>
-        putCount === 0
-          ? null
-          : { key, body: Buffer.from("lies", "utf8"), contentType: undefined },
+        putCount === 0 ? null : { key, body: Buffer.from("lies", "utf8"), contentType: undefined },
       delete: async () => undefined,
     };
     const report = await recoverArtifactBytes(source, lyingTarget, [entry], digestOf);
@@ -303,7 +303,7 @@ describe("D-07 discrimination — the outage wrappers (typed fail-closed)", () =
       QueueTransportError,
     );
     await expect(outage.pull()).rejects.toThrow(/simulated provider outage/);
-    await expect(outage.settle({ kind: "ack", messageId: "m", receiptHandle: "r" })).rejects.toThrow(
+    await expect(outage.settle({ ackLeaseIds: ["m"], retryLeaseIds: [] })).rejects.toThrow(
       QueueTransportError,
     );
     expect(outage.failedOperations).toBe(3);

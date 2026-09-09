@@ -713,9 +713,7 @@ async function main(): Promise<void> {
   // Objective evaluation applies only to LOSS scenarios (outage-
   // readiness is a configuration gate, not a recovery measurement).
   const measuresObjectives = command !== "outage-readiness";
-  const evaluation = measuresObjectives
-    ? evaluateDrillAgainstTarget(report, target)
-    : null;
+  const evaluation = measuresObjectives ? evaluateDrillAgainstTarget(report, target) : null;
   const output = {
     tool: "deploy/drill",
     command,

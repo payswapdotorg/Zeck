@@ -41,17 +41,17 @@
  *       ordering — replay never runs on top of a broken restore).
  */
 import { randomUUID } from "node:crypto";
-import { Client } from "pg";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Client } from "pg";
 import { expect, test } from "vitest";
 import { EXECUTION_STATES } from "../../../src/modules/executions/public";
 import {
   createLogicalBackup,
   type LogicalBackup,
-  restoreDataIntoCurrentState,
   type RestoreOutcome,
+  restoreDataIntoCurrentState,
 } from "../../../src/platform/db/backup";
 import {
   authoritativeSchemas,
@@ -167,7 +167,9 @@ defineSuite<DrillContext>(
                     ctx.backup,
                   );
                   const outcome = drillState.restoreOutcome as RestoreOutcome;
-                  if (!outcome.verification.every((entry: { verified: boolean }) => entry.verified)) {
+                  if (
+                    !outcome.verification.every((entry: { verified: boolean }) => entry.verified)
+                  ) {
                     throw new Error("restore self-verification failed (checksum drift detected)");
                   }
                 } finally {
@@ -211,9 +213,7 @@ defineSuite<DrillContext>(
         "authority-invariants",
       ]);
       expect(drill.phases.every((phase) => phase.ok)).toBe(true);
-      expect(drillState.restoreOutcome?.verification.every((entry) => entry.verified)).toBe(
-        true,
-      );
+      expect(drillState.restoreOutcome?.verification.every((entry) => entry.verified)).toBe(true);
       expect(drillState.restoreOutcome?.tables.length).toBe(ctx.backup.tables.length);
 
       // Measured objectives against the repository target (local).
@@ -289,9 +289,7 @@ defineSuite<DrillContext>(
               values: [relation],
             });
             for (const row of checks.rows) {
-              await client.query(
-                `ALTER TABLE ${relation} DROP CONSTRAINT "${row.conname}"`,
-              );
+              await client.query(`ALTER TABLE ${relation} DROP CONSTRAINT "${row.conname}"`);
             }
           };
           await dropChecksOf("executions.executions");

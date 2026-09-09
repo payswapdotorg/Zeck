@@ -51,9 +51,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
+import { parseRecoveryTargets, recoveryTargetFor } from "../../src/platform/recovery/rto-rpo";
 import { collectSourceFiles, declaredRuntimePackages } from "./lib/collect";
 import { scanDependencyRules } from "./lib/dependency-rules";
-import { parseRecoveryTargets, recoveryTargetFor } from "../../src/platform/recovery/rto-rpo";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -194,7 +194,12 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
   });
 
   test("B5 no authority move: the recovery plane's own SQL is read-only classification", () => {
-    const WRITE_PATTERNS = [/INSERT\s+INTO/i, /UPDATE\s+[a-z]/i, /DELETE\s+FROM/i, /ALTER\s+TABLE/i];
+    const WRITE_PATTERNS = [
+      /INSERT\s+INTO/i,
+      /UPDATE\s+[a-z]/i,
+      /DELETE\s+FROM/i,
+      /ALTER\s+TABLE/i,
+    ];
     for (const file of RECOVERY_FILES) {
       const content = read(file);
       const sqlBlocks = [...content.matchAll(/sql:\s*`([^`]+)`/gs)].map((m) => m[1] ?? "");
@@ -220,9 +225,7 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
     ];
     for (const file of surfaces) {
       const content = read(file);
-      expect(content, `${file} must not carry access-key literals`).not.toMatch(
-        /AKIA[0-9A-Z]{16}/,
-      );
+      expect(content, `${file} must not carry access-key literals`).not.toMatch(/AKIA[0-9A-Z]{16}/);
       expect(content, `${file} must not carry secret assignments`).not.toMatch(
         /(secretAccessKey|apiToken|password)\s*[:=]\s*"[^"${}]+"/,
       );
@@ -232,7 +235,9 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
   test("B7 no new provider SDK: the recovery plane imports only repository-relative modules", () => {
     for (const file of RECOVERY_FILES) {
       const content = read(file);
-      const externalImports = [...content.matchAll(/from\s+"([^."][^"]*)"/g)].map((m) => m[1] ?? "");
+      const externalImports = [...content.matchAll(/from\s+"([^."][^"]*)"/g)].map(
+        (m) => m[1] ?? "",
+      );
       // Only node builtins are external in the recovery plane.
       for (const specifier of externalImports) {
         expect(specifier.startsWith("node:")).toBe(true);
@@ -241,9 +246,7 @@ describe("D-07 resilience/recovery architecture boundaries (WORK-048)", () => {
   });
 
   test("B8 repository truth: recovery-targets.json covers every environment of the matrix and validate enforces it", () => {
-    const targets = parseRecoveryTargets(
-      read("deploy/manifests/recovery-targets.json"),
-    );
+    const targets = parseRecoveryTargets(read("deploy/manifests/recovery-targets.json"));
     const manifest = JSON.parse(read("deploy/manifests/environments.json")) as {
       environments: Record<string, unknown>;
     };
