@@ -28,6 +28,7 @@ docs/LLM-ARCHITECT-HANDOFF.md
 docs/LLM-TECH-LEAD-BOOTSTRAP.md
 docs/LLM-TECH-LEAD-CONTRACT.md
 docs/E1.1-IMPLEMENTATION-PROGRAM.md
+docs/E1.1-RESEARCH-BASELINE.md
 README.md
 IMPLEMENTATION.md
 spec/worker-runbook.md
@@ -74,6 +75,12 @@ A Tech Lead may dispatch 0–3 workers only after proving:
 - any reconciliation can be performed mechanically without inventing architecture.
 
 If these conditions are not satisfied, run fewer workers.
+
+## Current-base invariant
+
+The required implementation branch must be rebased/fast-forwarded to the exact current `main` head immediately before implementation begins. A pre-created branch is only a branch placeholder until its base equals `main`.
+
+The Tech Lead must record the exact base SHA in the dispatch record and worker evidence. If `main` moves before coding starts, refresh the branch again. The worker must not code from a stale base.
 
 ## Worker rights
 
