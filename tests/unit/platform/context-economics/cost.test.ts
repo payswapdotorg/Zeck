@@ -7,22 +7,31 @@
 
 import { describe, expect, test } from "vitest";
 import {
+  type ContextSegmentKind,
   ContextEconomicsError,
   MAX_CONTEXT_SEGMENTS,
   MAX_SEGMENT_TOKENS,
 } from "../../../../src/platform/context-economics/catalog";
 import {
+  type ContextComposition,
   measureContextCost,
   validateContextComposition,
   validateContextPricingBasis,
 } from "../../../../src/platform/context-economics/cost";
+import type { CostBasisAttribution } from "../../../../src/platform/execution-ir/cost-model";
 import { canonicalJson } from "../../../../src/platform/execution-ir/canonical";
 import { nodeDigest } from "./helpers";
 
 const OBSERVED = { basis: "observed" as const, source: "context.tokenizer" };
 const ESTIMATED = { basis: "estimated" as const, source: "context.estimator" };
 
-function composition(segments: Array<{ kind: string; tokenCount: number; basis?: unknown }>) {
+function composition(
+  segments: Array<{
+    kind: ContextSegmentKind;
+    tokenCount: number;
+    basis?: CostBasisAttribution;
+  }>,
+): ContextComposition {
   return { segments: segments.map((s) => ({ ...s, basis: s.basis ?? OBSERVED })) };
 }
 
@@ -83,14 +92,16 @@ describe("context-cost measurement", () => {
 
   test("the composition is validated: unknown kinds are rejected", () => {
     expect(() =>
-      validateContextComposition(composition([{ kind: "magic-prompt", tokenCount: 1 }])),
+      validateContextComposition({
+        segments: [{ kind: "magic-prompt" as unknown as ContextSegmentKind, tokenCount: 1, basis: OBSERVED }],
+      }),
     ).toThrow(ContextEconomicsError);
   });
 
   test("UNATTRIBUTED segments are rejected (the estimation-basis contract)", () => {
     expect(() =>
       validateContextComposition({
-        segments: [{ kind: "user-input", tokenCount: 1, basis: undefined }],
+        segments: [{ kind: "user-input", tokenCount: 1, basis: undefined as unknown as CostBasisAttribution }],
       }),
     ).toThrow(/estimation basis/);
     expect(() =>
@@ -99,7 +110,7 @@ describe("context-cost measurement", () => {
           {
             kind: "user-input",
             tokenCount: 1,
-            basis: { source: "context.tokenizer" },
+            basis: { source: "context.tokenizer" } as unknown as CostBasisAttribution,
           },
         ],
       }),

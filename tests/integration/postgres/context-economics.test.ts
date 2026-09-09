@@ -42,7 +42,6 @@
  */
 
 import { expect, test } from "vitest";
-import { createIrBudgetConstraints } from "../../../src/modules/budgets/adapters/ir-cost-constraints";
 import {
   createCapabilityRegistry,
   createInMemoryCatalogStore,

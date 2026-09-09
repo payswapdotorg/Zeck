@@ -8,6 +8,7 @@
 
 import { describe, expect, test } from "vitest";
 import { ContextEconomicsError } from "../../../../src/platform/context-economics/catalog";
+import type { ContextComposition } from "../../../../src/platform/context-economics/cost";
 import { deriveTenantScopedCacheKey } from "../../../../src/platform/context-economics/keys";
 import type { CacheFact } from "../../../../src/platform/context-economics/memo";
 import { readMemoizationHooks } from "../../../../src/platform/context-economics/memo";
@@ -301,7 +302,7 @@ describe("memoization cache planning", () => {
 // Prompt/prefix cache planning
 // ---------------------------------------------------------------------------
 
-function prefixComposition() {
+function prefixComposition(): ContextComposition {
   return {
     segments: [
       {
@@ -356,7 +357,7 @@ describe("prompt/prefix cache planning", () => {
   });
 
   test("volatile leading segment → full-recompute (prefix-volatile)", () => {
-    const composition = {
+    const composition: ContextComposition = {
       segments: [
         {
           kind: "user-input",
