@@ -32,7 +32,6 @@ import {
 } from "./admissibility";
 import type { QualityFacts, ServiceClass, ServiceClassCandidate } from "./vocabulary";
 import {
-  reject,
   serviceClassRank,
   validateQualityFacts,
   validateServiceClassCandidate,
