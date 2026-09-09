@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck recovery objectives by environment (Deployment & Runtime Architecture D1.0 section 17; WORK-048 / D-07). Repository truth: RTO/RPO are measured claims per environment, never aspirational prose. Targets are validated by deploy:validate and measured by deploy:drill scenarios; provider dashboards, chat or incident notes cannot redefine them.",
+  "note": "Local/CI targets are measured by the repository drill suites (real PostgreSQL, in-process S3-compatible endpoints). Preview/staging/production targets define the operator contract: the same deploy:drill machinery measures them in those environments with their own credentials — no unexecuted claim exists in this file. The logical-backup procedure's recovery point is the backup creation instant: committed writes after that instant are lost by design and are reported honestly as the measured RPO.",
+  "targets": {
+    "local": {
+      "rtoTargetMs": 900000,
+      "rpoTargetMs": 0,
+      "scope": "Total loss of the local control plane (PostgreSQL authority, artifact-store bytes, queue transport, workflow orchestration, worker region) — disposable synthetic state.",
+      "measurement": "deploy:drill scenario authority-loss + the recovery-drill integration suite over real PostgreSQL 16+: loss instant to every verification gate green."
+    },
+    "ci": {
+      "rtoTargetMs": 900000,
+      "rpoTargetMs": 0,
+      "scope": "Same authority-loss scenario exercised by the CI check suite against the real PostgreSQL service (synthetic state).",
+      "measurement": "The recovery-drill integration suite executed in CI (real PostgreSQL service; no provider credentials)."
+    },
+    "preview": {
+      "rtoTargetMs": 3600000,
+      "rpoTargetMs": 0,
+      "scope": "Loss of a preview deployment's provider resources (per-branch, disposable synthetic state only).",
+      "measurement": "deploy:drill in the preview environment by the operator; per-branch preview state is synthetic, so the RPO target is zero (nothing authoritative may exist to lose)."
+    },
+    "staging": {
+      "rtoTargetMs": 3600000,
+      "rpoTargetMs": 300000,
+      "scope": "Loss of staging provider resources (isolated staging database branch, staging artifact bucket, staging queue) with production-like topology.",
+      "measurement": "deploy:drill in the staging environment by the operator against the isolated staging credentials and resources; measured, recorded, never claimed without execution."
+    },
+    "production": {
+      "rtoTargetMs": 14400000,
+      "rpoTargetMs": 300000,
+      "scope": "Loss of a production provider category (managed PostgreSQL, artifact store, transport/orchestration, hosting region) recovered through the repository-defined procedures; the authoritative PostgreSQL state is restored, never reconstructed.",
+      "measurement": "deploy:drill executed in a controlled production recovery window by the operator with production credentials; the logical-backup cadence bounds the recovery point and every drill records the measured RTO/RPO honestly."
+    }
+  }
+}

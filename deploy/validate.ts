@@ -18,7 +18,10 @@
  *  7. (D-06) the repository-resident quota-guards policy loads with
  *     ordered, actionable thresholds (unbounded weakening is
  *     unrepresentable);
- *  8. (D-06) the release-control migration is in the shipped set.
+ *  8. (D-06) the release-control migration is in the shipped set;
+ *  9. (D-07) the repository-resident recovery-targets document loads
+ *     with bounded, numeric RTO/RPO targets for EVERY environment
+ *     class (aspirational or missing targets are unrepresentable).
  *
  * Exit 0 = the configuration is valid; exit 1 = violations listed.
  */
@@ -30,6 +33,7 @@ import { shippedMigrations } from "../src/platform/db/startup";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
 import { computeResourceNames, previewBranchSlug } from "../src/platform/deployment/naming";
 import { loadQuotaGuardsPolicy } from "../src/platform/observability/alerts";
+import { parseRecoveryTargets } from "../src/platform/recovery/rto-rpo";
 import { loadReleasePolicy } from "../src/platform/release/policy";
 import {
   checkPlannedPhases,
@@ -51,6 +55,7 @@ export interface DeploymentValidationReport {
   readonly quotaGuards: number;
   readonly operationalThresholds: number;
   readonly migrations: number;
+  readonly recoveryTargetEnvironments: number;
 }
 
 /** The full validation core (the CLI and the D-06 validation gate share one path). */
@@ -118,6 +123,29 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     );
   }
 
+  // The D-07 repository-resident recovery targets: bounded, numeric,
+  // present for EVERY environment class of the environments.json
+  // matrix (an environment without recovery objectives is
+  // unrepresentable; aspirational prose is unrepresentable).
+  let recoveryTargetCount = 0;
+  try {
+    const source = readFileSync(
+      resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"),
+      "utf8",
+    );
+    const targets = parseRecoveryTargets(source);
+    recoveryTargetCount = Object.keys(targets.targets).length;
+    for (const environment of manifest.environments) {
+      if (targets.targets[environment.id] === undefined) {
+        problems.push(
+          `recovery-targets.json: no recovery target defined for environment "${environment.id}" (every environment class needs measured objectives)`,
+        );
+      }
+    }
+  } catch (error) {
+    problems.push(`recovery-targets.json: ${(error as Error).message}`);
+  }
+
   return {
     valid: problems.length === 0,
     problems,
@@ -130,6 +158,7 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     quotaGuards: quotaGuardCount,
     operationalThresholds: operationalThresholdCount,
     migrations: shipped.length,
+    recoveryTargetEnvironments: recoveryTargetCount,
   };
 }
 

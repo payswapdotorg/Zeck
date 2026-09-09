@@ -284,6 +284,11 @@ export interface WorkerFabricWorld {
     readonly sleep?: (ms: number) => Promise<void>;
     /** The D-06 bounded telemetry seam (observation only). */
     readonly telemetry?: TelemetrySink;
+    /**
+     * Additional bounded registration metadata (D-07 drills label
+     * workers with a region for evacuation selection).
+     */
+    readonly metadata?: Readonly<Record<string, unknown>>;
   }) => Promise<ExecutionWorkerFabric>;
   /** The ledger events of one execution (provenance proofs). */
   eventsOf: (executionId: string) => Promise<readonly { readonly kind: string }[]>;
@@ -493,6 +498,11 @@ export async function seedWorkerFabricWorld(
     readonly policy?: Partial<WorkerFabricPolicy>;
     readonly sleep?: (ms: number) => Promise<void>;
     readonly telemetry?: TelemetrySink;
+    /**
+     * Additional bounded registration metadata (D-07 drills label
+     * workers with a region for evacuation selection).
+     */
+    readonly metadata?: Readonly<Record<string, unknown>>;
   }): Promise<ExecutionWorkerFabric> => {
     const fabricPolicy: WorkerFabricPolicy = { ...policy, ...(options?.policy ?? {}) };
     const workerId = options?.workerId ?? generateId();
@@ -535,7 +545,7 @@ export async function seedWorkerFabricWorld(
         kind: options?.kind ?? "first-party",
         ...(options?.runnerId === undefined ? {} : { runnerId: options.runnerId }),
         declaredConcurrency: options?.declaredConcurrency ?? 4,
-        metadata: { world: "worker-fabric" },
+        metadata: { world: "worker-fabric", ...(options?.metadata ?? {}) },
       },
     );
     await fabric.register();
