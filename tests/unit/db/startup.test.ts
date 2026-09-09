@@ -59,26 +59,30 @@ function fakePort(responses: {
 }
 
 describe("startup validation (fake port)", () => {
-  test("the shipped migration set is the repository's 28-file deterministic set", () => {
+  test("the shipped migration set is the repository's 29-file deterministic set", () => {
     const migrations = shippedMigrations();
     // 24 files through WORK-043 (0015 burned) + 0026_queue_transport
     // (WORK-044 / D-03: the queue_transport correlation schema) +
     // 0027_workflow_orchestration (WORK-045 / D-04: the durable
     // orchestration correlation schema) + 0028_compute_worker_fabric
     // (WORK-046 / D-05: the compute_plane worker coordination schema)
-    // + 0029_release_control (WORK-047 / D-06: the release ledger).
-    expect(migrations.length).toBe(28);
+    // + 0029_release_control (WORK-047 / D-06: the release ledger)
+    // + 0030_execution_ir_decision_records (WORK-049 / E1.1: the
+    // append-only optimization decision-record evidence schema).
+    expect(migrations.length).toBe(29);
     expect(migrations[0]?.version).toBe(1);
-    expect(migrations[27]?.version).toBe(29);
+    expect(migrations[28]?.version).toBe(30);
     // Versions are strictly ascending with the burned 0015 gap.
     const versions = migrations.map((file) => file.version);
     expect(new Set(versions).size).toBe(versions.length);
     expect(versions).not.toContain(15);
   });
 
-  test("authoritativeSchemas derives the 20-schema compatibility surface from the migration SQL", () => {
+  test("authoritativeSchemas derives the 21-schema compatibility surface from the migration SQL", () => {
     const schemas = authoritativeSchemas(shippedMigrations());
-    expect(schemas).toHaveLength(20);
+    expect(schemas).toHaveLength(21);
+    // The E1.1 execution-ir evidence schema (WORK-049).
+    expect(schemas).toContain("execution_ir");
     expect(schemas).toContain("platform");
     expect(schemas).toContain("identity");
     expect(schemas).toContain("deployments");
