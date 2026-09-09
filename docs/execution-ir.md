@@ -138,10 +138,13 @@ basis (`identity` | `representation-substitution` — closed vocabulary) and pro
 `0030_execution_ir_decision_records`, schema `execution_ir`):
 
 - **append-only** — a database trigger physically rejects UPDATE/DELETE;
-- **idempotent** — appending the same `decisionId` with the same `recordDigest` is a
-  bounded no-op (`appended: false`, replayed);
+- **race-safe idempotent** — the insert uses `ON CONFLICT (application_id, decision_id)
+  DO NOTHING`; appending the same `decisionId` with the same `recordDigest` is a
+  bounded no-op (`replayed: true`). Concurrent identical appends are
+  serialized by the unique index: exactly one inserts, the rest replay against the
+  durable winner (proven N=8 over real PostgreSQL);
 - **conflict-typed** — the same `decisionId` with different content is a
-  `DecisionIdentityConflictError`;
+  `DecisionIdentityConflictError`, including when discovered after a lost insert race;
 - **tenant-scoped** — composite FKs to applications and executions; cross-application
   reads return nothing;
 - **read-validated** — every row read back is re-validated; tampered or foreign rows are
