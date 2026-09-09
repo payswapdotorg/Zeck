@@ -1174,7 +1174,7 @@
     {
       "id": "WORK-049",
       "title": "Execution IR and outcome-economics foundation",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-048"
       ],
@@ -1188,6 +1188,31 @@
         "outcomeEconomics": true,
         "decisionEvidence": true,
         "issue": 15
+      },
+      "mergedAs": {
+        "pr": 16,
+        "mergeCommit": "93ea53c0fb6b8f661bbce0787fdbef4b6e3d1593",
+        "implementationHead": "bca6db3a38557333faf720221ed23429cf154eb8",
+        "finalBranchHead": "bca6db3a38557333faf720221ed23429cf154eb8",
+        "baseRevision": "b946ade7660cf431e8ed08490769743379546622"
+      }
+    },
+    {
+      "id": "WORK-050",
+      "title": "Deterministic Execution Compiler",
+      "status": "pending",
+      "dependencies": [
+        "WORK-049"
+      ],
+      "surfaces": {
+        "modules": [
+          "executions",
+          "planning"
+        ],
+        "executionCompiler": true,
+        "semanticsPreserving": true,
+        "decisionEvidence": true,
+        "issue": 17
       }
     }
   ],
