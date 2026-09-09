@@ -21,7 +21,10 @@
  *   below the continuation's) OR (the continuation is below the floor
  *   — quality-preserving economics: a degraded continuation is never
  *   preferred over a sufficient fresh start) ]
- *   — while respecting hard budget/latency ceilings on both sides.
+ *   — while respecting hard budget/latency/reliability ceilings and
+ *   floors on both paths (the SAME per-candidate admissibility every
+ *   other model-economics selection runs through — the hook is never
+ *   a weaker gate than the plane it belongs to).
  *
  * Equal expected costs CONTINUE (the default — no churn without
  * strict economic justification). Both paths below the floor produce
@@ -34,11 +37,10 @@
 
 import type { OptimizationConstraint } from "../execution-ir/constraints";
 import type { CostClaim } from "../execution-ir/cost-model";
-import { evaluateCandidate } from "../execution-ir/cost-model";
 import type { CandidateAdmissibility, GoverningFacts } from "./admissibility";
-import { governingFacts } from "./admissibility";
+import { evaluateAdmissibility, governingFacts } from "./admissibility";
 import type { QualityFacts } from "./vocabulary";
-import { reject, validateQualityFacts } from "./vocabulary";
+import { claimOf, validateQualityFacts } from "./vocabulary";
 
 // ---------------------------------------------------------------------------
 // The hook input and result (typed, bounded)
@@ -67,12 +69,18 @@ export interface FreshEscalationInput {
   readonly constraints: readonly OptimizationConstraint[];
 }
 
+/** The recorded candidate identity of the continuation path. */
+export const CONTINUATION_PATH_CANDIDATE_ID = "continue-current-context";
+
+/** The recorded candidate identity of the fresh-context escalation path. */
+export const ESCALATION_PATH_CANDIDATE_ID = "escalate-fresh-context";
+
 /** The typed comparison evidence of an escalation decision. */
 export interface FreshEscalationComparison {
-  /** The continuation path's evaluation (against the floor). */
-  readonly continuation: CandidateAdmissibility["evaluation"];
-  /** The fresh-context path's evaluation (against the floor). */
-  readonly freshContext: CandidateAdmissibility["evaluation"];
+  /** The continuation path's verdict (against the governing facts). */
+  readonly continuation: CandidateAdmissibility;
+  /** The fresh-context path's verdict (against the governing facts). */
+  readonly freshContext: CandidateAdmissibility;
   /** The signed expected-cost delta: continuation − fresh (micro-USD). */
   readonly continuationPremiumMicroUsd: string;
 }
@@ -99,18 +107,11 @@ export interface FreshEscalationDecision {
 
 /** The frozen basis statement of every fresh-escalation decision. */
 export const FRESH_ESCALATION_DECISION_BASIS =
-  "escalate-iff-fresh-meets-floor-and-is-strictly-cheaper-or-continuation-below-floor;hard-ceilings-on-both-paths;equal-costs-continue;record-only";
+  "escalate-iff-fresh-meets-floor-and-is-strictly-cheaper-or-continuation-below-floor;hard-floors-and-ceilings-on-both-paths;equal-costs-continue;record-only";
 
 // ---------------------------------------------------------------------------
 // The hook (pure, deterministic, total)
 // ---------------------------------------------------------------------------
-
-function claimOf(value: unknown, what: string): CostClaim {
-  if (typeof value !== "object" || value === null) {
-    reject("escalation-shape", `${what} must be a cost claim object`);
-  }
-  return value as CostClaim;
-}
 
 /**
  * Decide whether escalation-to-fresh-context is economically
@@ -124,56 +125,42 @@ export function decideFreshEscalation(input: FreshEscalationInput): FreshEscalat
   const freshContext = claimOf(input.freshContext, "the fresh-context claim");
   const facts = governingFacts(qualityFacts, input.constraints);
 
-  // Evaluate both paths against the inviolable floor through the
-  // foundation's own machinery (expected successful-resolution cost).
-  const continuationEvaluation = evaluateCandidate(
+  // Both paths run through the plane's SHARED per-candidate
+  // admissibility (quality floors — hard and assurance —, reliability
+  // floors, budget/latency ceilings): the escalation hook is never a
+  // weaker gate than every other selection in this plane.
+  const continuationVerdict = evaluateAdmissibility(
     {
-      candidateId: "continue-current-context",
+      candidateId: CONTINUATION_PATH_CANDIDATE_ID,
       representationClass: "sufficient-model",
       claim: continuation,
     },
-    facts.qualityFloor,
+    facts,
   );
-  const freshEvaluation = evaluateCandidate(
+  const freshVerdict = evaluateAdmissibility(
     {
-      candidateId: "escalate-fresh-context",
+      candidateId: ESCALATION_PATH_CANDIDATE_ID,
       representationClass: "sufficient-model",
       claim: freshContext,
     },
-    facts.qualityFloor,
+    facts,
   );
 
-  // Hard ceilings on both paths (budget/latency): a path violating a
-  // hard ceiling is inadmissible exactly like any candidate.
-  const ceilingOk = (claim: CostClaim): boolean => {
-    for (const ceiling of facts.budgetCeilingsMicroUsd) {
-      if (BigInt(claim.expectedCostMicroUsd) > BigInt(ceiling)) {
-        return false;
-      }
-    }
-    for (const ceiling of facts.latencyCeilingsMs) {
-      if (claim.expectedLatencyMs > ceiling) {
-        return false;
-      }
-    }
-    return true;
-  };
-  const continuationAdmissible = continuationEvaluation.valid && ceilingOk(continuation);
-  const freshAdmissible = freshEvaluation.valid && ceilingOk(freshContext);
-
-  const continuationCost = BigInt(continuationEvaluation.expectedSuccessfulResolutionCostMicroUsd);
-  const freshCost = BigInt(freshEvaluation.expectedSuccessfulResolutionCostMicroUsd);
+  const continuationCost = BigInt(
+    continuationVerdict.evaluation.expectedSuccessfulResolutionCostMicroUsd,
+  );
+  const freshCost = BigInt(freshVerdict.evaluation.expectedSuccessfulResolutionCostMicroUsd);
 
   const kind: FreshEscalationDecision["kind"] = (() => {
-    if (!continuationAdmissible && !freshAdmissible) {
+    if (!continuationVerdict.admissible && !freshVerdict.admissible) {
       return "no-admissible-candidate" as const;
     }
-    if (!continuationAdmissible) {
-      // The continuation is below the floor / over a ceiling and the
+    if (!continuationVerdict.admissible) {
+      // The continuation is below a floor / over a ceiling and the
       // fresh path is sufficient: escalate (quality-preserving).
       return "escalate-fresh-context" as const;
     }
-    if (!freshAdmissible) {
+    if (!freshVerdict.admissible) {
       // Only the continuation is sufficient: continue.
       return "continue-current-context" as const;
     }
@@ -186,8 +173,8 @@ export function decideFreshEscalation(input: FreshEscalationInput): FreshEscalat
   return {
     kind,
     comparison: {
-      continuation: continuationEvaluation,
-      freshContext: freshEvaluation,
+      continuation: continuationVerdict,
+      freshContext: freshVerdict,
       continuationPremiumMicroUsd: (continuationCost - freshCost).toString(),
     },
     facts,
