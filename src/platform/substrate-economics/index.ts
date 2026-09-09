@@ -28,3 +28,4 @@
  */
 export * from "./catalog";
 export * from "./facts";
+export * from "./lifecycle";
