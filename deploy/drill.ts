@@ -56,6 +56,7 @@ import { createLeaseEvacuationSeam } from "../src/modules/executions/adapters/ev
 import { createExecutionRecoveryInvariants } from "../src/modules/executions/adapters/recovery-invariants";
 import { SqlLongRunningExecutionStore } from "../src/modules/executions/adapters/sql-long-running-store";
 import { EXECUTION_STATES } from "../src/modules/executions/public";
+import { loadWorkerPolicy } from "../src/platform/compute/config";
 import { SqlComputeWorkerStore } from "../src/platform/compute/pg-store";
 import {
   createLogicalBackup,
@@ -616,11 +617,14 @@ async function main(): Promise<void> {
         "retire/drain the region's workers, abandon live claims, force-release their leases (the fence)",
       action: async () => {
         await withAuthorityPort(authorityUrl, async (port) => {
+          // The repository-validated worker policy defaults (bounded
+          // by the platform's own WORKER_POLICY_BOUNDS).
+          const policy = loadWorkerPolicy({});
           const store = new SqlComputeWorkerStore({
             db: port,
-            maxClaimAttempts: 3,
-            defaultEnvironmentQuota: 16,
-            claimRetentionMs: 60_000,
+            maxClaimAttempts: policy.maxClaimAttempts,
+            defaultEnvironmentQuota: policy.defaultEnvironmentQuota,
+            claimRetentionMs: policy.claimRetentionMs,
             generateId: () => randomUUID(),
           });
           const leaseStore = new SqlLongRunningExecutionStore(port);
