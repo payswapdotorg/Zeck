@@ -52,8 +52,8 @@ import {
   evaluateFold,
   FOLDED_CONSTANT_KEY,
   indexVariant,
-  isProvablyDead,
   parseFoldExpression,
+  provablyDeadSteps,
   type VariantGraph,
 } from "./semantics";
 import type { IrVariantStep } from "./variant";
@@ -110,9 +110,22 @@ function stableIdFragment(seed: string, digest: IrDigestPort, taken: ReadonlySet
   return `zc-${digest.sha256Hex(seed).slice(0, 24)}`;
 }
 
-/** Does this step's config already carry the compiler annotation key? */
-function hasAnnotation(step: IrVariantStep): boolean {
-  return step.config !== undefined && Object.hasOwn(step.config, COMPILER_ANNOTATION_KEY);
+/**
+ * Does this step's config already carry THIS pass's compiler
+ * annotation? (The per-pass idempotence guard — different passes may
+ * stack annotations under the reserved key; a pass never re-applies
+ * over its own. A plan-authored value under the reserved key is
+ * equally rejected: the compiler never clobbers plan-owned config.)
+ */
+function hasAnnotation(step: IrVariantStep, passId: CompilerPassId): boolean {
+  if (step.config === undefined || !Object.hasOwn(step.config, COMPILER_ANNOTATION_KEY)) {
+    return false;
+  }
+  const annotationMap = step.config[COMPILER_ANNOTATION_KEY];
+  if (typeof annotationMap !== "object" || annotationMap === null || Array.isArray(annotationMap)) {
+    return true;
+  }
+  return Object.hasOwn(annotationMap as Record<string, unknown>, passId);
 }
 
 /** Annotate a step's config under the reserved key (order-stable). */
@@ -299,16 +312,33 @@ export function applyConstantFolding(input: PassInput): PassOutcome {
 
 /**
  * Dead-step elimination: removes exactly the steps that are provably
- * pure, deterministic and non-observable (no path to any sink,
- * external effect, human interaction or verification point). Anything
- * else is a typed per-site rejection.
+ * pure, deterministic, unanchored and non-observable under the GOVERNING
+ * observability contract — the constraint-conditioned reading (pure
+ * unanchored terminal values are non-observable only when the governing
+ * constraints carry the verification-anchor completion binding; without
+ * it, terminal outputs are observable and the pass is a conservative
+ * no-op). Anything not eliminable is a typed per-site rejection. The
+ * elimination NEVER empties the plan (a would-empty elimination is
+ * rejected as inadmissible — the variant requires ≥1 step).
  */
 export function applyDeadStepElimination(input: PassInput): PassOutcome {
-  const { variant, digest, traceDigest } = input;
+  const { variant, constraints, digest, traceDigest } = input;
+  // The governing observability contract: is the frozen verification
+  // completion binding ACTIVE in the governing constraint set? (A pure
+  // function of the constraints — the pass's precondition input.)
+  const verificationAnchorRequired = constraints.some(
+    (constraint) =>
+      constraint.kind === "verification" &&
+      constraint.enforcement === "hard" &&
+      (constraint.payload as { requiresVerificationAnchor?: boolean })
+        .requiresVerificationAnchor === true,
+  );
   const graph = indexVariant(variant);
   const rejections: SiteRejection[] = [];
   const survivors: VariantStepMaterial[] = [];
   let applied = 0;
+  // The provably-dead set under the governing contract (computed once).
+  const dead = provablyDeadSteps(graph, verificationAnchorRequired);
 
   for (const step of variant.steps) {
     // An elimination candidate: pure + deterministic + unanchored.
@@ -330,7 +360,7 @@ export function applyDeadStepElimination(input: PassInput): PassOutcome {
       survivors.push(step);
       continue;
     }
-    if (isProvablyDead(step.id, graph)) {
+    if (dead.has(step.id)) {
       applied += 1;
       continue;
     }
@@ -338,10 +368,36 @@ export function applyDeadStepElimination(input: PassInput): PassOutcome {
       check: "dead-step-reachable",
       stepId: step.id,
       detail: siteDetail(
-        "the step is itself observable (terminal) or contributes transitively to an observable point",
+        verificationAnchorRequired
+          ? "the step is itself observable (terminal output or verification/effect/human point) or contributes transitively to one"
+          : "terminal outputs are observable while no verification-anchor binding is active (the conservative reading)",
       ),
     });
     survivors.push(step);
+  }
+
+  // The would-empty guard: an elimination that removes EVERY step is
+  // inadmissible (the variant requires at least one step — and a plan
+  // whose every observable point is eliminable is constraint-inadmissible
+  // anyway; the decision builder owns that rejection).
+  if (applied > 0 && survivors.length === 0) {
+    return {
+      passId: "dead-step-elimination",
+      status: "noop",
+      output: variant,
+      sitesConsidered: variant.steps.length,
+      sitesApplied: 0,
+      rejections: [
+        ...rejections,
+        ...variant.steps.map((step) => ({
+          check: "dead-step-side-effecting" as const,
+          stepId: step.id,
+          detail: siteDetail(
+            "the elimination would empty the plan (inadmissible — the variant requires at least one observable step)",
+          ),
+        })),
+      ],
+    };
   }
 
   if (applied === 0) {
@@ -455,7 +511,7 @@ export function applyCommonSubexpressionReuse(input: PassInput): PassOutcome {
       cls: step.stepClass,
       cap: step.capabilityId ?? null,
       route: step.routeRef ?? null,
-      cfg: stripCompilerKeys(step.config),
+      ...cfgFragment(step.config),
       preds: byPredKey.get(step.id) ?? [],
     });
     const bucket = classes.get(key) ?? [];
@@ -567,6 +623,14 @@ function stripCompilerKeys(
     }
   }
   return out;
+}
+
+/** The canonical config fragment for grouping keys (never `undefined`-valued). */
+function cfgFragment(
+  config: Readonly<Record<string, unknown>> | undefined,
+): Record<string, unknown> {
+  const stripped = stripCompilerKeys(config);
+  return stripped === undefined ? {} : { cfg: stripped };
 }
 
 // ---------------------------------------------------------------------------
@@ -707,7 +771,7 @@ export function applyRetryNormalization(input: PassInput): PassOutcome {
       steps.push(step);
       continue;
     }
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "retry-normalization")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -847,7 +911,7 @@ export function applySafeParallelization(input: PassInput): PassOutcome {
   // when the members are pairwise unreachable.
   const groups = new Map<string, IrVariantStep[]>();
   for (const step of variant.steps) {
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "safe-parallelization")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -869,7 +933,7 @@ export function applySafeParallelization(input: PassInput): PassOutcome {
       cls: step.stepClass,
       cap: step.capabilityId ?? null,
       route: step.routeRef ?? null,
-      cfg: stripCompilerKeys(step.config),
+      ...cfgFragment(step.config),
     });
     const bucket = groups.get(key) ?? [];
     bucket.push(step);
@@ -979,7 +1043,7 @@ export function applyBatching(input: PassInput): PassOutcome {
 
   const groups = new Map<string, IrVariantStep[]>();
   for (const step of variant.steps) {
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "batching")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -1008,7 +1072,7 @@ export function applyBatching(input: PassInput): PassOutcome {
     const key = canonicalJson({
       cls: step.stepClass,
       cap: step.capabilityId ?? null,
-      cfg: stripCompilerKeys(step.config),
+      ...cfgFragment(step.config),
     });
     const bucket = groups.get(key) ?? [];
     bucket.push(step);
@@ -1138,7 +1202,7 @@ export function applyMemoizationHooks(input: PassInput): PassOutcome {
       steps.push(step);
       continue;
     }
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "memoization-hooks")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -1152,9 +1216,11 @@ export function applyMemoizationHooks(input: PassInput): PassOutcome {
       canonicalJson({
         step: {
           cls: step.stepClass,
-          cap: step.capabilityId ?? null,
-          route: step.routeRef ?? null,
-          cfg: stripCompilerKeys(step.config),
+          ...(step.capabilityId === undefined ? {} : { capabilityId: step.capabilityId }),
+          ...(step.routeRef === undefined
+            ? {}
+            : { route: { provider: step.routeRef.provider, model: step.routeRef.model } }),
+          ...cfgFragment(step.config),
         },
         preds: predecessors,
         source: variant.sourceIrId,
@@ -1249,7 +1315,7 @@ export function applySubgraphDecomposition(input: PassInput): PassOutcome {
 
   const membership = new Map<string, "deterministic" | "probabilistic">();
   for (const step of variant.steps) {
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "subgraph-decomposition")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -1362,7 +1428,7 @@ export function applyResultShaping(input: PassInput): PassOutcome {
       steps.push(step);
       continue;
     }
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "result-shaping")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,
@@ -1499,7 +1565,7 @@ export function applyRepresentationLadderHooks(
       steps.push(step);
       continue;
     }
-    if (hasAnnotation(step)) {
+    if (hasAnnotation(step, "representation-ladder-hooks")) {
       rejections.push({
         check: "annotation-already-present",
         stepId: step.id,

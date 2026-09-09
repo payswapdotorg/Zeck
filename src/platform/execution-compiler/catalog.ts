@@ -41,6 +41,9 @@ import type { CostClaim } from "../execution-ir/cost-model";
 import { validateCostClaim } from "../execution-ir/cost-model";
 import type { ExecutionIr, IrDigestPort } from "../execution-ir/ir";
 
+// CostModelError is intentionally not re-exported: the compiler wraps
+// every foundation rejection into its own closed error vocabulary.
+
 // ---------------------------------------------------------------------------
 // The transformation catalog (closed)
 // ---------------------------------------------------------------------------
@@ -367,8 +370,21 @@ export function validatePipelineConfig(config: CompilerPipelineConfig): void {
           },
         );
       }
-      // Bounded + attributed or the claim does not exist (WORK-049 rule).
-      validateCostClaim(candidate.claim);
+      // Bounded + attributed or the claim does not exist (WORK-049
+      // rule); the foundation's typed rejection is wrapped into the
+      // compiler's closed error vocabulary.
+      try {
+        validateCostClaim(candidate.claim);
+      } catch (error) {
+        throw new CompilerError(
+          "compiler-config",
+          `the ${side} ladder claim is invalid (bounded, attributed or it does not exist)`,
+          {
+            candidateId: bounded(candidate.candidateId),
+            reason: error instanceof Error ? error.message : String(error),
+          },
+        );
+      }
     }
     if (base.candidateId === compiled.candidateId) {
       throw new CompilerError("compiler-config", "ladder candidate ids must be distinct");

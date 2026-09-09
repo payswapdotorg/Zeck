@@ -46,6 +46,7 @@ import type { OptimizationDecisionRecord } from "../execution-ir/decision-record
 import { buildOptimizationDecision } from "../execution-ir/decision-record";
 import type { ExecutionIr, IrDigestPort } from "../execution-ir/ir";
 import type { RepresentationClaims } from "./catalog";
+import { CompilerError } from "./catalog";
 
 const DETAIL_MAX = 500;
 
@@ -145,21 +146,36 @@ export function buildLadderDecision(input: BuildLadderDecisionInput): LadderSele
     ),
   };
 
-  const record = buildOptimizationDecision(
-    {
-      applicationId: input.applicationId,
-      tenantId: input.tenantId,
-      ...(input.executionId === undefined ? {} : { executionId: input.executionId }),
-      ir: input.ir,
-      constraints,
-      candidates: [baseCandidate, compiledCandidate],
-      qualityThreshold: input.qualityThreshold,
-      selectedCandidateId: selected.candidateId,
-      transformationBasis,
-      recordedAt: input.recordedAt,
-    },
-    input.digest,
-  );
+  const record = (() => {
+    try {
+      return buildOptimizationDecision(
+        {
+          applicationId: input.applicationId,
+          tenantId: input.tenantId,
+          ...(input.executionId === undefined ? {} : { executionId: input.executionId }),
+          ir: input.ir,
+          constraints,
+          candidates: [baseCandidate, compiledCandidate],
+          qualityThreshold: input.qualityThreshold,
+          selectedCandidateId: selected.candidateId,
+          transformationBasis,
+          recordedAt: input.recordedAt,
+        },
+        input.digest,
+      );
+    } catch (error) {
+      // The decision record failed its own total validation (hard
+      // constraints, selection coherence, digests): the compiler's
+      // closed error surface, never an unvalidated emission.
+      throw new CompilerError(
+        "decision-invalid",
+        "the representation decision record failed its total validation (never emitted unvalidated)",
+        {
+          reason: error instanceof Error ? error.message : String(error),
+        },
+      );
+    }
+  })();
 
   return {
     kind: "selected",

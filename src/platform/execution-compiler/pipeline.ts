@@ -122,6 +122,16 @@ export function compileExecutionIr(input: CompileExecutionIrInput): CompilationR
   //    plan form is byte-identical to the IR's, so variantPlanId IS
   //    the governed planId: the faithful container proof).
   const inputVariant = variantFromIr(ir, input.digest);
+  // The governing observability contract (the frozen verification
+  // completion binding, as carried by the governing constraint set):
+  // applied IDENTICALLY to every side of every equivalence comparison.
+  const verificationAnchorRequired = constraints.some(
+    (constraint) =>
+      constraint.kind === "verification" &&
+      constraint.enforcement === "hard" &&
+      (constraint.payload as { requiresVerificationAnchor?: boolean })
+        .requiresVerificationAnchor === true,
+  );
 
   // 3. Bounded rounds over the ordered passes.
   const trace: PassApplicationRecord[] = [];
@@ -188,8 +198,14 @@ export function compileExecutionIr(input: CompileExecutionIrInput): CompilationR
           );
         }
         // Semantics-preservation proof: the semantic core digest must
-        // be unchanged by the transformation.
-        const verdict = verifySemanticsPreservation(current, validated, input.digest);
+        // be unchanged by the transformation (under the governing
+        // observability contract — the same flag on both sides).
+        const verdict = verifySemanticsPreservation(
+          current,
+          validated,
+          input.digest,
+          verificationAnchorRequired,
+        );
         if (!verdict.ok) {
           throw new CompilerError(
             "equivalence-violation",
@@ -276,7 +292,12 @@ export function compileExecutionIr(input: CompileExecutionIrInput): CompilationR
 
   // 5. The final equivalence re-verification (belt and braces: the
   //    same proof, once more over the whole compilation).
-  const finalVerdict = verifySemanticsPreservation(inputVariant, current, input.digest);
+  const finalVerdict = verifySemanticsPreservation(
+    inputVariant,
+    current,
+    input.digest,
+    verificationAnchorRequired,
+  );
   if (!finalVerdict.ok) {
     throw new CompilerError(
       "equivalence-violation",

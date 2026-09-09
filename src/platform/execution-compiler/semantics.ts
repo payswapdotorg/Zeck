@@ -263,7 +263,13 @@ export const COMPILER_ANNOTATION_KEY = "execution-compiler";
  */
 export const FOLDED_CONSTANT_KEY = "compiler-folded";
 
-/** Strip exactly the compiler-annotation key from a step config. */
+/** Strip exactly the compiler-annotation key from a step config.
+ *
+ * An annotation-only config (the compiler only ever creates one on a
+ * previously config-less step) strips to `undefined` — the annotated
+ * step's contribution stays EQUAL to the un-annotated one (the
+ * annotation-invariance bridge).
+ */
 export function configSansAnnotations(
   config: Readonly<Record<string, unknown>> | undefined,
 ): Readonly<Record<string, unknown>> | undefined {
@@ -279,7 +285,7 @@ export function configSansAnnotations(
       out[key] = value;
     }
   }
-  return out;
+  return Object.keys(out).length === 0 ? undefined : out;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,8 +370,105 @@ interface CoreBindings {
   readonly sinks: readonly unknown[];
 }
 
+// ---------------------------------------------------------------------------
+// The observability index (the deadness/sink contract)
+// ---------------------------------------------------------------------------
+
+export interface ObservabilityIndex {
+  /** Steps that ARE observable points (verification, effects, anchors,
+   * and — under the INACTIVE binding — every terminal output). */
+  readonly observable: ReadonlySet<string>;
+  /** Steps contributing (directly or transitively) to an observable point. */
+  readonly live: ReadonlySet<string>;
+  /** Non-verify steps with NO non-verify step reachable (verify-transparent
+   * terminals: verification observes values without consuming their
+   * delivery role — the materialization-equivalence invariant). */
+  readonly coreSinks: ReadonlySet<string>;
+}
+
+/**
+ * The observability contract over the variant graph, parameterized by
+ * the governing verification-anchor binding (the frozen completion
+ * binding as carried by the governing constraints):
+ *
+ *  - OBSERVABLE: verify steps, external effects, human interactions,
+ *    strategy-anchored steps, and terminal outputs — EXCEPT pure
+ *    deterministic unanchored terminal values while the anchor binding
+ *    is ACTIVE (an unanchored pure value cannot complete a governed
+ *    plan whose completion requires verification evidence);
+ *  - LIVE: observable steps plus every step with a live successor (a
+ *    pure function of the graph — the exact dead-step complement);
+ *  - CORE-SINK: non-verify steps whose entire forward closure is
+ *    verify-only (the delivered value passes through verification
+ *    observation unchanged).
+ */
+export function observabilityIndex(
+  graph: VariantGraph,
+  verificationAnchorRequired: boolean,
+): ObservabilityIndex {
+  const observable = new Set<string>();
+  for (const step of graph.stepsById.values()) {
+    const terminal = (graph.successors.get(step.id)?.length ?? 0) === 0;
+    const isObservable =
+      step.stepClass === "verify" ||
+      OBSERVABLE_EFFECT_CLASSES.has(step.sideEffectClass) ||
+      step.verificationStrategy !== undefined ||
+      (terminal &&
+        (!verificationAnchorRequired ||
+          step.sideEffectClass !== "pure" ||
+          step.computationType !== "deterministic"));
+    if (isObservable) {
+      observable.add(step.id);
+    }
+  }
+  // LIVE: reverse-reachability from the observable set.
+  const live = new Set<string>(observable);
+  const queue = [...observable];
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    for (const pred of graph.predecessors.get(current) ?? []) {
+      if (!live.has(pred.id)) {
+        live.add(pred.id);
+        queue.push(pred.id);
+      }
+    }
+  }
+  // CORE-SINK: non-verify steps whose forward closure is verify-only.
+  const coreSinks = new Set<string>();
+  for (const step of graph.stepsById.values()) {
+    if (step.stepClass === "verify") {
+      continue;
+    }
+    let sawNonVerify = false;
+    const seen = new Set<string>();
+    const queue2 = [...(graph.successors.get(step.id) ?? [])];
+    while (queue2.length > 0 && !sawNonVerify) {
+      const current = queue2.shift() as IrVariantStep;
+      if (seen.has(current.id)) {
+        continue;
+      }
+      seen.add(current.id);
+      if (current.stepClass !== "verify") {
+        sawNonVerify = true;
+        break;
+      }
+      for (const next of graph.successors.get(current.id) ?? []) {
+        queue2.push(next);
+      }
+    }
+    if (!sawNonVerify) {
+      coreSinks.add(step.id);
+    }
+  }
+  return { observable, live, coreSinks };
+}
+
 /** Compute the anchor/effect/sink bindings of the variant's core. */
-function coreBindings(variant: ExecutionIrVariant, graph: VariantGraph): CoreBindings {
+function coreBindings(
+  variant: ExecutionIrVariant,
+  graph: VariantGraph,
+  verificationAnchorRequired: boolean,
+): CoreBindings {
   const anchors: unknown[] = [];
   const effects: unknown[] = [];
   const sinks: unknown[] = [];
@@ -373,11 +476,11 @@ function coreBindings(variant: ExecutionIrVariant, graph: VariantGraph): CoreBin
   const visiting = new Set<string>();
   const contribution = (step: IrVariantStep): unknown =>
     contributionWithGraph(step, graph, memo, visiting);
+  const index = observabilityIndex(graph, verificationAnchorRequired);
 
   for (const step of variant.steps) {
     const isVerify = step.stepClass === "verify";
     const isEffect = OBSERVABLE_EFFECT_CLASSES.has(step.sideEffectClass);
-    const isSink = graph.successors.get(step.id)?.length === 0;
 
     // Verification anchors: the compiler treats verification as opaque
     // anchor evidence (VERIFICATION-SEPARATION: strategies carried
@@ -407,7 +510,10 @@ function coreBindings(variant: ExecutionIrVariant, graph: VariantGraph): CoreBin
     if (isEffect) {
       effects.push({ effect: contribution(step), stepId: step.id });
     }
-    if (isSink && !isVerify && !isEffect) {
+    // Delivered outputs: LIVE core-sinks (verify-transparent terminals)
+    // that are not effects. A ¬live core-sink is exactly the eliminable
+    // class — excluded by the live check, not by a special case.
+    if (!isVerify && !isEffect && index.coreSinks.has(step.id) && index.live.has(step.id)) {
       sinks.push({ output: contribution(step) });
     }
   }
@@ -446,7 +552,10 @@ function contributionWithGraph(
       step.routeRef === undefined &&
       step.verificationStrategy === undefined
     ) {
-      const expression = parseFoldExpression(step.config);
+      // Parse the fold expression over the ANNOTATION-STRIPPED config:
+      // an annotated step keeps its foldable semantics (the annotation
+      // is compiler metadata, never plan semantics).
+      const expression = parseFoldExpression(configSansAnnotations(step.config));
       if (expression !== null) {
         try {
           const value = evaluateFold(expression.operation, expression.inputs, expression.fields);
@@ -463,6 +572,7 @@ function contributionWithGraph(
     const predecessors = (graph.predecessors.get(step.id) ?? []).map((pred) =>
       contributionWithGraph(pred, graph, memo, visiting),
     );
+    const strippedConfig = configSansAnnotations(step.config);
     const symbolic = {
       step: {
         class: step.stepClass,
@@ -470,7 +580,7 @@ function contributionWithGraph(
         ...(step.routeRef === undefined
           ? {}
           : { route: { provider: step.routeRef.provider, model: step.routeRef.model } }),
-        ...(step.config === undefined ? {} : { config: configSansAnnotations(step.config) }),
+        ...(strippedConfig === undefined ? {} : { config: strippedConfig }),
       },
       preds: predecessors,
     };
@@ -492,10 +602,21 @@ function contributionWithGraph(
  * contributions), and the sink outputs (terminal contributions), each
  * canonically ordered. Compiler annotations are stripped inside every
  * contribution.
+ *
+ * `verificationAnchorRequired` mirrors the governing constraints (the
+ * frozen completion binding): when ACTIVE, pure deterministic
+ * unanchored terminal values are non-observable (dead-step
+ * elimination's eliminable class); when INACTIVE, all terminal outputs
+ * are observable (conservative). The SAME flag is applied to both
+ * sides of every comparison — the parameterization is part of the
+ * semantic contract, never a per-side choice.
  */
-export function semanticCoreForm(variant: ExecutionIrVariant): string {
+export function semanticCoreForm(
+  variant: ExecutionIrVariant,
+  verificationAnchorRequired = false,
+): string {
   const graph = indexVariant(variant);
-  const core = coreBindings(variant, graph);
+  const core = coreBindings(variant, graph, verificationAnchorRequired);
   return canonicalJson({
     coreSchema: 1,
     anchors: core.anchors,
@@ -505,8 +626,12 @@ export function semanticCoreForm(variant: ExecutionIrVariant): string {
 }
 
 /** The semantic core digest (the equivalence invariant). */
-export function semanticCoreDigest(variant: ExecutionIrVariant, digest: IrDigestPort): string {
-  return digest.sha256Hex(semanticCoreForm(variant));
+export function semanticCoreDigest(
+  variant: ExecutionIrVariant,
+  digest: IrDigestPort,
+  verificationAnchorRequired = false,
+): string {
+  return digest.sha256Hex(semanticCoreForm(variant, verificationAnchorRequired));
 }
 
 export interface EquivalenceVerdict {
@@ -519,16 +644,18 @@ export interface EquivalenceVerdict {
  * Prove semantics preservation between the input IR and a compiled
  * variant: the variant must be structurally valid (the caller's
  * invariant validation) and its semantic core digest must EQUAL the
- * input's. Also pins the preserved chain (sourceIrId/sourcePlanId) and
- * the unchanged model-call structure.
+ * input's (under the SAME governing observability contract). Also
+ * pins the preserved chain (sourceIrId/sourcePlanId) and the unchanged
+ * plan frame.
  */
 export function verifySemanticsPreservation(
   input: ExecutionIrVariant,
   output: ExecutionIrVariant,
   digest: IrDigestPort,
+  verificationAnchorRequired = false,
 ): EquivalenceVerdict {
-  const inputCoreDigest = semanticCoreDigest(input, digest);
-  const outputCoreDigest = semanticCoreDigest(output, digest);
+  const inputCoreDigest = semanticCoreDigest(input, digest, verificationAnchorRequired);
+  const outputCoreDigest = semanticCoreDigest(output, digest, verificationAnchorRequired);
   const chainPreserved =
     output.sourceIrId === input.sourceIrId &&
     output.sourcePlanId === input.sourcePlanId &&
@@ -546,48 +673,70 @@ export function verifySemanticsPreservation(
 // ---------------------------------------------------------------------------
 
 /**
- * Is this step provably non-observable — no path to any sink, external
- * effect, human interaction or verification point — AND pure (its
- * removal removes no observable semantics)? This is the exact
- * precondition under which dead-step elimination may remove a step.
+ * Is this step provably non-observable — contributing to NO observable
+ * point — under the governing observability contract? This is the exact
+ * precondition under which dead-step elimination may remove a step:
+ *
+ *  pure + deterministic + unanchored + non-verify + NOT LIVE,
+ *
+ * where ¬live means neither the step itself nor any transitive successor
+ * is an observable point (verification, external effect, human
+ * interaction, anchored step, or — under the INACTIVE binding — a
+ * terminal output). When the binding is INACTIVE, terminal outputs are
+ * observable, everything in a DAG is live, and nothing is ever provably
+ * dead — the conservative reading.
  */
-export function isProvablyDead(stepId: string, graph: VariantGraph): boolean {
+export function isProvablyDead(
+  stepId: string,
+  graph: VariantGraph,
+  verificationAnchorRequired = false,
+): boolean {
+  if (!verificationAnchorRequired) {
+    return false;
+  }
   const step = graph.stepsById.get(stepId);
   if (step === undefined) {
     return false;
   }
-  // Only pure steps may ever be eliminated (side effects, verification
-  // observations and human interactions are observable regardless of
-  // dataflow; probabilistic steps are never eliminated — their
-  // sampling is not provably non-observable under the conservative
-  // reading).
+  // Only pure deterministic unanchored non-verify steps may ever be
+  // eliminated (side effects, verification observations, human
+  // interactions, probabilistic sampling and anchored values are
+  // observable regardless of dataflow).
   if (step.sideEffectClass !== "pure" || step.computationType !== "deterministic") {
     return false;
   }
-  if (step.verificationStrategy !== undefined) {
+  if (step.verificationStrategy !== undefined || step.stepClass === "verify") {
     return false;
   }
-  // Reachability: does any observable step depend transitively on this
-  // step? (BFS over successors.)
-  const isObservable = (candidate: IrVariantStep): boolean =>
-    graph.successors.get(candidate.id)?.length === 0 ||
-    OBSERVABLE_EFFECT_CLASSES.has(candidate.sideEffectClass) ||
-    candidate.stepClass === "verify";
-  const queue = [...(graph.successors.get(stepId) ?? [])];
-  const seen = new Set<string>(queue.map((next) => next.id));
-  while (queue.length > 0) {
-    const current = queue.shift() as IrVariantStep;
-    if (isObservable(current)) {
-      return false;
-    }
-    for (const next of graph.successors.get(current.id) ?? []) {
-      if (!seen.has(next.id)) {
-        seen.add(next.id);
-        queue.push(next);
-      }
+  const index = observabilityIndex(graph, verificationAnchorRequired);
+  return !index.live.has(stepId);
+}
+
+/**
+ * The full provably-dead step-id set of a graph under the observability
+ * contract (computed once — the batch form of `isProvablyDead`).
+ */
+export function provablyDeadSteps(
+  graph: VariantGraph,
+  verificationAnchorRequired = false,
+): ReadonlySet<string> {
+  if (!verificationAnchorRequired) {
+    return new Set<string>();
+  }
+  const index = observabilityIndex(graph, verificationAnchorRequired);
+  const dead = new Set<string>();
+  for (const step of graph.stepsById.values()) {
+    if (
+      step.sideEffectClass === "pure" &&
+      step.computationType === "deterministic" &&
+      step.verificationStrategy === undefined &&
+      step.stepClass !== "verify" &&
+      !index.live.has(step.id)
+    ) {
+      dead.add(step.id);
     }
   }
-  return true;
+  return dead;
 }
 
 /**
