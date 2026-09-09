@@ -4,10 +4,14 @@
   "governingArchitectureVersion": "v1.0",
   "eligible": [
     "WORK-051",
-    "WORK-052",
-    "WORK-053"
+    "WORK-053",
+    "WORK-054"
   ],
-  "inFlight": [],
+  "inFlight": [
+    "WORK-051",
+    "WORK-053",
+    "WORK-054"
+  ],
   "blocked": [],
   "rule": "eligible means every dependency is complete, the item is not in flight elsewhere, declared surfaces do not conflict with another in-flight item, and the base revision matches the governance expectation"
 }

@@ -29,9 +29,11 @@ For dispatch/review/orchestration behavior also read:
 - E1.1 / WORK-050: COMPLETE — merged as PR #18 (merge commit 3d249a7, implementation head fc9e564, dispatch base f8b77f2).
 - E1.1 / WORK-051: authorized through Issue #19 (wave).
 - E1.1 / WORK-052: authorized through Issue #20 (wave).
+- E1.1 / WORK-052: COMPLETE — merged as PR #22 (merge commit 9861a84, implementation head a4d3a97, dispatch base 0a1322b).
 - E1.1 / WORK-053: authorized through Issue #21 (wave; selected over WORK-054 by live surface/conflict analysis).
+- E1.1 / WORK-054: authorized through Issue #23 (dispatched into the slot freed by WORK-052).
 
-Current frontier is `eligible=["WORK-051", "WORK-052", "WORK-053"]`, `inFlight=["WORK-051", "WORK-052", "WORK-053"]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-051", "WORK-053", "WORK-054"]`, `inFlight=["WORK-051", "WORK-053", "WORK-054"]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -87,14 +89,14 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-D-07, E1.1 stage 1 and stage 2 are complete. The E1.1 parallel wave {WORK-051, WORK-052, WORK-053} is authorized and dispatched (Issues #19/#20/#21). WORK-054 (substrate/runtime adapters) is charter-listed but NOT yet authorized; it dispatches when a wave slot frees — its provider-SDK-table and compute-plane footprints overlap WORK-051's sandbox boundary pins, so it must not run beside WORK-051.
+D-07, E1.1 stages 1 and 2 are complete; wave members WORK-052 merged. In flight: WORK-051 (tool-surface plane) and WORK-053 (model-economics plane), both based at 0a1322b; WORK-054 (substrate/runtime adapters) authorized and dispatched at the post-WORK-052 head. The provider-SDK allowlist edit is WORK-054's only shared-file touch.
 
 Required branches:
-- `work/WORK-051-tool-surface-compiler-programmatic-execution`
-- `work/WORK-052-context-cache-reuse-economics`
-- `work/WORK-053-adaptive-model-economics`
+- `work/WORK-051-tool-surface-compiler-programmatic-execution` (base 0a1322b)
+- `work/WORK-053-adaptive-model-economics` (base 0a1322b)
+- `work/WORK-054-substrate-economics-runtime-adapters` (base 9861a84)
 
-Each wave worker creates its branch at exactly the current canonical `main` head (the WORK-050 merge, 3d249a7) so the base is exact with no stale pre-dispatch documentation. Wave workers are mutually conflict-free by declared surfaces: 051 [tools/sandbox], 052 [executions], 053 [planning].
+Wave siblings are conflict-free by declared surfaces: 051 [tool-surface], 053 [planning/model-economics], 054 [compute/substrate + SDK-allowlist].
 
 ## Recovery sequence
 
