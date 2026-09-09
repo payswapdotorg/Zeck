@@ -1200,7 +1200,7 @@
     {
       "id": "WORK-050",
       "title": "Deterministic Execution Compiler",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-049"
       ],
@@ -1213,6 +1213,63 @@
         "semanticsPreserving": true,
         "decisionEvidence": true,
         "issue": 17
+      },
+      "mergedAs": {
+        "pr": 18,
+        "mergeCommit": "3d249a7fb54e0c7ad8b20435c0bede10f15d440c",
+        "implementationHead": "fc9e564370c61edbb037b185457a1a081ff1f746",
+        "finalBranchHead": "fc9e564370c61edbb037b185457a1a081ff1f746",
+        "baseRevision": "f8b77f2e4446e9aec5431800192d08d1d8dcc5d1"
+      }
+    },
+    {
+      "id": "WORK-051",
+      "title": "Tool Surface Compiler and Programmatic Execution",
+      "status": "pending",
+      "dependencies": [
+        "WORK-050"
+      ],
+      "surfaces": {
+        "modules": [
+          "tools",
+          "sandbox"
+        ],
+        "toolSurface": true,
+        "programmaticExecution": true,
+        "issue": 19
+      }
+    },
+    {
+      "id": "WORK-052",
+      "title": "Context, cache, reuse and duplicate-work economics",
+      "status": "pending",
+      "dependencies": [
+        "WORK-050"
+      ],
+      "surfaces": {
+        "modules": [
+          "executions"
+        ],
+        "contextEconomics": true,
+        "cachePlanning": true,
+        "concurrency": true,
+        "issue": 20
+      }
+    },
+    {
+      "id": "WORK-053",
+      "title": "Adaptive model/reasoning and multi-agent economics",
+      "status": "pending",
+      "dependencies": [
+        "WORK-050"
+      ],
+      "surfaces": {
+        "modules": [
+          "planning"
+        ],
+        "modelEconomics": true,
+        "adaptiveSelection": true,
+        "issue": 21
       }
     }
   ],
