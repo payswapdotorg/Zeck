@@ -265,11 +265,14 @@ export function compareAdmissible(a: CandidateAdmissibility, b: CandidateAdmissi
  * inadmissible after (in input order — their ordering is not a
  * selection fact; their recorded verdicts are). The selected is the
  * first admissible or none (typed outcome, never a below-floor
- * selection).
+ * selection). Generic over the verdict shape so feature-specific
+ * verdicts (routes, efforts, gate modes) flow through unchanged.
  */
-export function orderVerdicts(verdicts: readonly CandidateAdmissibility[]): {
-  ordered: readonly CandidateAdmissibility[];
-  selected: CandidateAdmissibility | null;
+export function orderVerdicts<T extends CandidateAdmissibility>(
+  verdicts: readonly T[],
+): {
+  ordered: readonly T[];
+  selected: T | null;
 } {
   const admissible = verdicts.filter((verdict) => verdict.admissible).sort(compareAdmissible);
   const inadmissible = verdicts.filter((verdict) => !verdict.admissible);
