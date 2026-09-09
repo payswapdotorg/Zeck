@@ -74,7 +74,6 @@ import {
 import {
   canonicalCandidateSetJson,
   offeredModes,
-  type SubstrateDescriptor,
   validateSubstrateCandidateSet,
 } from "./facts";
 import {
