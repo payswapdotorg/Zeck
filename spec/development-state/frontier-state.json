@@ -3,7 +3,9 @@
   "status": "active",
   "governingArchitectureVersion": "v1.0",
   "eligible": [
-    "WORK-050"
+    "WORK-051",
+    "WORK-052",
+    "WORK-053"
   ],
   "inFlight": [],
   "blocked": [],

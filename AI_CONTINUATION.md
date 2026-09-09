@@ -26,9 +26,12 @@ For dispatch/review/orchestration behavior also read:
 - D-00 through D-06: complete.
 - D-07 / WORK-048: COMPLETE — merged as PR #14 (merge commit c4051e2, implementation head c6dbb6f, dispatch base e5efa7e).
 - E1.1 / WORK-049: COMPLETE — merged as PR #16 (merge commit 93ea53c, implementation head bca6db3, dispatch base b946ade).
-- E1.1 / WORK-050: authorized through Issue #17.
+- E1.1 / WORK-050: COMPLETE — merged as PR #18 (merge commit 3d249a7, implementation head fc9e564, dispatch base f8b77f2).
+- E1.1 / WORK-051: authorized through Issue #19 (wave).
+- E1.1 / WORK-052: authorized through Issue #20 (wave).
+- E1.1 / WORK-053: authorized through Issue #21 (wave; selected over WORK-054 by live surface/conflict analysis).
 
-Current frontier is `eligible=["WORK-050"]`, `inFlight=[]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-051", "WORK-052", "WORK-053"]`, `inFlight=["WORK-051", "WORK-052", "WORK-053"]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -84,11 +87,14 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-D-07 and E1.1 stage 1 are complete. `WORK-050` (Deterministic Execution Compiler, E1.1 stage 2) is the only currently executable Work Order.
+D-07, E1.1 stage 1 and stage 2 are complete. The E1.1 parallel wave {WORK-051, WORK-052, WORK-053} is authorized and dispatched (Issues #19/#20/#21). WORK-054 (substrate/runtime adapters) is charter-listed but NOT yet authorized; it dispatches when a wave slot frees — its provider-SDK-table and compute-plane footprints overlap WORK-051's sandbox boundary pins, so it must not run beside WORK-051.
 
-Required branch: `work/WORK-050-deterministic-execution-compiler`.
+Required branches:
+- `work/WORK-051-tool-surface-compiler-programmatic-execution`
+- `work/WORK-052-context-cache-reuse-economics`
+- `work/WORK-053-adaptive-model-economics`
 
-The branch does not exist yet: the next worker creates it at exactly the current canonical `main` head (the WORK-049 merge) so the base is exact with no stale pre-dispatch documentation. After WORK-050, the three-worker wave {WORK-051, WORK-052, WORK-053 or WORK-054} becomes eligible per the charter's safe-waves rule.
+Each wave worker creates its branch at exactly the current canonical `main` head (the WORK-050 merge, 3d249a7) so the base is exact with no stale pre-dispatch documentation. Wave workers are mutually conflict-free by declared surfaces: 051 [tools/sandbox], 052 [executions], 053 [planning].
 
 ## Recovery sequence
 
