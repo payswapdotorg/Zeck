@@ -67,8 +67,8 @@ import {
   buildModelDecisionRecord,
   buildServiceClassDecisionRecord,
 } from "../../../src/platform/model-economics/decisions";
-import { decideFreshEscalation } from "../../../src/platform/model-economics/escalation-hooks";
 import { selectReasoningEffort } from "../../../src/platform/model-economics/effort-selection";
+import { decideFreshEscalation } from "../../../src/platform/model-economics/escalation-hooks";
 import { selectModelRepresentation } from "../../../src/platform/model-economics/model-selection";
 import { selectServiceClass } from "../../../src/platform/model-economics/service-class";
 import {
@@ -272,13 +272,11 @@ definePgSuite("model-economics decisions (real PostgreSQL)", (ctx) => {
     // The cheaper candidates are below-assurance, not below the hard
     // floor — the durable comparison evidence.
     expect(
-      selection.verdicts
-        .find((verdict) => verdict.candidateId === "rail-b-model-y")
+      selection.verdicts.find((verdict) => verdict.candidateId === "rail-b-model-y")
         ?.inadmissibleCode,
     ).toBe("quality-below-assurance");
     expect(
-      selection.verdicts
-        .find((verdict) => verdict.candidateId === "rail-b-degraded")
+      selection.verdicts.find((verdict) => verdict.candidateId === "rail-b-degraded")
         ?.inadmissibleCode,
     ).toBe("quality-below-assurance");
 
@@ -303,12 +301,12 @@ definePgSuite("model-economics decisions (real PostgreSQL)", (ctx) => {
     expect(record?.qualityThreshold).toBe(0.9);
     expect(record?.candidates).toHaveLength(3);
     expect(
-      record?.candidates.find((candidate) => candidate.candidateId === "rail-b-model-y")
-        ?.evaluation.valid,
+      record?.candidates.find((candidate) => candidate.candidateId === "rail-b-model-y")?.evaluation
+        .valid,
     ).toBe(false);
-    expect(
-      (record?.transformationBasis.code ?? "") as string,
-    ).toMatch(/^(identity|representation-substitution)$/);
+    expect((record?.transformationBasis.code ?? "") as string).toMatch(
+      /^(identity|representation-substitution)$/,
+    );
 
     // The durable append through the EXISTING WORK-049 store.
     const appended = await world.store.append(record as never);
@@ -316,10 +314,7 @@ definePgSuite("model-economics decisions (real PostgreSQL)", (ctx) => {
 
     // The durable round-trip: the served record equals the built one
     // and passes the foundation's total validation AT READ TIME.
-    const durable = await world.store.get(
-      world.base.applicationId,
-      record?.decisionId as string,
-    );
+    const durable = await world.store.get(world.base.applicationId, record?.decisionId as string);
     expect(durable?.decisionId).toBe(record?.decisionId);
     expect(durable?.recordDigest).toBe(record?.recordDigest);
     expect(durable?.selectedCandidateId).toBe("rail-a-model-x");
@@ -524,7 +519,7 @@ definePgSuite("model-economics decisions (real PostgreSQL)", (ctx) => {
           expectedQualityGain: 0.3,
           expectedVerificationBurdenMicroUsd: "10000",
           agentCount: 3,
-          basis: { basis: "estimated", source: "learning.telemetry" },
+          basis: { basis: "estimated" as const, source: "learning.telemetry" },
         },
       },
     ];
@@ -617,15 +612,13 @@ definePgSuite("model-economics decisions (real PostgreSQL)", (ctx) => {
 
     // All five are DISTINCT decisions that coexist durably, each
     // validating at read time.
-    const records = [
-      modelRecord,
-      effortRecord,
-      gateRecord,
-      serviceRecord,
-      escalationRecord,
-    ].filter((record) => record !== null);
+    const records = [modelRecord, effortRecord, gateRecord, serviceRecord, escalationRecord].filter(
+      (record) => record !== null,
+    );
     expect(records).toHaveLength(5);
-    const decisionIds = new Set(records.map((record) => (record as { decisionId: string }).decisionId));
+    const decisionIds = new Set(
+      records.map((record) => (record as { decisionId: string }).decisionId),
+    );
     expect(decisionIds.size).toBe(5);
 
     for (const record of records) {
