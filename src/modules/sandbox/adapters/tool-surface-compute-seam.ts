@@ -268,10 +268,39 @@ export function createToolSurfaceComputeSeam(deps: ToolSurfaceComputeSeamDeps): 
         throw error;
       }
 
-      const finalized = await service.dispatchSandboxExecution(
-        { applicationId: request.scope.actor.applicationId, sandboxId: created.id },
-        request.scope.actor,
-      );
+      let finalized: Awaited<ReturnType<SandboxService["dispatchSandboxExecution"]>>;
+      try {
+        finalized = await service.dispatchSandboxExecution(
+          { applicationId: request.scope.actor.applicationId, sandboxId: created.id },
+          request.scope.actor,
+        );
+      } catch (error) {
+        // Post-admission authority outcomes surface as TYPED
+        // observations (the durable row exists; the observation carries
+        // the authority's own failure class — never a fabricated
+        // success, never a raw escape past the seam contract):
+        //  - the §14 discipline (an in-flight dispatch may not be
+        //    re-executed — the concurrent same-key race) is the honest
+        //    non-convergent outcome;
+        //  - every other authority failure is a failed run.
+        if (error instanceof PlatformError) {
+          return {
+            status:
+              error.code === "NON_CONVERGENT_EXTERNAL_EFFECT"
+                ? ("non-convergent" as const)
+                : ("failed" as const),
+            sandboxId: created.id,
+            stdout: null,
+            outputDigest: null,
+            failure: {
+              failureClass: error.code,
+              message: error.message,
+            },
+            durationMs: null,
+          };
+        }
+        throw error;
+      }
       if (finalized.status === "completed") {
         const output = finalized.output;
         const stdout = typeof output?.stdout === "string" ? output.stdout : "";
