@@ -38,7 +38,9 @@ are MEASURED by the loss scenarios, not by this command.
 
 The fail-closed behavior for each provider class is simulated and
 verified by the test suites (a live outage is never needed to prove
-the DESIGN, and unexecuted live-provider results are never claimed):
+the DESIGN, and unexecuted live-provider results are never claimed —
+anything not exercised against a live provider is NOT RUN, never
+PASS):
 
 - queue transport outage → typed transient transport failures; the
   bounded publish budget backlogs; republish converges after the
