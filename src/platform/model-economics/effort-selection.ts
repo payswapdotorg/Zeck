@@ -24,12 +24,7 @@
 import type { OptimizationConstraint } from "../execution-ir/constraints";
 import type { ExecutionIr } from "../execution-ir/ir";
 import type { CandidateAdmissibility, GoverningFacts } from "./admissibility";
-import {
-  compareAdmissible,
-  evaluateAdmissibility,
-  governingFacts,
-  rejectDuplicateIds,
-} from "./admissibility";
+import { evaluateAdmissibility, governingFacts, rejectDuplicateIds } from "./admissibility";
 import { requireGenerativeStep } from "./model-selection";
 import type { EffortCandidate, EffortLevel, QualityFacts } from "./vocabulary";
 import {
@@ -86,29 +81,30 @@ export const EFFORT_SELECTION_BASIS =
 // ---------------------------------------------------------------------------
 
 /**
- * Compare two ADMISSIBLE effort verdicts: expected
- * successful-resolution cost ascending, ties toward LOWER effort
- * (the cheaper-path default — the effort rank), ties by candidateId.
- * Deterministic and total — non-deterministic tie-breaks are
- * impossible (every tie resolves on content).
+ * Compare two ADMISSIBLE effort verdicts by the frozen effort basis
+ * (cost, effort rank, candidateId): expected successful-resolution
+ * cost ascending, ties toward LOWER effort (the cheaper-path default
+ * — the effort rank), ties by candidateId. Deterministic and total —
+ * non-deterministic tie-breaks are impossible (every tie resolves on
+ * content). The effort rank must be consulted BEFORE the candidateId
+ * tie-break (the foundation's candidate-ordering comparator cannot
+ * be delegated to wholesale: it resolves candidateId ties first).
  */
 function compareEffortVerdicts(a: EffortCandidateVerdict, b: EffortCandidateVerdict): number {
-  const byCost = compareAdmissible(a, b);
-  if (byCost !== 0) {
-    return byCost;
+  const costA = BigInt(a.evaluation.expectedSuccessfulResolutionCostMicroUsd);
+  const costB = BigInt(b.evaluation.expectedSuccessfulResolutionCostMicroUsd);
+  if (costA !== costB) {
+    return costA < costB ? -1 : 1;
   }
-  // compareAdmissible ties on (cost, ladder rank, candidateId); for
-  // effort candidates the ladder rank is the model class, so a tie
-  // here means the SAME class and DIFFERENT candidateIds would have
-  // resolved already. Effort rank orders the remaining dimension:
-  // equal cost across effort levels of the same class prefers the
-  // LOWER effort (cheaper-path default).
   const rankA = effortLadderRank(a.effort);
   const rankB = effortLadderRank(b.effort);
   if (rankA !== rankB) {
     return rankA - rankB;
   }
-  return a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0;
+  if (a.candidateId !== b.candidateId) {
+    return a.candidateId < b.candidateId ? -1 : 1;
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------

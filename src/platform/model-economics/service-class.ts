@@ -24,12 +24,7 @@
 
 import type { OptimizationConstraint } from "../execution-ir/constraints";
 import type { CandidateAdmissibility, GoverningFacts } from "./admissibility";
-import {
-  compareAdmissible,
-  evaluateAdmissibility,
-  governingFacts,
-  rejectDuplicateIds,
-} from "./admissibility";
+import { evaluateAdmissibility, governingFacts, rejectDuplicateIds } from "./admissibility";
 import type { QualityFacts, ServiceClass, ServiceClassCandidate } from "./vocabulary";
 import {
   serviceClassRank,
@@ -83,22 +78,30 @@ export const SERVICE_CLASS_SELECTION_BASIS =
 // ---------------------------------------------------------------------------
 
 /**
- * Compare two ADMISSIBLE service-class verdicts: expected
+ * Compare two ADMISSIBLE service-class verdicts by the frozen hook
+ * basis (cost, service-class rank, candidateId): expected
  * successful-resolution cost ascending, ties toward the CHEAPER class
- * (economy < standard < priority), ties by candidateId. Deterministic
- * and total.
+ * (economy < standard < priority — the cheaper-path default), ties
+ * by candidateId. Deterministic and total. The class rank must be
+ * consulted BEFORE the candidateId tie-break (the foundation's
+ * candidate-ordering comparator cannot be delegated to wholesale:
+ * it resolves candidateId ties first).
  */
 function compareServiceClassVerdicts(a: ServiceClassVerdict, b: ServiceClassVerdict): number {
-  const byCost = compareAdmissible(a, b);
-  if (byCost !== 0) {
-    return byCost;
+  const costA = BigInt(a.evaluation.expectedSuccessfulResolutionCostMicroUsd);
+  const costB = BigInt(b.evaluation.expectedSuccessfulResolutionCostMicroUsd);
+  if (costA !== costB) {
+    return costA < costB ? -1 : 1;
   }
   const rankA = serviceClassRank(a.serviceClass);
   const rankB = serviceClassRank(b.serviceClass);
   if (rankA !== rankB) {
     return rankA - rankB;
   }
-  return a.candidateId < b.candidateId ? -1 : a.candidateId > b.candidateId ? 1 : 0;
+  if (a.candidateId !== b.candidateId) {
+    return a.candidateId < b.candidateId ? -1 : 1;
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------

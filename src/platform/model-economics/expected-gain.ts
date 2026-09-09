@@ -92,6 +92,11 @@ function boundedTerm(value: bigint, what: string): bigint {
 
 function scaledGain(gain: number): bigint {
   // The foundation's scaled-integer pattern: round(gain × 1e12).
+  // Non-finite gains fail closed TYPED (BigInt(NaN) would otherwise
+  // throw a raw conversion error — never a silent or untyped path).
+  if (!Number.isFinite(gain)) {
+    reject("gate-shape", "the expected quality gain must be a finite number", { gain });
+  }
   const scaled = BigInt(Math.round(gain * 1e12));
   if (scaled <= 0n || scaled > GAIN_SCALE) {
     reject("gate-shape", "the expected quality gain must scale into (0, 1e12]", {
