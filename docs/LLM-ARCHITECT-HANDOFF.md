@@ -1,114 +1,348 @@
 # Zeck — LLM Architect Handoff
 
-**Purpose:** Durable, repository-resident handoff for a fresh LLM Architect. Conversation history is never authoritative.
+**Purpose:** Durable, repository-resident handoff for a fresh LLM Architect / LLM Tech Lead. Conversation history is never authoritative.
 
 ## Canonical remote
 
 - Repository: `payswapdotorg/Zeck`
 - `pectoraux/Zeck` is historical upstream/reference only.
-- The canonical-remote declaration is `docs/FORK-CANONICAL-REMOTE.md`.
+- Canonical-remote declaration: `docs/FORK-CANONICAL-REMOTE.md`.
 
 ## Current state
 
 - Core architecture: **v1.0**, frozen after approval.
-- Deployment/runtime architecture: **D1.0**, approved and authoritative for deployment concerns, subordinate to v1.0.
-- UX v2 implementation wave: **complete through WORK-041**.
-- D-00 architecture/contract: complete.
-- D-01 reproducible infrastructure foundation: complete through WORK-042 / PR #2.
-- D-02 database and artifact production path: complete through WORK-043 / PR #4.
-- D-03 asynchronous execution transport: complete through WORK-044 / PR #6.
-- D-04 durable orchestration: complete through WORK-045 / PR #8.
-- D-05 execution worker deployment fabric: **complete through WORK-046 / PR #10**.
-- D-06 production delivery, observability and release control: **complete through WORK-047 / PR #12**.
-- Current implementation order: **WORK-048 — Resilience, disaster recovery and provider exit (D-07)**.
-- Canonical GitHub Issue: **#13**, authorized/pending on `payswapdotorg/Zeck`.
-- Development frontier: `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]`.
+- Deployment/runtime architecture: **D1.0**, approved and subordinate to v1.0.
+- Execution Intelligence Architecture: **E1.0**, approved by ACR-003/ADR-0019 and subordinate to v1.0.
+- UX v2: complete through WORK-041.
+- Deployment phases D-00 through D-06: complete.
+- Current authorized deployment phase: **D-07 / WORK-048 — resilience, disaster recovery and provider exit**.
+- Canonical issue: **#13**.
+- Current frontier: `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]`.
 
-## Authoritative deployment sequence
+The current exact `main` SHA must always be fetched and verified at recovery time. Do not hard-code a stale SHA from this document.
+
+## Mission
+
+Zeck is the neutral execution optimization layer for AI work.
+
+> **For every requested outcome, choose the cheapest sufficiently reliable computational representation, and continuously replace probabilistic work with deterministic work when evidence permits.**
+
+Optimize:
+
+- precision/correctness
+- cost
+- deterministicism
+- latency
+- reliability
+- context cost
+- tool-surface cost
+- side-effect/risk exposure
+- developer simplicity
+
+Zeck is not trying to become the largest agent framework, payment processor, browser controller, model provider or deployment provider.
+
+## Authority model
+
+Frozen v1.0 remains authoritative:
 
 ```text
-D-00 Architecture/contract — COMPLETE
-D-01 Reproducible infrastructure foundation — COMPLETE (WORK-042)
-D-02 Database + artifact production path — COMPLETE (WORK-043)
-D-03 Asynchronous execution transport — COMPLETE (WORK-044)
-D-04 Durable orchestration — COMPLETE (WORK-045)
-D-05 Execution worker deployment fabric — COMPLETE (WORK-046)
-D-06 Production delivery, observability and release control — COMPLETE (WORK-047)
-D-07 Resilience, disaster recovery and provider exit — AUTHORIZED (WORK-048)
-D-08 Growth/enterprise hardening — BLOCKED
+Tenant / Application Identity
+        ↓
+Policy
+        ↓
+Capabilities
+        ↓
+Budget / Economics
+        ↓
+Planning
+        ↓
+Execution
+        ↓
+Sandbox / Substrate
+        ↓
+Verification
+        ↓
+Evidence
+        ↓
+Learning
 ```
 
-Workers may not skip, reorder or infer phases from chat. A phase becomes executable only through a repository-approved Work Order.
+No subsequent architecture may create a second authority for any of these concerns.
 
-## Deployment authority
+## Architecture evolution
 
-1. `docs/DEPLOYMENT-ARCHITECTURE.md` — authoritative Deployment & Runtime Architecture D1.0.
-2. `docs/DEPLOYMENT-ROADMAP.md` — authoritative deployment implementation sequence.
-3. `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md` — D1.0 approval record.
-4. `spec/work-orders/WORK-048.md` — authoritative current executable scope.
+### D1.0 — Deployment/runtime
 
-Core principle:
+Providers supply infrastructure. Zeck owns domain authority. PostgreSQL remains authoritative for durable state; object storage owns artifact bytes; queues/workflows transport/orchestrate; Redis is non-authoritative coordination/cache.
 
-> **Zeck owns authority; providers supply infrastructure.**
+Authoritative documents:
 
-Reference topology remains Vercel for experience/delivery, Neon PostgreSQL for authoritative relational state, Cloudflare R2 for artifact bytes, Cloudflare Queues for transport, Cloudflare Workflows for durable orchestration, and Upstash Redis for non-authoritative coordination/cache.
+- `docs/DEPLOYMENT-ARCHITECTURE.md`
+- `docs/DEPLOYMENT-ROADMAP.md`
+- `docs/architecture-changes/ACR-002-deployment-runtime-architecture.md`
 
-## D-06 completion
+### ADR-0017 — Procedural competence/runtime interoperability
 
-- Work Order: `WORK-047`
-- Canonical issue: #11
-- Required branch: `work/WORK-047-production-delivery-observability-release-control`
-- Dependency: `WORK-046`
-- Assurance: HIGH_ASSURANCE
-- Status: COMPLETE
-- Exact authorization base: `5d26365ee9b8e55f41b923328443ae746205757a`
-- Implementation/evidence head: `6eb3afb4456338bda771ade9300971cbdeaf8aee`
-- PR: #12
-- Merge commit: `ad27648ebf78f868a749cdbc924f84e20dd62161`
-- Exact synchronized GitHub Actions: Repository Governance PASS; Deployment Validation PASS; Deployment Release Control PASS.
-- Live provider/OTLP infrastructure remained NOT RUN where credentials/hosts were unavailable and was never claimed as live-provider PASS.
-- Post-merge program/frontier state: finalized.
+Competence is versioned, provenance-bearing reusable procedural knowledge. Successful trajectories may become candidate competence, but validation/verification/promotion remain platform-controlled. OpenClaw, Hermes, WorkflowOS and customer runtimes integrate through adapters rather than becoming Zeck authorities.
 
-## D-07 authorization
+### ADR-0018 — Agentic economics
 
-- Work Order: `WORK-048`
-- Canonical issue: #13
-- Required branch: `work/WORK-048-resilience-disaster-recovery-provider-exit`
-- Dependency: `WORK-047`
-- Assurance: HIGH_ASSURANCE
-- Status: AUTHORIZED / PENDING
-- Objective: prove Zeck can survive infrastructure loss and provider substitution without moving authority away from PostgreSQL or changing frozen v1.0 semantics.
-- Scope: PostgreSQL recovery, artifact recovery, queue/workflow replay, regional worker evacuation, provider outage simulations, alternate S3-compatible artifact storage, alternate managed PostgreSQL, alternate web/API hosting, and measured RTO/RPO evidence.
+EconomicAction and PaymentAuthority are future execution-control extensions. Budgets remain canonical spending authority. Payment rails such as Stripe/MPP/x402 are adapters. Intent, authorization, transaction, settlement and verification are distinct.
 
-## D-07 gate
+### E1.0 — Execution Intelligence
 
-D-08 may not begin until D-07 is complete, measured production usage exists, explicit availability/security requirements are recorded, and the Architect approves any required architecture extension.
+Authoritative documents:
 
-## Recovery sequence
+- `docs/adr/ADR-0019-execution-intelligence-architecture.md`
+- `docs/architecture-changes/ACR-003-execution-intelligence-architecture.md`
+- `docs/ROADMAP.md`
+- `docs/LLM-TECH-LEAD-BOOTSTRAP.md`
 
-1. Read `AGENTS.md`.
-2. Read `AI_CONTINUATION.md`.
-3. Read this file.
-4. Read `README.md` and `IMPLEMENTATION.md`.
-5. Read `spec/worker-runbook.md` and `docs/ARCHITECT-RUNBOOK.md`.
-6. Read `spec/architecture.md` and `spec/architecture-lock.md`.
-7. Read all files under `spec/development-state/`.
-8. Read `spec/requirement-traceability.md`, relevant ADRs, `docs/DEPLOYMENT-ARCHITECTURE.md`, `docs/DEPLOYMENT-ROADMAP.md`, ACR-002, and `docs/FORK-CANONICAL-REMOTE.md`.
-9. Inspect complete Work Orders and live GitHub refs on `payswapdotorg/Zeck`.
-10. Run `python3 scripts/governance-check.py` before changing state or implementation.
+E1.0 adds an optimization plane after a governed plan exists:
 
-## Non-negotiables
+```text
+Intent
+ ↓
+Policy
+ ↓
+Capability
+ ↓
+Planning
+ ↓
+Execution Compiler
+ ↓
+Optimized Execution IR
+ ↓
+Execution
+ ↓
+Verification
+ ↓
+Evidence
+ ↓
+Learning
+```
 
-- One Work Order = one implementation branch = one PR.
-- Implementers do not merge their own PRs.
-- Workers do not modify `spec/development-state/*` during active implementation.
-- Frozen architecture v1.0 cannot be silently rewritten.
-- Deployment Architecture D1.0 is subordinate to frozen v1.0.
-- Providers implement ports and operational concerns; they do not become Zeck domain authorities.
-- Secrets remain secret-mediated and never enter Git, logs, artifacts or public domain state.
-- Evidence is valid only for the exact revision on which it was produced.
-- Governance-state changes are Architect-owned and minimal.
+E1.0 covers Execution IR, plan/compiler optimization, Tool Surface Compiler, programmatic tool calling, Context Economy, safe parallelism/batching/reuse, multi-agent economic gating, infrastructure-vs-intelligence failure attribution, continuation packages, competence-aware optimization and progressive deterministicization.
+
+The optimizer can transform a governed plan but cannot authorize behavior.
+
+## Strategic product principles
+
+### Deterministic-first
+
+Prefer:
+
+```text
+deterministic code
+  ↓
+existing tool / competence
+  ↓
+programmatic orchestration
+  ↓
+smallest sufficient model
+  ↓
+larger model only when justified
+  ↓
+multi-agent only when economically justified
+  ↓
+human only when uncertainty warrants it
+```
+
+### Tool-surface economy
+
+Do not expose the full tool universe to every model. Filter by capability/policy/relevance and choose the lowest-overhead representation: direct tool, deferred tool, CLI, script, code API, MCP or competence.
+
+### Context economy
+
+Keep large intermediate results outside model context when semantic inspection is unnecessary. Prefer filtering, aggregation, references and compact structured results. Context itself is an optimization resource.
+
+### Computer use
+
+Computer use is an escalation mode, not a default:
+
+```text
+API / deterministic
+ → existing tool / competence
+ → browser
+ → isolated desktop / terminal
+```
+
+### Learning → competence → deterministicization
+
+```text
+trajectory
+ ↓
+pattern mining
+ ↓
+candidate competence
+ ↓
+validation
+ ↓
+verification
+ ↓
+shadow evaluation
+ ↓
+promotion
+ ↓
+planner recommendation
+```
+
+The long-term goal is that repeated successful probabilistic behavior becomes reusable deterministic computation where equivalence can be proven.
+
+## Current implementation stream
+
+The repository's current active stream is deployment D-07:
+
+`spec/work-orders/WORK-048.md`
+
+D-07 covers resilience, disaster recovery and provider exit, including PostgreSQL recovery, artifact recovery, queue/workflow replay, worker evacuation, outage simulation, alternate artifact storage, alternate managed PostgreSQL, alternate web/API hosting, and measured RTO/RPO evidence.
+
+Do **not** invent WORK-049 or a new deployment phase from chat. D-08 is explicitly blocked until D-07 completion, measured production usage, explicit availability/security requirements and any required architecture extension.
+
+## Post-D-07 strategic queue
+
+The next architecture-level implementation sequence is planned but not executable until proper Work Orders are issued:
+
+### Execution Intelligence
+
+1. Execution IR
+2. Execution Compiler
+3. Tool Surface Compiler
+4. Programmatic tool calling
+5. Context Economy
+6. deterministic parallelization/batching/reuse
+7. multi-agent economic gate
+8. infrastructure-vs-intelligence evaluation
+9. continuation packages
+10. competence-aware optimization
+11. progressive deterministicization
+
+### Competence/runtime ecosystem
+
+12. Competence lifecycle
+13. progressive competence retrieval
+14. competence validation/promotion
+15. competence registry/trust supply chain
+16. Session/Gateway fabric
+17. OpenClaw adapter
+18. Hermes adapter
+19. customer/BYOA runtime adapters
+20. cross-runtime trajectory ingestion
+
+### Product optimization
+
+21. user-facing codebase/subgraph opportunity analysis
+22. deterministicization recommendations
+23. shadow/canary replacement evaluation
+24. safe promotion/rollback
+
+### Economic execution
+
+25. EconomicAction / PaymentAuthority
+26. bounded machine-payment authorization
+27. payment rail contract
+28. Stripe / MPP / x402 adapters
+29. payment/resource-delivery verification
+30. machine-to-machine commerce
+
+These are roadmap concepts, not current implementation authority.
+
+## Work Order / worker protocol
+
+One Work Order = one implementation branch = one PR.
+
+Before dispatch:
+
+1. fetch `origin/main`
+2. run governance
+3. confirm actual eligibility
+4. inspect dependencies/surfaces/migrations/open PRs
+5. compare shared-state and public-contract overlap
+6. decide safe parallelism
+
+Worker constraints:
+
+- do not invent requirements
+- do not modify another Work Order's scope
+- do not merge own PR
+- do not weaken frozen architecture
+- preserve single authorities
+- use real durable integration proof for durable/concurrency/side-effect claims
+- bind evidence to exact tested revisions
+- disclose environmental limitations
+
+Architect review:
+
+1. identity/base/ancestry
+2. surfaces
+3. authority boundaries
+4. migration ownership
+5. discrimination evidence
+6. durable/concurrency proof
+7. exact-head CI
+8. limitations and negative evidence
+9. merge
+10. post-merge state finalization
+
+## Post-merge protocol
+
+```text
+merge approved PR
+ ↓
+verify actual merge commit
+ ↓
+finalize program state
+ ↓
+record PR + merge identities
+ ↓
+recompute frontier
+ ↓
+governance check
+ ↓
+update this handoff
+```
+
+A Work Order is not complete merely because its implementation PR is green; actual merge plus state finalization is required.
+
+## Fresh-session recovery command set
+
+```bash
+git fetch origin
+git rev-parse origin/main
+python3 scripts/governance-check.py
+```
+
+Then inspect:
+
+```text
+AGENTS.md
+AI_CONTINUATION.md
+docs/LLM-ARCHITECT-HANDOFF.md
+docs/LLM-TECH-LEAD-BOOTSTRAP.md
+README.md
+IMPLEMENTATION.md
+spec/architecture.md
+spec/architecture-lock.md
+spec/requirements.md
+spec/requirement-traceability.md
+spec/development-state/*.json
+relevant ADRs/ACRs
+current Work Orders
+live GitHub PRs/issues/checks
+```
 
 ## Fresh-session invariant
 
-A fresh LLM Architect must recover current Zeck state from this repository and live GitHub state, never from conversation history or provider dashboards.
+A fresh LLM Tech Lead must be able to recover:
+
+- canonical repository
+- current architecture
+- current deployment phase
+- current frontier
+- dependency graph
+- Work Order ownership
+- exact implementation/review state
+- architecture evolution
+- next strategic implementation sequence
+
+without conversation history.
