@@ -59,7 +59,7 @@ The E1.1-stage-2 battery at the final implementation head `9f538b3` (**all green
 - `bun run deploy:validate` — `valid: true`, migrations 29 (unchanged — the compiler adds NO durable state).
 - `bun run test:unit` — **182 files / 2747 tests passed** (2683 at base + 64 new).
 - `bun run test:integration` (real PostgreSQL 16.4, `ZECK_PG_TEST_URL` @ 127.0.0.1:55432) — **106 files / 1036 passed | 13 skipped** (the live-provider honesty skips unchanged from the base).
-- `bun run test:architecture` — **91 files / 1189 passed | 4 skipped** (includes the new `e11-compiler-boundaries` gate (9 tests) and the new `execution-compiler.discrimination` suite (12 tests)).
+- `bun run test:architecture` — **90 files (89 passed | 1 skipped) / 1189 tests passed | 4 skipped** (includes the new `e11-compiler-boundaries` gate (9 tests) and the new `execution-compiler.discrimination` suite (12 tests); the four skips are the live-infrastructure honesty skips unchanged from the base). One environmental flake disclosure: a single battery run momentarily reported 1199 passed with 0 skips (a skip-condition flip); the isolated re-run reproduces the stable 1189 | 4 result — the same skip set as the baseline.
 
 New WORK-050 tests: **88** (64 unit across 4 suites: `variant`, `semantics`, `passes`, `pipeline`; 3 integration over real PG: the full durable chain, the N=8 concurrent compile+append convergence, different-plan coexistence; 12 discrimination D1–D12; 9 architecture boundaries C1–C8 + the foundation-untouched proof).
 
