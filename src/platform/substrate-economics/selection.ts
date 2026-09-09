@@ -71,11 +71,7 @@ import {
   type SubstrateInsufficiencyCode,
   type SubstrateSelectionOutcome,
 } from "./catalog";
-import {
-  canonicalCandidateSetJson,
-  offeredModes,
-  validateSubstrateCandidateSet,
-} from "./facts";
+import { canonicalCandidateSetJson, offeredModes, validateSubstrateCandidateSet } from "./facts";
 import {
   classifyReadiness,
   expectedExecutionEconomics,
