@@ -45,7 +45,7 @@ import { canonicalJson } from "../execution-ir/canonical";
 import type { OptimizationConstraint } from "../execution-ir/constraints";
 import type { IrDigestPort } from "../execution-ir/ir";
 import type { CompilerPassId, PreconditionCheckCode } from "./catalog";
-import { CompilerError } from "./catalog";
+import { COMPILER_PASS_IDS, CompilerError } from "./catalog";
 import {
   areMutuallyIndependent,
   COMPILER_ANNOTATION_KEY,
@@ -111,11 +111,17 @@ function stableIdFragment(seed: string, digest: IrDigestPort, taken: ReadonlySet
 }
 
 /**
- * Does this step's config already carry THIS pass's compiler
- * annotation? (The per-pass idempotence guard — different passes may
- * stack annotations under the reserved key; a pass never re-applies
- * over its own. A plan-authored value under the reserved key is
- * equally rejected: the compiler never clobbers plan-owned config.)
+ * Does this step's config already carry a blocking annotation for THIS
+ * pass? Two rejection cases, both fail-closed:
+ *
+ *  - the config carries the reserved compiler-annotation key with
+ *    PLAN-AUTHORED content (a non-object value, or an object holding
+ *    any key outside the closed pass catalog): the compiler never
+ *    touches plan-owned config — the site is rejected by EVERY pass;
+ *  - the value is a compiler-stacked annotation map (all keys are pass
+ *    ids) that already contains THIS pass's key: the per-pass
+ *    idempotence guard (different passes may stack; a pass never
+ *    re-applies over its own).
  */
 function hasAnnotation(step: IrVariantStep, passId: CompilerPassId): boolean {
   if (step.config === undefined || !Object.hasOwn(step.config, COMPILER_ANNOTATION_KEY)) {
@@ -125,7 +131,12 @@ function hasAnnotation(step: IrVariantStep, passId: CompilerPassId): boolean {
   if (typeof annotationMap !== "object" || annotationMap === null || Array.isArray(annotationMap)) {
     return true;
   }
-  return Object.hasOwn(annotationMap as Record<string, unknown>, passId);
+  const keys = Object.keys(annotationMap as Record<string, unknown>);
+  const planAuthored = keys.some((key) => !(COMPILER_PASS_IDS as readonly string[]).includes(key));
+  if (planAuthored) {
+    return true;
+  }
+  return keys.includes(passId);
 }
 
 /** Annotate a step's config under the reserved key (order-stable). */
