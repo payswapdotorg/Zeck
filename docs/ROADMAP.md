@@ -6,23 +6,19 @@
 
 Zeck should make AI integration feel like Stripe: developers declare an outcome and constraints; Zeck selects and orchestrates the cheapest sufficiently reliable combination of deterministic computation, tools, models, agents, external runtimes, human intervention and—when explicitly authorized—economic actions.
 
+### Operational optimization rule
+
+> **For every requested outcome, choose the cheapest sufficiently reliable computational representation, and continuously replace probabilistic work with deterministic work when evidence permits.**
+
+This means Zeck optimizes not only model/provider choice, but also the representation of the work itself: deterministic code, existing tools, tool compositions, programmatic orchestration, reusable competence, models, agents, computer use, and human intervention.
+
 ## Core architectural rule
 
 Execution remains the universal durable abstraction.
 
-No feature in this roadmap creates a second authority for:
-
-- execution lifecycle
-- policy
-- capabilities
-- budgets/economics
-- tenant identity
-- credentials/secrets
-- verification
+No feature in this roadmap creates a second authority for execution lifecycle, policy, capabilities, budgets/economics, tenant identity, credentials/secrets or verification.
 
 Learning and benchmarking produce evidence and recommendations; they never silently become authorization.
-
----
 
 ## Completed foundations
 
@@ -41,430 +37,248 @@ Public API, SDK, CLI, dashboard and webhooks.
 ### External interoperability
 WorkflowOS integration and benchmark harness.
 
----
+### Deployment/runtime
+D1.0 approved and D-00 through D-06 completed; D-07 resilience/disaster-recovery/provider-exit is the current authorized implementation phase.
 
-## Current frontier
+## Execution Intelligence Architecture E1.0
 
-### Tool synthesis
-WORK-018 creates validated ephemeral deterministic programs/tools from learned opportunities. Compilation and execution are sandboxed, statically validated, runtime-tested and independently verified.
-
-### Multimodal deployment
-WORK-023 establishes the common deployment object consumed by voice, messaging and media-generation implementations.
-
-### Computational substrate federation
-WORK-031 generalizes Execution-compatible workload/substrate classes for computer use, long-running work, edge/embodied execution, GPU/training and accelerators.
-
----
-
-## Computer-use strategy
-
-Computer use is deliberately treated as a **governed computational capability and escalation mode**, not as the default way an agent interacts with software.
-
-The preferred execution order is:
+Approved by ACR-003 and ADR-0019 as an additive architecture subordinate to frozen v1.0.
 
 ```text
-Task
+Intent
   ↓
-Can API / deterministic capability satisfy it?
-  ├─ yes → deterministic/API execution
-  └─ no  → browser automation
-               ↓ insufficient
-            isolated desktop/terminal interaction
-```
-
-This means a capable browser/desktop agent does not automatically receive a browser or desktop call. Zeck should first determine whether an API, structured connector, deterministic tool, existing competence or other exact computation can solve the subtask.
-
-Every computer-use stage continues through:
-
-```text
 Policy
   ↓
-Capability
+Capability resolution
   ↓
-Tenant / credential mediation
+Planning
   ↓
-Budget
+Execution Compiler
+  ↓
+Optimized Execution IR
   ↓
 Execution
-  ↓
-Sandbox / substrate
   ↓
 Verification
   ↓
 Evidence
+  ↓
+Learning
 ```
 
-Computer-use observations and actions should become reusable trajectory evidence. Repeated successful trajectories can later feed tool learning, competence formation and deterministicization rather than remaining permanently dependent on GUI/model interaction.
+The optimizer does not replace Planning or become an authority. It transforms governed plans under deterministic preconditions and records the transformation basis.
 
-The implementation target is provider-neutral contracts for browser, desktop and terminal interaction, explicit side-effect capabilities, isolated execution, structured action/observation evidence, and deterministic/API-vs-GUI discrimination tests. WORK-027 owns the concrete implementation after WORK-031.
+### E1 — Execution IR
 
----
+Expose machine-readable step properties: deterministic/probabilistic, model-required, side-effecting, idempotent, parallelizable, cacheable, context cost, expected output size, estimated/observed cost and latency, risk, freshness, verification needs and provenance.
 
-# Post-foundation evolution
+### E2 — Execution Compiler
 
-The following capabilities are intentionally additive to the current architecture. They extend Learning, Planning, Deployment, Agent, Substrate and Economic foundations rather than replacing them.
+Support proven semantics-preserving transformations including constant folding, dead-step elimination, common-result reuse, memoization, parallelization, batching, tool composition, result shaping, retry normalization, model downsizing, AI-call elimination, decomposition into deterministic/probabilistic subgraphs and verification insertion.
 
-## 1. Procedural competence
+### E3 — Tool Surface Compiler
 
-Turn repeated successful trajectories into reusable, versioned competence.
+Treat tool exposure as an optimization problem:
 
 ```text
-Execution history
-      |
-      v
-trajectory/pattern mining
-      |
-      v
-candidate competence
-      |
-      +--> procedural guidance
-      +--> tool composition
-      +--> deterministic procedure
-      +--> synthesized tool/program
-      +--> verification recipe
-      |
-      v
-validation + verification
-      |
-      v
-shadow evaluation
-      |
-      v
-promotion
-      |
-      v
-planner recommendation
+task
+ ↓
+capabilities
+ ↓
+policy
+ ↓
+relevance
+ ↓
+tool ranking
+ ↓
+minimal tool surface
 ```
 
-A competence is broader than a Tool and different from an Agent, Plan, Execution or factual Memory.
+Representations may include direct tools, deferred tools, CLI, scripts, code APIs, MCP and competence references. These are representations, not separate authorities.
 
-### Strategic purpose
+### E4 — Programmatic tool calling
 
-Enable Zeck to learn *how to accomplish tasks*, not only which provider/model/tool tends to perform well.
+Allow bounded sandboxed orchestration code to invoke multiple tools, loop, branch, filter and aggregate while keeping large intermediate data outside model context when semantic inspection is unnecessary.
 
-This is the platform-level version of agent self-improvement ideas demonstrated by systems such as Hermes: agents may discover procedures, but Zeck owns the evidence, validation and promotion boundary.
+### E5 — Context Economy
 
-## 2. Progressive competence retrieval
+Treat context as an optimization resource. Measure context size, redundancy, information density, retrieval overhead, tool-definition overhead, intermediate-result volume, privacy exposure and latency. Prefer compact structured outputs and opaque references over dumping large raw tool results into model context.
 
-Competence should be progressively disclosed:
+### E6 — Evaluation and failure attribution
+
+Separate intelligence failure from model/provider/tool/sandbox/infrastructure/resource/timeout/policy/capability/verification failures. Fingerprint relevant environments so learning does not misattribute infrastructure noise to model quality.
+
+### E7 — Multi-agent economic gate
+
+Choose 0, 1 or N agents from dependency width, expected quality gain, cost, latency, recovery burden and verification burden. Agents cannot self-authorize spawning.
+
+### E8 — Continuation package
+
+Standardize durable continuation data for interrupted/long-running work: execution identity, optimized IR, completed steps, pending obligations, artifacts/evidence, policy/capability references, budget state, environment, tools/competences, failure classifications and next action.
+
+### E9 — Competence-aware optimization
+
+Use ADR-0017 competences as candidate computational representations. Retrieve competence progressively and only when justified by the task.
+
+### E10 — Progressive deterministicization
+
+Repeated successful probabilistic procedures become candidates for deterministic replacement. Differential, property, replay and verification evidence is required before promotion.
+
+## Current deployment frontier
+
+D-07 / WORK-048 is the authoritative active implementation order. See `AI_CONTINUATION.md`, `docs/LLM-ARCHITECT-HANDOFF.md` and `spec/work-orders/WORK-048.md`.
+
+D-08 remains blocked pending D-07 completion, measured production usage, explicit availability/security requirements and an Architect-approved extension.
+
+## Computer-use strategy
+
+Computer use is a governed computational capability and escalation mode, not the default.
 
 ```text
 Task
-  -> competence metadata
-  -> relevance ranking
-  -> minimal procedure/context
-  -> detailed examples/artifacts only when justified
+  ↓
+API / deterministic sufficient?
+  ├─ yes → deterministic/API execution
+  └─ no
+       ↓
+existing tool / competence
+       ↓
+browser automation
+       ↓ insufficient
+isolated desktop / terminal
 ```
 
-This directly supports low-cost model routing. Instead of always buying a stronger model, Zeck can supply a cheaper model with the right procedural competence, examples, artifacts, deterministic tools and verification strategy.
+Every stage remains under Policy, Capability, Tenant/Credential mediation, Budget, Execution, Sandbox/Substrate, Verification and Evidence.
 
-## 3. Session and Gateway fabric
+Computer-use trajectories should become learning evidence for future competence and deterministicization.
 
-Extend the Deployment layer with a provider-neutral session/gateway abstraction:
+## Procedural competence and runtime ecosystem
 
-```text
-channel/runtime
-      |
-      v
-Gateway
-      |
-      v
-Session
-      |
-      v
-Deployment
-      |
-      v
-Agent
-      |
-      v
-Execution
-```
-
-The Gateway handles ingress, authentication, translation and delivery/retry concerns.
-
-It does not become an execution/policy/budget/verification authority.
-
-This is the primary architectural lesson to take from OpenClaw's channel/Gateway model: make the agent runtime live where users already communicate without making the runtime the platform.
-
-## 4. External runtime adapters
-
-Zeck should make OpenClaw, Hermes and other agent systems first-class interoperability targets through adapters.
-
-Conceptually:
+ADR-0017 defines versioned, provenance-bearing Competence as reusable ways of accomplishing tasks, broader than tools or memories.
 
 ```text
-OpenClaw ----\
-Hermes -------> runtime adapter -> Zeck governed Execution
-WorkflowOS ---/
-Native -------/
-Customer BYOA /
-```
-
-Adapters expose neutral observations and commands and keep framework-specific types outside core contracts.
-
-## 5. Competence registry and trust supply chain
-
-Create a governed registry for reusable competence and executable artifacts.
-
-Registry entries eventually cover:
-
-- procedural skills
-- workflows
-- tool compositions
-- deterministic procedures
-- synthesized tools/programs
-- verification recipes
-- connectors
-
-Each entry carries:
-
-- immutable identity/version
-- source/provenance
-- publisher
-- required capabilities
-- dependencies
-- security results
-- verification status
-- evaluation population/window
-- confidence/uncertainty
-- compatibility
-- promotion/rollback state
-
-Borrow the useful ecosystem lessons from OpenClaw/ClawHub, but treat executable competence as a supply-chain object, not merely a marketplace listing.
-
-## 6. Cross-runtime learning
-
-Zeck should learn from trajectories generated by:
-
-- native agents
-- OpenClaw
-- Hermes
-- WorkflowOS
-- customer BYOA runtimes
-- future runtimes
-
-All observations enter the same Learning/Evidence plane.
-
-This makes the best runtime technique portable across ecosystems rather than locked inside one agent framework.
-
-## 7. Progressive deterministicization
-
-The long-term optimizer should search for the cheapest sufficiently reliable representation:
-
-```text
-AI procedure
-   |
-   v
-AI + deterministic tools
-   |
-   v
-tool composition
-   |
-   v
-deterministic program
-   |
-   v
-verified reusable competence
-```
-
-This extends WORK-009/014/017/018 and the deterministicization roadmap.
-
-A repeatedly successful agent procedure should be a candidate for deterministic replacement when replay/differential/property testing shows equivalence.
-
-## 8. User-visible improvement recommendations
-
-The public product should eventually tell developers:
-
-- which execution subgraphs appear unnecessarily generative
-- which steps have deterministic substitutes
-- which tool/competence combinations improve cost/precision
-- where a stronger model is actually justified
-- where user feedback is needed to resolve uncertainty
-
-Recommendations remain advisory until they pass the normal validation/promotion gates.
-
-## 9. Agentic economic actions and payment rails
-
-Zeck should eventually govern agent-initiated economic activity through the same execution-control principles used for AI computation.
-
-The platform abstraction is **EconomicAction**, not a provider-specific payment object. Payment is one economic action alongside purchase, transfer, refund, charge and future machine-commerce operations.
-
-The intended flow is:
-
-```text
-agent/developer intent
-        |
-        v
-economic intent
-        |
-        v
-policy
-        |
-        v
-budget reservation
-        |
-        v
-economic/payment authorization
-        |
-        v
-provider-neutral rail adapter
-        |
-        v
-settlement / resource delivery
-        |
-        v
+trajectory
+  ↓
+pattern mining
+  ↓
+candidate competence
+  ↓
+validation
+  ↓
 verification
-        |
-        v
+  ↓
+shadow evaluation
+  ↓
+promotion
+  ↓
+planner recommendation
+```
+
+Zeck should integrate OpenClaw, Hermes, WorkflowOS and customer runtimes through adapters, not absorb their runtimes into core.
+
+## Agentic economic actions
+
+ADR-0018 defines EconomicAction and provider-neutral payment-rail adapters as a future governed extension.
+
+```text
+intent
+ ↓
+economic intent
+ ↓
+policy
+ ↓
+budget
+ ↓
+authorization
+ ↓
+rail adapter
+ ↓
+settlement/resource delivery
+ ↓
+verification
+ ↓
 evidence
-        |
-        v
-learning
 ```
 
-### Core invariants
+`intent != authorization != transaction != settlement != verification`.
 
-```text
-intent ≠ authorization ≠ transaction ≠ settlement ≠ verification
-```
+Budgets remain the spending-control authority; financial rails remain adapters.
 
-Agents must not receive unrestricted financial credentials. Authorizations should instead be bounded by the deterministic constraints Zeck already knows how to enforce, such as:
+## User-visible optimization product
 
-- seller/recipient
-- maximum amount
-- currency
-- purpose/resource
-- expiration
-- execution/application/tenant scope
-- one-time or bounded reuse
+Zeck should eventually expose recommendations such as unnecessarily generative execution subgraphs, deterministic replacements, better tool compositions, opportunities to reduce context/tool-surface cost, model downsizing opportunities, unnecessary multi-agent execution, infrastructure-vs-intelligence failure patterns, competence reuse opportunities and human-evaluation opportunities where uncertainty warrants them.
 
-Payment rails remain replaceable adapters. Candidate rails include Stripe, Machine Payments Protocol (MPP), x402, network-token/payment APIs, bank rails, wallets, stablecoin rails and regional payment providers.
+Recommendations remain advisory until normal validation and promotion gates pass.
 
-The economic layer must reuse Zeck's existing budget/economic authority rather than create a second accounting truth. External rail ledgers are settlement records correlated to Zeck evidence, not replacement Zeck ledgers.
+## Borrow vs integrate
 
-Machine-readable payment-required flows such as HTTP 402 should be treated as inputs to economic planning, not as authorization by themselves.
-
-A successful payment must never automatically imply that the purchased resource or business outcome succeeded; verification remains independent.
-
-The implementation target is a provider-neutral EconomicAction/PaymentAuthority seam plus bounded rail adapters. Regulated financial services, KYC/AML, custody, money transmission, card issuance and similar infrastructure require separate Work Orders and compliance/security review.
-
----
-
-# Recommended implementation sequencing
-
-### Wave A — Current
-
-WORK-018 + WORK-023 + WORK-031
-
-### Wave B — Competence
-
-1. Competence domain/model and lifecycle
-2. Procedural pattern mining
-3. Progressive competence retrieval
-4. Competence validation/promotion
-5. Competence registry/trust
-
-### Wave C — Runtime ecosystem
-
-1. Session/Gateway fabric
-2. OpenClaw adapter
-3. Hermes adapter
-4. Customer/BYOA runtime adapters
-5. Cross-runtime trajectory ingestion
-
-### Wave D — Optimization loop
-
-1. competence-aware planning
-2. cross-runtime scorecards
-3. deterministicization opportunity detection
-4. user-facing deterministicization recommendations
-5. automatic shadow/canary evaluation
-6. safe promotion/rollback
-
-### Wave E — Economic control plane
-
-1. EconomicAction and PaymentAuthority contracts
-2. bounded agent-payment authorization
-3. payment rail adapter contract
-4. Stripe / MPP / x402 integrations
-5. machine-readable 402 payment-required handling
-6. payment/resource-delivery verification
-7. economic trajectory telemetry and optimization
-8. machine-to-machine commerce and agent-to-agent settlement
-
-No payment rail becomes a Zeck core dependency; Zeck remains the neutral orchestration and governance layer.
-
----
-
-# Borrow vs integrate vs avoid
-
-| System / idea | Action in Zeck |
+| External lesson | Zeck treatment |
 |---|---|
-| OpenClaw Gateway/channel architecture | **Integrate conceptually** into Deployment/Session/Gateway fabric |
-| OpenClaw browser/desktop capability model | **Learn + adapt** into provider-neutral Computer Use capabilities |
-| OpenClaw skills ecosystem | **Learn + adapt** into Competence Registry |
-| OpenClaw security scanning/trust metadata | **Integrate principles** into competence supply chain |
-| OpenClaw runtime | **Adapter**, not Zeck core |
-| Hermes procedural skills | **Integrate concept** as first-class Competence |
-| Hermes autonomous skill improvement | **Promote to Zeck learning/evaluation lifecycle**, never direct agent authority |
-| Hermes memory/skills separation | **Integrate conceptually** into Context + Competence |
-| Hermes gateway/profile isolation | **Learn + adapt** into Session/Deployment |
-| Stripe agentic payment authorization/tokenization | **Integrate principles** into EconomicAction/PaymentAuthority |
-| Stripe Machine Payments Protocol | **Adapter target**, not Zeck core |
-| x402 / other machine-payment protocols | **Adapter targets**, not Zeck core |
-| Third-party framework internals | **Do not copy into core** |
+| OpenClaw Gateway/channel ecosystem | Integrate as Deployment/Session/Gateway adapter concepts |
+| OpenClaw browser/desktop use | Adapt as provider-neutral computer-use capabilities |
+| OpenClaw skills/trust ecosystem | Adapt into Competence Registry/supply chain |
+| Hermes procedural skills | Promote into Zeck Competence abstraction |
+| Hermes skill self-improvement | Move into governed learning/evaluation/promotion |
+| MCP | One possible tool representation, never a core authority |
+| CLI/scripts/code APIs | Alternative tool representations chosen by optimization |
+| Stripe/MPP/x402 machine payments | Adapter targets behind EconomicAction/PaymentAuthority |
+| Third-party runtimes | Integrate through neutral adapters, never copy their authority model |
 
----
+## Work Order discipline
 
-# Strategic end state
+No roadmap bullet is implementation authority.
+
+A capability becomes executable only through a repository-resident Work Order containing requirement ownership, exact dependencies, declared/forbidden surfaces, assurance profile, acceptance criteria, checkpoint contracts, evidence contract, migration policy and completion boundary.
+
+One Work Order = one implementation branch = one PR.
+
+Parallel execution is allowed only after surface/migration/shared-state analysis proves the branches can be safely reconciled.
+
+## Strategic end state
 
 ```text
-                         ZECK
-                          |
-               Developer API / SDK / CLI
-                          |
-                   Execution Control
-                          |
-          +---------------+---------------+
-          |               |               |
-        Policy        Capabilities      Budget
-          |               |               |
-          +---------------+---------------+
-                          |
-                       Planner
-                          |
-               Deterministic-first choice
-                          |
-        +-----------------+------------------+
-        |                 |                  |
-   deterministic      tools/skills        AI models
-        code          competence           / agents
-        |                 |                  |
-        +-----------------+------------------+
-                          |
-                   Substrate / Sandbox
-                          |
-                     Verification
-                          |
-                       Evidence
-                          |
+                       ZECK
+                         |
+              Developer API / SDK / CLI
+                         |
+                  Execution Control
+                         |
+          +--------------+--------------+
+          |              |              |
+        Policy      Capabilities      Budget
+          |              |              |
+          +--------------+--------------+
+                         |
+                      Planner
+                         |
+               Execution Compiler
+                         |
+               Optimized Execution IR
+                         |
+       +-----------------+------------------+
+       |                 |                  |
+ deterministic       tools/competence     AI
+       |                 |                  |
+       +-----------------+------------------+
+                         |
+                  Sandbox / Substrate
+                         |
+                    Verification
+                         |
+                      Evidence
+                         |
                       Learning
-                          |
-               Competence promotion
-                          |
-                    Planner improves
-                          |
-              +-----------+-----------+
-              |                       |
-       External runtimes       Economic actions
-       OpenClaw/Hermes/etc.    payments/purchases
-              |                       |
-              +-----------+-----------+
-                          |
-                     Rail adapters
+                         |
+              Competence promotion
+                         |
+                       Planner
+                         |
+          +--------------+--------------+
+          |                             |
+   External runtimes              Economic actions
+   OpenClaw/Hermes/etc.           payments/purchases
 ```
 
-The strategic goal is not to build the biggest agent framework, payment processor or runtime.
+The strategic role of Zeck is not to become the largest agent framework, payment processor, browser controller or model platform.
 
-The goal is to become the neutral execution layer that makes every agent framework, model, tool, computational substrate and authorized economic interaction **cheaper, safer, more deterministic, more precise and easier for developers to use**.
+Zeck is the neutral execution optimization layer underneath and across those systems.
