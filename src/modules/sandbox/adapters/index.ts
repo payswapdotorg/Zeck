@@ -13,5 +13,6 @@ export * from "./process-provider";
 export * from "./sql-sandbox-store";
 export * from "./sql-training-store";
 export * from "./substrate-catalog";
+export * from "./tool-surface-compute-seam";
 export * from "./training-execution-ledger";
 export * from "./verification-training-gate";
