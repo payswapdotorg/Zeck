@@ -1242,7 +1242,7 @@
     {
       "id": "WORK-052",
       "title": "Context, cache, reuse and duplicate-work economics",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-050"
       ],
@@ -1254,6 +1254,13 @@
         "cachePlanning": true,
         "concurrency": true,
         "issue": 20
+      },
+      "mergedAs": {
+        "pr": 22,
+        "mergeCommit": "9861a847144a61f0c5e569fe8056320e36128bff",
+        "implementationHead": "a4d3a97407d4ed31d1bf2c31ad82cfb62bdb3e7f",
+        "finalBranchHead": "a4d3a97407d4ed31d1bf2c31ad82cfb62bdb3e7f",
+        "baseRevision": "0a1322bdd4b500d482fecc77c1b019fba6d91797"
       }
     },
     {
@@ -1270,6 +1277,23 @@
         "modelEconomics": true,
         "adaptiveSelection": true,
         "issue": 21
+      }
+    },
+    {
+      "id": "WORK-054",
+      "title": "Economic substrate selection and runtime adapters",
+      "status": "pending",
+      "dependencies": [
+        "WORK-050"
+      ],
+      "surfaces": {
+        "modules": [
+          "compute",
+          "sandbox"
+        ],
+        "substrateEconomics": true,
+        "providerAdapters": true,
+        "issue": 23
       }
     }
   ],
