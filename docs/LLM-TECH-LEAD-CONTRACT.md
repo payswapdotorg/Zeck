@@ -78,9 +78,7 @@ If these conditions are not satisfied, run fewer workers.
 
 ## Current-base invariant
 
-The required implementation branch must be refreshed to the exact current `main` head immediately before implementation begins. A pre-created branch is only a placeholder until its base equals `main`.
-
-The Tech Lead must record the exact base SHA in the dispatch record and worker evidence. If `main` moves before coding starts, refresh the branch again. The worker must not code from a stale base.
+A pre-created implementation branch is only a placeholder until it equals the exact current `main` head. Immediately before coding, the worker must verify that equality and record the SHA. If `main` advances before coding starts, the branch must be refreshed again.
 
 ## Worker rights
 
