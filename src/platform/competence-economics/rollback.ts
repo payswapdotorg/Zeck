@@ -63,7 +63,7 @@ import { buildCompetenceRecord, validateCompetenceRecord } from "./record";
 
 /**
  * One typed degradation entry — the evidence that a promotion
- * degraded. The kind must COHERE with the rollback reason (the
+ * degraded. The kind must be coherent with the rollback reason (the
  * reason↔evidence coherence below).
  */
 export type DegradationEvidence =

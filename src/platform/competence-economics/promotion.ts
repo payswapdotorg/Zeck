@@ -50,7 +50,7 @@
  * current-stage outcome IS the evidence — no record is emitted).
  * Promotion decisions are recorded through the WORK-049
  * decision-record ride (`decisions.ts`) and EXECUTED by the
- * existing authorities at their seams — this function authorizes
+ * existing authorities at their seams — the verdict grants
  * nothing (the plane exposes no admission vocabulary).
  *
  * Pure and deterministic: no clock, no randomness, no ambient state
