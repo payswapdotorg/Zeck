@@ -159,7 +159,7 @@ export const AVAILABILITY_MODE_RANK: Readonly<Record<SubstrateAvailabilityMode, 
 /**
  * The closed readiness-state vocabulary — the NEUTRAL startup
  * lifecycle of a substrate environment (E1.1 research baseline:
- * distinguish "started" from "ready"; application readiness can
+ * distinguish "started" versus "ready"; application readiness can
  * dominate raw boot). The words are neutral lifecycle vocabulary, not
  * any provider's state machine:
  *

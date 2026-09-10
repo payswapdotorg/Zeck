@@ -67,7 +67,7 @@ import {
 
 /**
  * The bounded, attributed startup expectation of one availability
- * mode: the expected latency from "nothing exists" to "environment
+ * mode: the expected latency between "nothing exists" and "environment
  * READY" (`readinessMs` — the FULL created → ready path, never the
  * boot time alone) and the expected one-time cost of getting there
  * (`startupCostMicroUsd`, integer micro-USD). Both carry REQUIRED

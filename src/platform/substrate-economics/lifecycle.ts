@@ -6,7 +6,7 @@
  * bounded, typed computations over substrate startup, readiness probes
  * and warm-pool/snapshot states (the Work Order's third scope item;
  * the E1.1 research baseline's core lesson: distinguish "started"
- * from "ready", and optimize TOTAL readiness latency — application
+ * versus "ready", and optimize TOTAL readiness latency — application
  * initialization can dominate raw boot time).
  *
  * Three contracts, all pure and deterministic:
