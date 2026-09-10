@@ -60,9 +60,9 @@ import {
   type FailureSignal,
   PROVIDER_ERROR_CLASSES,
   type ProviderErrorClass,
-  reject,
   RESOURCE_KINDS,
   type ResourceKind,
+  reject,
   SHA256_HEX_PATTERN,
   SIGNAL_CLASS_ADMISSIBILITY,
   SIGNAL_PROVIDER_ERROR_CLASS,
@@ -108,15 +108,15 @@ export function validateFailureObservation(value: unknown): FailureObservation {
     reject("observation-shape", "failure observation must be an object");
   }
   const record = value;
-  if (typeof record.signal !== "string" || !(FAILURE_SIGNALS as readonly string[]).includes(record.signal)) {
+  if (
+    typeof record.signal !== "string" ||
+    !(FAILURE_SIGNALS as readonly string[]).includes(record.signal)
+  ) {
     reject("observation-shape", "observation signal is outside the closed vocabulary", {
       got: boundedDetail(String(record.signal)),
     });
   }
-  if (
-    typeof record.component !== "string" ||
-    !COMPONENT_REF_PATTERN.test(record.component)
-  ) {
+  if (typeof record.component !== "string" || !COMPONENT_REF_PATTERN.test(record.component)) {
     reject("observation-shape", "observation component must be a bounded neutral slug", {
       got: boundedDetail(String(record.component)),
     });
@@ -150,7 +150,10 @@ export function validateFailureObservation(value: unknown): FailureObservation {
       record.routeRef.provider.length === 0 ||
       record.routeRef.model.length === 0
     ) {
-      reject("observation-shape", "routeRef must carry bounded non-empty provider/model when present");
+      reject(
+        "observation-shape",
+        "routeRef must carry bounded non-empty provider/model when present",
+      );
     }
   }
   if (record.substrateRef !== undefined) {
@@ -302,9 +305,7 @@ export function attributeFailure(
       // Provider evidence coherence: the signal names the provider
       // error surface; the evidence must agree with it.
       const expected =
-        SIGNAL_PROVIDER_ERROR_CLASS[
-          validated.signal as keyof typeof SIGNAL_PROVIDER_ERROR_CLASS
-        ];
+        SIGNAL_PROVIDER_ERROR_CLASS[validated.signal as keyof typeof SIGNAL_PROVIDER_ERROR_CLASS];
       if (expected !== undefined && evidence.providerErrorClass !== expected) {
         reject("attribution-cross-classified", "provider evidence is incoherent with the signal", {
           signal: validated.signal,
@@ -331,9 +332,13 @@ export function attributeFailure(
         typeof evidence.toolErrorCode !== "string" ||
         !TOOL_ERROR_CODE_PATTERN.test(evidence.toolErrorCode)
       ) {
-        reject("attribution-unattributed", "tool evidence must carry a bounded neutral error code", {
-          got: boundedDetail(String(evidence.toolErrorCode)),
-        });
+        reject(
+          "attribution-unattributed",
+          "tool evidence must carry a bounded neutral error code",
+          {
+            got: boundedDetail(String(evidence.toolErrorCode)),
+          },
+        );
       }
       break;
     }

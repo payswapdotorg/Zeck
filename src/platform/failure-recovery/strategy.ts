@@ -65,15 +65,13 @@
 
 import type { OptimizationConstraint } from "../execution-ir/constraints";
 import { validateConstraintSet } from "../execution-ir/constraints";
-import type { CandidateEvaluation } from "../execution-ir/cost-model";
-import type { CostClaim } from "../execution-ir/cost-model";
+import type { CandidateEvaluation, CostClaim } from "../execution-ir/cost-model";
 import type { IrDigestPort } from "../execution-ir/ir";
 import type { GoverningFacts } from "../model-economics/admissibility";
 import { evaluateAdmissibility, governingFacts } from "../model-economics/admissibility";
 import type { FreshEscalationDecision } from "../model-economics/escalation-hooks";
 import type { ModelSelection } from "../model-economics/model-selection";
-import type { ModelCandidate } from "../model-economics/vocabulary";
-import type { QualityFacts } from "../model-economics/vocabulary";
+import type { ModelCandidate, QualityFacts } from "../model-economics/vocabulary";
 import { validateQualityFacts } from "../model-economics/vocabulary";
 import type { SubstrateSelectionResult } from "../substrate-economics/selection";
 import type { FailureAttribution } from "./attribution";
@@ -85,8 +83,8 @@ import {
   type RecoveryFailClosedCode,
   type RecoveryInadmissibleCode,
   type RecoveryStrategy,
-  reject,
   type RerouteDimension,
+  reject,
 } from "./catalog";
 
 // ---------------------------------------------------------------------------
@@ -521,17 +519,17 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
         strategy: "re-route",
         rerouteDimension: "model",
         claim: {
-          expectedCostMicroUsd:
-            selected.evaluation.expectedSuccessfulResolutionCostMicroUsd,
+          expectedCostMicroUsd: selected.evaluation.expectedSuccessfulResolutionCostMicroUsd,
           expectedLatencyMs: declared.claim.expectedLatencyMs,
           expectedQuality: declared.claim.expectedQuality,
           expectedReliability: declared.claim.expectedReliability,
           basis: {
             basis: declared.claim.basis.basis,
-            source: `model-economics;route=${selected.route.provider}/${selected.route.model}`.slice(
-              0,
-              200,
-            ),
+            source:
+              `model-economics;route=${selected.route.provider}/${selected.route.model}`.slice(
+                0,
+                200,
+              ),
             ...(declared.claim.basis.evidenceDigest === undefined
               ? {}
               : { evidenceDigest: declared.claim.basis.evidenceDigest }),

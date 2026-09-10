@@ -100,7 +100,10 @@ export type ResourceKind = (typeof RESOURCE_KINDS)[number];
 
 /** The signal → provider-error-class coherence (typed evidence binding). */
 export const SIGNAL_PROVIDER_ERROR_CLASS: Readonly<
-  Record<"provider-rate-limited" | "provider-server-error" | "provider-capacity", ProviderErrorClass>
+  Record<
+    "provider-rate-limited" | "provider-server-error" | "provider-capacity",
+    ProviderErrorClass
+  >
 > = {
   "provider-rate-limited": "rate-limited",
   "provider-server-error": "server-error",
@@ -249,13 +252,6 @@ export class FailureRecoveryError extends Error {
     }
     this.details = Object.freeze(boundedDetails);
   }
-}
-
-const DETAIL_LIMIT = 200;
-
-function bounded(value: unknown): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return text.length > DETAIL_LIMIT ? `${text.slice(0, DETAIL_LIMIT)}…` : text;
 }
 
 /** Fail closed with the typed error (never a silent default). */
