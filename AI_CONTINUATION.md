@@ -37,6 +37,8 @@ For dispatch/review/orchestration behavior also read:
 
 **THE E1.1 IMPLEMENTATION PROGRAM IS COMPLETE** — all nine charter Work Orders (WORK-048 through WORK-056) are implemented, reviewed, merged and finalized. The frontier is empty; future stages require new Architect Work Orders.
 
+- E1.1 final architecture acceptance: RECORDED 2026-09-10 against `main` `8e88a84` (see `docs/architecture-changes/ACR-004-...md#final-architecture-acceptance` and `program-state.json postMergeFinalization.finalArchitectureAcceptance`). The E1.1 program is fully closed.
+
 Current frontier is `eligible=[]`, `inFlight=[]`, `blocked=[]` — the E1.1 program is complete.
 
 ## E1.1 architectural authority

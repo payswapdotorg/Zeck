@@ -260,3 +260,44 @@ E1.1 is architecturally complete only when the implementation program has produc
 10. verified deterministic replacement/promotion.
 
 Every capability requires exact-revision proof and remains subordinate to v1.0 authority.
+
+## Final architecture acceptance
+
+**Accepted:** 2026-09-10
+**Accepted state:** `main` at `8e88a842efdf8422a658bbf5f0966ddbc6d4b53c`
+**Accepting authority:** Architect
+
+The E1.1 Economic Execution Intelligence program is accepted as complete and
+architecturally sound against the exact merged repository state recorded
+above.
+
+Acceptance basis:
+
+- All nine charter Work Orders (WORK-049 through WORK-056) plus the D-07
+  prerequisite WORK-048 are individually merged, post-merge finalized and
+  governance-validated: 048 PR #14 (c4051e2), 049 PR #16 (93ea53c),
+  050 PR #18 (3d249a7), 051 PR #24 (bd9a1b1), 052 PR #22 (9861a84),
+  053 PR #26 (c763157), 054 PR #27 (b8aa548), 055 PR #29 (ef929a4),
+  056 PR #31 (3318a8a, final branch head 6bf510b including the Architect
+  C9 stale-pin reconciliation 84b96af).
+- `scripts/governance-check.py` at the accepted state: 56 Work Orders,
+  102 requirements, inFlight=[], frontier=[] — OK.
+- The merged repository realizes the one-compiler rule: a single Execution
+  Compiler authority over one Execution IR; no secondary authority was
+  introduced for model routing, tool routing, context, cache, agent,
+  sandbox, retry or cost optimization.
+- Execution surfaces verified against E1.1 objectives: Execution IR and
+  outcome economics (049), deterministic Execution Compiler (050),
+  tool-surface compilation and programmatic execution (051), context /
+  cache / reuse / duplicate-work economics (052), adaptive model/reasoning
+  and multi-agent economics (053), economic substrate selection and runtime
+  adapters (054), failure-aware recovery, fresh escalation and continuation
+  (055), competence-aware optimization and progressive deterministicization
+  (056).
+- Drift check: the only post-merge architectural reconciliation was the
+  Architect-owned C9 dispatch-base correction (84b96af), which strengthened
+  merge-base drift immunity without changing any worker surface.
+
+This acceptance closes the E1.1 implementation program. Future work stages
+become executable only through new Architect-issued Work Orders and
+frontier/dependency authorization, per the repository charter.
