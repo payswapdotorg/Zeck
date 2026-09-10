@@ -289,50 +289,70 @@ export function attributeFailure(
       evidenceKind: evidence.kind,
     });
   }
-  // Provider evidence coherence: the signal names the provider error
-  // surface; the evidence must agree with it.
-  if (claimedClass === "provider") {
-    const expected = SIGNAL_PROVIDER_ERROR_CLASS[validated.signal as keyof typeof SIGNAL_PROVIDER_ERROR_CLASS];
-    if (expected !== undefined && evidence.providerErrorClass !== expected) {
-      reject("attribution-cross-classified", "provider evidence is incoherent with the signal", {
-        signal: validated.signal,
-        expected,
-        got: evidence.providerErrorClass,
-      });
+  // Class-evidence discipline: each class's evidence carries its own
+  // typed, closed shape — validated per kind (the kind match above
+  // makes this switch total over the closed union).
+  switch (evidence.kind) {
+    case "infrastructure":
+      if (typeof evidence.transient !== "boolean") {
+        reject("attribution-unattributed", "infrastructure evidence must carry the transient flag");
+      }
+      break;
+    case "provider": {
+      // Provider evidence coherence: the signal names the provider
+      // error surface; the evidence must agree with it.
+      const expected =
+        SIGNAL_PROVIDER_ERROR_CLASS[
+          validated.signal as keyof typeof SIGNAL_PROVIDER_ERROR_CLASS
+        ];
+      if (expected !== undefined && evidence.providerErrorClass !== expected) {
+        reject("attribution-cross-classified", "provider evidence is incoherent with the signal", {
+          signal: validated.signal,
+          expected,
+          got: evidence.providerErrorClass,
+        });
+      }
+      if (
+        typeof evidence.providerErrorClass !== "string" ||
+        !(PROVIDER_ERROR_CLASSES as readonly string[]).includes(evidence.providerErrorClass)
+      ) {
+        reject("attribution-unattributed", "provider evidence must carry the closed error class");
+      }
+      break;
     }
-    if (
-      typeof evidence.providerErrorClass !== "string" ||
-      !(PROVIDER_ERROR_CLASSES as readonly string[]).includes(evidence.providerErrorClass)
-    ) {
-      reject("attribution-unattributed", "provider evidence must carry the closed error class");
+    case "resource": {
+      if (!(RESOURCE_KINDS as readonly string[]).includes(evidence.resourceKind)) {
+        reject("attribution-unattributed", "resource evidence must carry the closed resource kind");
+      }
+      break;
     }
-  }
-  if (claimedClass === "resource") {
-    if (!(RESOURCE_KINDS as readonly string[]).includes(evidence.resourceKind)) {
-      reject("attribution-unattributed", "resource evidence must carry the closed resource kind");
+    case "tool": {
+      if (
+        typeof evidence.toolErrorCode !== "string" ||
+        !TOOL_ERROR_CODE_PATTERN.test(evidence.toolErrorCode)
+      ) {
+        reject("attribution-unattributed", "tool evidence must carry a bounded neutral error code", {
+          got: boundedDetail(String(evidence.toolErrorCode)),
+        });
+      }
+      break;
     }
-  }
-  if (claimedClass === "tool") {
-    if (
-      typeof evidence.toolErrorCode !== "string" ||
-      !TOOL_ERROR_CODE_PATTERN.test(evidence.toolErrorCode)
-    ) {
-      reject("attribution-unattributed", "tool evidence must carry a bounded neutral error code", {
-        got: boundedDetail(String(evidence.toolErrorCode)),
-      });
-    }
-  }
-  if (claimedClass === "intelligence") {
-    if (
-      typeof evidence.observedQuality !== "number" ||
-      !Number.isFinite(evidence.observedQuality) ||
-      evidence.observedQuality < 0 ||
-      evidence.observedQuality > 1
-    ) {
-      reject("attribution-unattributed", "intelligence evidence must carry the observed quality in [0, 1]");
-    }
-    if (evidence.verificationId !== undefined && typeof evidence.verificationId !== "string") {
-      reject("attribution-unattributed", "verificationId must be a string when present");
+    case "intelligence": {
+      if (
+        typeof evidence.observedQuality !== "number" ||
+        !Number.isFinite(evidence.observedQuality) ||
+        evidence.observedQuality < 0 ||
+        evidence.observedQuality > 1
+      ) {
+        reject(
+          "attribution-unattributed",
+          "intelligence evidence must carry the observed quality in [0, 1]",
+        );
+      }
+      if (evidence.verificationId !== undefined && typeof evidence.verificationId !== "string") {
+        reject("attribution-unattributed", "verificationId must be a string when present");
+      }
+      break;
     }
   }
 
