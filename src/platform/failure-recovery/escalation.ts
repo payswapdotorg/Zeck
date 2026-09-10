@@ -166,6 +166,20 @@ export function buildEscalationPackage(input: EscalationInput): EscalationPackag
     );
   }
   const failure = validateFailureAttribution(input.failure, input.digest);
+  if (input.strategy.attributionId !== failure.attributionId) {
+    // Provenance coherence: the escalate-fresh verdict must be the one
+    // decided under THIS attributed failure — a verdict from another
+    // failure's selection cannot justify this escalation (exact
+    // provenance, fail closed).
+    reject(
+      "escalation-shape",
+      "the escalation strategy verdict was decided under a different failure attribution",
+      {
+        failureAttributionId: failure.attributionId,
+        strategyAttributionId: input.strategy.attributionId,
+      },
+    );
+  }
   const continuation = validateContinuationPackage(input.continuation, input.digest);
   if (!Array.isArray(input.evidence)) {
     reject("escalation-shape", "evidence must be an array of content-addressed references");

@@ -297,11 +297,15 @@ export interface StrategyCandidate {
  * The per-strategy verdict: admissibility over the closed reason-code
  * vocabulary, the WORK-049 evaluation (present whenever a claim
  * exists — the auditable comparison evidence), and the bounded
- * inadmissibility detail.
+ * inadmissibility detail. Every verdict carries the ATTRIBUTION
+ * identity it was decided under (exact provenance: failure
+ * observation → attribution → recovery decision).
  */
 export interface StrategyVerdict {
   readonly candidateId: string;
   readonly strategy: RecoveryStrategy;
+  /** The attribution this verdict was decided under (provenance). */
+  readonly attributionId: string;
   readonly rerouteDimension?: RerouteDimension;
   readonly representationClass: string;
   /** False when the strategy violates the retry/escalation discipline or the economics. */
@@ -459,6 +463,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       disciplineVerdicts.push({
         candidateId: candidate.candidateId,
         strategy: "retry",
+        attributionId: attribution.attributionId,
         representationClass: VERDICT_CLASS,
         admissible: false,
         inadmissibleCode: code,
@@ -476,6 +481,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       structural.push({
         candidateId: "reroute-model",
         strategy: "re-route",
+        attributionId: attribution.attributionId,
         rerouteDimension: "model",
         representationClass: VERDICT_CLASS,
         admissible: false,
@@ -491,6 +497,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       structural.push({
         candidateId: "reroute-model",
         strategy: "re-route",
+        attributionId: attribution.attributionId,
         rerouteDimension: "model",
         representationClass: VERDICT_CLASS,
         admissible: false,
@@ -546,6 +553,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       structural.push({
         candidateId: "reroute-substrate",
         strategy: "re-route",
+        attributionId: attribution.attributionId,
         rerouteDimension: "substrate",
         representationClass: VERDICT_CLASS,
         admissible: false,
@@ -593,6 +601,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       disciplineVerdicts.push({
         candidateId: "escalate-fresh",
         strategy: "escalate-fresh",
+        attributionId: attribution.attributionId,
         representationClass: VERDICT_CLASS,
         admissible: false,
         inadmissibleCode: "escalation-not-justified",
@@ -630,6 +639,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       verdicts.push({
         candidateId: candidate.candidateId,
         strategy: candidate.strategy,
+        attributionId: attribution.attributionId,
         ...(candidate.rerouteDimension === undefined
           ? {}
           : { rerouteDimension: candidate.rerouteDimension }),
@@ -641,6 +651,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       verdicts.push({
         candidateId: candidate.candidateId,
         strategy: candidate.strategy,
+        attributionId: attribution.attributionId,
         ...(candidate.rerouteDimension === undefined
           ? {}
           : { rerouteDimension: candidate.rerouteDimension }),
