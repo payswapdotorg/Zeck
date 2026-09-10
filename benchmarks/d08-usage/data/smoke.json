@@ -1,0 +1,91 @@
+$ bun deploy/smoke.ts --environment local --allow-degraded
+{
+  "tool": "deploy/smoke",
+  "environment": "local",
+  "gitRevision": "06d2adbd75d4d6164c8b4326c873d63ba3716ebf",
+  "identity": {
+    "schemaVersion": 1,
+    "identityId": "fba9a514e8dc7d80b73bd37b27df959510f3a6c4a1d03985f78385c2431cf045",
+    "gitRevision": "06d2adbd75d4d6164c8b4326c873d63ba3716ebf",
+    "environment": "local",
+    "manifestDigest": "4da62f1203a7e07039d902cdc7b028fe0a69fa4d976e44f2951180d885353c60",
+    "resourceDigest": "89765558b94fdbccd8f6219449e286797b2f17748e81789713ee8d978cb019d2",
+    "resources": [
+      {
+        "id": "postgres",
+        "kind": "pg-database",
+        "concern": "relational-state",
+        "name": "zeck_local",
+        "labels": {
+          "zeck.io/environment": "local",
+          "zeck.io/managed-by": "zeck-deploy"
+        }
+      },
+      {
+        "id": "object-store",
+        "kind": "local-object-store",
+        "concern": "artifact-bytes",
+        "name": "zeck-local-artifacts",
+        "labels": {
+          "zeck.io/environment": "local",
+          "zeck.io/managed-by": "zeck-deploy"
+        }
+      },
+      {
+        "id": "redis",
+        "kind": "local-redis",
+        "concern": "ephemeral-coordination",
+        "name": "zeck-local-redis",
+        "labels": {
+          "zeck.io/environment": "local",
+          "zeck.io/managed-by": "zeck-deploy"
+        }
+      },
+      {
+        "id": "execution-runner",
+        "kind": "local-container-runner",
+        "concern": "execution-compute",
+        "name": "zeck-local-runner",
+        "labels": {
+          "zeck.io/environment": "local",
+          "zeck.io/managed-by": "zeck-deploy"
+        }
+      }
+    ]
+  },
+  "environmentContract": {
+    "satisfied": true,
+    "problems": []
+  },
+  "readiness": {
+    "overall": "degraded",
+    "controlPlane": "ready",
+    "dependencies": [
+      {
+        "concern": "relational-state",
+        "provider": "neon",
+        "authority": "authoritative",
+        "status": "ready",
+        "degradedMode": null,
+        "detail": "postgres reachable; zeck_local present"
+      },
+      {
+        "concern": "artifact-bytes",
+        "provider": "cloudflare-r2",
+        "authority": "non-authoritative",
+        "status": "ready",
+        "degradedMode": null,
+        "detail": "object-store root present: zeck-local-artifacts"
+      },
+      {
+        "concern": "ephemeral-coordination",
+        "provider": "upstash-redis",
+        "authority": "non-authoritative",
+        "status": "degraded",
+        "degradedMode": "coordination-degraded",
+        "detail": "ZECK_LOCAL_REDIS_URL is not set; the local coordination dependency is degraded by explicit choice"
+      }
+    ]
+  },
+  "pass": true
+}

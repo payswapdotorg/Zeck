@@ -8,6 +8,7 @@
   "files": {
     "includes": [
       "benchmarks/**",
+      "!benchmarks/d08-usage/data",
       "src/**",
       "deploy/**",
       "sdk/**",

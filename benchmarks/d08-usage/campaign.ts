@@ -1,21 +1,36 @@
 /**
  * benchmarks/d08-usage/campaign.ts — the D-08 measured-usage campaign driver.
  *
- * Runs the full scenario matrix (12 classes, concurrency 1/4/16(+32), a
- * 30-minute sustained window with the worker process and queue live),
- * writes every execution as one JSONL record under data/, and leaves the
- * durable evidence in PostgreSQL for the summary pass (summarize.ts).
+ * CHUNKED EXECUTION (the sandbox operating contract): this sandbox kills
+ * every process spawned by a tool call when that call returns (proven by a
+ * heartbeat test — see the evidence document). The campaign therefore runs
+ * as N sequential bounded CHUNKS, each a synchronous invocation from its own
+ * operator call:
+ *
+ *   - the DURABLE campaign state lives in PostgreSQL (executions, envelopes,
+ *     compute plane, budgets) and benchmarks/d08-usage/data/campaign-state.json
+ *     (the work-list cursor);
+ *   - each chunk starts a FRESH world (API server + queue stand-in + OTLP stub
+ *     + REAL worker service process), continues the work list, appends to the
+ *     SAME JSONL data files, then stops cleanly: every execution started in
+ *     the chunk is awaited to a terminal state BEFORE the worker's graceful
+ *     bounded drain — nothing undispatched crosses a chunk boundary;
+ *   - sustained-window wall-clock coverage accumulates across chunks (each
+ *     chunk's live window is recorded in data/chunks/chunk-*.json);
+ *   - chunk boundaries, per-chunk liveness and worker/queue continuity are
+ *     disclosed in the evidence document (honest chunked shape, never claimed
+ *     as a single uninterrupted process).
  *
  * Usage:
- *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts run \
- *     [--sustained-minutes 30] [--skip-sustained] [--skip-burst32]
  *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts warmup
+ *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts chunk --chunk-id 1 --budget-seconds 360
+ *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts summary
  */
 
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createUuidv7Generator } from "../../src/shared/ids";
-import { SCENARIOS, type ScenarioSpec } from "./scenarios";
+import { SCENARIOS, type ScenarioId, type ScenarioSpec } from "./scenarios";
 import { type CampaignWorld, DATA_DIR, startWorld } from "./world";
 
 const generateId = createUuidv7Generator();
@@ -26,10 +41,6 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
 function arg(name: string, fallback?: string): string | undefined {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : fallback;
-}
-
-function hasFlag(name: string): boolean {
-  return process.argv.includes(name);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,10 +76,6 @@ interface ExecutionRecord {
 
 function recordExecution(record: ExecutionRecord): void {
   appendFileSync(join(DATA_DIR, "executions.jsonl"), `${JSON.stringify(record)}\n`);
-}
-
-function writeProgress(state: Record<string, unknown>): void {
-  writeFileSync(join(DATA_DIR, "campaign-progress.json"), `${JSON.stringify(state, null, 2)}\n`);
 }
 
 // ---------------------------------------------------------------------------
@@ -340,7 +347,7 @@ async function runPairs(
   return records;
 }
 
-function scenarioOf(id: string): ScenarioSpec {
+function scenarioOf(id: ScenarioId): ScenarioSpec {
   const spec = SCENARIOS.find((s) => s.id === id);
   if (spec === undefined) throw new Error(`unknown scenario: ${id}`);
   return spec;
@@ -367,6 +374,12 @@ async function awaitWorker(world: CampaignWorld, timeoutMs: number): Promise<str
   throw new Error("the worker service did not register within the readiness window");
 }
 
+/**
+ * Budget funding: durable in PostgreSQL (idempotency-keyed — replays safely
+ * on every chunk). The wallet funds exactly ONE live costed reservation
+ * (1000 microUsd): sequential costed executions settle-and-release; truly
+ * concurrent ones exceed the live bound → honest BUDGET_EXCEEDED denials.
+ */
 async function fundBudget(world: CampaignWorld): Promise<void> {
   const scope = {
     actorId: world.identity.actorId,
@@ -383,8 +396,12 @@ async function fundBudget(world: CampaignWorld): Promise<void> {
   );
 }
 
-/** The restrictive cost policy scoped to the policy-denied task kind only. */
-export async function publishRestrictivePolicy(world: CampaignWorld): Promise<void> {
+/**
+ * The restrictive cost policy (version 2, task-scoped). The policy authority
+ * is process-local (InMemoryPolicyStore behind the REAL authority seam), so
+ * EVERY chunk re-publishes the identical set into its fresh authority.
+ */
+async function publishRestrictivePolicy(world: CampaignWorld): Promise<void> {
   await world.policyAuthority.publish({
     id: "default",
     version: 2,
@@ -400,100 +417,262 @@ export async function publishRestrictivePolicy(world: CampaignWorld): Promise<vo
 }
 
 // ---------------------------------------------------------------------------
-// The phases
+// The campaign work list (the durable, chunk-resumable plan)
 // ---------------------------------------------------------------------------
 
-interface PhaseOptions {
-  readonly sustainedMinutes: number;
-  readonly skipSustained: boolean;
-  readonly skipBurst32: boolean;
+type WorkItem =
+  | {
+      readonly kind: "batch";
+      readonly scenario: ScenarioId;
+      readonly count: number;
+      readonly concurrency: number;
+      readonly phase: string;
+    }
+  | {
+      readonly kind: "pairs";
+      readonly scenario: ScenarioId;
+      readonly pairs: number;
+      readonly phase: string;
+    };
+
+/** The sustained window's total target (seconds of live-stack coverage). */
+export const SUSTAINED_TOTAL_SECONDS = 1800;
+/** The sustained tick cadence (seconds per tick, including its idle tail). */
+const SUSTAINED_TICK_SECONDS = 15;
+
+function buildWorkList(): readonly WorkItem[] {
+  return [
+    // Phase A — concurrency 1 (the sequential baseline).
+    { kind: "batch", scenario: "simple-deterministic", count: 6, concurrency: 1, phase: "A-c1" },
+    { kind: "batch", scenario: "model-routed-decision", count: 6, concurrency: 1, phase: "A-c1" },
+    {
+      kind: "batch",
+      scenario: "tool-surface-programmatic",
+      count: 6,
+      concurrency: 1,
+      phase: "A-c1",
+    },
+    { kind: "batch", scenario: "context-heavy", count: 6, concurrency: 1, phase: "A-c1" },
+    { kind: "batch", scenario: "verification-heavy", count: 6, concurrency: 1, phase: "A-c1" },
+    { kind: "batch", scenario: "budget-funded", count: 6, concurrency: 1, phase: "A-c1" },
+    { kind: "pairs", scenario: "competence-reuse", pairs: 3, phase: "A-c1" },
+    { kind: "pairs", scenario: "failure-escalation", pairs: 3, phase: "A-c1" },
+    { kind: "batch", scenario: "failure-retry", count: 3, concurrency: 1, phase: "A-c1" },
+    { kind: "batch", scenario: "policy-denied", count: 3, concurrency: 1, phase: "A-c1" },
+    { kind: "batch", scenario: "budget-exhausted", count: 6, concurrency: 6, phase: "A-budget" },
+    // Phase B — concurrency 4.
+    { kind: "batch", scenario: "simple-deterministic", count: 12, concurrency: 4, phase: "B-c4" },
+    { kind: "batch", scenario: "model-routed-decision", count: 12, concurrency: 4, phase: "B-c4" },
+    {
+      kind: "batch",
+      scenario: "tool-surface-programmatic",
+      count: 12,
+      concurrency: 4,
+      phase: "B-c4",
+    },
+    { kind: "batch", scenario: "context-heavy", count: 12, concurrency: 4, phase: "B-c4" },
+    { kind: "batch", scenario: "verification-heavy", count: 12, concurrency: 4, phase: "B-c4" },
+    { kind: "batch", scenario: "budget-exhausted", count: 6, concurrency: 6, phase: "B-budget" },
+    // Phase C — concurrency 16 and 32 bursts.
+    { kind: "batch", scenario: "burst-load", count: 32, concurrency: 16, phase: "C-c16" },
+    { kind: "batch", scenario: "simple-deterministic", count: 16, concurrency: 16, phase: "C-c16" },
+    { kind: "batch", scenario: "burst-load", count: 32, concurrency: 32, phase: "C-c32" },
+  ];
 }
 
-async function runPhases(world: CampaignWorld, options: PhaseOptions): Promise<number> {
-  let total = 0;
+interface CampaignState {
+  /** Cursor into the fixed work list (phases A/B/C). */
+  nextItem: number;
+  /** Accumulated sustained-window seconds across chunks. */
+  sustainedElapsedSeconds: number;
+  /** Sustained ticks executed (drives the mixed-load rotation). */
+  sustainedTicks: number;
+  /** Governed executions recorded (all chunks). */
+  totalExecutions: number;
+}
 
-  // Phase A — concurrency 1 (the sequential baseline).
-  console.log("phase A: concurrency 1");
-  for (const id of [
+const STATE_FILE = join(DATA_DIR, "campaign-state.json");
+const CHUNKS_DIR = join(DATA_DIR, "chunks");
+
+function loadState(): CampaignState {
+  try {
+    return JSON.parse(readFileSync(STATE_FILE, "utf8")) as CampaignState;
+  } catch {
+    return {
+      nextItem: 0,
+      sustainedElapsedSeconds: 0,
+      sustainedTicks: 0,
+      totalExecutions: 0,
+    };
+  }
+}
+
+function saveState(state: CampaignState): void {
+  writeFileSync(STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+/** One sustained tick: mixed realistic load, then idle tail (live stack).
+ * Returns [secondsSpent, executionsStarted]. */
+async function sustainedTick(
+  world: CampaignWorld,
+  tick: number,
+): Promise<{ seconds: number; executions: number }> {
+  const started = Date.now();
+  let executions = 0;
+  const mix: ScenarioId[] = [
     "simple-deterministic",
-    "model-routed-decision",
     "tool-surface-programmatic",
-    "context-heavy",
-    "verification-heavy",
-    "budget-funded",
-  ]) {
-    total += (await runBatch(world, scenarioOf(id), 6, 1, "A-c1")).length;
-  }
-  total += (await runPairs(world, scenarioOf("competence-reuse"), 3, "A-c1")).length;
-  total += (await runPairs(world, scenarioOf("failure-escalation"), 3, "A-c1")).length;
-  total += (await runBatch(world, scenarioOf("failure-retry"), 3, 1, "A-c1")).length;
-  total += (await runBatch(world, scenarioOf("policy-denied"), 3, 1, "A-c1")).length;
-  total += (await runBatch(world, scenarioOf("budget-exhausted"), 6, 6, "A-budget")).length;
-  writeProgress({ phase: "A", completed: total, at: new Date().toISOString() });
-
-  // Phase B — concurrency 4.
-  console.log("phase B: concurrency 4");
-  for (const id of [
-    "simple-deterministic",
     "model-routed-decision",
-    "tool-surface-programmatic",
-    "context-heavy",
     "verification-heavy",
-  ]) {
-    total += (await runBatch(world, scenarioOf(id), 12, 4, "B-c4")).length;
+  ];
+  const scenarioId = mix[tick % mix.length] ?? "simple-deterministic";
+  const size = 1 + (tick % 3 === 0 ? 1 : 0);
+  executions += (await runBatch(world, scenarioOf(scenarioId), size, size, "sustained")).length;
+  if (tick % 8 === 4) {
+    executions += (await runBatch(world, scenarioOf("context-heavy"), 1, 1, "sustained")).length;
   }
-  total += (await runBatch(world, scenarioOf("budget-exhausted"), 6, 6, "B-budget")).length;
-  writeProgress({ phase: "B", completed: total, at: new Date().toISOString() });
-
-  // Phase C — concurrency 16 (burst) + 32 if stable.
-  console.log("phase C: concurrency 16");
-  total += (await runBatch(world, scenarioOf("burst-load"), 32, 16, "C-c16")).length;
-  total += (await runBatch(world, scenarioOf("simple-deterministic"), 16, 16, "C-c16")).length;
-  if (!options.skipBurst32) {
-    total += (await runBatch(world, scenarioOf("burst-load"), 32, 32, "C-c32")).length;
+  if (tick % 20 === 10) {
+    executions += (await runBatch(world, scenarioOf("failure-retry"), 1, 1, "sustained")).length;
   }
-  writeProgress({ phase: "C", completed: total, at: new Date().toISOString() });
+  if (tick % 12 === 6) {
+    executions += (await runBatch(world, scenarioOf("budget-funded"), 1, 1, "sustained")).length;
+  }
+  if (tick % 30 === 15) {
+    executions += (await runPairs(world, scenarioOf("failure-escalation"), 1, "sustained")).length;
+  }
+  const spentMs = Date.now() - started;
+  if (spentMs < SUSTAINED_TICK_SECONDS * 1000) {
+    await sleep(SUSTAINED_TICK_SECONDS * 1000 - spentMs);
+  }
+  return { seconds: (Date.now() - started) / 1000, executions };
+}
 
-  // The sustained window — worker + queue live, mixed realistic load.
-  if (!options.skipSustained) {
-    console.log(`sustained window: ${options.sustainedMinutes} minutes`);
-    const endAt = Date.now() + options.sustainedMinutes * 60_000;
-    const mix = [
-      "simple-deterministic",
-      "tool-surface-programmatic",
-      "model-routed-decision",
-      "verification-heavy",
-    ];
-    let tick = 0;
-    while (Date.now() < endAt) {
-      const size = 1 + (tick % 3 === 0 ? 1 : 0);
-      const scenarioId = mix[tick % mix.length] ?? "simple-deterministic";
-      total += (await runBatch(world, scenarioOf(scenarioId), size, size, "sustained")).length;
-      if (tick % 8 === 4) {
-        total += (await runBatch(world, scenarioOf("context-heavy"), 1, 1, "sustained")).length;
+// ---------------------------------------------------------------------------
+// The chunk runner (one bounded synchronous invocation)
+// ---------------------------------------------------------------------------
+
+interface ChunkManifest {
+  readonly chunkId: number;
+  readonly startedAt: string;
+  readonly endedAt: string;
+  readonly durationSeconds: number;
+  readonly workerId: string;
+  readonly itemsExecuted: number;
+  readonly executions: number;
+  readonly sustainedElapsedSeconds: number;
+  readonly totalExecutions: number;
+  readonly workListDone: boolean;
+  readonly sustainedDone: boolean;
+  readonly drained: boolean;
+}
+
+async function runChunk(chunkId: number, budgetSeconds: number): Promise<void> {
+  mkdirSync(CHUNKS_DIR, { recursive: true });
+  const state = loadState();
+  const work = buildWorkList();
+  const startedAt = new Date().toISOString();
+  const budgetDeadline = Date.now() + budgetSeconds * 1000;
+  console.log(`chunk ${chunkId}: start ${startedAt} (budget ${budgetSeconds}s)`);
+  console.log(
+    `chunk ${chunkId}: resuming at work item ${state.nextItem}/${work.length}, ` +
+      `sustained ${state.sustainedElapsedSeconds.toFixed(1)}/${SUSTAINED_TOTAL_SECONDS}s`,
+  );
+
+  const world = await startWorld({ queueSampleIntervalMs: 1000 });
+  let drained = false;
+  let workerId = "n/a";
+  let itemsExecuted = 0;
+  let executions = 0;
+  let workListDone = false;
+  let sustainedDone = false;
+  try {
+    workerId = await awaitWorker(world, 30_000);
+    console.log(`chunk ${chunkId}: worker registered ${workerId}`);
+    // Idempotent (durable in PG / re-published into the fresh authority).
+    await fundBudget(world);
+    await publishRestrictivePolicy(world);
+
+    // Phases A/B/C: consume the fixed work list.
+    while (state.nextItem < work.length && Date.now() < budgetDeadline) {
+      const item = work[state.nextItem];
+      if (item === undefined) break;
+      if (item.kind === "batch") {
+        const records = await runBatch(
+          world,
+          scenarioOf(item.scenario),
+          item.count,
+          item.concurrency,
+          item.phase,
+        );
+        executions += records.length;
+        state.totalExecutions += records.length;
+      } else {
+        const records = await runPairs(world, scenarioOf(item.scenario), item.pairs, item.phase);
+        executions += records.length;
+        state.totalExecutions += records.length;
       }
-      if (tick % 20 === 10) {
-        total += (await runBatch(world, scenarioOf("failure-retry"), 1, 1, "sustained")).length;
-      }
-      if (tick % 12 === 6) {
-        total += (await runBatch(world, scenarioOf("budget-funded"), 1, 1, "sustained")).length;
-      }
-      if (tick % 30 === 15) {
-        total += (await runPairs(world, scenarioOf("failure-escalation"), 1, "sustained")).length;
-      }
-      tick += 1;
-      writeProgress({
-        phase: "sustained",
-        tick,
-        completed: total,
-        remainingSeconds: Math.max(0, Math.round((endAt - Date.now()) / 1000)),
-        at: new Date().toISOString(),
-      });
-      await sleep(15_000);
+      state.nextItem += 1;
+      itemsExecuted += 1;
+      saveState(state);
     }
+    workListDone = state.nextItem >= work.length;
+
+    // The sustained window: accumulate live-stack seconds across chunks.
+    while (
+      workListDone &&
+      state.sustainedElapsedSeconds < SUSTAINED_TOTAL_SECONDS &&
+      Date.now() < budgetDeadline
+    ) {
+      const tick = await sustainedTick(world, state.sustainedTicks);
+      state.sustainedTicks += 1;
+      state.sustainedElapsedSeconds = Math.min(
+        SUSTAINED_TOTAL_SECONDS,
+        state.sustainedElapsedSeconds + tick.seconds,
+      );
+      state.totalExecutions += tick.executions;
+      executions += tick.executions;
+      itemsExecuted += 1;
+      saveState(state);
+      console.log(
+        `chunk ${chunkId}: sustained tick ${state.sustainedTicks} ` +
+          `(${state.sustainedElapsedSeconds.toFixed(0)}/${SUSTAINED_TOTAL_SECONDS}s)`,
+      );
+    }
+    sustainedDone = state.sustainedElapsedSeconds >= SUSTAINED_TOTAL_SECONDS;
+  } finally {
+    // The clean chunk boundary: graceful bounded worker drain, servers closed.
+    await world.stop();
+    drained = true;
+    console.log(`chunk ${chunkId}: stack stopped (worker drained gracefully)`);
   }
-  writeProgress({ phase: "done", completed: total, at: new Date().toISOString() });
-  return total;
+
+  // The chunk manifest (written after drain so its facts are final).
+  const manifest: ChunkManifest = {
+    chunkId,
+    startedAt,
+    endedAt: new Date().toISOString(),
+    durationSeconds: Math.round((Date.now() - Date.parse(startedAt)) / 1000),
+    workerId,
+    itemsExecuted,
+    executions,
+    sustainedElapsedSeconds: Math.round(state.sustainedElapsedSeconds),
+    totalExecutions: state.totalExecutions,
+    workListDone,
+    sustainedDone,
+    drained,
+  };
+  writeFileSync(
+    join(CHUNKS_DIR, `chunk-${chunkId}.json`),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+  );
+  appendFileSync(join(DATA_DIR, "chunks.jsonl"), `${JSON.stringify(manifest)}\n`);
+  console.log(
+    `chunk ${chunkId}: complete — ${manifest.executions} executions, ` +
+      `sustained ${manifest.sustainedElapsedSeconds}s, total ${manifest.totalExecutions}`,
+  );
+  if (manifest.workListDone && manifest.sustainedDone) {
+    console.log("campaign: ALL WORK COMPLETE");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -526,43 +705,19 @@ async function warmup(): Promise<void> {
   }
 }
 
-async function run(): Promise<void> {
-  const sustainedMinutes = Number.parseInt(arg("--sustained-minutes", "30") ?? "30", 10);
-  const startedAt = new Date().toISOString();
-  console.log(`campaign start: ${startedAt}`);
-  const world = await startWorld({ queueSampleIntervalMs: 1000 });
-  try {
-    const workerId = await awaitWorker(world, 30_000);
-    console.log(`worker registered: ${workerId}`);
-    await fundBudget(world);
-    await publishRestrictivePolicy(world);
-    const total = await runPhases(world, {
-      sustainedMinutes,
-      skipSustained: hasFlag("--skip-sustained"),
-      skipBurst32: hasFlag("--skip-burst32"),
-    });
-    console.log(`campaign complete: ${total} executions`);
-    writeProgress({
-      phase: "finished",
-      completed: total,
-      startedAt,
-      finishedAt: new Date().toISOString(),
-    });
-  } finally {
-    await world.stop();
-    console.log("stack stopped: worker drained, servers closed");
-  }
-}
-
 const command = process.argv[2] ?? "run";
 if (command === "warmup") {
   await warmup();
-} else if (command === "run") {
-  await run();
+} else if (command === "chunk") {
+  const chunkId = Number.parseInt(arg("--chunk-id", "1") ?? "1", 10);
+  const budgetSeconds = Number.parseInt(arg("--budget-seconds", "360") ?? "360", 10);
+  await runChunk(chunkId, budgetSeconds);
 } else if (command === "summary") {
   const { summarize } = await import("./summarize");
   await summarize();
 } else {
-  console.error("usage: bun benchmarks/d08-usage/campaign.ts [run|warmup|summary] [flags]");
+  console.error(
+    "usage: bun benchmarks/d08-usage/campaign.ts [warmup|chunk --chunk-id N --budget-seconds S|summary]",
+  );
   process.exit(2);
 }
