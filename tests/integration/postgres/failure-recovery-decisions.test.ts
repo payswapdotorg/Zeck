@@ -42,7 +42,6 @@ import {
   createIrPlanSource,
 } from "../../../src/modules/planning/adapters/ir-plan-source";
 import {
-  buildPlan,
   createCapabilityAuthorityAdapter,
   createInMemoryDeterministicCatalog,
   createNodeDigest,
@@ -60,7 +59,7 @@ import {
   type PolicySet,
 } from "../../../src/modules/policies/public";
 import { auditDurableExecutionProvenance } from "../../../src/platform/execution-ir/audit";
-import { canonicalJson } from "../../../src/platform/execution-ir/canonical";
+import type { CostClaim } from "../../../src/platform/execution-ir/cost-model";
 import { validateOptimizationDecision } from "../../../src/platform/execution-ir/decision-record";
 import { SqlOptimizationDecisionStore } from "../../../src/platform/execution-ir/decision-store";
 import { deriveExecutionIr } from "../../../src/platform/execution-ir/ir";
@@ -358,7 +357,7 @@ definePgSuite("failure-recovery decisions (real PostgreSQL)", (ctx) => {
     expect(selection.selected?.strategy).toBe("re-route");
 
     // RECORD: the WORK-049 decision through the foundation's builder.
-    const claims = new Map([
+    const claims: ReadonlyMap<string, CostClaim> = new Map<string, CostClaim>([
       [
         "retry-attempt-1",
         {

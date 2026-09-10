@@ -40,6 +40,7 @@ import { createIrPlanSource } from "../../src/modules/planning/adapters/ir-plan-
 import { buildPlan, createNodeDigest } from "../../src/modules/planning/public";
 import { canonicalJson } from "../../src/platform/execution-ir/canonical";
 import type { OptimizationConstraint } from "../../src/platform/execution-ir/constraints";
+import type { CostClaim } from "../../src/platform/execution-ir/cost-model";
 import { deriveExecutionIr, type ExecutionIr } from "../../src/platform/execution-ir/ir";
 import {
   attributeFailure,
@@ -628,7 +629,7 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
     const record = buildRecoveryDecisionRecord({
       attribution: infraAttribution(),
       selection,
-      claims: new Map([
+      claims: new Map<string, CostClaim>([
         ["retry-attempt-1", retryClaim()],
         [
           "reroute-model",
