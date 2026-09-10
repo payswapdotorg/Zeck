@@ -1320,7 +1320,7 @@
     {
       "id": "WORK-055",
       "title": "Failure-aware recovery, fresh escalation and continuation",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-053",
         "WORK-054"
@@ -1333,6 +1333,33 @@
         "escalation": true,
         "continuation": true,
         "issue": 28
+      },
+      "mergedAs": {
+        "pr": 29,
+        "mergeCommit": "ef929a47c0d30d31890db61fdde6b9647845662c",
+        "implementationHead": "962afcba1b7cc6190f2d518a91b8d8f9a2091ad3",
+        "finalBranchHead": "962afcba1b7cc6190f2d518a91b8d8f9a2091ad3",
+        "baseRevision": "9b6fa2f1ced0ce5ab161d55d76ac3026c67cd430"
+      }
+    },
+    {
+      "id": "WORK-056",
+      "title": "Competence-aware optimization and progressive deterministicization",
+      "status": "pending",
+      "dependencies": [
+        "WORK-051",
+        "WORK-052",
+        "WORK-053",
+        "WORK-055"
+      ],
+      "surfaces": {
+        "modules": [
+          "compute"
+        ],
+        "competenceMining": true,
+        "deterministicReplacement": true,
+        "promotion": true,
+        "issue": 30
       }
     }
   ],
