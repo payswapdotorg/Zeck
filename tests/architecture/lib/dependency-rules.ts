@@ -203,6 +203,26 @@ export const PROVIDER_SDK_BOUNDARIES: readonly SdkBoundary[] = [
     allowedPathPrefix: "src/integrations/workflowos/adapters/",
     owner: "workflowos integration adapters",
   },
+  {
+    packagePattern: "e2b",
+    allowedPathPrefix: "src/platform/substrate-economics/adapters/",
+    owner: "substrate-economics runtime adapters (WORK-054)",
+  },
+  {
+    packagePattern: "@e2b/*",
+    allowedPathPrefix: "src/platform/substrate-economics/adapters/",
+    owner: "substrate-economics runtime adapters (WORK-054)",
+  },
+  {
+    packagePattern: "@daytonaio/*",
+    allowedPathPrefix: "src/platform/substrate-economics/adapters/",
+    owner: "substrate-economics runtime adapters (WORK-054)",
+  },
+  {
+    packagePattern: "modal",
+    allowedPathPrefix: "src/platform/substrate-economics/adapters/",
+    owner: "substrate-economics runtime adapters (WORK-054)",
+  },
 ];
 
 const IMPORT_PATTERNS: readonly RegExp[] = [
