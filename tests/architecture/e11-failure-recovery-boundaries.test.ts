@@ -326,11 +326,35 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
         "failure-recovery",
       );
     }
-    // Git ancestry proof: this branch never touched the foundation or
-    // the dependency planes (zero diffs on the import-only surfaces).
-    const dispatchBase = "9b6fa2f1ced0ce5ab161d55d76ac3026c67cd430";
+    // Git ancestry proof (the DRIFT-IMMUNE dynamic merge-base pin,
+    // reconciled by the Architect after WORK-055's merge): diff the
+    // import-only surfaces against the merge-base of this checkout and
+    // main, computed AT RUNTIME. The original proof pinned the dispatch
+    // base (9b6fa2f) statically, which self-tripped whenever main
+    // advanced past the branch point (the Architect's finalization
+    // commits touch spec/). The dynamic merge-base can only ever name
+    // THIS checkout's own changes; main advancing past the branch point
+    // never trips the proof, and the branch merging into main makes the
+    // merge-base the head itself (the diff stays empty).
+    const mainRef = ["origin/main", "main"].find((candidate) => {
+      try {
+        execSync(`git rev-parse --verify --quiet ${candidate}`, {
+          cwd: REPO_ROOT,
+          encoding: "utf8",
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    expect(mainRef, "a main ref must exist for the ancestry proof").toBeDefined();
+    const mergeBase = execSync(`git merge-base HEAD ${mainRef}`, {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    }).trim();
+    expect(mergeBase).toMatch(/^[0-9a-f]{40}$/);
     const changed = execSync(
-      `git diff --name-only ${dispatchBase}..HEAD -- src/platform/execution-ir/ src/platform/model-economics/ src/platform/substrate-economics/ src/platform/tool-surface/ src/platform/context-economics/ src/platform/execution-compiler/ spec/`,
+      `git diff --name-only ${mergeBase}..HEAD -- src/platform/execution-ir/ src/platform/model-economics/ src/platform/substrate-economics/ src/platform/tool-surface/ src/platform/context-economics/ src/platform/execution-compiler/ spec/`,
       { cwd: REPO_ROOT, encoding: "utf8" },
     ).trim();
     expect(changed).toBe("");
