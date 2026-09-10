@@ -33,9 +33,11 @@ For dispatch/review/orchestration behavior also read:
 - E1.1 / WORK-053: COMPLETE — merged as PR #26 (merge commit c763157, implementation head 48ffa23, dispatch base 0a1322b).
 - E1.1 / WORK-054: COMPLETE — merged as PR #27 (merge commit b8aa548, implementation head 32670f3, dispatch base 863887e).
 - E1.1 / WORK-055: COMPLETE — merged as PR #29 (merge commit ef929a4, implementation head 962afcb, dispatch base 9b6fa2f).
-- E1.1 / WORK-056: authorized through Issue #30 (final E1.1 charter member; deps 051✓+052✓+053✓+055✓).
+- E1.1 / WORK-056: COMPLETE — merged as PR #31 (merge commit 3318a8a, implementation head dfd397c, integration head 6bf510b incl. the Architect C9 pin reconciliation, dispatch base 201756c).
 
-Current frontier is `eligible=["WORK-056"]`, `inFlight=["WORK-056"]`, `blocked=[]`.
+**THE E1.1 IMPLEMENTATION PROGRAM IS COMPLETE** — all nine charter Work Orders (WORK-048 through WORK-056) are implemented, reviewed, merged and finalized. The frontier is empty; future stages require new Architect Work Orders.
+
+Current frontier is `eligible=[]`, `inFlight=[]`, `blocked=[]` — the E1.1 program is complete.
 
 ## E1.1 architectural authority
 
@@ -91,12 +93,9 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-D-07 and the full E1.1 implementation program through WORK-055 are complete (048 PR #14, 049 PR #16, 050 PR #18, 051 PR #24, 052 PR #22, 053 PR #26, 054 PR #27, 055 PR #29). In flight: WORK-056 (competence-aware optimization and progressive deterministicization) — the FINAL E1.1 charter member, running alone. When it merges, the E1.1 program is complete.
+D-07 and the FULL E1.1 implementation program are complete: 048 PR #14, 049 PR #16, 050 PR #18, 051 PR #24, 052 PR #22, 053 PR #26, 054 PR #27, 055 PR #29, 056 PR #31. All ten planes merged (tool-surface, context-economics, model-economics, substrate-economics, failure-recovery, competence-economics over the execution-ir/compiler/decision-record foundation). Post-WORK-055 C9 stale-pin reconciled by the Architect (84b96af, drift-immune dynamic merge-base). Nothing is in flight; the next stage of work requires new Architect-issued Work Orders per the charter.
 
-Required branches:
-- `work/WORK-056-competence-aware-optimization` (base: the post-WORK-055 finalization head)
-
-WORK-056 runs alone as the final charter member. Its declared surfaces (competence-economics plane) touch no sibling planes — the merged tool-surface/model-economics/context-economics/substrate-economics/failure-recovery planes are import-only foundations.
+Required branches: none — the program is complete. All charter branches (work/WORK-048…056-*) are merged into main.
 
 ## Recovery sequence
 
