@@ -5,9 +5,9 @@
 | **Deliverable role** | D-08 gate-1 usage evidence (measured production usage) |
 | **Dispatch base** | `f2b5284baffba19eaa53e2dbee6f5ba1646fe5a9` (origin/main at dispatch — E1.1 final architecture acceptance) |
 | **Campaign harness head** | `ad2738d3cac1cf5b0554d4ad41504aad972c54ba` (worker processes, release/drill/queue operator readings taken here) |
-| **Final head** | this document's commit (see `git log -1` on branch) |
+| **Final head** | evidence-document commit `e832819fba05e48a52fffdc7e14d55378bfb952a` (branch tip may advance by this identity pin) |
 | **Branch** | `gate/d08-measured-usage` |
-| **PR** | "D-08 gate evidence: measured production usage baseline" (opened from this branch; number assigned at open) |
+| **PR** | [#32 — "D-08 gate evidence: measured production usage baseline"](https://github.com/payswapdotorg/Zeck/pull/32) |
 | **Authorization** | Tech Lead dispatch of the D-08 Gate-Evidence Worker (no GitHub issue; roadmap gate: `docs/DEPLOYMENT-ROADMAP.md` §D-08 — "D-08 may only begin after measured production usage…"; gates 2+3 already approved on main `014fb30`) |
 | **Campaign window** | 2026-09-10 08:00:30Z → 2026-09-10 09:04:18Z (wall clock, including one disclosed interruption) |
 | **Product code touched** | NONE — `git diff f2b5284..HEAD -- src/ deploy/ spec/` is empty; changes are `benchmarks/d08-usage/**`, this document, and one disclosed lint-scope line in `biome.json` |
