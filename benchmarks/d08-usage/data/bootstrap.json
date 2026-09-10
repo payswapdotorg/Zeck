@@ -1,0 +1,37 @@
+$ bun deploy/bootstrap.ts --environment local
+{
+  "tool": "deploy/bootstrap",
+  "environment": "local",
+  "environmentClass": "disposable",
+  "operations": [
+    {
+      "resource": "postgres",
+      "kind": "pg-database",
+      "name": "zeck_local",
+      "action": "already-present (converged)",
+      "idempotent": true
+    },
+    {
+      "resource": "object-store",
+      "kind": "local-object-store",
+      "name": "/home/z/.local/share/zeck/zeck-local-artifacts",
+      "action": "converged (create-or-skip)",
+      "idempotent": true
+    },
+    {
+      "resource": "redis",
+      "kind": "local-redis",
+      "name": "not-configured (ZECK_LOCAL_REDIS_URL absent)",
+      "action": "absent (coordination-degraded at smoke)",
+      "idempotent": true
+    }
+  ],
+  "environmentContract": {
+    "satisfied": true,
+    "problems": []
+  },
+  "secretReferences": {
+    "materialized": 0,
+    "expected": 2
+  }
+}

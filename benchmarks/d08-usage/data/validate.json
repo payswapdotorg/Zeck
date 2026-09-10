@@ -1,0 +1,16 @@
+$ bun deploy/validate.ts --environment local
+{
+  "tool": "deploy/validate",
+  "valid": true,
+  "problems": [],
+  "environments": 4,
+  "providers": 8,
+  "resourceKinds": 12,
+  "variables": 74,
+  "secretReferenceInventories": 4,
+  "releaseGateKinds": 13,
+  "quotaGuards": 3,
+  "operationalThresholds": 3,
+  "migrations": 29,
+  "recoveryTargetEnvironments": 5
+}
