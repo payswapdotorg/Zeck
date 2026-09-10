@@ -1296,7 +1296,7 @@
     {
       "id": "WORK-054",
       "title": "Economic substrate selection and runtime adapters",
-      "status": "pending",
+      "status": "complete",
       "dependencies": [
         "WORK-050"
       ],
@@ -1308,6 +1308,31 @@
         "substrateEconomics": true,
         "providerAdapters": true,
         "issue": 23
+      },
+      "mergedAs": {
+        "pr": 27,
+        "mergeCommit": "b8aa548c20c5f323f1bf0fa598dbd81a009d9220",
+        "implementationHead": "32670f3aca40220a4233d59e4ce57346d279fece",
+        "finalBranchHead": "ceb4d4d1e4d2e903a4b105529572b7a4ff92021a",
+        "baseRevision": "863887e07fb3fea9cbbdd3650dc154b6fe427a3a"
+      }
+    },
+    {
+      "id": "WORK-055",
+      "title": "Failure-aware recovery, fresh escalation and continuation",
+      "status": "pending",
+      "dependencies": [
+        "WORK-053",
+        "WORK-054"
+      ],
+      "surfaces": {
+        "modules": [
+          "compute"
+        ],
+        "failureRecovery": true,
+        "escalation": true,
+        "continuation": true,
+        "issue": 28
       }
     }
   ],

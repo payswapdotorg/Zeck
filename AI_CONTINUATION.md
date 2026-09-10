@@ -31,9 +31,10 @@ For dispatch/review/orchestration behavior also read:
 - E1.1 / WORK-052: authorized through Issue #20 (wave).
 - E1.1 / WORK-052: COMPLETE — merged as PR #22 (merge commit 9861a84, implementation head a4d3a97, dispatch base 0a1322b).
 - E1.1 / WORK-053: COMPLETE — merged as PR #26 (merge commit c763157, implementation head 48ffa23, dispatch base 0a1322b).
-- E1.1 / WORK-054: authorized through Issue #23 (dispatched into the slot freed by WORK-052).
+- E1.1 / WORK-054: COMPLETE — merged as PR #27 (merge commit b8aa548, implementation head 32670f3, dispatch base 863887e).
+- E1.1 / WORK-055: authorized through Issue #28 (post-wave; deps WORK-053✓ + WORK-054✓).
 
-Current frontier is `eligible=["WORK-054"]`, `inFlight=["WORK-054"]`, `blocked=[]`.
+Current frontier is `eligible=["WORK-055"]`, `inFlight=["WORK-055"]`, `blocked=[]`.
 
 ## E1.1 architectural authority
 
@@ -89,14 +90,12 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 
 ## Current deployment authority
 
-D-07, E1.1 stages 1 and 2 are complete; wave members WORK-052 merged. In flight: WORK-054 (substrate/runtime adapters) only. WORK-051, WORK-052 and WORK-053 are merged. The provider-SDK allowlist edit is WORK-054's only shared-file touch. WORK-055 (failure-aware recovery) authorizes after WORK-054 merges (WORK-053 is already complete).
+D-07, E1.1 stages 1 and 2 are complete; the full third wave (WORK-051 PR #24, WORK-052 PR #22, WORK-053 PR #26, WORK-054 PR #27) is merged. In flight: WORK-055 (failure-aware recovery, fresh escalation, continuation) only — dispatched post-wave, no siblings. WORK-056 (competence-aware optimization) authorizes after WORK-055 merges.
 
 Required branches:
-- `work/WORK-051-tool-surface-compiler-programmatic-execution` (base 0a1322b)
-- `work/WORK-053-adaptive-model-economics` (base 0a1322b)
-- `work/WORK-054-substrate-economics-runtime-adapters` (base 9861a84)
+- `work/WORK-055-failure-aware-recovery-continuation` (base b8aa548)
 
-Wave siblings are conflict-free by declared surfaces: 051 [tool-surface], 053 [planning/model-economics], 054 [compute/substrate + SDK-allowlist].
+The wave is complete; WORK-055 runs alone. Its declared surfaces (failure-recovery plane, compute-module recovery seam) touch no sibling planes — the merged tool-surface/model-economics/context-economics/substrate-economics planes are import-only foundations.
 
 ## Recovery sequence
 
