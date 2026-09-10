@@ -93,7 +93,7 @@ E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. P
 D-07, E1.1 stages 1 and 2 are complete; the full third wave (WORK-051 PR #24, WORK-052 PR #22, WORK-053 PR #26, WORK-054 PR #27) is merged. In flight: WORK-055 (failure-aware recovery, fresh escalation, continuation) only — dispatched post-wave, no siblings. WORK-056 (competence-aware optimization) authorizes after WORK-055 merges.
 
 Required branches:
-- `work/WORK-055-failure-aware-recovery-continuation` (base b8aa548)
+- `work/WORK-055-failure-aware-recovery-continuation` (base ea63969)
 
 The wave is complete; WORK-055 runs alone. Its declared surfaces (failure-recovery plane, compute-module recovery seam) touch no sibling planes — the merged tool-surface/model-economics/context-economics/substrate-economics planes are import-only foundations.
 
