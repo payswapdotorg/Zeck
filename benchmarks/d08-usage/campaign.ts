@@ -378,20 +378,20 @@ async function fundBudget(world: CampaignWorld): Promise<void> {
     "d08-funding-mode",
   );
   await world.budgets.grantCredits(
-    { ...scope, ownerKind: "developer", amountMicroUsd: "3000" },
-    "d08-grant-developer-3000",
+    { ...scope, ownerKind: "developer", amountMicroUsd: "1000" },
+    "d08-grant-developer-1000",
   );
 }
 
 /** The restrictive cost policy scoped to the policy-denied task kind only. */
-async function publishRestrictivePolicy(world: CampaignWorld): Promise<void> {
+export async function publishRestrictivePolicy(world: CampaignWorld): Promise<void> {
   await world.policyAuthority.publish({
     id: "default",
     version: 2,
     documents: [
       { scope: "platform", selector: {}, restrictions: {} },
       {
-        scope: "platform",
+        scope: "task",
         selector: { taskKind: "d08-policy-denied" },
         restrictions: { cost: { maxCostMicroUsd: "100" } },
       },
