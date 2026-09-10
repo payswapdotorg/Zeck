@@ -94,7 +94,9 @@ Exact synchronized GitHub Actions at the accepted head passed: Repository Govern
 
 **Gate:** D-08 may only begin after measured production usage, explicit availability/security requirements and an Architect-approved architecture extension.
 
-**Status:** BLOCKED — downstream of D-07 and its explicit architecture-extension gate.
+**Gate record (2026-09-10, Architect):** requirements satisfied by `docs/DEPLOYMENT-ROADMAP-D08-REQUIREMENTS.md` (AVA-001..004, SEC-001..004); architecture extension approved by ADR-0021 / ACR-005; measured production usage evidence in flight on branch `gate/d08-measured-usage` (`docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md`). D-08 becomes executable when that evidence is merged and the Architect issues D-08 Work Orders with frontier authorization.
+
+**Status:** GATES 2/3 SATISFIED / GATE 1 IN FLIGHT — authorized to begin once the usage-baseline evidence merges.
 
 ## Execution ordering
 

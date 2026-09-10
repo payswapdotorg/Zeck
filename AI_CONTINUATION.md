@@ -39,6 +39,10 @@ For dispatch/review/orchestration behavior also read:
 
 - E1.1 final architecture acceptance: RECORDED 2026-09-10 against `main` `8e88a84` (see `docs/architecture-changes/ACR-004-...md#final-architecture-acceptance` and `program-state.json postMergeFinalization.finalArchitectureAcceptance`). The E1.1 program is fully closed.
 
+## D-08 unlock in progress (2026-09-10)
+
+The final deployment phase D-08 is being unlocked: gate-2 requirements APPROVED (`docs/DEPLOYMENT-ROADMAP-D08-REQUIREMENTS.md`, AVA-001..004 / SEC-001..004), gate-3 extension APPROVED (ADR-0021 + ACR-005), gate-1 measured-usage evidence IN FLIGHT on branch `gate/d08-measured-usage`. When that PR merges, the Architect issues D-08 Work Orders (WORK-057+) with frontier/dependency authorization per ADR-0021.
+
 Current frontier is `eligible=[]`, `inFlight=[]`, `blocked=[]` — the E1.1 program is complete.
 
 ## E1.1 architectural authority
