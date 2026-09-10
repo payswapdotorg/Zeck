@@ -24,11 +24,12 @@ import {
   atStage,
   digest,
   equivalenceDegradation,
+  equivalenceDegradationEntry,
   minedRecord,
-  recordVariant,
   RECORDED_AT,
-  rollbackInput,
   ROLLBACK_AUTHORITY,
+  recordVariant,
+  rollbackInput,
 } from "./world";
 
 function capture<T>(fn: () => T): unknown {
@@ -112,7 +113,10 @@ describe("bounded typed rollback (WORK-056)", () => {
       ],
       ["policy-revoked", [{ kind: "policy", detail: "the policy authority revoked the basis" }]],
     ] as const) {
-      const rollback = buildRollback(rollbackInput(atStage("shadow"), reason, [...evidence]), digest);
+      const rollback = buildRollback(
+        rollbackInput(atStage("shadow"), reason, [...evidence]),
+        digest,
+      );
       expect(rollback.reason).toBe(reason);
     }
   });
@@ -124,7 +128,7 @@ describe("bounded typed rollback (WORK-056)", () => {
     expect(caught).toBeInstanceOf(CompetenceEconomicsError);
     expect((caught as CompetenceEconomicsError).invariant).toBe("rollback-shape");
     // The evidence bound is enforced.
-    const excessive = Array.from({ length: 65 }, () => equivalenceDegradation()[0]);
+    const excessive = Array.from({ length: 65 }, () => equivalenceDegradationEntry());
     const bounded = capture(() =>
       buildRollback(rollbackInput(atStage("shadow"), "equivalence-degraded", excessive), digest),
     );
@@ -154,7 +158,7 @@ describe("bounded typed rollback (WORK-056)", () => {
         buildRollback(
           rollbackInput(atStage("shadow"), "equivalence-degraded", [
             { kind: "NOT-A-KIND", detail: "x" },
-          ]),
+          ] as never),
           digest,
         ),
       ),
@@ -164,7 +168,7 @@ describe("bounded typed rollback (WORK-056)", () => {
         buildRollback(
           rollbackInput(atStage("shadow"), "equivalence-degraded", [
             { kind: "equivalence", component: "NOT-A-COMPONENT", detail: "x" },
-          ]),
+          ] as never),
           digest,
         ),
       ),
@@ -223,9 +227,9 @@ describe("bounded typed rollback (WORK-056)", () => {
     const foreignBasis = { ...rollback, rollbackBasis: "some-other-basis" };
     const basis = capture(() => validateRollbackRecord(foreignBasis, digest));
     expect((basis as CompetenceEconomicsError).invariant).toBe("rollback-shape");
-    expect(
-      capture(() => validateRollbackRecord("not-an-object", digest)),
-    ).toBeInstanceOf(CompetenceEconomicsError);
+    expect(capture(() => validateRollbackRecord("not-an-object", digest))).toBeInstanceOf(
+      CompetenceEconomicsError,
+    );
   });
 
   test("apply is PURE and IDEMPOTENT: promoted → reverted, reverted → no-op", () => {
@@ -254,16 +258,11 @@ describe("bounded typed rollback (WORK-056)", () => {
   test("the requesting authority and recorded-at are validated (typed)", () => {
     expect(
       capture(() =>
-        buildRollback(
-          rollbackInput(atStage("shadow"), undefined, undefined, "NOT VALID!"),
-          digest,
-        ),
+        buildRollback(rollbackInput(atStage("shadow"), undefined, undefined, "NOT VALID!"), digest),
       ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
-      capture(() =>
-        buildRollback({ ...rollbackInput(atStage("shadow")), recordedAt: "" }, digest),
-      ),
+      capture(() => buildRollback({ ...rollbackInput(atStage("shadow")), recordedAt: "" }, digest)),
     ).toBeInstanceOf(CompetenceEconomicsError);
   });
 });

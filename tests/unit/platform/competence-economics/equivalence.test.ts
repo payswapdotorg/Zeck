@@ -20,17 +20,11 @@ import {
   EQUIVALENCE_EMITTED_CODES,
   equivalenceFailureCode,
   evaluateEquivalenceSuite,
+  type ReplacementAdmissionInput,
   validateDeterministicReplacement,
 } from "../../../../src/platform/competence-economics/equivalence";
 import { CostModelError } from "../../../../src/platform/execution-ir/cost-model";
-import {
-  claim,
-  digest,
-  fullSuite,
-  replacementCandidate,
-  scope,
-  weakSuite,
-} from "./world";
+import { claim, digest, fullSuite, replacementCandidate, scope, weakSuite } from "./world";
 
 function capture<T>(fn: () => T): unknown {
   try {
@@ -41,8 +35,8 @@ function capture<T>(fn: () => T): unknown {
   return undefined;
 }
 
-function admissionInput(overrides: Record<string, unknown> = {}) {
-  return {
+function admissionInput(overrides: Record<string, unknown> = {}): ReplacementAdmissionInput {
+  const base: ReplacementAdmissionInput = {
     scope,
     capabilityId: "text-generation",
     tags: ["classify", "structured-output"],
@@ -54,8 +48,8 @@ function admissionInput(overrides: Record<string, unknown> = {}) {
     claim: claim("40", 300, 0.93, 0.99, "equivalence-suite:measured-deterministic-path"),
     suite: fullSuite(),
     digest,
-    ...overrides,
   };
+  return { ...base, ...overrides } as ReplacementAdmissionInput;
 }
 
 describe("equivalence evidence and replacement admission (WORK-056)", () => {
@@ -85,10 +79,12 @@ describe("equivalence evidence and replacement admission (WORK-056)", () => {
 
   test("a candidate WITHOUT any of the three components is INADMISSIBLE (typed)", () => {
     for (const kind of ["differential", "property", "replay"] as const) {
-      const suite = fullSuite() as Record<string, unknown>;
+      const suite = fullSuite() as unknown as Record<string, unknown>;
       const incomplete = { ...suite };
       delete incomplete[kind];
-      const caught = capture(() => admitDeterministicReplacement(admissionInput({ suite: incomplete })));
+      const caught = capture(() =>
+        admitDeterministicReplacement(admissionInput({ suite: incomplete })),
+      );
       expect(caught, `missing ${kind}`).toBeInstanceOf(CompetenceEconomicsError);
       expect((caught as CompetenceEconomicsError).invariant).toBe("equivalence-suite-incomplete");
     }
@@ -193,51 +189,61 @@ describe("equivalence evidence and replacement admission (WORK-056)", () => {
     expect((unattributed as CostModelError).invariant).toBe("unattributed-cost");
 
     const unreliable = capture(() =>
-      admitDeterministicReplacement(
-        admissionInput({ claim: claim("40", 300, 0.93, 0, "src") }),
-      ),
+      admitDeterministicReplacement(admissionInput({ claim: claim("40", 300, 0.93, 0, "src") })),
     );
     expect((unreliable as CostModelError).invariant).toBe("unreliable-representation");
   });
 
   test("the shape discipline: capability, tags, bounds (typed rejections)", () => {
     expect(
-      (capture(() => admitDeterministicReplacement(admissionInput({ capabilityId: "NOT A SLUG" }))) as CompetenceEconomicsError)
-        ?.invariant,
+      (
+        capture(() =>
+          admitDeterministicReplacement(admissionInput({ capabilityId: "NOT A SLUG" })),
+        ) as CompetenceEconomicsError
+      )?.invariant,
     ).toBe("replacement-shape");
     expect(
-      (capture(() => admitDeterministicReplacement(admissionInput({ tags: [] }))) as CompetenceEconomicsError)
-        ?.invariant,
+      (
+        capture(() =>
+          admitDeterministicReplacement(admissionInput({ tags: [] })),
+        ) as CompetenceEconomicsError
+      )?.invariant,
     ).toBe("replacement-shape");
     expect(
-      (capture(() =>
-        admitDeterministicReplacement(admissionInput({ tags: ["classify", "NOT A TAG!"] })),
-      ) as CompetenceEconomicsError)?.invariant,
+      (
+        capture(() =>
+          admitDeterministicReplacement(admissionInput({ tags: ["classify", "NOT A TAG!"] })),
+        ) as CompetenceEconomicsError
+      )?.invariant,
     ).toBe("replacement-shape");
     // Suite component shape violations.
     expect(
-      (capture(() =>
-        admitDeterministicReplacement(
-          admissionInput({
-            suite: {
-              ...fullSuite(),
-              differential: { ...fullSuite().differential, casesCount: 0 },
-            },
-          }),
-        ),
-      ) as CompetenceEconomicsError)?.invariant,
+      (
+        capture(() =>
+          admitDeterministicReplacement(
+            admissionInput({
+              suite: {
+                ...fullSuite(),
+                differential: { ...fullSuite().differential, casesCount: 0 },
+              },
+            }),
+          ),
+        ) as CompetenceEconomicsError
+      )?.invariant,
     ).toBe("equivalence-shape");
     expect(
-      (capture(() =>
-        admitDeterministicReplacement(
-          admissionInput({
-            suite: {
-              ...fullSuite(),
-              replay: { ...fullSuite().replay, kind: "differential" },
-            },
-          }),
-        ),
-      ) as CompetenceEconomicsError)?.invariant,
+      (
+        capture(() =>
+          admitDeterministicReplacement(
+            admissionInput({
+              suite: {
+                ...fullSuite(),
+                replay: { ...fullSuite().replay, kind: "differential" },
+              },
+            }),
+          ),
+        ) as CompetenceEconomicsError
+      )?.invariant,
     ).toBe("equivalence-shape");
   });
 
@@ -312,9 +318,9 @@ describe("equivalence evidence and replacement admission (WORK-056)", () => {
       expect(equivalenceFailureCode(kind)).toBe("evidence-suite-failed");
     }
     // An unmappable kind fails closed.
-    expect(
-      capture(() => equivalenceFailureCode("NOT-A-KIND" as never)),
-    ).toBeInstanceOf(CompetenceEconomicsError);
+    expect(capture(() => equivalenceFailureCode("NOT-A-KIND" as never))).toBeInstanceOf(
+      CompetenceEconomicsError,
+    );
     // The emitted-codes proof set is the closed pair.
     expect(EQUIVALENCE_EMITTED_CODES).toEqual([
       "evidence-suite-incomplete",

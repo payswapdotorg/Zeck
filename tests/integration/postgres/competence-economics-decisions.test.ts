@@ -58,29 +58,29 @@ import {
   nodePolicyHasher,
   type PolicySet,
 } from "../../../src/modules/policies/public";
-import { validateOptimizationDecision } from "../../../src/platform/execution-ir/decision-record";
-import { canonicalJson } from "../../../src/platform/execution-ir/canonical";
-import { SqlOptimizationDecisionStore } from "../../../src/platform/execution-ir/decision-store";
-import { deriveExecutionIr, type ExecutionIr } from "../../../src/platform/execution-ir/ir";
+import {
+  buildPromotionDecisionRecord,
+  buildRollbackDecisionRecord,
+} from "../../../src/platform/competence-economics/decisions";
+import { admitDeterministicReplacement } from "../../../src/platform/competence-economics/equivalence";
 import {
   mineCompetenceCandidate,
   type SuccessfulTrajectory,
 } from "../../../src/platform/competence-economics/mining";
 import {
-  buildPromotionDecisionRecord,
-  buildRollbackDecisionRecord,
-} from "../../../src/platform/competence-economics/decisions";
-import {
   decidePromotion,
   type PromotionVerdict,
 } from "../../../src/platform/competence-economics/promotion";
+import type { CompetenceRecord } from "../../../src/platform/competence-economics/record";
 import { retrieveCompetence } from "../../../src/platform/competence-economics/retrieval";
 import {
   applyRollbackRecord,
   buildRollback,
 } from "../../../src/platform/competence-economics/rollback";
-import { admitDeterministicReplacement } from "../../../src/platform/competence-economics/equivalence";
-import type { CompetenceRecord } from "../../../src/platform/competence-economics/record";
+import { canonicalJson } from "../../../src/platform/execution-ir/canonical";
+import { validateOptimizationDecision } from "../../../src/platform/execution-ir/decision-record";
+import { SqlOptimizationDecisionStore } from "../../../src/platform/execution-ir/decision-store";
+import { deriveExecutionIr } from "../../../src/platform/execution-ir/ir";
 import { fingerprintOf } from "../../../src/platform/failure-recovery/fingerprint";
 import {
   ACTOR_ID,
@@ -218,7 +218,11 @@ function chainEnvironment() {
 }
 
 /** A successful trajectory observed on the real governed chain. */
-function chainTrajectory(executionId: string, planId: string, number: number): SuccessfulTrajectory {
+function chainTrajectory(
+  executionId: string,
+  planId: string,
+  number: number,
+): SuccessfulTrajectory {
   const raw = `chain-trajectory:${number}:success`;
   const form = {
     executionId,
@@ -599,9 +603,7 @@ definePgSuite("competence-economics decisions (real PostgreSQL)", (ctx) => {
     expect(decisionIds.size).toBe(1);
 
     // The concurrent appends: exactly one insert, seven replays.
-    const outcomes = await Promise.all(
-      records.map((entry) => world.store.append(entry as never)),
-    );
+    const outcomes = await Promise.all(records.map((entry) => world.store.append(entry as never)));
     const inserts = outcomes.filter((outcome) => !outcome.replayed).length;
     const replays = outcomes.filter((outcome) => outcome.replayed).length;
     expect(inserts).toBe(1);

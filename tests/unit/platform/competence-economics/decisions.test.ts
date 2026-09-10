@@ -20,23 +20,25 @@ import {
   buildPromotionDecisionRecord,
   buildRollbackDecisionRecord,
 } from "../../../../src/platform/competence-economics/decisions";
+import { decidePromotion } from "../../../../src/platform/competence-economics/promotion";
+import { buildRollback } from "../../../../src/platform/competence-economics/rollback";
 import { validateOptimizationDecision } from "../../../../src/platform/execution-ir/decision-record";
 import {
   atStage,
+  canaryEvidence,
   constraints,
   decisionScope,
   digest,
   governedIr,
   minedRecord,
+  PROMOTER_AUTHORITY,
   promotedVerdict,
+  promotionInput,
+  ROLLBACK_AUTHORITY,
   replacementCandidate,
   rollbackInput,
-  ROLLBACK_AUTHORITY,
-  PROMOTER_AUTHORITY,
+  shadowEvidence,
 } from "./world";
-import { buildRollback } from "../../../../src/platform/competence-economics/rollback";
-import { decidePromotion } from "../../../../src/platform/competence-economics/promotion";
-import { promotionInput, canaryEvidence, shadowEvidence } from "./world";
 
 function capture<T>(fn: () => T): unknown {
   try {
@@ -111,7 +113,10 @@ describe("competence decision records (WORK-056)", () => {
   test("hold and reject verdicts record NOTHING (the typed outcome IS the evidence)", () => {
     // A hold verdict (shadow observations below the bound).
     const hold = decidePromotion(
-      promotionInput(atStage("shadow"), { shadow: { observationsCount: 42, deviationCount: 0, basis: "x" }, canary: null }),
+      promotionInput(atStage("shadow"), {
+        shadow: { observationsCount: 42, deviationCount: 0, basis: "x" },
+        canary: null,
+      }),
     );
     expect(hold.kind).toBe("hold");
     const holdRecord = buildPromotionDecisionRecord({

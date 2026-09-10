@@ -48,15 +48,17 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { CompetenceEconomicsError } from "../../src/platform/competence-economics/catalog";
 import { admitDeterministicReplacement } from "../../src/platform/competence-economics/equivalence";
-import { advanceStage, decidePromotion } from "../../src/platform/competence-economics/promotion";
 import { mineCompetenceCandidate } from "../../src/platform/competence-economics/mining";
+import { advanceStage, decidePromotion } from "../../src/platform/competence-economics/promotion";
+import {
+  buildCompetenceRecord,
+  validateCompetenceRecord,
+} from "../../src/platform/competence-economics/record";
+import { retrieveCompetence } from "../../src/platform/competence-economics/retrieval";
 import {
   applyRollbackRecord,
   buildRollback,
 } from "../../src/platform/competence-economics/rollback";
-import { buildCompetenceRecord } from "../../src/platform/competence-economics/record";
-import { retrieveCompetence } from "../../src/platform/competence-economics/retrieval";
-import { validateCompetenceRecord } from "../../src/platform/competence-economics/record";
 import { buildOptimizationDecision } from "../../src/platform/execution-ir/decision-record";
 import {
   atStage,
@@ -69,8 +71,8 @@ import {
   governedIr,
   minedRecord,
   miningCorpus,
-  promotionInput,
   PROMOTER_AUTHORITY,
+  promotionInput,
   query,
   recordVariant,
   retrievalConfiguration,
@@ -175,7 +177,10 @@ describe("competence-economics discrimination battery (WORK-056)", () => {
 
   test("D1 an executor can never ROLL BACK either (no self-rollback)", () => {
     const caught = capture(() =>
-      buildRollback(rollbackInput(atStage("shadow"), undefined, undefined, "agent-worker-01"), digest),
+      buildRollback(
+        rollbackInput(atStage("shadow"), undefined, undefined, "agent-worker-01"),
+        digest,
+      ),
     );
     expect(caught).toBeInstanceOf(CompetenceEconomicsError);
     expect((caught as CompetenceEconomicsError).invariant).toBe("rollback-shape");
@@ -254,7 +259,7 @@ describe("competence-economics discrimination battery (WORK-056)", () => {
         }),
       );
     for (const kind of ["differential", "property", "replay"] as const) {
-      const suite = fullSuite() as Record<string, unknown>;
+      const suite = fullSuite() as unknown as Record<string, unknown>;
       const incomplete = { ...suite };
       delete incomplete[kind];
       const caught = admission(incomplete);
@@ -318,10 +323,12 @@ describe("competence-economics discrimination battery (WORK-056)", () => {
   // D4 — silent rollback or silent authority change is impossible
   // -------------------------------------------------------------------------
   test("D4 a rollback without its coherent typed evidence is a typed rejection (never silent)", () => {
-    for (const evidence of [
-      [],
-      [{ kind: "quality" as const, observedQuality: 0.5, detail: "wrong kind" }],
-    ]) {
+    const evidenceSets: readonly (readonly {
+      kind: "quality";
+      observedQuality: number;
+      detail: string;
+    }[])[] = [[], [{ kind: "quality", observedQuality: 0.5, detail: "wrong kind" }]];
+    for (const evidence of evidenceSets) {
       const caught = capture(() =>
         buildRollback(rollbackInput(atStage("shadow"), "equivalence-degraded", evidence), digest),
       );
@@ -377,13 +384,15 @@ describe("competence-economics discrimination battery (WORK-056)", () => {
   test("D5 byte-level re-runs are identical (ranking, mining, promotion, rollback)", () => {
     // Retrieval.
     const corpus = [minedRecord(), recordVariant({ cost: "500" })];
-    expect(JSON.stringify(retrieveCompetence(corpus, query(), retrievalConfiguration(), digest))).toBe(
+    expect(
       JSON.stringify(retrieveCompetence(corpus, query(), retrievalConfiguration(), digest)),
-    );
+    ).toBe(JSON.stringify(retrieveCompetence(corpus, query(), retrievalConfiguration(), digest)));
     // Promotion.
     const promotion = promotionInput(minedRecord(), { shadow: null, canary: null });
     expect(JSON.stringify(decidePromotion(promotion))).toBe(
-      JSON.stringify(decidePromotion(promotionInput(minedRecord(), { shadow: null, canary: null }))),
+      JSON.stringify(
+        decidePromotion(promotionInput(minedRecord(), { shadow: null, canary: null })),
+      ),
     );
     // Rollback.
     expect(JSON.stringify(buildRollback(rollbackInput(), digest))).toBe(

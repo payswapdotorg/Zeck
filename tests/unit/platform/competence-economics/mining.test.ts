@@ -13,17 +13,18 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { CompetenceEconomicsError } from "../../../../src/platform/competence-economics/catalog";
 import {
+  CompetenceEconomicsError,
   MIN_SUCCESSFUL_TRAJECTORIES,
 } from "../../../../src/platform/competence-economics/catalog";
-import { mineCompetenceCandidate } from "../../../../src/platform/competence-economics/mining";
-import { validateSuccessfulTrajectory } from "../../../../src/platform/competence-economics/mining";
+import {
+  mineCompetenceCandidate,
+  validateSuccessfulTrajectory,
+} from "../../../../src/platform/competence-economics/mining";
 import { validateCompetenceRecord } from "../../../../src/platform/competence-economics/record";
 import { FailureRecoveryError } from "../../../../src/platform/failure-recovery/catalog";
 import {
   digest,
-  driftedEnvironment,
   driftedTrajectory,
   environment,
   minedRecord,
@@ -135,18 +136,12 @@ describe("trajectory mining (WORK-056)", () => {
   test("trajectory shape discipline: every field is bounded and validated", () => {
     expect(
       capture(() =>
-        validateSuccessfulTrajectory(
-          { ...trajectory(1, 0.92), executionId: "not-a-uuid" },
-          digest,
-        ),
+        validateSuccessfulTrajectory({ ...trajectory(1, 0.92), executionId: "not-a-uuid" }, digest),
       ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
       capture(() =>
-        validateSuccessfulTrajectory(
-          { ...trajectory(1, 0.92), observedQuality: 1.5 },
-          digest,
-        ),
+        validateSuccessfulTrajectory({ ...trajectory(1, 0.92), observedQuality: 1.5 }, digest),
       ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
@@ -212,7 +207,9 @@ describe("trajectory mining (WORK-056)", () => {
       ),
     ).toBeInstanceOf(Error); // the context-economics plane's own error
     expect(
-      capture(() => mineCompetenceCandidate({ ...miningCorpus(), capabilityId: "NOT A SLUG" }, digest)),
+      capture(() =>
+        mineCompetenceCandidate({ ...miningCorpus(), capabilityId: "NOT A SLUG" }, digest),
+      ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
       capture(() => mineCompetenceCandidate({ ...miningCorpus(), tags: ["NOT A TAG!"] }, digest)),

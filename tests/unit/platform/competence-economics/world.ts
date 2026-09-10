@@ -17,10 +17,14 @@ import type {
 import { admitDeterministicReplacement } from "../../../../src/platform/competence-economics/equivalence";
 import type { SuccessfulTrajectory } from "../../../../src/platform/competence-economics/mining";
 import { mineCompetenceCandidate } from "../../../../src/platform/competence-economics/mining";
-import { advanceStage, decidePromotion } from "../../../../src/platform/competence-economics/promotion";
-import type { CompetenceQuery } from "../../../../src/platform/competence-economics/retrieval";
+import {
+  advanceStage,
+  decidePromotion,
+} from "../../../../src/platform/competence-economics/promotion";
 import type { CompetenceRecord } from "../../../../src/platform/competence-economics/record";
 import { buildCompetenceRecord } from "../../../../src/platform/competence-economics/record";
+import type { CompetenceQuery } from "../../../../src/platform/competence-economics/retrieval";
+import type { DegradationEvidence } from "../../../../src/platform/competence-economics/rollback";
 import type { TenantCacheScope } from "../../../../src/platform/context-economics/keys";
 import { canonicalJson } from "../../../../src/platform/execution-ir/canonical";
 import type { OptimizationConstraint } from "../../../../src/platform/execution-ir/constraints";
@@ -149,7 +153,7 @@ export function driftedEnvironment(): EnvironmentFingerprint {
 /** One representative successful trajectory observation. */
 export function trajectory(executionNumber: number, quality: number): SuccessfulTrajectory {
   const raw = `trajectory:${executionNumber}:success`;
-  const form = {
+  const form: Omit<SuccessfulTrajectory, "trajectoryId"> = {
     executionId: `00000000-0000-7000-8000-00000000${String(executionNumber).padStart(4, "0")}`,
     decisionRecordId: digestValue({ decision: executionNumber, kind: "governed-selection" }),
     outcome: "success",
@@ -181,7 +185,7 @@ export function secondExecutorTrajectory(executionNumber: number): SuccessfulTra
  */
 export function driftedTrajectory(executionNumber: number): SuccessfulTrajectory {
   const raw = `trajectory:${executionNumber}:drifted-env`;
-  const form = {
+  const form: Omit<SuccessfulTrajectory, "trajectoryId"> = {
     executionId: `00000000-0000-7000-8000-00000000${String(executionNumber).padStart(4, "0")}`,
     decisionRecordId: digestValue({ decision: executionNumber, kind: "governed-selection" }),
     outcome: "success",
@@ -360,7 +364,8 @@ export function recordVariant(options: {
     tags: options.tags ?? ["classify", "structured-output"],
     environment: options.environment ?? environment(),
     trajectoryDigest:
-      options.trajectoryDigest ?? digest.sha256Hex(`trajectory-evidence:${JSON.stringify(options)}`),
+      options.trajectoryDigest ??
+      digest.sha256Hex(`trajectory-evidence:${JSON.stringify(options)}`),
     trajectoryExecutors: ["agent-worker-01", "agent-worker-02"],
     minedBy: "mining-job-07",
     expectedOutcome: {
@@ -473,7 +478,7 @@ export function promotionInput(
 // ---------------------------------------------------------------------------
 
 /** The representative degradation evidence (equivalence-degraded). */
-export function equivalenceDegradation() {
+export function equivalenceDegradation(): readonly DegradationEvidence[] {
   return [
     {
       kind: "equivalence" as const,
@@ -483,11 +488,24 @@ export function equivalenceDegradation() {
   ];
 }
 
+/** One equivalence degradation entry (the bounded-evidence builder). */
+export function equivalenceDegradationEntry(): DegradationEvidence {
+  return {
+    kind: "equivalence",
+    component: "differential",
+    detail: "new differential sampling observed mismatches within the declared bounds",
+  };
+}
+
 /** The bounded rollback input over the shadow-stage record. */
 export function rollbackInput(
   promotedRecord: CompetenceRecord = atStage("shadow"),
-  reason: "equivalence-degraded" | "quality-degraded" | "economics-degraded" | "policy-revoked" = "equivalence-degraded",
-  degradedEvidence = equivalenceDegradation(),
+  reason:
+    | "equivalence-degraded"
+    | "quality-degraded"
+    | "economics-degraded"
+    | "policy-revoked" = "equivalence-degraded",
+  degradedEvidence: readonly DegradationEvidence[] = equivalenceDegradation(),
   requestedBy: string = ROLLBACK_AUTHORITY,
 ) {
   return {

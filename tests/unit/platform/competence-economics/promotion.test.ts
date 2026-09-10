@@ -16,6 +16,7 @@
 
 import { describe, expect, test } from "vitest";
 import { CompetenceEconomicsError } from "../../../../src/platform/competence-economics/catalog";
+import { admitDeterministicReplacement } from "../../../../src/platform/competence-economics/equivalence";
 import {
   advanceStage,
   decidePromotion,
@@ -28,17 +29,19 @@ import {
   atStage,
   belowFloorReplacement,
   canaryEvidence,
+  claim,
   digest,
+  fullSuite,
   minedRecord,
+  PROMOTER_AUTHORITY,
   promotionConfiguration,
   promotionInput,
-  PROMOTER_AUTHORITY,
+  qualityFacts,
   replacementCandidate,
+  scope,
   shadowEvidence,
   weakSuite,
 } from "./world";
-import { admitDeterministicReplacement } from "../../../../src/platform/competence-economics/equivalence";
-import { fullSuite, qualityFacts, claim, scope } from "./world";
 
 function capture<T>(fn: () => T): unknown {
   try {
@@ -263,7 +266,12 @@ describe("the gated promotion path (WORK-056)", () => {
     // quality floor (0.8): the promotion is rejected with the
     // model-economics plane's OWN reason code.
     const verdict = decidePromotion(
-      promotionInput(minedRecord(), { shadow: null, canary: null }, PROMOTER_AUTHORITY, belowFloorReplacement()),
+      promotionInput(
+        minedRecord(),
+        { shadow: null, canary: null },
+        PROMOTER_AUTHORITY,
+        belowFloorReplacement(),
+      ),
     );
     expect(verdict.kind).toBe("reject");
     expect(verdict.reasons.map((reason) => reason.code)).toEqual(["quality-below-hard-floor"]);
@@ -299,7 +307,10 @@ describe("the gated promotion path (WORK-056)", () => {
       decidePromotion(
         promotionInput(minedRecord(), { shadow: null, canary: null }, PROMOTER_AUTHORITY, {
           ...crossTenant,
-          scope: { tenantId: "00000000-0000-7000-8000-0000000000dd", applicationId: scope.applicationId },
+          scope: {
+            tenantId: "00000000-0000-7000-8000-0000000000dd",
+            applicationId: scope.applicationId,
+          },
         } as never),
       ),
     );
@@ -310,17 +321,23 @@ describe("the gated promotion path (WORK-056)", () => {
     const record = minedRecord();
     const tamperedRecord = { ...record, trajectoryDigest: digest.sha256Hex("forged") };
     const caught = capture(() =>
-      decidePromotion(
-        promotionInput(tamperedRecord as never, { shadow: null, canary: null }),
-      ),
+      decidePromotion(promotionInput(tamperedRecord as never, { shadow: null, canary: null })),
     );
     expect(caught).toBeInstanceOf(CompetenceEconomicsError);
 
     const replacement = replacementCandidate();
-    const tamperedReplacement = { ...replacement, claim: { ...replacement.claim, expectedCostMicroUsd: "1" } };
+    const tamperedReplacement = {
+      ...replacement,
+      claim: { ...replacement.claim, expectedCostMicroUsd: "1" },
+    };
     const caughtReplacement = capture(() =>
       decidePromotion(
-        promotionInput(minedRecord(), { shadow: null, canary: null }, PROMOTER_AUTHORITY, tamperedReplacement as never),
+        promotionInput(
+          minedRecord(),
+          { shadow: null, canary: null },
+          PROMOTER_AUTHORITY,
+          tamperedReplacement as never,
+        ),
       ),
     );
     expect(caughtReplacement).toBeInstanceOf(CompetenceEconomicsError);
@@ -387,13 +404,24 @@ describe("the gated promotion path (WORK-056)", () => {
     ).toBeInstanceOf(CompetenceEconomicsError);
     // The validators are directly total too.
     expect(
-      capture(() => validatePromotionConfiguration({ ...promotionConfiguration(), canaryExposureBound: 10001 })),
+      capture(() =>
+        validatePromotionConfiguration({ ...promotionConfiguration(), canaryExposureBound: 10001 }),
+      ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
-      capture(() => validateShadowEvidence({ observationsCount: 0, deviationCount: 1, basis: "x" })),
+      capture(() =>
+        validateShadowEvidence({ observationsCount: 0, deviationCount: 1, basis: "x" }),
+      ),
     ).toBeInstanceOf(CompetenceEconomicsError);
     expect(
-      capture(() => validateCanaryEvidence({ exposureCount: -1, successCount: 0, deviationCount: 0, basis: "x" })),
+      capture(() =>
+        validateCanaryEvidence({
+          exposureCount: -1,
+          successCount: 0,
+          deviationCount: 0,
+          basis: "x",
+        }),
+      ),
     ).toBeInstanceOf(CompetenceEconomicsError);
   });
 

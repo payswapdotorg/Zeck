@@ -29,7 +29,6 @@ import {
   OTHER_TENANT_ID,
   scope,
   TENANT_ID,
-  trajectory,
 } from "./world";
 
 /**
@@ -104,9 +103,7 @@ describe("competence records (WORK-056)", () => {
 
   test("the self-assertion guard: a miner that is an executor is rejected at construction", () => {
     const input = recordInput();
-    const caught = capture(() =>
-      buildCompetenceRecord({ ...input, minedBy: "agent-worker-01" }),
-    );
+    const caught = capture(() => buildCompetenceRecord({ ...input, minedBy: "agent-worker-01" }));
     expect(caught).toBeInstanceOf(CompetenceEconomicsError);
     expect((caught as CompetenceEconomicsError).invariant).toBe("record-self-asserted");
   });

@@ -402,19 +402,19 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     expect(changed).toBe("");
     // And the branch's own commits never touch the import-only
     // surfaces (the mechanical zero-diff proof over the full branch).
-    const branchChanges = execSync(
-      `git diff --name-only ${mergeBase}..HEAD`,
-      { cwd: REPO_ROOT, encoding: "utf8" },
-    )
+    const branchChanges = execSync(`git diff --name-only ${mergeBase}..HEAD`, {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    })
       .trim()
       .split("\n")
       .filter((line) => line.length > 0);
     expect(branchChanges.length).toBeGreaterThan(0);
     for (const path of branchChanges) {
-      expect(path).toMatch(
-        /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/,
+      expect(
+        /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/.test(path),
         `${path} is outside the Declared Change Surfaces`,
-      );
+      ).toBe(true);
     }
   });
 });

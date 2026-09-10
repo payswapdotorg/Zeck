@@ -16,9 +16,10 @@ import { describe, expect, test } from "vitest";
 import { CompetenceEconomicsError } from "../../../../src/platform/competence-economics/catalog";
 import {
   compareRetrievalEntries,
+  RETRIEVAL_BASIS,
   retrieveCompetence,
 } from "../../../../src/platform/competence-economics/retrieval";
-import { RETRIEVAL_BASIS } from "../../../../src/platform/competence-economics/retrieval";
+import type { CandidateEvaluation } from "../../../../src/platform/execution-ir/cost-model";
 import {
   digest,
   driftedEnvironment,
@@ -74,7 +75,10 @@ describe("competence retrieval (WORK-056)", () => {
 
   test("the deterministic total order: cost ascending, then observations descending, then recordId", () => {
     const cheap = recordVariant({ cost: "100", trajectoryDigest: digest.sha256Hex("rank-cheap") });
-    const expensive = recordVariant({ cost: "900", trajectoryDigest: digest.sha256Hex("rank-exp") });
+    const expensive = recordVariant({
+      cost: "900",
+      trajectoryDigest: digest.sha256Hex("rank-exp"),
+    });
     const result = retrieveCompetence(
       [expensive, cheap],
       query(),
@@ -87,8 +91,14 @@ describe("competence retrieval (WORK-056)", () => {
     ]);
 
     // Ties on cost resolve on repetition evidence (stronger first).
-    const weakEvidence = recordVariant({ observations: 2, trajectoryDigest: digest.sha256Hex("tie-weak") });
-    const strongEvidence = recordVariant({ observations: 5, trajectoryDigest: digest.sha256Hex("tie-strong") });
+    const weakEvidence = recordVariant({
+      observations: 2,
+      trajectoryDigest: digest.sha256Hex("tie-weak"),
+    });
+    const strongEvidence = recordVariant({
+      observations: 5,
+      trajectoryDigest: digest.sha256Hex("tie-strong"),
+    });
     const tie = retrieveCompetence(
       [weakEvidence, strongEvidence],
       query(),
@@ -104,17 +114,15 @@ describe("competence retrieval (WORK-056)", () => {
     const tieA = recordVariant({ trajectoryDigest: digest.sha256Hex("tie-a") });
     const tieB = recordVariant({ trajectoryDigest: digest.sha256Hex("tie-b") });
     const ordered = [tieA.recordId, tieB.recordId].sort();
-    const identity = retrieveCompetence(
-      [tieB, tieA],
-      query(),
-      retrievalConfiguration(),
-      digest,
-    );
+    const identity = retrieveCompetence([tieB, tieA], query(), retrievalConfiguration(), digest);
     expect(identity.results.map((entry) => entry.record.recordId)).toEqual(ordered);
 
     // The comparator itself is total and antisymmetric.
-    const first = { record: tieA, evaluation: { expectedSuccessfulResolutionCostMicroUsd: "800" } };
-    const second = { record: tieB, evaluation: { expectedSuccessfulResolutionCostMicroUsd: "800" } };
+    const evaluation = {
+      expectedSuccessfulResolutionCostMicroUsd: "800",
+    } as CandidateEvaluation;
+    const first = { record: tieA, evaluation };
+    const second = { record: tieB, evaluation };
     expect(compareRetrievalEntries(first, second)).toBe(-compareRetrievalEntries(second, first));
   });
 
@@ -192,7 +200,12 @@ describe("competence retrieval (WORK-056)", () => {
   test("the result set honors maxResults (bounded)", () => {
     const a = recordVariant({ trajectoryDigest: digest.sha256Hex("bound-a") });
     const b = recordVariant({ trajectoryDigest: digest.sha256Hex("bound-b") });
-    const result = retrieveCompetence([a, b], query(), { maxResults: 1, qualityFloor: 0.85 }, digest);
+    const result = retrieveCompetence(
+      [a, b],
+      query(),
+      { maxResults: 1, qualityFloor: 0.85 },
+      digest,
+    );
     expect(result.results).toHaveLength(1);
     // Every corpus record still carries its verdict (audit evidence).
     expect(result.verdicts).toHaveLength(2);
@@ -202,9 +215,9 @@ describe("competence retrieval (WORK-056)", () => {
     const corpus = Array.from({ length: 1025 }, (_, index) =>
       recordVariant({ trajectoryDigest: digest.sha256Hex(`corpus-${index}`) }),
     );
-    expect(() =>
-      retrieveCompetence(corpus, query(), retrievalConfiguration(), digest),
-    ).toThrow(CompetenceEconomicsError);
+    expect(() => retrieveCompetence(corpus, query(), retrievalConfiguration(), digest)).toThrow(
+      CompetenceEconomicsError,
+    );
     // 1024 is the bound: the maximum corpus is admitted.
     const maximal = corpus.slice(0, 1024);
     expect(() =>
@@ -229,7 +242,12 @@ describe("competence retrieval (WORK-056)", () => {
       ),
     ).toThrow(CompetenceEconomicsError);
     expect(() =>
-      retrieveCompetence([], { ...query(), tags: ["classify", "classify"] }, retrievalConfiguration(), digest),
+      retrieveCompetence(
+        [],
+        { ...query(), tags: ["classify", "classify"] },
+        retrievalConfiguration(),
+        digest,
+      ),
     ).toThrow(CompetenceEconomicsError);
     expect(() =>
       retrieveCompetence([], query(), { maxResults: 0, qualityFloor: 0.85 }, digest),
