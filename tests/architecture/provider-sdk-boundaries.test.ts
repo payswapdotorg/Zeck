@@ -76,6 +76,16 @@ describe("provider SDK boundaries", () => {
       "groq-sdk": "src/modules/models/adapters/",
       "@azure/openai": "src/modules/models/adapters/",
       "@workflowos/*": "src/integrations/workflowos/adapters/",
+      // WORK-054: the substrate runtime adapter SDKs (E2B, Daytona,
+      // Modal) boundary-confined to the substrate-economics adapter
+      // directory — the additive reconciliation this Work Order's
+      // acceptance criterion 6 declares. The SDKs are NOT declared
+      // dependencies yet (the adapters ride typed transport ports);
+      // the table decides where they may live once they arrive.
+      e2b: "src/platform/substrate-economics/adapters/",
+      "@e2b/*": "src/platform/substrate-economics/adapters/",
+      "@daytonaio/*": "src/platform/substrate-economics/adapters/",
+      modal: "src/platform/substrate-economics/adapters/",
     });
   });
 
