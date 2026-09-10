@@ -10,8 +10,9 @@
  * substrate selection (quality is a hard floor; economics minimize
  * above it), readiness/startup lifecycle measurement, warm/snapshot
  * aware execution decision inputs, and the runtime provider adapters
- * (E2B, Daytona, Modal, self-hosted) as NEUTRAL MECHANISMS behind the
- * existing compute/sandbox seams. It is a CONSUMER of the WORK-049/050
+ * (the researched E1.1 provider set plus self-hosted) as NEUTRAL
+ * MECHANISMS behind the existing compute/sandbox seams. It is a
+ * CONSUMER of the WORK-049/050
  * foundation (Execution IR, constraints, cost model, decision records)
  * — it is NEVER a second authority:
  *
@@ -128,7 +129,8 @@ export function rejectSubstrate(
  *
  * The vocabulary is NEUTRAL (no provider names — "warm pool",
  * "snapshot" are the industry-neutral terms the research baseline
- * documents for E2B/Daytona/Modal alike). Inventing a mode outside
+ * documents across every researched runtime provider alike).
+ * Inventing a mode outside
  * this set is rejected: the descriptor set is CLOSED.
  */
 export const SUBSTRATE_AVAILABILITY_MODES = ["cold", "warm", "snapshot"] as const;

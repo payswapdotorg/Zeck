@@ -2,8 +2,9 @@
  * The substrate runtime adapter seam (platform substrate-economics
  * plane; WORK-054 / E1.1 charter wave member 4 — ADR-0019, ADR-0020).
  *
- * THE ADAPTER SEAM: every runtime provider adapter (E2B, Daytona,
- * Modal, self-hosted) implements the DECLARED compute/sandbox seam —
+ * THE ADAPTER SEAM: every runtime provider adapter (the researched
+ * E1.1 provider set plus self-hosted) implements the DECLARED
+ * compute/sandbox seam —
  * the frozen `ContainerRuntimeClient` contract of
  * `src/platform/sandbox/runtime-client.ts` (execute exactly a
  * validated, provider-neutral `ContainerConfiguration` under the

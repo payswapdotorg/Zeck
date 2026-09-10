@@ -18,8 +18,9 @@
  *  - `accounting.ts`   — the WORK-049 decision-record ride (substrate
  *                        selections as optimization decision evidence
  *                        through the existing foundation contract);
- *  - `adapters/`       — the runtime provider adapters (E2B, Daytona,
- *                        Modal, self-hosted) as neutral mechanisms
+ *  - `adapters/`       — the runtime provider adapters (the
+ *                        researched E1.1 provider set plus
+ *                        self-hosted) as neutral mechanisms
  *                        behind the existing compute/sandbox seams.
  *
  * Platform code never imports domain modules (`platform-isolation`);
