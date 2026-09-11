@@ -229,6 +229,49 @@
       "description": "Materialized S3 secret access key for the ALTERNATE artifact store of the D-07 artifact-exit drill. Credential-shaped: environment-only storage, never committed."
     },
     {
+      "name": "ZECK_HA_PRIMARY_URL",
+      "type": "postgres-url",
+      "required": false,
+      "credentialShaped": true,
+      "description": "The HA topology's PRIMARY PostgreSQL connection URL for the authority-failover drill (deploy/drill authority-failover, provider environments): the environment-materialized primary endpoint. Credential-shaped: environment-only storage, never committed."
+    },
+    {
+      "name": "ZECK_HA_STANDBY_URL",
+      "type": "postgres-url",
+      "required": false,
+      "credentialShaped": true,
+      "description": "The HA topology's STANDBY PostgreSQL connection URL for the authority-failover drill (deploy/drill authority-failover, provider environments): the environment-materialized standby endpoint promoted after primary loss. Credential-shaped: environment-only storage, never committed."
+    },
+    {
+      "name": "ZECK_HA_REPLICATION_MODE",
+      "type": "enum",
+      "values": ["asynchronous", "synchronous"],
+      "required": false,
+      "credentialShaped": false,
+      "description": "The replication mode the HA failover drills under (asynchronous or synchronous); selects the replication-path RPO target the measured RPO is evaluated against. Defaults to asynchronous."
+    },
+    {
+      "name": "ZECK_HA_POSTGRES_BIN",
+      "type": "filesystem-path",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Directory containing local PostgreSQL 16+ server binaries (postgres, initdb) used by the local authority-failover drill to build the disposable primary+standby topology. Non-secret path; absent means PATH lookup, and an honest fail-closed error when no real binaries exist."
+    },
+    {
+      "name": "ZECK_HA_LOCAL_PRIMARY_PORT",
+      "type": "tcp-port",
+      "required": false,
+      "credentialShaped": false,
+      "description": "TCP port for the local authority-failover drill's disposable primary PostgreSQL instance (default 55601; must be free)."
+    },
+    {
+      "name": "ZECK_HA_LOCAL_STANDBY_PORT",
+      "type": "tcp-port",
+      "required": false,
+      "credentialShaped": false,
+      "description": "TCP port for the local authority-failover drill's disposable standby PostgreSQL instance (default 55602; must be free)."
+    },
+    {
       "name": "ZECK_QUEUE_ID",
       "type": "queue-resource-id",
       "required": false,

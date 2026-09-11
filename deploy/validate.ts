@@ -21,7 +21,12 @@
  *  8. (D-06) the release-control migration is in the shipped set;
  *  9. (D-07) the repository-resident recovery-targets document loads
  *     with bounded, numeric RTO/RPO targets for EVERY environment
- *     class (aspirational or missing targets are unrepresentable).
+ *     class (aspirational or missing targets are unrepresentable);
+ * 10. (D-08 / WORK-057) the recovery-targets `ha` extension loads
+ *     fail-closed for every environment: primary+standby topology,
+ *     bounded replication-path RPO targets (asynchronous and
+ *     synchronous), bounded failover RTO, scope and measurement
+ *     procedure (drift is unrepresentable).
  *
  * Exit 0 = the configuration is valid; exit 1 = violations listed.
  */
@@ -29,6 +34,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseHaTopologyDocument } from "../src/platform/db/ha/topology";
 import { shippedMigrations } from "../src/platform/db/startup";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
 import { computeResourceNames, previewBranchSlug } from "../src/platform/deployment/naming";
@@ -56,6 +62,8 @@ export interface DeploymentValidationReport {
   readonly operationalThresholds: number;
   readonly migrations: number;
   readonly recoveryTargetEnvironments: number;
+  /** (D-08) environments whose HA topology extension parsed fail-closed. */
+  readonly haTopologyEnvironments: number;
 }
 
 /** The full validation core (the CLI and the D-06 validation gate share one path). */
@@ -146,6 +154,30 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     problems.push(`recovery-targets.json: ${(error as Error).message}`);
   }
 
+  // The D-08 HA topology extension (WORK-057): every environment
+  // declares its primary+standby topology with bounded failover
+  // objectives — the extension is validated by the platform parser
+  // (fail-closed on drift), never silently accepted.
+  let haTopologyCount = 0;
+  try {
+    const source = readFileSync(
+      resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"),
+      "utf8",
+    );
+    const document = JSON.parse(source) as unknown;
+    const haTopologies = parseHaTopologyDocument(document);
+    haTopologyCount = Object.keys(haTopologies).length;
+    for (const environment of manifest.environments) {
+      if (haTopologies[environment.id] === undefined) {
+        problems.push(
+          `recovery-targets.json: no ha topology declared for environment "${environment.id}" (every environment class declares its HA topology)`,
+        );
+      }
+    }
+  } catch (error) {
+    problems.push(`recovery-targets.json ha extension: ${(error as Error).message}`);
+  }
+
   return {
     valid: problems.length === 0,
     problems,
@@ -159,6 +191,7 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     operationalThresholds: operationalThresholdCount,
     migrations: shipped.length,
     recoveryTargetEnvironments: recoveryTargetCount,
+    haTopologyEnvironments: haTopologyCount,
   };
 }
 
