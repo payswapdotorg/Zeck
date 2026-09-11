@@ -59,7 +59,7 @@ function fakePort(responses: {
 }
 
 describe("startup validation (fake port)", () => {
-  test("the shipped migration set is the repository's 29-file deterministic set", () => {
+  test("the shipped migration set is the repository's 30-file deterministic set", () => {
     const migrations = shippedMigrations();
     // 24 files through WORK-043 (0015 burned) + 0026_queue_transport
     // (WORK-044 / D-03: the queue_transport correlation schema) +
@@ -68,21 +68,26 @@ describe("startup validation (fake port)", () => {
     // (WORK-046 / D-05: the compute_plane worker coordination schema)
     // + 0029_release_control (WORK-047 / D-06: the release ledger)
     // + 0030_execution_ir_decision_records (WORK-049 / E1.1: the
-    // append-only optimization decision-record evidence schema).
-    expect(migrations.length).toBe(29);
+    // append-only optimization decision-record evidence schema)
+    // + 0031_audit_compliance (WORK-059 / D-08 / SEC-004: the
+    // append-only audit-projection, legal-hold and bounded
+    // retention-policy schema).
+    expect(migrations.length).toBe(30);
     expect(migrations[0]?.version).toBe(1);
-    expect(migrations[28]?.version).toBe(30);
+    expect(migrations[29]?.version).toBe(31);
     // Versions are strictly ascending with the burned 0015 gap.
     const versions = migrations.map((file) => file.version);
     expect(new Set(versions).size).toBe(versions.length);
     expect(versions).not.toContain(15);
   });
 
-  test("authoritativeSchemas derives the 21-schema compatibility surface from the migration SQL", () => {
+  test("authoritativeSchemas derives the 22-schema compatibility surface from the migration SQL", () => {
     const schemas = authoritativeSchemas(shippedMigrations());
-    expect(schemas).toHaveLength(21);
+    expect(schemas).toHaveLength(22);
     // The E1.1 execution-ir evidence schema (WORK-049).
     expect(schemas).toContain("execution_ir");
+    // The D-08 audit-projection evidence schema (WORK-059 / SEC-004).
+    expect(schemas).toContain("audit");
     expect(schemas).toContain("platform");
     expect(schemas).toContain("identity");
     expect(schemas).toContain("deployments");

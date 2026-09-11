@@ -199,8 +199,8 @@ describe("E1.1 context-economics architecture boundaries (WORK-052)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .sort();
-    expect(migrations).toHaveLength(29);
-    expect(migrations[migrations.length - 1]).toMatch(/^0030_execution_ir_decision_records/);
+    expect(migrations).toHaveLength(30);
+    expect(migrations[migrations.length - 1]).toMatch(/^0031_audit_compliance/);
     // No store implementation exists beyond the WORK-049 one.
     const implementors = collectSourceFiles(REPO_ROOT).filter((file) =>
       file.content.includes("implements OptimizationDecisionStore"),
