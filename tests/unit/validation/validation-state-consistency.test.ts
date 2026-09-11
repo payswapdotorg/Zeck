@@ -51,18 +51,47 @@ describe("validation: governed state consistency (VAL-001 AC2)", () => {
   });
 
   test("an in-flight work order with an incomplete dependency is rejected (discrimination)", () => {
-    const corrupted: ValidationStateSnapshot = {
-      program: state.program,
-      frontier: {
-        ...state.frontier,
-        eligible: [],
-        inFlight: ["VAL-001", "VAL-002"],
+    // Fully synthetic state: stable across program evolution (never
+    // coupled to the live completion status of any real work order).
+    const synthetic: ValidationStateSnapshot = {
+      program: {
+        schemaVersion: 1,
+        program: "zeck-validation",
+        status: "active",
+        maxConcurrentWorkers: 3,
+        workOrders: {
+          "VAL-X01": { status: "complete", title: "x1" },
+          "VAL-X02": { status: "eligible", title: "x2" },
+          "VAL-X03": { status: "eligible", title: "x3" },
+        },
       },
-      dependencies: state.dependencies,
+      frontier: {
+        schemaVersion: 1,
+        program: "zeck-validation",
+        status: "active",
+        eligible: [],
+        inFlight: ["VAL-X03"],
+        blocked: [],
+        maxConcurrentWorkers: 3,
+      },
+      dependencies: {
+        schemaVersion: 1,
+        program: "zeck-validation",
+        dependencies: {
+          "VAL-X01": [],
+          "VAL-X02": ["VAL-X01"],
+          "VAL-X03": ["VAL-X02"],
+        },
+      },
     };
-    const violations = checkValidationStateConsistency(corrupted);
+    const violations = checkValidationStateConsistency(synthetic);
     expect(
-      violations.some((v) => v.kind === "dependency-not-complete" && v.detail.includes("VAL-002")),
+      violations.some(
+        (v) =>
+          v.kind === "dependency-not-complete" &&
+          v.detail.includes("VAL-X03") &&
+          v.detail.includes("VAL-X02"),
+      ),
     ).toBe(true);
   });
 
