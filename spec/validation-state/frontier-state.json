@@ -3,7 +3,6 @@
   "program": "zeck-validation",
   "status": "active",
   "eligible": [
-    "VAL-003",
     "VAL-004"
   ],
   "inFlight": [],

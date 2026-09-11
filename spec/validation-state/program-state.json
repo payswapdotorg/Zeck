@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T20:45:00Z",
+  "asOf": "2026-09-11T21:10:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -31,8 +31,16 @@
       }
     },
     "VAL-003": {
-      "status": "planned",
-      "title": "Golden task, environment-state, outcome and safety corpus"
+      "status": "complete",
+      "title": "Golden task, environment-state, outcome and safety corpus",
+      "mergedAs": {
+        "pr": 46,
+        "mergeCommit": "ea3ac03",
+        "implementationHead": "56b4cb3176e4359f5492137184760981407ab79f",
+        "finalBranchHead": "56b4cb3176e4359f5492137184760981407ab79f",
+        "baseRevision": "a51e95c",
+        "issue": 45
+      }
     },
     "VAL-004": {
       "status": "planned",
