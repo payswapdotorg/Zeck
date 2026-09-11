@@ -144,10 +144,10 @@ describe("the D-02 production-path boundaries (WORK-043)", () => {
     // append-only optimization decision record store).
     // The count stays pinned — every future migration is a reviewed,
     // disclosed extension of this expectation.
-    expect(migrations).toHaveLength(29);
+    expect(migrations).toHaveLength(30); // +0031_isolation_profiles (WORK-058 / D-08)
     expect(migrations[0]).toMatch(/^0001_/);
-    expect(migrations[migrations.length - 1]).toMatch(/^0030_execution_ir_decision_records/);
-    expect(migrations[migrations.length - 2]).toMatch(/^0029_release_control/);
+    expect(migrations[migrations.length - 1]).toMatch(/^0031_isolation_profiles/); // WORK-058 / D-08
+    expect(migrations[migrations.length - 2]).toMatch(/^0030_execution_ir_decision_records/);
     expect(migrations.map((name) => name.slice(0, 4))).not.toContain("0015");
   });
 

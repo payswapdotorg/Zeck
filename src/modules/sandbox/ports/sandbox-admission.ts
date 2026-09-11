@@ -21,6 +21,7 @@
  */
 
 import type { SandboxEnvironmentKind } from "../domain/environment";
+import type { IsolationProfileClass } from "../domain/isolation";
 import type { SandboxPolicyEvidence } from "../domain/sandbox";
 
 export interface SandboxAdmissionRequest {
@@ -29,6 +30,14 @@ export interface SandboxAdmissionRequest {
   readonly executionId: string;
   /** The environment kind that would be admitted. */
   readonly kind: SandboxEnvironmentKind;
+  /**
+   * The isolation-profile class the environment declares (WORK-058 /
+   * SEC-002): the GOVERNED selection input. The adapter maps it onto
+   * the frozen policy isolation-ladder anchor (the dedicated-customer
+   * class anchors at `customer-runner`, so a policy floor of
+   * `customer-runner` REQUIRES the class) — the authority decides.
+   */
+  readonly isolationProfile: IsolationProfileClass;
   /** Network hosts the environment declares (empty when egress none). */
   readonly hosts: readonly string[];
   /** Secret references the environment declares (empty when access none). */

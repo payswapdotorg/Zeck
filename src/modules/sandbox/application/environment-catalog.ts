@@ -24,6 +24,7 @@ import {
   type ComputeEnvironmentSpec,
   canonicalEnvironmentJson,
   canTransitionEnvironment,
+  deriveIsolationProfile,
   type EnvironmentLifecycleStatus,
   validateEnvironmentRegistration,
 } from "../domain/environment";
@@ -96,6 +97,12 @@ export function createEnvironmentCatalog(deps: EnvironmentCatalogDeps): Environm
       });
     }
     const digest = hashSpec(canonicalEnvironmentJson(input.spec));
+    // The isolation-profile projection (WORK-058 / SEC-002): derived
+    // PURELY from the validated spec — the spec is the single source,
+    // the durable class/pool columns are its indexed projection, and
+    // the schema's consistency trigger rejects any disagreement (an
+    // ambient assignment is unrepresentable at every layer).
+    const profile = deriveIsolationProfile(input.spec);
     const existing = await store.findEnvironmentBySlug(actor.applicationId, input.slug);
     if (existing !== null) {
       if (existing.tenantId !== actor.tenantId) {
@@ -128,6 +135,8 @@ export function createEnvironmentCatalog(deps: EnvironmentCatalogDeps): Environm
       kind: input.spec.kind,
       spec: input.spec as unknown as Readonly<Record<string, unknown>>,
       specDigest: digest,
+      isolationClass: profile.class,
+      poolId: profile.poolId,
       createdAt: iso(),
     });
     return claim.record;

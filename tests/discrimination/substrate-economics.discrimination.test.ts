@@ -120,6 +120,7 @@ describe("discrimination: vendor-vocabulary leakage past seams must be rejected"
           mounts: [],
           network: { mode: "none", allowedHosts: [] },
           resourceLimits: { cpuMilliCores: 500, memoryMiB: 256, executionTimeoutMs: 5000 },
+          isolationClass: "standard",
           readOnlyRootfs: true,
           runAsNonRoot: true,
           privileged: false,

@@ -54,9 +54,9 @@ export const DEFAULT_SANDBOX_IMAGE = "zeck-sandbox-base:1";
 
 /**
  * The durable execution-scoped identity of one logical container run —
- * the sanitized runtime spec's binding (application + parent execution
- * + sandbox row). The runtime client binds this into its external run
- * id derivation:
+ * the sanitized runtime spec's binding (tenant + application + parent
+ * execution + sandbox row). The runtime client binds this into its
+ * external run id derivation:
  *
  *   - DISTINCT executions / DISTINCT sandbox rows doing IDENTICAL
  *     work produce DISTINCT identities and therefore DISTINCT external
@@ -64,16 +64,21 @@ export const DEFAULT_SANDBOX_IMAGE = "zeck-sandbox-base:1";
  *     the configuration alone does not identify the work);
  *   - a REPLAY of the same logical run re-derives the SAME identity
  *     (the sandbox row is the idempotency anchor: re-selection
- *     converges on the committed row, so applicationId, executionId
- *     and sandboxId are all stable per logical run) and therefore the
- *     SAME external run id (idempotent re-submission converges).
+ *     converges on the committed row, so tenantId, applicationId,
+ *     executionId and sandboxId are all stable per logical run) and
+ *     therefore the SAME external run id (idempotent re-submission
+ *     converges);
+ *   - WORK-058 / SEC-001: the identity is TENANT-SCOPED — the external
+ *     run id of one tenant's work can never collide with (or be
+ *     re-derived from) another tenant's identical work.
  */
 export function containerRunIdentity(spec: {
+  readonly tenantId: string;
   readonly applicationId: string;
   readonly executionId: string;
   readonly sandboxId: string;
 }): string {
-  return `zeck-run:${spec.applicationId}:${spec.executionId}:${spec.sandboxId}`;
+  return `zeck-run:${spec.tenantId}:${spec.applicationId}:${spec.executionId}:${spec.sandboxId}`;
 }
 
 export interface ContainerSandboxProviderOptions {
@@ -144,6 +149,12 @@ export class ContainerSandboxProvider implements SandboxProvider {
         ...(limits.storageMiB === undefined ? {} : { storageMiB: limits.storageMiB }),
         ...(limits.processCount === undefined ? {} : { processCount: limits.processCount }),
       },
+      // The admitted isolation-profile class (WORK-058 / SEC-002): the
+      // runner enforces the class; the platform validator PROVES the
+      // configuration matches it (a strict-class config carrying an
+      // allowlist or a writable workspace is rejected below — the
+      // platform-layer mirror of the domain validation).
+      isolationClass: spec.isolationClass,
       // THE default-deny security posture — every field at its safe value.
       readOnlyRootfs: true,
       runAsNonRoot: true,

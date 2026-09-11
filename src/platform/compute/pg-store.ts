@@ -76,6 +76,7 @@ interface WorkerRow {
   readonly application_id: string;
   readonly kind: string;
   readonly runner_id: string | null;
+  readonly pool_id: string | null;
   readonly status: string;
   readonly declared_concurrency: number;
   readonly heartbeat_count: number;
@@ -111,6 +112,7 @@ interface ClaimRow {
   readonly environment_id: string | null;
   readonly compute_environment_id: string;
   readonly worker_id: string;
+  readonly pool_id: string | null;
   readonly claim_epoch: number;
   readonly lease_owner: string | null;
   readonly lease_epoch: number | null;
@@ -140,6 +142,7 @@ const workerOf = (row: WorkerRow): WorkerRegistrationRecord => ({
   applicationId: row.application_id,
   kind: row.kind as WorkerRegistrationRecord["kind"],
   runnerId: row.runner_id,
+  poolId: row.pool_id,
   status: row.status as WorkerRegistrationRecord["status"],
   declaredConcurrency: row.declared_concurrency,
   registeredAt: iso(row.registered_at) as string,
@@ -175,6 +178,7 @@ const claimOf = (row: ClaimRow): WorkerClaimRecord => ({
   environmentId: row.environment_id ?? "",
   computeEnvironmentId: row.compute_environment_id,
   workerId: row.worker_id,
+  poolId: row.pool_id,
   claimEpoch: row.claim_epoch,
   leaseOwner: row.lease_owner,
   leaseEpoch: row.lease_epoch,
@@ -260,6 +264,22 @@ export class SqlComputeWorkerStore implements ComputeWorkerStore {
     if (input.kind === "first-party" && input.runnerId !== undefined) {
       throw new ComputeStoreConfigError("first-party workers never bind a runner registration");
     }
+    // WORK-058 / SEC-002: the typed pool binding — customer-runner
+    // workers only, bounded kebab-case shape (a first-party worker
+    // with a pool, or a malformed pool identity, is unrepresentable).
+    if (input.kind === "first-party" && input.poolId !== undefined) {
+      throw new ComputeStoreConfigError(
+        "first-party workers never bind a dedicated runner pool (the shared platform pool)",
+      );
+    }
+    if (
+      input.poolId !== undefined &&
+      (typeof input.poolId !== "string" || !/^[a-z0-9][a-z0-9-]{0,63}$/.test(input.poolId))
+    ) {
+      throw new ComputeStoreConfigError(
+        "poolId must be a bounded pool identity (lowercase kebab-case, max 64 chars)",
+      );
+    }
     if (
       !Number.isInteger(input.declaredConcurrency) ||
       input.declaredConcurrency < WORKER_POLICY_BOUNDS.maxInFlightPerWorker.min ||
@@ -273,8 +293,8 @@ export class SqlComputeWorkerStore implements ComputeWorkerStore {
     const inserted = await this.db.transaction(async (tx) => {
       const result = await tx.execute<WorkerRow>({
         sql: `INSERT INTO compute_plane.worker_registrations
-(worker_id, application_id, kind, runner_id, status, declared_concurrency, registered_at, last_heartbeat_at, metadata)
-VALUES ($1, $2, $3, $4, 'active', $5, $6, $6, $7::jsonb)
+(worker_id, application_id, kind, runner_id, pool_id, status, declared_concurrency, registered_at, last_heartbeat_at, metadata)
+VALUES ($1, $2, $3, $4, $5, 'active', $6, $7, $7, $8::jsonb)
 ON CONFLICT (worker_id) DO NOTHING
 RETURNING *`,
         parameters: [
@@ -282,6 +302,7 @@ RETURNING *`,
           input.applicationId,
           input.kind,
           input.runnerId ?? null,
+          input.poolId ?? null,
           input.declaredConcurrency,
           now,
           JSON.stringify(metadata),
@@ -414,6 +435,47 @@ WHERE worker_id = $1 AND status = 'claimed'`,
           });
         }
 
+        // 1b. WORK-058 / SEC-001+SEC-002 — THE SCOPED RESOLUTION inside the
+        //     admission transaction: the compute environment's durable
+        //     isolation declaration resolves the claim's scope (tenant +
+        //     pool). The caller never supplies a pool; the environment
+        //     row is the single source. A misrouted tenant (disagreeing
+        //     with the authoritative environment tenant — which the
+        //     composite FKs bind to the execution's tenant through the
+        //     application's single tenant) or a pool mismatch (an
+        //     unbound/other-pool worker claiming dedicated work) refuses
+        //     with a TYPED denial — and the physical trigger beneath is
+        //     the by-construction backstop for any path that bypasses
+        //     this store (it additionally re-proves the execution-tenant
+        //     agreement explicitly).
+        const scope = await tx.execute<{
+          readonly tenant_id: string;
+          readonly isolation_class: string;
+          readonly pool_id: string | null;
+        }>({
+          sql: `SELECT e.tenant_id, e.isolation_class, e.pool_id
+FROM sandbox.compute_environments e
+WHERE e.id = $1 AND e.application_id = $2`,
+          parameters: [input.computeEnvironmentId, input.applicationId],
+        });
+        const environmentScope = scope.rows[0];
+        if (environmentScope === undefined) {
+          return refused({ kind: "tenant-scope-refused" });
+        }
+        if (environmentScope.tenant_id !== input.tenantId) {
+          return refused({ kind: "tenant-scope-refused" });
+        }
+        if (
+          environmentScope.isolation_class === "dedicated-customer" &&
+          (workerRow.pool_id === null || workerRow.pool_id !== environmentScope.pool_id)
+        ) {
+          return refused({
+            kind: "pool-mismatch",
+            environmentPool: environmentScope.pool_id ?? "",
+            workerPool: workerRow.pool_id,
+          });
+        }
+
         // 2. Lock the environment quota row (inserting the default row
         //    under the lock when absent) and enforce the quota.
         const quotaRow = await tx.execute<{ readonly max_concurrent_claims: number }>({
@@ -448,11 +510,13 @@ WHERE compute_environment_id = $1 AND status = 'claimed'`,
 
         // 4. Admit the claim (the partial unique index arbitrates the
         //    final one-live-claim race; the epoch sequence is unique).
+        //    The claim's pool is the environment's durable declaration
+        //    (scoped resolution — never a caller-supplied value).
         const claimId = this.generateId();
         const inserted = await tx.execute<ClaimRow>({
           sql: `INSERT INTO compute_plane.worker_claims
-(id, execution_id, application_id, tenant_id, environment_id, compute_environment_id, worker_id, claim_epoch, status, claimed_at, last_heartbeat_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'claimed', $9, $9)
+(id, execution_id, application_id, tenant_id, environment_id, compute_environment_id, worker_id, pool_id, claim_epoch, status, claimed_at, last_heartbeat_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'claimed', $10, $10)
 RETURNING *`,
           parameters: [
             claimId,
@@ -462,6 +526,9 @@ RETURNING *`,
             input.environmentId === "" ? null : input.environmentId,
             input.computeEnvironmentId,
             input.workerId,
+            environmentScope.isolation_class === "dedicated-customer"
+              ? environmentScope.pool_id
+              : null,
             attempts + 1,
             now,
           ],
@@ -473,6 +540,23 @@ RETURNING *`,
       // duplicate converged.
       if (error instanceof Error && error.message.includes("one_live_claim_per_execution")) {
         return refused({ kind: "duplicate-live-claim" });
+      }
+      // The physical tenant-isolation/pool gate fired (WORK-058): a
+      // claim that bypassed the typed pre-checks (a direct-SQL path or
+      // a race the pre-check could not see) fails closed here — the
+      // typed denial, never a silent admission.
+      if (error instanceof Error && error.message.includes("claim tenant isolation gate")) {
+        if (error.message.includes("dedicated pools share nothing")) {
+          const environmentPool = /environment [0-9a-f-]+ \(pool ([a-z0-9-]+)\)/.exec(
+            error.message,
+          )?.[1];
+          return refused({
+            kind: "pool-mismatch",
+            environmentPool: environmentPool ?? "unknown",
+            workerPool: null,
+          });
+        }
+        return refused({ kind: "tenant-scope-refused" });
       }
       throw error;
     }

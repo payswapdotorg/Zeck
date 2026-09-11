@@ -12,7 +12,7 @@
 
 import { PlatformError } from "../../../shared/errors";
 import type { ComputeEnvironmentRecord, EnvironmentLifecycleStatus } from "../domain/environment";
-import { canTransitionEnvironment } from "../domain/environment";
+import { canTransitionEnvironment, deriveIsolationProfile } from "../domain/environment";
 import type { SandboxExecutionRecord } from "../domain/sandbox";
 import { canTransitionSandbox, isTerminalSandboxStatus } from "../domain/sandbox";
 import type {
@@ -53,6 +53,20 @@ export class InMemorySandboxStore implements SandboxStore {
     if (existing !== undefined) {
       return { claimed: false, record: existing.record };
     }
+    // The spec is the single source of the isolation declaration: the
+    // class/pool inputs are its projection, and any disagreement (the
+    // ambient-default assignment) fails closed — the in-memory mirror
+    // of the SQL consistency trigger.
+    const declared = deriveIsolationProfile(
+      input.spec as unknown as Parameters<typeof deriveIsolationProfile>[0],
+    );
+    if (declared.class !== input.isolationClass || declared.poolId !== input.poolId) {
+      throw new PlatformError({
+        code: "SANDBOX_ERROR",
+        message:
+          "environment isolation class/pool disagrees with the spec declaration (the spec is the single source; ambient assignment is unrepresentable)",
+      });
+    }
     const record: ComputeEnvironmentRecord = {
       id: input.id,
       applicationId: input.applicationId,
@@ -63,6 +77,8 @@ export class InMemorySandboxStore implements SandboxStore {
       kind: input.spec.kind as ComputeEnvironmentRecord["kind"],
       spec: input.spec as unknown as ComputeEnvironmentRecord["spec"],
       specDigest: input.specDigest,
+      isolationClass: input.isolationClass as ComputeEnvironmentRecord["isolationClass"],
+      poolId: input.poolId,
       status: "available",
       createdAt: input.createdAt,
       updatedAt: input.createdAt,

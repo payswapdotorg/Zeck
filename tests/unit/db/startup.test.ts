@@ -59,7 +59,7 @@ function fakePort(responses: {
 }
 
 describe("startup validation (fake port)", () => {
-  test("the shipped migration set is the repository's 29-file deterministic set", () => {
+  test("the shipped migration set is the repository's 30-file deterministic set", () => {
     const migrations = shippedMigrations();
     // 24 files through WORK-043 (0015 burned) + 0026_queue_transport
     // (WORK-044 / D-03: the queue_transport correlation schema) +
@@ -68,10 +68,12 @@ describe("startup validation (fake port)", () => {
     // (WORK-046 / D-05: the compute_plane worker coordination schema)
     // + 0029_release_control (WORK-047 / D-06: the release ledger)
     // + 0030_execution_ir_decision_records (WORK-049 / E1.1: the
-    // append-only optimization decision-record evidence schema).
-    expect(migrations.length).toBe(29);
+    // append-only optimization decision-record evidence schema)
+    // + 0031_isolation_profiles (WORK-058 / D-08: the isolation-profile
+    // projection + the physical tenant-isolation/pool gates).
+    expect(migrations.length).toBe(30);
     expect(migrations[0]?.version).toBe(1);
-    expect(migrations[28]?.version).toBe(30);
+    expect(migrations[29]?.version).toBe(31);
     // Versions are strictly ascending with the burned 0015 gap.
     const versions = migrations.map((file) => file.version);
     expect(new Set(versions).size).toBe(versions.length);

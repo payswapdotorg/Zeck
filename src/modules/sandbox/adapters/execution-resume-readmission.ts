@@ -83,6 +83,7 @@ export function createExecutionResumeReadmission(
         applicationId: request.execution.applicationId,
         executionId: request.execution.id,
         kind: environment.kind,
+        isolationProfile: environment.isolationClass,
         hosts: kindExecutes(environment.kind) ? environment.spec.network.allowedHosts : [],
         secretRefs: kindExecutes(environment.kind) ? environment.spec.secrets.secretRefs : [],
       });

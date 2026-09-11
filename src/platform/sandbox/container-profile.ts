@@ -79,6 +79,17 @@ export interface ContainerConfiguration {
   readonly mounts: readonly ContainerMount[];
   readonly network: ContainerNetworkConfig;
   readonly resourceLimits: ContainerResourceLimits;
+  /**
+   * The admitted isolation-profile class (WORK-058 / SEC-002): the
+   * governed profile this configuration executes under. `strict`
+   * carries a TIGHTENED capability surface the validator proves below
+   * (no network egress at all, no writable workspace) — a strict-marked
+   * configuration whose shape is not strict is REJECTED, never
+   * executed; `dedicated-customer` rides the pool isolation enforced
+   * at the claim plane (the class marker tells the runner which
+   * enforcement posture it must hold).
+   */
+  readonly isolationClass: "standard" | "strict" | "dedicated-customer";
   // --- security posture (every field MUST hold its safe value) ---
   readonly readOnlyRootfs: boolean;
   readonly runAsNonRoot: boolean;
@@ -308,6 +319,36 @@ export function containerConfigurationViolations(
     if (!Number.isInteger(limits.executionTimeoutMs) || limits.executionTimeoutMs < 1) {
       violations.push("resource-limits-missing");
     }
+  }
+
+  // --- WORK-058 / SEC-002: the STRICT capability surface. A strict-class
+  //     configuration must carry the tightened posture — no network
+  //     egress at all (an allowlist is not strict) and no writable
+  //     workspace. The domain layer rejects these shapes at registration;
+  //     this is the platform-layer mirror (both layers reject the same
+  //     shapes — the house discipline). An unknown class is rejected
+  //     outright (fail closed, never a default). ---
+  if (config.isolationClass === "strict") {
+    if (config.network?.mode !== "none") {
+      violations.push("strict-network-not-none");
+    }
+    if (Array.isArray(config.mounts)) {
+      for (const mount of config.mounts) {
+        if (
+          mount !== null &&
+          typeof mount === "object" &&
+          mount.source === WORKSPACE_MOUNT_SOURCE &&
+          mount.readOnly !== true
+        ) {
+          violations.push("strict-workspace-writable");
+        }
+      }
+    }
+  } else if (
+    config.isolationClass !== "standard" &&
+    config.isolationClass !== "dedicated-customer"
+  ) {
+    violations.push("isolation-class-unknown");
   }
 
   return violations;

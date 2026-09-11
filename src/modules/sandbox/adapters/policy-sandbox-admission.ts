@@ -16,6 +16,17 @@
  *     runs, so there is no isolation to evaluate — a policy floor of
  *     `container` constrains executing kinds, never the no-execution
  *     choice (which is the safest, not the weakest, posture);
+ *   - WORK-058 / SEC-002: the DECLARED isolation-profile class rides the
+ *     SAME frozen isolation fact through its ladder anchor —
+ *     `standard`/`strict` anchor at the kind's level (the strict shape is
+ *     already the tightest posture on the network/secrets dimensions, so
+ *     no dimension can be violated by it), and `dedicated-customer`
+ *     anchors at `customer-runner` (the ladder's dedicated-runner class).
+ *     A policy floor of `customer-runner` therefore REQUIRES the
+ *     dedicated class — policy declares the required class; the sandbox
+ *     authority admits/constructs it. There is no profile-specific
+ *     policy engine here: the mapping is a pure vocabulary anchor and
+ *     the AUTHORITY decides;
  *   - every DECLARED network host is an egress fact the effective policy
  *     must permit (undeclared hosts are never dispatched — the runtime
  *     receives only the admitted allowlist);
@@ -40,6 +51,8 @@
 import type { IsolationLevel, PolicyAuthority } from "../../policies/public";
 import type { SandboxEnvironmentKind } from "../domain/environment";
 import { kindExecutes } from "../domain/environment";
+import type { IsolationProfileClass } from "../domain/isolation";
+import { isolationLadderAnchor } from "../domain/isolation";
 import type { SandboxPolicyEvidence } from "../domain/sandbox";
 import type {
   SandboxAdmission,
@@ -56,6 +69,24 @@ export const SANDBOX_KIND_TO_ISOLATION: Readonly<Record<SandboxEnvironmentKind, 
   vm: "vm",
   "customer-runner": "customer-runner",
 };
+
+/**
+ * The isolation-profile class → policy isolation-ladder anchor
+ * (WORK-058 / SEC-002 — the governed-selection fact mapping; a pure
+ * vocabulary anchor, the authority decides):
+ *
+ *   - `standard`/`strict` anchor at the environment KIND's ladder level;
+ *   - `dedicated-customer` anchors at `customer-runner` — the ladder's
+ *     dedicated-runner class, so a policy floor of `customer-runner`
+ *     requires the class and a dedicated environment satisfies every
+ *     floor its class meets.
+ */
+export function isolationProfileLadderAnchor(
+  kind: SandboxEnvironmentKind,
+  profileClass: IsolationProfileClass,
+): IsolationLevel {
+  return isolationLadderAnchor({ kind, profileClass });
+}
 
 /** Narrow the authority's evidence onto the sandbox evidence shape (structural). */
 function toEvidence(evidence: {
@@ -81,12 +112,18 @@ export function createPolicySandboxAdmission(authority: PolicyAuthority): Sandbo
         executionId: request.executionId,
       };
 
-      // 1. The isolation fact: which environment KIND would be admitted.
-      //    (no-execution submits no isolation fact — see the header note).
+      // 1. The isolation fact: which environment KIND + isolation-PROFILE
+      //    class would be admitted. (no-execution submits no isolation
+      //    fact — see the header note; the profile anchors at the kind's
+      //    ladder level for standard/strict and at the dedicated-runner
+      //    class for dedicated-customer — the AUTHORITY decides on the
+      //    frozen ladder.)
       if (kindExecutes(request.kind)) {
         const kindDecision = await authority.admitDispatch({
           context,
-          facts: { isolation: SANDBOX_KIND_TO_ISOLATION[request.kind] },
+          facts: {
+            isolation: isolationProfileLadderAnchor(request.kind, request.isolationProfile),
+          },
         });
         if (!kindDecision.allowed) {
           return {
