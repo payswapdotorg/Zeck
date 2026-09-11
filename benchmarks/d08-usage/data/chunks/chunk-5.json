@@ -1,0 +1,14 @@
+{
+  "chunkId": 5,
+  "startedAt": "2026-09-10T08:54:56.045Z",
+  "endedAt": "2026-09-10T09:00:57.419Z",
+  "durationSeconds": 361,
+  "workerId": "01a08a86-f7cc-7000-b942-411ee19df46f",
+  "itemsExecuted": 24,
+  "executions": 40,
+  "sustainedElapsedSeconds": 1605,
+  "totalExecutions": 384,
+  "workListDone": true,
+  "sustainedDone": false,
+  "drained": true
+}

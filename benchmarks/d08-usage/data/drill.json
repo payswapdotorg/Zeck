@@ -1,0 +1,101 @@
+$ bun deploy/drill.ts authority-loss --environment local
+{
+  "tool": "deploy/drill",
+  "command": "authority-loss",
+  "environment": "local",
+  "revision": "ad2738d3cac1cf5b0554d4ad41504aad972c54ba",
+  "drill": {
+    "scenarioId": "authority-loss",
+    "environment": "local",
+    "revision": "ad2738d3cac1cf5b0554d4ad41504aad972c54ba",
+    "startedAt": "2026-09-10T09:04:56.619Z",
+    "finishedAt": "2026-09-10T09:04:59.160Z",
+    "phases": [
+      {
+        "name": "authority-backup",
+        "description": "the logical backup of the live authoritative state (port-based, checksummed)",
+        "startedAt": "2026-09-10T09:04:56.619Z",
+        "finishedAt": "2026-09-10T09:04:57.362Z",
+        "durationMs": 743,
+        "ok": true,
+        "error": null
+      },
+      {
+        "name": "authority-restore",
+        "description": "deterministic migrations + one-transaction data restore into a fresh disposable target",
+        "startedAt": "2026-09-10T09:04:57.362Z",
+        "finishedAt": "2026-09-10T09:04:59.107Z",
+        "durationMs": 1745,
+        "ok": true,
+        "error": null
+      },
+      {
+        "name": "authority-invariants",
+        "description": "the D-07 recovered-authority invariant gate (state machine, ledgers, vocabularies, chains)",
+        "startedAt": "2026-09-10T09:04:59.107Z",
+        "finishedAt": "2026-09-10T09:04:59.138Z",
+        "durationMs": 31,
+        "ok": true,
+        "error": null
+      },
+      {
+        "name": "cleanup",
+        "description": "drop the disposable recovery target (the live source was never touched)",
+        "startedAt": "2026-09-10T09:04:59.138Z",
+        "finishedAt": "2026-09-10T09:04:59.160Z",
+        "durationMs": 22,
+        "ok": true,
+        "error": null
+      }
+    ],
+    "rtoMs": 2542,
+    "rpoMs": 0,
+    "recovered": true
+  },
+  "objectives": {
+    "measured": true,
+    "target": {
+      "rtoTargetMs": 900000,
+      "rpoTargetMs": 0
+    },
+    "evaluation": {
+      "rtoWithinTarget": true,
+      "rpoWithinTarget": true,
+      "breaches": []
+    }
+  },
+  "notRun": [],
+  "backup": {
+    "artifact": "/tmp/zeck-drill-backup-d4018a43.json",
+    "tables": 114,
+    "rows": 11581,
+    "migrations": 29,
+    "createdAt": "2026-09-10T09:04:57.269Z"
+  },
+  "restoreTarget": "zeck_drill_restore_00b16381e3",
+  "restore": {
+    "tablesRestored": 114,
+    "rowsRestored": 11581,
+    "sequencesReseeded": 11,
+    "allTablesVerified": true
+  },
+  "authorityInvariants": {
+    "checks": [
+      "migration-history",
+      "queue-envelope-vocabulary",
+      "queue-consumed-applied-boundary",
+      "single-live-claim-per-execution",
+      "worker-registration-vocabulary",
+      "workflow-wait-vocabulary",
+      "workflow-armed-instance-binding",
+      "execution-status-vocabulary",
+      "execution-event-gapless-sequences",
+      "budget-wallet-non-negative",
+      "artifact-adoption-digest-shape",
+      "artifact-adoption-chain-resolution"
+    ],
+    "violations": [],
+    "verified": true
+  },
+  "cleanup": "dropped"
+}

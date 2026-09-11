@@ -1,0 +1,12 @@
+$ git rev-parse HEAD (gate re-run at)
+ad2738d3cac1cf5b0554d4ad41504aad972c54ba
+
+$ python3 scripts/governance-check.py
+Governance OK: 56 Work Orders, 102 requirements, inFlight=[], frontier=[]
+
+$ bun run typecheck
+$ tsc --noEmit
+
+$ bun run lint
+$ biome check .
+Checked 1293 files in 5s. No fixes applied.

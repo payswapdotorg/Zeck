@@ -1,0 +1,8 @@
+$ bun deploy/release.ts alerts --environment local
+{
+  "tool": "deploy/release",
+  "command": "alerts",
+  "environment": "local",
+  "alerts": [],
+  "critical": false
+}

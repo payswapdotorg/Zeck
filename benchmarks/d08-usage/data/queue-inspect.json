@@ -1,0 +1,420 @@
+$ bun deploy/queue.ts inspect --environment local
+{
+  "tool": "deploy/queue",
+  "command": "inspect",
+  "environment": "local",
+  "snapshot": {
+    "counts": {
+      "recorded": 0,
+      "published": 0,
+      "backlogged": 0,
+      "consumed": 402,
+      "deadLettered": 0
+    },
+    "backlogged": [],
+    "deadLetters": [],
+    "recentAttempts": [
+      {
+        "correlationKey": "execution-dispatch:01a08a8f-4d89-7001-b3a6-30ade0e68a3a",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:04:02.484Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8f-4d89-7001-b3a6-30ade0e68a3a",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:04:02.449Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8f-12f1-7001-9afc-bc7a429d97c4",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:48.396Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8f-12f1-7001-9afc-bc7a429d97c4",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:47.453Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-d867-7000-bfe6-361c7205ea20",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:33.270Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-d85b-7000-8c59-92a0a6057133",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:33.217Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-d867-7000-bfe6-361c7205ea20",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:32.485Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-d85b-7000-8c59-92a0a6057133",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:32.458Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-a047-7000-885e-430d0c22a0fe",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:19.080Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-a047-7000-885e-430d0c22a0fe",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:18.160Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-9dc3-7000-ae98-b10a7a72f95f",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:18.040Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-9dc3-7000-ae98-b10a7a72f95f",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:17.462Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-6329-7000-be9b-1f29fa3378f1",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:03:02.944Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-6329-7000-be9b-1f29fa3378f1",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:03:02.461Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-2aa7-7000-aedb-45c8c3a64ae5",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:48.843Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-2aa7-7000-aedb-45c8c3a64ae5",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:47.997Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-289e-7000-823a-124ca7362095",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:47.795Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-2893-7000-8b05-7d9b125236ec",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:47.762Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-289e-7000-823a-124ca7362095",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:47.500Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8e-2893-7000-8b05-7d9b125236ec",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:47.471Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-edfa-7000-9392-3647519d4570",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:32.672Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-edfa-7000-9392-3647519d4570",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:32.460Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-b361-7000-870f-f56e37d30580",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:17.571Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-b361-7000-870f-f56e37d30580",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:17.458Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-78ca-7001-a2fa-1bead211be59",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:03.455Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-78d1-7000-aa8d-103bc4458e2e",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:02:03.410Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-78ca-7001-a2fa-1bead211be59",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:02.481Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-78d1-7000-aa8d-103bc4458e2e",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:02:02.478Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-4024-7001-b517-c38ef65f2c42",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:48.909Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-4024-7001-b517-c38ef65f2c42",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:47.958Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-3e31-7000-b56e-f7a1042407f3",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:47.877Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-3e31-7000-b56e-f7a1042407f3",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:47.468Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-039a-7000-b344-59fe86e92525",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:32.775Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8d-039a-7000-b344-59fe86e92525",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:32.456Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-cdd3-7000-9190-2fb7ead873ca",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:19.638Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-cdd3-7000-9190-2fb7ead873ca",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:18.731Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-c912-7000-99c0-a02e5e7acc06",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:18.590Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-c907-7000-a21c-35056bebe25d",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:18.547Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-c912-7000-99c0-a02e5e7acc06",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:17.564Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-c907-7000-a21c-35056bebe25d",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:17.537Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-8e74-7000-93ce-cd95ad0b8994",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:01:03.330Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-8e74-7000-93ce-cd95ad0b8994",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:01:02.485Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-3c42-7000-8b2b-c5cb139bf0c1",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:00:42.116Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-3c42-7000-8b2b-c5cb139bf0c1",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:00:41.430Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-087e-7000-bc1b-8c75c8f851ee",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:00:29.033Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-087e-7000-bc1b-8c75c8f851ee",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:00:28.166Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-0438-7001-8942-bfab19fab5e8",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:00:28.004Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-0438-7001-8942-bfab19fab5e8",
+        "stage": "publish",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": null,
+        "createdAt": "2026-09-10T09:00:27.087Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-01b0-7001-928d-ca3c1c9d78bf",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:00:26.971Z"
+      },
+      {
+        "correlationKey": "execution-dispatch:01a08a8c-01aa-7000-89aa-faf12c3b2056",
+        "stage": "delivery",
+        "attemptNo": 1,
+        "outcome": "accepted",
+        "detail": "claim admitted (epoch 1)",
+        "createdAt": "2026-09-10T09:00:26.948Z"
+      }
+    ],
+    "replayLineages": []
+  }
+}

@@ -1,0 +1,64 @@
+$ bun deploy/release.ts status --environment local
+{
+  "tool": "deploy/release",
+  "command": "status",
+  "environment": "local",
+  "checkoutReleaseId": "bd185b5cd5f2d902ab882d8a6bdb1aad8a39074a8dae9d644d800cd4da380f5c",
+  "gitRevision": "ad2738d3cac1cf5b0554d4ad41504aad972c54ba",
+  "active": null,
+  "ladder": [
+    {
+      "phase": "local",
+      "requiredGates": [
+        "validation"
+      ]
+    },
+    {
+      "phase": "ci",
+      "requiredGates": [
+        "governance-check",
+        "typecheck",
+        "lint",
+        "full-test-suite"
+      ]
+    },
+    {
+      "phase": "preview",
+      "requiredGates": [
+        "ci-gates",
+        "validation",
+        "identity-audit"
+      ]
+    },
+    {
+      "phase": "staging",
+      "requiredGates": [
+        "ci-gates",
+        "validation",
+        "preview-smoke",
+        "migration",
+        "health",
+        "identity-audit"
+      ]
+    },
+    {
+      "phase": "production",
+      "requiredGates": [
+        "architect-approval",
+        "validation",
+        "staging-smoke",
+        "deployment-identity-audit",
+        "migration",
+        "health"
+      ]
+    }
+  ],
+  "promotionToEnvironment": {
+    "allowed": false,
+    "missing": [
+      "validation"
+    ]
+  },
+  "alerts": [],
+  "criticalAlerts": 0
+}

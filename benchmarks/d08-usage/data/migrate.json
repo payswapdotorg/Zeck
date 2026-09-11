@@ -1,0 +1,14 @@
+$ bun deploy/migrate.ts --environment local
+{
+  "tool": "deploy/migrate",
+  "environment": "local",
+  "endpoint": "postgresql://127.0.0.1:55432/zeck_local",
+  "serverVersion": "PostgreSQL 17.11",
+  "migrations": {
+    "applied": [],
+    "appliedCount": 0,
+    "skipped": 29,
+    "total": 29
+  },
+  "schemaConverged": true
+}

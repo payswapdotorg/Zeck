@@ -1,0 +1,2158 @@
+{
+  "generatedAt": "2026-09-10T09:05:05.100Z",
+  "aggregate": {
+    "totalExecutions": 405,
+    "campaignExecutions": 405,
+    "completed": 386,
+    "failed": 16,
+    "denied": 3,
+    "timeouts": 0,
+    "endToEnd": {
+      "count": 386,
+      "p50": 1083.63,
+      "p90": 2646.62,
+      "p99": 11196.24,
+      "avg": 1421.19,
+      "max": 13217.2
+    },
+    "stages": {
+      "create": {
+        "count": 386,
+        "p50": 9.32,
+        "p90": 80.72,
+        "p99": 112.84,
+        "avg": 25.7,
+        "max": 140.87
+      },
+      "progression": {
+        "count": 386,
+        "p50": 27.66,
+        "p90": 135.55,
+        "p99": 228.33,
+        "avg": 53.95,
+        "max": 233.03
+      },
+      "claim": {
+        "count": 386,
+        "p50": 904,
+        "p90": 2463,
+        "p99": 8860,
+        "avg": 1187.24,
+        "max": 11018
+      },
+      "execute": {
+        "count": 386,
+        "p50": 24,
+        "p90": 56,
+        "p99": 2036,
+        "avg": 92.33,
+        "max": 2042
+      },
+      "settle": {
+        "count": 386,
+        "p50": 2,
+        "p90": 8,
+        "p99": 31,
+        "avg": 3.9,
+        "max": 38
+      }
+    }
+  },
+  "rows": [
+    {
+      "scenario": "budget-exhausted",
+      "plane": "spend-ledger+policy",
+      "phase": "A-budget",
+      "concurrency": 6,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 7068.36,
+        "p90": 13202.76,
+        "p99": 13202.76,
+        "avg": 8090.87,
+        "max": 13202.76
+      },
+      "create": {
+        "count": 6,
+        "p50": 68.66,
+        "p90": 109.49,
+        "p99": 109.49,
+        "avg": 73.75,
+        "max": 109.49
+      },
+      "progression": {
+        "count": 6,
+        "p50": 127.64,
+        "p90": 140.17,
+        "p99": 140.17,
+        "avg": 121.5,
+        "max": 140.17
+      },
+      "claim": {
+        "count": 6,
+        "p50": 4802,
+        "p90": 10902,
+        "p99": 10902,
+        "avg": 5812.67,
+        "max": 10902
+      },
+      "execute": {
+        "count": 6,
+        "p50": 2036,
+        "p90": 2042,
+        "p99": 2042,
+        "avg": 2033.83,
+        "max": 2042
+      },
+      "settle": {
+        "count": 6,
+        "p50": 3,
+        "p90": 9,
+        "p99": 9,
+        "avg": 3.83,
+        "max": 9
+      }
+    },
+    {
+      "scenario": "budget-funded",
+      "plane": "spend-ledger",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 1076.81,
+        "p90": 1092.7,
+        "p99": 1092.7,
+        "avg": 1034.97,
+        "max": 1092.7
+      },
+      "create": {
+        "count": 6,
+        "p50": 3.1,
+        "p90": 5.5,
+        "p99": 5.5,
+        "avg": 3.82,
+        "max": 5.5
+      },
+      "progression": {
+        "count": 6,
+        "p50": 8.32,
+        "p90": 16.97,
+        "p99": 16.97,
+        "avg": 10.45,
+        "max": 16.97
+      },
+      "claim": {
+        "count": 6,
+        "p50": 904,
+        "p90": 998,
+        "p99": 998,
+        "avg": 923.17,
+        "max": 998
+      },
+      "execute": {
+        "count": 6,
+        "p50": 27,
+        "p90": 39,
+        "p99": 39,
+        "avg": 27.17,
+        "max": 39
+      },
+      "settle": {
+        "count": 6,
+        "p50": 3,
+        "p90": 7,
+        "p99": 7,
+        "avg": 3.67,
+        "max": 7
+      }
+    },
+    {
+      "scenario": "competence-reuse",
+      "plane": "competence-economics",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 1083.01,
+        "p90": 1098.03,
+        "p99": 1098.03,
+        "avg": 1042.71,
+        "max": 1098.03
+      },
+      "create": {
+        "count": 6,
+        "p50": 3.05,
+        "p90": 3.35,
+        "p99": 3.35,
+        "avg": 3.11,
+        "max": 3.35
+      },
+      "progression": {
+        "count": 6,
+        "p50": 15.59,
+        "p90": 31.44,
+        "p99": 31.44,
+        "avg": 17.86,
+        "max": 31.44
+      },
+      "claim": {
+        "count": 6,
+        "p50": 915,
+        "p90": 978,
+        "p99": 978,
+        "avg": 917.67,
+        "max": 978
+      },
+      "execute": {
+        "count": 6,
+        "p50": 19,
+        "p90": 20,
+        "p99": 20,
+        "avg": 19,
+        "max": 20
+      },
+      "settle": {
+        "count": 6,
+        "p50": 2,
+        "p90": 3,
+        "p99": 3,
+        "avg": 1.83,
+        "max": 3
+      }
+    },
+    {
+      "scenario": "context-heavy",
+      "plane": "context-economics",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 987.93,
+        "p90": 1170.55,
+        "p99": 1170.55,
+        "avg": 1044.37,
+        "max": 1170.55
+      },
+      "create": {
+        "count": 6,
+        "p50": 17.37,
+        "p90": 19.19,
+        "p99": 19.19,
+        "avg": 17.91,
+        "max": 19.19
+      },
+      "progression": {
+        "count": 6,
+        "p50": 37.36,
+        "p90": 47.81,
+        "p99": 47.81,
+        "avg": 39.75,
+        "max": 47.81
+      },
+      "claim": {
+        "count": 6,
+        "p50": 874,
+        "p90": 953,
+        "p99": 953,
+        "avg": 871,
+        "max": 953
+      },
+      "execute": {
+        "count": 6,
+        "p50": 42,
+        "p90": 56,
+        "p99": 56,
+        "avg": 46.33,
+        "max": 56
+      },
+      "settle": {
+        "count": 6,
+        "p50": 8,
+        "p90": 13,
+        "p99": 13,
+        "avg": 8.83,
+        "max": 13
+      }
+    },
+    {
+      "scenario": "failure-escalation",
+      "plane": "failure-recovery+escalation",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 3,
+      "failed": 3,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 50,
+      "total": {
+        "count": 6,
+        "p50": 1084.34,
+        "p90": 1099.13,
+        "p99": 1099.13,
+        "avg": 1038.66,
+        "max": 1099.13
+      },
+      "create": {
+        "count": 6,
+        "p50": 2.99,
+        "p90": 3.71,
+        "p99": 3.71,
+        "avg": 3.14,
+        "max": 3.71
+      },
+      "progression": {
+        "count": 6,
+        "p50": 15.45,
+        "p90": 27.98,
+        "p99": 27.98,
+        "avg": 17.15,
+        "max": 27.98
+      },
+      "claim": {
+        "count": 6,
+        "p50": 911,
+        "p90": 986,
+        "p99": 986,
+        "avg": 923.67,
+        "max": 986
+      },
+      "execute": {
+        "count": 3,
+        "p50": 24,
+        "p90": 27,
+        "p99": 27,
+        "avg": 24.33,
+        "max": 27
+      },
+      "settle": {
+        "count": 3,
+        "p50": 2,
+        "p90": 2,
+        "p99": 2,
+        "avg": 2,
+        "max": 2
+      }
+    },
+    {
+      "scenario": "failure-retry",
+      "plane": "failure-recovery",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 3,
+      "completed": 0,
+      "failed": 3,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 0,
+      "total": {
+        "count": 3,
+        "p50": 1522.64,
+        "p90": 1531.13,
+        "p99": 1531.13,
+        "avg": 1523.83,
+        "max": 1531.13
+      },
+      "create": {
+        "count": 3,
+        "p50": 2.84,
+        "p90": 4.21,
+        "p99": 4.21,
+        "avg": 3.21,
+        "max": 4.21
+      },
+      "progression": {
+        "count": 3,
+        "p50": 7.23,
+        "p90": 16.85,
+        "p99": 16.85,
+        "avg": 9.89,
+        "max": 16.85
+      },
+      "claim": {
+        "count": 3,
+        "p50": 806,
+        "p90": 906,
+        "p99": 906,
+        "avg": 810.33,
+        "max": 906
+      },
+      "execute": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      },
+      "settle": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "model-routed-decision",
+      "plane": "model-economics",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 1093.34,
+        "p90": 1108.92,
+        "p99": 1108.92,
+        "avg": 1048.51,
+        "max": 1108.92
+      },
+      "create": {
+        "count": 6,
+        "p50": 4.33,
+        "p90": 6.37,
+        "p99": 6.37,
+        "avg": 4.62,
+        "max": 6.37
+      },
+      "progression": {
+        "count": 6,
+        "p50": 18.8,
+        "p90": 30.43,
+        "p99": 30.43,
+        "avg": 21.17,
+        "max": 30.43
+      },
+      "claim": {
+        "count": 6,
+        "p50": 908,
+        "p90": 968,
+        "p99": 968,
+        "avg": 919.33,
+        "max": 968
+      },
+      "execute": {
+        "count": 6,
+        "p50": 22,
+        "p90": 27,
+        "p99": 27,
+        "avg": 23.33,
+        "max": 27
+      },
+      "settle": {
+        "count": 6,
+        "p50": 2,
+        "p90": 6,
+        "p99": 6,
+        "avg": 2.5,
+        "max": 6
+      }
+    },
+    {
+      "scenario": "policy-denied",
+      "plane": "policy-enforcement",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 3,
+      "completed": 0,
+      "failed": 0,
+      "denied": 3,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 0,
+      "total": {
+        "count": 3,
+        "p50": 30040.43,
+        "p90": 30114.78,
+        "p99": 30114.78,
+        "avg": 30061.56,
+        "max": 30114.78
+      },
+      "create": {
+        "count": 3,
+        "p50": 4.28,
+        "p90": 6.37,
+        "p99": 6.37,
+        "avg": 4.54,
+        "max": 6.37
+      },
+      "progression": {
+        "count": 3,
+        "p50": 2.26,
+        "p90": 3.17,
+        "p99": 3.17,
+        "avg": 2.43,
+        "max": 3.17
+      },
+      "claim": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      },
+      "execute": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      },
+      "settle": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "simple-deterministic",
+      "plane": "deterministic-execution",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 971.4,
+        "p90": 1111.64,
+        "p99": 1111.64,
+        "avg": 1027.39,
+        "max": 1111.64
+      },
+      "create": {
+        "count": 6,
+        "p50": 4.51,
+        "p90": 23.87,
+        "p99": 23.87,
+        "avg": 8.31,
+        "max": 23.87
+      },
+      "progression": {
+        "count": 6,
+        "p50": 17.68,
+        "p90": 28.81,
+        "p99": 28.81,
+        "avg": 20.63,
+        "max": 28.81
+      },
+      "claim": {
+        "count": 6,
+        "p50": 895,
+        "p90": 975,
+        "p99": 975,
+        "avg": 907.33,
+        "max": 975
+      },
+      "execute": {
+        "count": 6,
+        "p50": 26,
+        "p90": 65,
+        "p99": 65,
+        "avg": 32.5,
+        "max": 65
+      },
+      "settle": {
+        "count": 6,
+        "p50": 3,
+        "p90": 5,
+        "p99": 5,
+        "avg": 3.17,
+        "max": 5
+      }
+    },
+    {
+      "scenario": "tool-surface-programmatic",
+      "plane": "tool-surface",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 1083.32,
+        "p90": 1096.25,
+        "p99": 1096.25,
+        "avg": 1039.54,
+        "max": 1096.25
+      },
+      "create": {
+        "count": 6,
+        "p50": 2.89,
+        "p90": 3.8,
+        "p99": 3.8,
+        "avg": 3.12,
+        "max": 3.8
+      },
+      "progression": {
+        "count": 6,
+        "p50": 12.06,
+        "p90": 21.96,
+        "p99": 21.96,
+        "avg": 14.5,
+        "max": 21.96
+      },
+      "claim": {
+        "count": 6,
+        "p50": 910,
+        "p90": 980,
+        "p99": 980,
+        "avg": 921,
+        "max": 980
+      },
+      "execute": {
+        "count": 6,
+        "p50": 18,
+        "p90": 23,
+        "p99": 23,
+        "avg": 19.83,
+        "max": 23
+      },
+      "settle": {
+        "count": 6,
+        "p50": 1,
+        "p90": 4,
+        "p99": 4,
+        "avg": 1.83,
+        "max": 4
+      }
+    },
+    {
+      "scenario": "verification-heavy",
+      "plane": "verification",
+      "phase": "A-c1",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 1080.91,
+        "p90": 1098.47,
+        "p99": 1098.47,
+        "avg": 1034.72,
+        "max": 1098.47
+      },
+      "create": {
+        "count": 6,
+        "p50": 3.04,
+        "p90": 3.54,
+        "p99": 3.54,
+        "avg": 3.11,
+        "max": 3.54
+      },
+      "progression": {
+        "count": 6,
+        "p50": 5.85,
+        "p90": 15.26,
+        "p99": 15.26,
+        "avg": 8.23,
+        "max": 15.26
+      },
+      "claim": {
+        "count": 6,
+        "p50": 932,
+        "p90": 994,
+        "p99": 994,
+        "avg": 941.17,
+        "max": 994
+      },
+      "execute": {
+        "count": 6,
+        "p50": 22,
+        "p90": 25,
+        "p99": 25,
+        "avg": 22.67,
+        "max": 25
+      },
+      "settle": {
+        "count": 6,
+        "p50": 1,
+        "p90": 1,
+        "p99": 1,
+        "avg": 1,
+        "max": 1
+      }
+    },
+    {
+      "scenario": "budget-exhausted",
+      "plane": "spend-ledger+policy",
+      "phase": "B-budget",
+      "concurrency": 6,
+      "executions": 6,
+      "completed": 6,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 6,
+        "p50": 7114.44,
+        "p90": 13217.2,
+        "p99": 13217.2,
+        "avg": 8131.55,
+        "max": 13217.2
+      },
+      "create": {
+        "count": 6,
+        "p50": 29.62,
+        "p90": 45.32,
+        "p99": 45.32,
+        "avg": 35.9,
+        "max": 45.32
+      },
+      "progression": {
+        "count": 6,
+        "p50": 33.63,
+        "p90": 42.51,
+        "p99": 42.51,
+        "avg": 34.64,
+        "max": 42.51
+      },
+      "claim": {
+        "count": 6,
+        "p50": 4949,
+        "p90": 11018,
+        "p99": 11018,
+        "avg": 5957,
+        "max": 11018
+      },
+      "execute": {
+        "count": 6,
+        "p50": 2022,
+        "p90": 2035,
+        "p99": 2035,
+        "avg": 2026.33,
+        "max": 2035
+      },
+      "settle": {
+        "count": 6,
+        "p50": 2,
+        "p90": 3,
+        "p99": 3,
+        "avg": 2,
+        "max": 3
+      }
+    },
+    {
+      "scenario": "context-heavy",
+      "plane": "context-economics",
+      "phase": "B-c4",
+      "concurrency": 4,
+      "executions": 12,
+      "completed": 12,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 12,
+        "p50": 1352.12,
+        "p90": 1499.86,
+        "p99": 1599.14,
+        "avg": 1363.55,
+        "max": 1599.14
+      },
+      "create": {
+        "count": 12,
+        "p50": 29.46,
+        "p90": 94.19,
+        "p99": 94.64,
+        "avg": 50.09,
+        "max": 94.64
+      },
+      "progression": {
+        "count": 12,
+        "p50": 63.12,
+        "p90": 100.68,
+        "p99": 149.2,
+        "avg": 74.31,
+        "max": 149.2
+      },
+      "claim": {
+        "count": 12,
+        "p50": 1073,
+        "p90": 1233,
+        "p99": 1241,
+        "avg": 1073.92,
+        "max": 1241
+      },
+      "execute": {
+        "count": 12,
+        "p50": 52,
+        "p90": 96,
+        "p99": 125,
+        "avg": 65.42,
+        "max": 125
+      },
+      "settle": {
+        "count": 12,
+        "p50": 12,
+        "p90": 33,
+        "p99": 38,
+        "avg": 17.83,
+        "max": 38
+      }
+    },
+    {
+      "scenario": "model-routed-decision",
+      "plane": "model-economics",
+      "phase": "B-c4",
+      "concurrency": 4,
+      "executions": 12,
+      "completed": 12,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 12,
+        "p50": 1106.03,
+        "p90": 1136.97,
+        "p99": 1259.62,
+        "avg": 1108.21,
+        "max": 1259.62
+      },
+      "create": {
+        "count": 12,
+        "p50": 5.66,
+        "p90": 9.57,
+        "p99": 15.43,
+        "avg": 6.57,
+        "max": 15.43
+      },
+      "progression": {
+        "count": 12,
+        "p50": 26.01,
+        "p90": 40.25,
+        "p99": 43.32,
+        "avg": 28.3,
+        "max": 43.32
+      },
+      "claim": {
+        "count": 12,
+        "p50": 990,
+        "p90": 1026,
+        "p99": 1145,
+        "avg": 991.08,
+        "max": 1145
+      },
+      "execute": {
+        "count": 12,
+        "p50": 17,
+        "p90": 31,
+        "p99": 35,
+        "avg": 19.42,
+        "max": 35
+      },
+      "settle": {
+        "count": 12,
+        "p50": 2,
+        "p90": 6,
+        "p99": 9,
+        "avg": 2.83,
+        "max": 9
+      }
+    },
+    {
+      "scenario": "simple-deterministic",
+      "plane": "deterministic-execution",
+      "phase": "B-c4",
+      "concurrency": 4,
+      "executions": 12,
+      "completed": 12,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 12,
+        "p50": 1147.11,
+        "p90": 1274.19,
+        "p99": 1276.11,
+        "avg": 1126.42,
+        "max": 1276.11
+      },
+      "create": {
+        "count": 12,
+        "p50": 9.05,
+        "p90": 16.65,
+        "p99": 17.77,
+        "avg": 10.84,
+        "max": 17.77
+      },
+      "progression": {
+        "count": 12,
+        "p50": 50.95,
+        "p90": 71.4,
+        "p99": 72.86,
+        "avg": 51.79,
+        "max": 72.86
+      },
+      "claim": {
+        "count": 12,
+        "p50": 960,
+        "p90": 1113,
+        "p99": 1128,
+        "avg": 990.42,
+        "max": 1128
+      },
+      "execute": {
+        "count": 12,
+        "p50": 21,
+        "p90": 28,
+        "p99": 54,
+        "avg": 23.25,
+        "max": 54
+      },
+      "settle": {
+        "count": 12,
+        "p50": 2,
+        "p90": 3,
+        "p99": 4,
+        "avg": 2.25,
+        "max": 4
+      }
+    },
+    {
+      "scenario": "tool-surface-programmatic",
+      "plane": "tool-surface",
+      "phase": "B-c4",
+      "concurrency": 4,
+      "executions": 12,
+      "completed": 12,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 12,
+        "p50": 1112.51,
+        "p90": 1286.27,
+        "p99": 1295.06,
+        "avg": 1163.17,
+        "max": 1295.06
+      },
+      "create": {
+        "count": 12,
+        "p50": 8.25,
+        "p90": 23.08,
+        "p99": 29.63,
+        "avg": 13.52,
+        "max": 29.63
+      },
+      "progression": {
+        "count": 12,
+        "p50": 25.57,
+        "p90": 60.71,
+        "p99": 69.69,
+        "avg": 29.89,
+        "max": 69.69
+      },
+      "claim": {
+        "count": 12,
+        "p50": 1006,
+        "p90": 1077,
+        "p99": 1091,
+        "avg": 1013.67,
+        "max": 1091
+      },
+      "execute": {
+        "count": 12,
+        "p50": 21,
+        "p90": 49,
+        "p99": 56,
+        "avg": 26.92,
+        "max": 56
+      },
+      "settle": {
+        "count": 12,
+        "p50": 2,
+        "p90": 5,
+        "p99": 15,
+        "avg": 3.25,
+        "max": 15
+      }
+    },
+    {
+      "scenario": "verification-heavy",
+      "plane": "verification",
+      "phase": "B-c4",
+      "concurrency": 4,
+      "executions": 12,
+      "completed": 12,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 12,
+        "p50": 1126.97,
+        "p90": 1273.59,
+        "p99": 1291.93,
+        "avg": 1151.34,
+        "max": 1291.93
+      },
+      "create": {
+        "count": 12,
+        "p50": 6,
+        "p90": 11.33,
+        "p99": 13.34,
+        "avg": 7.33,
+        "max": 13.34
+      },
+      "progression": {
+        "count": 12,
+        "p50": 29.9,
+        "p90": 60.66,
+        "p99": 60.9,
+        "avg": 33.29,
+        "max": 60.9
+      },
+      "claim": {
+        "count": 12,
+        "p50": 994,
+        "p90": 1069,
+        "p99": 1118,
+        "avg": 996.33,
+        "max": 1118
+      },
+      "execute": {
+        "count": 12,
+        "p50": 22,
+        "p90": 60,
+        "p99": 64,
+        "avg": 31.42,
+        "max": 64
+      },
+      "settle": {
+        "count": 12,
+        "p50": 2,
+        "p90": 5,
+        "p99": 25,
+        "avg": 4.67,
+        "max": 25
+      }
+    },
+    {
+      "scenario": "burst-load",
+      "plane": "throughput",
+      "phase": "C-c16",
+      "concurrency": 16,
+      "executions": 32,
+      "completed": 32,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 32,
+        "p50": 2594.78,
+        "p90": 2727.43,
+        "p99": 2790.98,
+        "avg": 2248.18,
+        "max": 2790.98
+      },
+      "create": {
+        "count": 32,
+        "p50": 68.84,
+        "p90": 97.68,
+        "p99": 117.13,
+        "avg": 62.62,
+        "max": 117.13
+      },
+      "progression": {
+        "count": 32,
+        "p50": 86.37,
+        "p90": 133.1,
+        "p99": 136.86,
+        "avg": 83.79,
+        "max": 136.86
+      },
+      "claim": {
+        "count": 32,
+        "p50": 2354,
+        "p90": 2573,
+        "p99": 2631,
+        "avg": 2031.72,
+        "max": 2631
+      },
+      "execute": {
+        "count": 32,
+        "p50": 22,
+        "p90": 49,
+        "p99": 61,
+        "avg": 28.09,
+        "max": 61
+      },
+      "settle": {
+        "count": 32,
+        "p50": 2,
+        "p90": 7,
+        "p99": 33,
+        "avg": 4.16,
+        "max": 33
+      }
+    },
+    {
+      "scenario": "simple-deterministic",
+      "plane": "deterministic-execution",
+      "phase": "C-c16",
+      "concurrency": 16,
+      "executions": 16,
+      "completed": 16,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 16,
+        "p50": 1415.92,
+        "p90": 2688.68,
+        "p99": 2688.86,
+        "avg": 1884.94,
+        "max": 2688.86
+      },
+      "create": {
+        "count": 16,
+        "p50": 58.14,
+        "p90": 88.8,
+        "p99": 88.9,
+        "avg": 65.8,
+        "max": 88.9
+      },
+      "progression": {
+        "count": 16,
+        "p50": 128.06,
+        "p90": 136.23,
+        "p99": 139.59,
+        "avg": 123.48,
+        "max": 139.59
+      },
+      "claim": {
+        "count": 16,
+        "p50": 1103,
+        "p90": 2315,
+        "p99": 2373,
+        "avg": 1614.75,
+        "max": 2373
+      },
+      "execute": {
+        "count": 16,
+        "p50": 18,
+        "p90": 51,
+        "p99": 64,
+        "avg": 25.88,
+        "max": 64
+      },
+      "settle": {
+        "count": 16,
+        "p50": 2,
+        "p90": 5,
+        "p99": 9,
+        "avg": 2.56,
+        "max": 9
+      }
+    },
+    {
+      "scenario": "burst-load",
+      "plane": "throughput",
+      "phase": "C-c32",
+      "concurrency": 32,
+      "executions": 32,
+      "completed": 32,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 32,
+        "p50": 2548.41,
+        "p90": 4870.2,
+        "p99": 5028.34,
+        "avg": 3028.54,
+        "max": 5028.34
+      },
+      "create": {
+        "count": 32,
+        "p50": 79.92,
+        "p90": 82.59,
+        "p99": 140.87,
+        "avg": 82.61,
+        "max": 140.87
+      },
+      "progression": {
+        "count": 32,
+        "p50": 218.38,
+        "p90": 228.33,
+        "p99": 233.03,
+        "avg": 218.45,
+        "max": 233.03
+      },
+      "claim": {
+        "count": 32,
+        "p50": 2167,
+        "p90": 4528,
+        "p99": 4619,
+        "avg": 2679.91,
+        "max": 4619
+      },
+      "execute": {
+        "count": 32,
+        "p50": 16,
+        "p90": 47,
+        "p99": 54,
+        "avg": 23.09,
+        "max": 54
+      },
+      "settle": {
+        "count": 32,
+        "p50": 2,
+        "p90": 3,
+        "p99": 7,
+        "avg": 2.19,
+        "max": 7
+      }
+    },
+    {
+      "scenario": "budget-funded",
+      "plane": "spend-ledger",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 10,
+      "completed": 10,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 10,
+        "p50": 956.56,
+        "p90": 1089.73,
+        "p99": 1090.01,
+        "avg": 1013.45,
+        "max": 1090.01
+      },
+      "create": {
+        "count": 10,
+        "p50": 3.63,
+        "p90": 5.96,
+        "p99": 7.24,
+        "avg": 4.31,
+        "max": 7.24
+      },
+      "progression": {
+        "count": 10,
+        "p50": 14.03,
+        "p90": 21,
+        "p99": 36.67,
+        "avg": 16.17,
+        "max": 36.67
+      },
+      "claim": {
+        "count": 10,
+        "p50": 880,
+        "p90": 947,
+        "p99": 967,
+        "avg": 889,
+        "max": 967
+      },
+      "execute": {
+        "count": 10,
+        "p50": 27,
+        "p90": 53,
+        "p99": 70,
+        "avg": 34.7,
+        "max": 70
+      },
+      "settle": {
+        "count": 10,
+        "p50": 1,
+        "p90": 3,
+        "p99": 5,
+        "avg": 2,
+        "max": 5
+      }
+    },
+    {
+      "scenario": "context-heavy",
+      "plane": "context-economics",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 15,
+      "completed": 15,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 15,
+        "p50": 1154.15,
+        "p90": 1168.97,
+        "p99": 1170.52,
+        "avg": 1098.13,
+        "max": 1170.52
+      },
+      "create": {
+        "count": 15,
+        "p50": 25.19,
+        "p90": 34.4,
+        "p99": 38.07,
+        "avg": 24.69,
+        "max": 38.07
+      },
+      "progression": {
+        "count": 15,
+        "p50": 47.84,
+        "p90": 59.15,
+        "p99": 61.53,
+        "avg": 48.14,
+        "max": 61.53
+      },
+      "claim": {
+        "count": 15,
+        "p50": 899,
+        "p90": 923,
+        "p99": 933,
+        "avg": 887.2,
+        "max": 933
+      },
+      "execute": {
+        "count": 15,
+        "p50": 47,
+        "p90": 61,
+        "p99": 64,
+        "avg": 47.4,
+        "max": 64
+      },
+      "settle": {
+        "count": 15,
+        "p50": 8,
+        "p90": 11,
+        "p99": 13,
+        "avg": 8.47,
+        "max": 13
+      }
+    },
+    {
+      "scenario": "failure-escalation",
+      "plane": "failure-recovery+escalation",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 8,
+      "completed": 4,
+      "failed": 4,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 50,
+      "total": {
+        "count": 8,
+        "p50": 1079.27,
+        "p90": 1259.11,
+        "p99": 1259.11,
+        "avg": 1058,
+        "max": 1259.11
+      },
+      "create": {
+        "count": 8,
+        "p50": 3.92,
+        "p90": 8.92,
+        "p99": 8.92,
+        "avg": 4.68,
+        "max": 8.92
+      },
+      "progression": {
+        "count": 8,
+        "p50": 19.24,
+        "p90": 26.71,
+        "p99": 26.71,
+        "avg": 19.06,
+        "max": 26.71
+      },
+      "claim": {
+        "count": 8,
+        "p50": 915,
+        "p90": 987,
+        "p99": 987,
+        "avg": 922.5,
+        "max": 987
+      },
+      "execute": {
+        "count": 4,
+        "p50": 17,
+        "p90": 131,
+        "p99": 131,
+        "avg": 45.75,
+        "max": 131
+      },
+      "settle": {
+        "count": 4,
+        "p50": 2,
+        "p90": 4,
+        "p99": 4,
+        "avg": 3,
+        "max": 4
+      }
+    },
+    {
+      "scenario": "failure-retry",
+      "plane": "failure-recovery",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 6,
+      "completed": 0,
+      "failed": 6,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 0,
+      "total": {
+        "count": 6,
+        "p50": 1526.34,
+        "p90": 1541.49,
+        "p99": 1541.49,
+        "avg": 1527.7,
+        "max": 1541.49
+      },
+      "create": {
+        "count": 6,
+        "p50": 3.11,
+        "p90": 9.11,
+        "p99": 9.11,
+        "avg": 4.19,
+        "max": 9.11
+      },
+      "progression": {
+        "count": 6,
+        "p50": 6.01,
+        "p90": 18.88,
+        "p99": 18.88,
+        "avg": 10.11,
+        "max": 18.88
+      },
+      "claim": {
+        "count": 6,
+        "p50": 947,
+        "p90": 969,
+        "p99": 969,
+        "avg": 925,
+        "max": 969
+      },
+      "execute": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      },
+      "settle": {
+        "count": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "avg": 0,
+        "max": 0
+      }
+    },
+    {
+      "scenario": "model-routed-decision",
+      "plane": "model-economics",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 492.74,
+        "p90": 803.15,
+        "p99": 1087.73,
+        "avg": 536.64,
+        "max": 1087.73
+      },
+      "create": {
+        "count": 20,
+        "p50": 4.67,
+        "p90": 6.04,
+        "p99": 6.53,
+        "avg": 4.9,
+        "max": 6.53
+      },
+      "progression": {
+        "count": 20,
+        "p50": 14.72,
+        "p90": 25.85,
+        "p99": 37.45,
+        "avg": 17.91,
+        "max": 37.45
+      },
+      "claim": {
+        "count": 20,
+        "p50": 414,
+        "p90": 689,
+        "p99": 944,
+        "avg": 434.45,
+        "max": 944
+      },
+      "execute": {
+        "count": 20,
+        "p50": 21,
+        "p90": 30,
+        "p99": 48,
+        "avg": 23.4,
+        "max": 48
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 4,
+        "p99": 5,
+        "avg": 2.35,
+        "max": 5
+      }
+    },
+    {
+      "scenario": "model-routed-decision",
+      "plane": "model-economics",
+      "phase": "sustained",
+      "concurrency": 2,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 664.55,
+        "p90": 1111.49,
+        "p99": 1335.56,
+        "avg": 706.63,
+        "max": 1335.56
+      },
+      "create": {
+        "count": 20,
+        "p50": 11.28,
+        "p90": 35.05,
+        "p99": 36.23,
+        "avg": 17.37,
+        "max": 36.23
+      },
+      "progression": {
+        "count": 20,
+        "p50": 34.82,
+        "p90": 57.97,
+        "p99": 76.46,
+        "avg": 37.91,
+        "max": 76.46
+      },
+      "claim": {
+        "count": 20,
+        "p50": 568,
+        "p90": 954,
+        "p99": 1087,
+        "avg": 555.7,
+        "max": 1087
+      },
+      "execute": {
+        "count": 20,
+        "p50": 24,
+        "p90": 41,
+        "p99": 96,
+        "avg": 31.1,
+        "max": 96
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 6,
+        "p99": 7,
+        "avg": 2.9,
+        "max": 7
+      }
+    },
+    {
+      "scenario": "simple-deterministic",
+      "plane": "deterministic-execution",
+      "phase": "sustained",
+      "concurrency": 2,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 792.79,
+        "p90": 1184.38,
+        "p99": 1264.65,
+        "avg": 700.15,
+        "max": 1264.65
+      },
+      "create": {
+        "count": 20,
+        "p50": 15.01,
+        "p90": 33.26,
+        "p99": 50.24,
+        "avg": 17.91,
+        "max": 50.24
+      },
+      "progression": {
+        "count": 20,
+        "p50": 26.35,
+        "p90": 71.84,
+        "p99": 81.58,
+        "avg": 36.23,
+        "max": 81.58
+      },
+      "claim": {
+        "count": 20,
+        "p50": 702,
+        "p90": 1038,
+        "p99": 1059,
+        "avg": 558.6,
+        "max": 1059
+      },
+      "execute": {
+        "count": 20,
+        "p50": 25,
+        "p90": 53,
+        "p99": 60,
+        "avg": 30.4,
+        "max": 60
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 10,
+        "p99": 21,
+        "avg": 4.2,
+        "max": 21
+      }
+    },
+    {
+      "scenario": "simple-deterministic",
+      "plane": "deterministic-execution",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 480.22,
+        "p90": 933.37,
+        "p99": 959.68,
+        "avg": 577.5,
+        "max": 959.68
+      },
+      "create": {
+        "count": 20,
+        "p50": 4.84,
+        "p90": 6.18,
+        "p99": 7.33,
+        "avg": 4.96,
+        "max": 7.33
+      },
+      "progression": {
+        "count": 20,
+        "p50": 10.94,
+        "p90": 20.45,
+        "p99": 31.34,
+        "avg": 14.18,
+        "max": 31.34
+      },
+      "claim": {
+        "count": 20,
+        "p50": 433,
+        "p90": 820,
+        "p99": 883,
+        "avg": 474.1,
+        "max": 883
+      },
+      "execute": {
+        "count": 20,
+        "p50": 22,
+        "p90": 38,
+        "p99": 72,
+        "avg": 28,
+        "max": 72
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 5,
+        "p99": 10,
+        "avg": 3,
+        "max": 10
+      }
+    },
+    {
+      "scenario": "tool-surface-programmatic",
+      "plane": "tool-surface",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 626.1,
+        "p90": 1086.82,
+        "p99": 1097.49,
+        "avg": 679.99,
+        "max": 1097.49
+      },
+      "create": {
+        "count": 20,
+        "p50": 5.08,
+        "p90": 6.18,
+        "p99": 6.89,
+        "avg": 5.23,
+        "max": 6.89
+      },
+      "progression": {
+        "count": 20,
+        "p50": 15.91,
+        "p90": 21.7,
+        "p99": 48.91,
+        "avg": 16.87,
+        "max": 48.91
+      },
+      "claim": {
+        "count": 20,
+        "p50": 469,
+        "p90": 979,
+        "p99": 985,
+        "avg": 556.1,
+        "max": 985
+      },
+      "execute": {
+        "count": 20,
+        "p50": 22,
+        "p90": 29,
+        "p99": 50,
+        "avg": 24.1,
+        "max": 50
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 5,
+        "p99": 9,
+        "avg": 2.95,
+        "max": 9
+      }
+    },
+    {
+      "scenario": "tool-surface-programmatic",
+      "plane": "tool-surface",
+      "phase": "sustained",
+      "concurrency": 2,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 537.87,
+        "p90": 1108.45,
+        "p99": 1124.42,
+        "avg": 645.56,
+        "max": 1124.42
+      },
+      "create": {
+        "count": 20,
+        "p50": 9.46,
+        "p90": 28.5,
+        "p99": 32.85,
+        "avg": 14.19,
+        "max": 32.85
+      },
+      "progression": {
+        "count": 20,
+        "p50": 21.98,
+        "p90": 29.38,
+        "p99": 47.48,
+        "avg": 22.83,
+        "max": 47.48
+      },
+      "claim": {
+        "count": 20,
+        "p50": 365,
+        "p90": 966,
+        "p99": 998,
+        "avg": 522.8,
+        "max": 998
+      },
+      "execute": {
+        "count": 20,
+        "p50": 20,
+        "p90": 35,
+        "p99": 94,
+        "avg": 26.4,
+        "max": 94
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 6,
+        "p99": 27,
+        "avg": 4.6,
+        "max": 27
+      }
+    },
+    {
+      "scenario": "verification-heavy",
+      "plane": "verification",
+      "phase": "sustained",
+      "concurrency": 2,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 657.5,
+        "p90": 820.86,
+        "p99": 1121.72,
+        "avg": 625.99,
+        "max": 1121.72
+      },
+      "create": {
+        "count": 20,
+        "p50": 9.52,
+        "p90": 29.13,
+        "p99": 29.87,
+        "avg": 14.86,
+        "max": 29.87
+      },
+      "progression": {
+        "count": 20,
+        "p50": 24.2,
+        "p90": 46.19,
+        "p99": 50.05,
+        "avg": 26.83,
+        "max": 50.05
+      },
+      "claim": {
+        "count": 20,
+        "p50": 445,
+        "p90": 672,
+        "p99": 980,
+        "avg": 491.85,
+        "max": 980
+      },
+      "execute": {
+        "count": 20,
+        "p50": 25,
+        "p90": 40,
+        "p99": 42,
+        "avg": 27.95,
+        "max": 42
+      },
+      "settle": {
+        "count": 20,
+        "p50": 3,
+        "p90": 5,
+        "p99": 8,
+        "avg": 2.95,
+        "max": 8
+      }
+    },
+    {
+      "scenario": "verification-heavy",
+      "plane": "verification",
+      "phase": "sustained",
+      "concurrency": 1,
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "denied": 0,
+      "timeout": 0,
+      "createErrors": 0,
+      "successRate": 100,
+      "total": {
+        "count": 20,
+        "p50": 787.86,
+        "p90": 1114.61,
+        "p99": 1132.65,
+        "avg": 712.46,
+        "max": 1132.65
+      },
+      "create": {
+        "count": 20,
+        "p50": 4.57,
+        "p90": 23.75,
+        "p99": 26.22,
+        "avg": 10.49,
+        "max": 26.22
+      },
+      "progression": {
+        "count": 20,
+        "p50": 19.18,
+        "p90": 29.39,
+        "p99": 30.88,
+        "avg": 18.13,
+        "max": 30.88
+      },
+      "claim": {
+        "count": 20,
+        "p50": 710,
+        "p90": 921,
+        "p99": 1008,
+        "avg": 568.75,
+        "max": 1008
+      },
+      "execute": {
+        "count": 20,
+        "p50": 29,
+        "p90": 101,
+        "p99": 122,
+        "avg": 47.25,
+        "max": 122
+      },
+      "settle": {
+        "count": 20,
+        "p50": 2,
+        "p90": 8,
+        "p99": 27,
+        "avg": 4.8,
+        "max": 27
+      }
+    }
+  ],
+  "queueDepth": {
+    "samples": 2002,
+    "count": 2002,
+    "p50": 0,
+    "p90": 0,
+    "p99": 6,
+    "avg": 0.29,
+    "max": 32
+  },
+  "observability": {
+    "samples": 584,
+    "byPath": {
+      "/v1/traces": 142,
+      "/v1/metrics": 420,
+      "/v1/logs": 22
+    },
+    "totalBytes": 2855739
+  },
+  "durable": {
+    "executionsByStatus": [
+      {
+        "status": "COMPLETED",
+        "count": "386"
+      },
+      {
+        "status": "FAILED",
+        "count": "16"
+      },
+      {
+        "status": "CREATED",
+        "count": "3"
+      }
+    ],
+    "dispatchEnvelopes": [
+      {
+        "state": "consumed",
+        "count": "402"
+      }
+    ],
+    "delivery": {
+      "redelivered": "0",
+      "avg_attempts": "1.00",
+      "max_attempts": 1
+    },
+    "deadLetters": "0",
+    "workers": [
+      {
+        "workerId": "01a08a55-2539-7000-b6b1-a5d64c5ffec5",
+        "status": "offline",
+        "heartbeats": 332,
+        "registeredAt": "2026-09-10T08:00:31.034Z",
+        "lastHeartbeatAt": "2026-09-10T08:06:38.173Z",
+        "activeSeconds": 367.14,
+        "meanHeartbeatIntervalMs": 1105.84
+      },
+      {
+        "workerId": "01a08a75-c062-7000-acf7-f1eb94977faf",
+        "status": "offline",
+        "heartbeats": 357,
+        "registeredAt": "2026-09-10T08:36:07.907Z",
+        "lastHeartbeatAt": "2026-09-10T08:42:07.771Z",
+        "activeSeconds": 359.86,
+        "meanHeartbeatIntervalMs": 1008.02
+      },
+      {
+        "workerId": "01a08a7b-6692-7000-821d-f5788f404bf8",
+        "status": "offline",
+        "heartbeats": 357,
+        "registeredAt": "2026-09-10T08:42:18.132Z",
+        "lastHeartbeatAt": "2026-09-10T08:48:17.757Z",
+        "activeSeconds": 359.63,
+        "meanHeartbeatIntervalMs": 1007.35
+      },
+      {
+        "workerId": "01a08a81-53ca-7000-85aa-491235c5c751",
+        "status": "offline",
+        "heartbeats": 357,
+        "registeredAt": "2026-09-10T08:48:46.540Z",
+        "lastHeartbeatAt": "2026-09-10T08:54:46.277Z",
+        "activeSeconds": 359.74,
+        "meanHeartbeatIntervalMs": 1007.67
+      },
+      {
+        "workerId": "01a08a86-f7cc-7000-b942-411ee19df46f",
+        "status": "offline",
+        "heartbeats": 357,
+        "registeredAt": "2026-09-10T08:54:56.205Z",
+        "lastHeartbeatAt": "2026-09-10T09:00:56.201Z",
+        "activeSeconds": 360,
+        "meanHeartbeatIntervalMs": 1008.39
+      },
+      {
+        "workerId": "01a08a8c-8da3-7000-8ea0-03b0167f2e22",
+        "status": "offline",
+        "heartbeats": 193,
+        "registeredAt": "2026-09-10T09:01:02.244Z",
+        "lastHeartbeatAt": "2026-09-10T09:04:16.596Z",
+        "activeSeconds": 194.35,
+        "meanHeartbeatIntervalMs": 1007.01
+      }
+    ],
+    "claims": {
+      "claims": "402",
+      "finished": "402",
+      "abandoned": "0",
+      "avg_claim_ms": "102",
+      "max_claim_ms": "2049.000000"
+    },
+    "wallets": [
+      {
+        "walletId": "01a08a55-25df-7000-b030-272a48ab7349",
+        "ownerKind": "developer",
+        "balanceMicroUsd": "1000"
+      }
+    ],
+    "budgetLedger": [
+      {
+        "entryClass": "credit-grant",
+        "direction": "credit",
+        "totalMicroUsd": "1000",
+        "entries": "1"
+      },
+      {
+        "entryClass": "reservation-hold",
+        "direction": "debit",
+        "totalMicroUsd": "28000",
+        "entries": "28"
+      },
+      {
+        "entryClass": "settle-release",
+        "direction": "credit",
+        "totalMicroUsd": "28000",
+        "entries": "28"
+      }
+    ],
+    "reservations": [
+      {
+        "status": "settled",
+        "count": "28"
+      }
+    ],
+    "planningDecisions": "0"
+  }
+}
