@@ -37,6 +37,7 @@ import {
   PgAuthorityFailover,
 } from "../../../src/platform/db/ha/failover";
 import type { Query, QueryResult } from "../../../src/platform/db/port";
+import { shippedMigrations } from "../../../src/platform/db/startup";
 
 /** One scripted endpoint: role answers + ping behavior + write log. */
 class FakeEndpoint implements FailoverConnection {
@@ -46,7 +47,7 @@ class FakeEndpoint implements FailoverConnection {
   public roleReadOnly = false;
   public readonlyReplayTimestamp: string | null = "2026-09-10T12:00:00.000Z";
   public readonlyReplayLsn: string | null = "0/123456";
-  public migrationsCount = 29;
+  public migrationsCount = shippedMigrations().length; // converged authority default: tracks the live shipped set (merge-reconciliation-safe)
   public promoteResult: boolean | null = true;
   public promoteCalls = 0;
   /** Post-promotion role override (post-condition failures). */

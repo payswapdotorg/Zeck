@@ -4,7 +4,7 @@
  *
  * Proves over the real database:
  *
- *  - migration 0031 shipped and applied (tracked in the runner's ledger);
+ *  - migration 0032 shipped and applied (tracked in the runner's ledger);
  *  - the closed vocabularies are CHECK-bound (rows outside the action/
  *    actor/target/seam vocabularies are unrepresentable);
  *  - unbounded retention is CHECK-bound (a finite horizon is the only
@@ -16,7 +16,7 @@
  *    gate (which the store sets exclusively inside its purge
  *    transaction);
  *  - a database converged at the PREVIOUS migration head (0030, the
- *    D-02/E1.1-converged authority) applies 0031 forward cleanly (no
+ *    D-02/E1.1-converged authority) applies the audit migration forward cleanly (no
  *    destructive migration; convergence on fresh + existing states).
  */
 
@@ -87,10 +87,10 @@ function insertRowSql(column: string, value: string, base: readonly unknown[]): 
 }
 
 definePgSuite("audit schema and immutability (real PostgreSQL)", (ctx) => {
-  test("migration 0031 shipped, tracked, and the audit schema exists", async () => {
+  test("migration 0032 shipped, tracked, and the audit schema exists", async () => {
     const world = await seedAuditWorld(ctx.port);
     const tracked = await world.db.execute<{ version: number; name: string }>({
-      sql: "SELECT version, name FROM platform.schema_migrations WHERE version = 31",
+      sql: "SELECT version, name FROM platform.schema_migrations WHERE version = 32",
       parameters: [],
     });
     expect(tracked.rows[0]?.name).toBe("audit_compliance");
@@ -324,7 +324,7 @@ function poolPort(pool: Pool): DatabasePort {
 
 if (PG_TEST_URL) {
   describe("audit migration convergence on a 0030-converged database (real PostgreSQL)", () => {
-    test("0031 applies forward cleanly on the existing authority (no destructive migration)", async () => {
+    test("0032 applies forward cleanly on the existing authority (no destructive migration)", async () => {
       const databaseName = `zeck_work059_conv_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
       const admin = new Client({ connectionString: PG_TEST_URL });
       await admin.connect();
@@ -338,7 +338,7 @@ if (PG_TEST_URL) {
       const port = poolPort(pool);
       try {
         // Converge at the PREVIOUS head (0030 — the D-02/E1.1
-        // discipline base): everything except 0031.
+        // discipline base): everything at or below version 30.
         const shipped = loadMigrations("src/platform/db/migrations");
         const baseSet = shipped.filter((file) => file.version <= 30);
         const baseRun = await runMigrations(port, baseSet);
@@ -356,10 +356,14 @@ if (PG_TEST_URL) {
           parameters: [applicationId, tenantId],
         });
 
-        // Apply the FULL shipped set: exactly 0031 applies forward.
+        // Apply the FULL shipped set: 0031 (WORK-058 isolation, merged
+        // before this branch) and 0032 (audit) apply forward together.
         const forward = await runMigrations(port, shipped);
-        expect(forward.applied).toEqual([{ version: 31, name: "audit_compliance" }]);
-        expect(forward.skipped).toBe(shipped.length - 1);
+        expect(forward.applied).toEqual([
+          { version: 31, name: "isolation_profiles" },
+          { version: 32, name: "audit_compliance" },
+        ]);
+        expect(forward.skipped).toBe(baseSet.length); // the 0030-converged base set; exactly the two D-08 migrations apply forward
 
         // The pre-existing authority rows are intact (no destructive
         // migration) and the audit plane works on the converged base.

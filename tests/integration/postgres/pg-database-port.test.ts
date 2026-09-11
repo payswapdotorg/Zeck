@@ -73,8 +73,10 @@ defineSuite<Ctx>(
         // + 0028_compute_worker_fabric (WORK-046 / D-05)
         // + 0029_release_control (WORK-047 / D-06: the release ledger)
         // + 0030_execution_ir_decision_records (WORK-049 / E1.1: the
-        // append-only optimization decision record store).
-        expect(handle.migrations.applied).toHaveLength(30);
+        // append-only optimization decision record store) +
+        // 0031_isolation_profiles (WORK-058 / D-08) + 0032_audit_compliance
+        // (WORK-059 / D-08; Architect merge reconciliation numbering).
+        expect(handle.migrations.applied).toHaveLength(31);
         expect(handle.migrations.skipped).toBe(0);
         expect(handle.serverVersion).toContain("PostgreSQL 16");
         // Non-secret endpoint identity only.
@@ -98,8 +100,8 @@ defineSuite<Ctx>(
       });
       try {
         expect(second.migrations.applied).toHaveLength(0);
-        expect(second.migrations.skipped).toBe(30);
-        expect(second.migrations.applied.length + second.migrations.skipped).toBe(30);
+        expect(second.migrations.skipped).toBe(31);
+        expect(second.migrations.applied.length + second.migrations.skipped).toBe(31);
       } finally {
         await second.close();
       }
