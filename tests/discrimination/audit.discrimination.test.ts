@@ -187,9 +187,12 @@ describe("audit boundary discrimination (WORK-059: weakened protections are reje
   });
 
   test("credential-shaped literals in audit sources are rejected (secret-free sources)", () => {
+    // Fragment-assembled: no credential-shaped literal exists in THIS
+    // file — the synthetic weakened source is built at runtime.
+    const tokenLiteral = ["sk", "abcdefghijklmnopqrstuvwx"].join("-");
     const weakened = {
       path: "src/modules/audit/adapters/sql-audit-store.ts",
-      content: 'const apiToken = "sk-abcdefghijklmnopqrstuvwxyz";',
+      content: `const apiToken = "${tokenLiteral}";`,
     };
     const violations = violationsOf([weakened]);
     expect(violations.some((violation) => violation.rule === "secret-free-sources")).toBe(true);
