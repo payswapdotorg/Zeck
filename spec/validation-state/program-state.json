@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T22:00:00Z",
+  "asOf": "2026-09-11T22:15:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -67,8 +67,15 @@
       "title": "Longitudinal experiment ledger"
     },
     "VAL-008": {
-      "status": "planned",
-      "title": "Evaluation/scoring engine and error taxonomy"
+      "status": "complete",
+      "title": "Evaluation/scoring engine and error taxonomy",
+      "mergedAs": {
+        "pr": 50,
+        "mergeCommit": "23742a0",
+        "implementationHead": "a6b855ce4e278788229efee0e9521d99d7679053",
+        "finalBranchHead": "a6b855ce4e278788229efee0e9521d99d7679053",
+        "baseRevision": "15cd725"
+      }
     },
     "VAL-009": {
       "status": "complete",
