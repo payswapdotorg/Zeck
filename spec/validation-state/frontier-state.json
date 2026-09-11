@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "eligible": ["VAL-001"],
-  "inFlight": [],
+  "eligible": [],
+  "inFlight": ["VAL-001"],
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means every declared validation dependency is complete, the item is not already in flight, its declared validation surfaces can be reconciled safely, and the dispatch base is the current governed validation head"
