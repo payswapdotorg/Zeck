@@ -27,7 +27,11 @@
  *    a failure to hide.
  */
 
-import { type DatabaseConnectionConfig, parseConnectionConfig, redactConnectionString } from "../connection";
+import {
+  type DatabaseConnectionConfig,
+  parseConnectionConfig,
+  redactConnectionString,
+} from "../connection";
 import { DatabaseUnavailableError } from "../errors";
 import { createPgDatabasePort } from "../pg-database-port";
 import type { DatabasePort, Query, QueryResult } from "../port";
@@ -118,10 +122,7 @@ export class PgReplicationProbe {
   private readonly connect: ProbeConnectionFactory;
   private readonly now: () => Date;
 
-  constructor(
-    connectionFactory?: ProbeConnectionFactory,
-    now: () => Date = () => new Date(),
-  ) {
+  constructor(connectionFactory?: ProbeConnectionFactory, now: () => Date = () => new Date()) {
     this.connect = connectionFactory ?? productionConnectionFactory;
     this.now = now;
   }
@@ -135,7 +136,9 @@ export class PgReplicationProbe {
     try {
       return await work(connection);
     } catch (error) {
-      const message = redactConnectionString(error instanceof Error ? error.message : String(error));
+      const message = redactConnectionString(
+        error instanceof Error ? error.message : String(error),
+      );
       throw new DatabaseUnavailableError(`replication probing failed: ${message}`);
     } finally {
       await connection.close();
@@ -270,6 +273,6 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+export type { DatabasePort };
 /** Re-export for composition roots (the production pg-backed connection). */
 export { createPgDatabasePort };
-export type { DatabasePort };

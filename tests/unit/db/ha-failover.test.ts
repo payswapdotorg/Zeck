@@ -29,14 +29,14 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { type DatabaseConnectionConfig } from "../../../src/platform/db/connection";
+import type { DatabaseConnectionConfig } from "../../../src/platform/db/connection";
+import { DatabaseUnavailableError } from "../../../src/platform/db/errors";
 import {
   AuthorityFailoverError,
   type FailoverConnection,
   PgAuthorityFailover,
 } from "../../../src/platform/db/ha/failover";
 import type { Query, QueryResult } from "../../../src/platform/db/port";
-import { DatabaseUnavailableError } from "../../../src/platform/db/errors";
 
 /** One scripted endpoint: role answers + ping behavior + write log. */
 class FakeEndpoint implements FailoverConnection {

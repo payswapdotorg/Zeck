@@ -41,7 +41,11 @@
  * against self-managed and managed standby endpoints.
  */
 
-import { type DatabaseConnectionConfig, parseConnectionConfig, redactConnectionString } from "../connection";
+import {
+  type DatabaseConnectionConfig,
+  parseConnectionConfig,
+  redactConnectionString,
+} from "../connection";
 import { DatabaseUnavailableError } from "../errors";
 import { createPgDatabasePort } from "../pg-database-port";
 import type { Query, QueryResult } from "../port";
@@ -118,10 +122,7 @@ export class PgAuthorityFailover {
   private readonly connect: FailoverConnectionFactory;
   private readonly now: () => Date;
 
-  constructor(
-    connectionFactory?: FailoverConnectionFactory,
-    now: () => Date = () => new Date(),
-  ) {
+  constructor(connectionFactory?: FailoverConnectionFactory, now: () => Date = () => new Date()) {
     this.connect = connectionFactory ?? productionConnectionFactory;
     this.now = now;
   }
@@ -162,7 +163,10 @@ export class PgAuthorityFailover {
    * Every non-unavailability failure is itself an error (never
    * misread as unreachability).
    */
-  private async assertPrimaryUnreachable(input: AuthorityFailoverInput, phase: string): Promise<void> {
+  private async assertPrimaryUnreachable(
+    input: AuthorityFailoverInput,
+    phase: string,
+  ): Promise<void> {
     const attempts = input.primaryProbeAttempts ?? 3;
     if (!Number.isInteger(attempts) || attempts < 1) {
       throw new AuthorityFailoverError("primaryProbeAttempts must be a positive integer");
@@ -200,7 +204,9 @@ export class PgAuthorityFailover {
     const role = await this.roleOf(input.standbyUrl);
     if (role.in_recovery) {
       // Contradiction with the caller's path selection.
-      throw new AuthorityFailoverError("internal ordering defect: the standby is still in recovery");
+      throw new AuthorityFailoverError(
+        "internal ordering defect: the standby is still in recovery",
+      );
     }
     if (role.read_only) {
       throw new AuthorityFailoverError(

@@ -43,3 +43,18 @@ WORK-048 / Deployment Roadmap D-07. Every procedure:
 | Artifact storage | `artifact-exit` drill | any S3-compatible endpoint + credentials (content-addressed keys are digest-derived, not provider-derived) |
 | Managed PostgreSQL | `authority-loss` restore drill | any managed/self-hosted PostgreSQL 16+ (deterministic migrations + logical-backup restore) |
 | Web/API hosting | deployment-level | any host running the repository server image (no provider-specific domain semantics; see `docs/DEPLOYMENT-ARCHITECTURE.md`) |
+
+## D-08 — HA authoritative state and failover (WORK-057)
+
+| Scenario | Command | Runbook |
+| --- | --- | --- |
+| HA authority failover (primary + standby promotion) | `bun run deploy:drill authority-failover --environment <env>` | [d08-authority-failover.md](d08-authority-failover.md) |
+
+The D-08 HA drill extends the D-07 surface: PostgreSQL stays the SOLE
+durable authority (the topology is primary + standby — never a second
+authority); failover RESTORES authority from replication, never
+reconstructs it; replay convergence rides the EXISTING
+dispatch/execution idempotency (AVA-004); measured failover RTO/RPO
+are evaluated against the `ha` blocks of
+`deploy/manifests/recovery-targets.json` (production class: RTO ≤ 15
+minutes; async RPO ≤ 60 s, synchronous 0).

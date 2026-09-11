@@ -68,11 +68,12 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
 import { afterAll, describe, expect, test } from "vitest";
-import { startLocalPostgresServer, type LocalHaServer } from "../../../deploy/ha";
+import { type LocalHaServer, startLocalPostgresServer } from "../../../deploy/ha";
 import { createBudgetRecoveryInvariants } from "../../../src/modules/budgets/adapters/recovery-invariants";
 import { createArtifactLedgerRecoveryInvariants } from "../../../src/modules/deployments/adapters/recovery-inventory";
 import { createExecutionRecoveryInvariants } from "../../../src/modules/executions/adapters/recovery-invariants";
 import { EXECUTION_STATES } from "../../../src/modules/executions/public";
+import { parseConnectionConfig } from "../../../src/platform/db/connection";
 import { DatabaseUnavailableError } from "../../../src/platform/db/errors";
 import { PgAuthorityFailover } from "../../../src/platform/db/ha/failover";
 import { PgReplicationProbe } from "../../../src/platform/db/ha/replication";
@@ -80,8 +81,8 @@ import {
   failoverTargetForMode,
   parseHaTopologyDocument,
 } from "../../../src/platform/db/ha/topology";
-import { parseConnectionConfig } from "../../../src/platform/db/connection";
 import { PgDatabasePort } from "../../../src/platform/db/pg-database-port";
+import type { DatabasePort } from "../../../src/platform/db/port";
 import { shippedMigrations, startAuthoritativeDatabase } from "../../../src/platform/db/startup";
 import { verifyRecoveredAuthority } from "../../../src/platform/recovery/authority-verification";
 import { runRecoveryDrill } from "../../../src/platform/recovery/drill";
@@ -90,16 +91,15 @@ import {
   parseRecoveryTargets,
 } from "../../../src/platform/recovery/rto-rpo";
 import { planTransportRecovery } from "../../../src/platform/recovery/transport-recovery";
-import type { DatabasePort } from "../../../src/platform/db/port";
 import {
   generateId,
+  type HaTopology,
+  type HaWorld,
   interruptWorkerMidFlight,
   pickFreePorts,
   resolveHaBinaries,
   seedHaWorld,
   startHaTopology,
-  type HaTopology,
-  type HaWorld,
 } from "./ha-world";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -185,7 +185,7 @@ describe("the HA authority-failover drill over real PostgreSQL (WORK-057 D-08)",
       let completed = "";
       let inFlight: string[] = [];
       let preLoss: AuthoritySnapshot | null = null;
-      let preLossEvents = new Map<string, readonly { readonly kind: string }[]>();
+      const preLossEvents = new Map<string, readonly { readonly kind: string }[]>();
       try {
         const world: HaWorld = await seedHaWorld(primaryHandle.port, identity);
         // One execution COMPLETED pre-loss (a settled ledger that must
@@ -318,9 +318,7 @@ describe("the HA authority-failover drill over real PostgreSQL (WORK-057 D-08)",
                   // existing idempotency is the duplication guard.
                   const plan = await planTransportRecovery(postHandle.port);
                   expect(plan.planned).toBe(true);
-                  const settledItem = plan.items.find(
-                    (entry) => entry.executionId === completed,
-                  );
+                  const settledItem = plan.items.find((entry) => entry.executionId === completed);
                   expect(settledItem?.recoveryClass).toBe("converged"); // consumed ⇒ applied pre-loss
                   for (const executionId of inFlight) {
                     const item = plan.items.find((entry) => entry.executionId === executionId);
@@ -372,9 +370,9 @@ describe("the HA authority-failover drill over real PostgreSQL (WORK-057 D-08)",
         // EXACTLY ONE completion per in-flight execution; the settled
         // ledger unchanged.
         for (const executionId of inFlight) {
-          expect(
-            (await postWorld.service.getExecution(applicationId, executionId))?.status,
-          ).toBe("COMPLETED");
+          expect((await postWorld.service.getExecution(applicationId, executionId))?.status).toBe(
+            "COMPLETED",
+          );
           const completions = (await postWorld.eventsOf(executionId)).filter(
             (event) => event.kind === "execution.pass",
           );
@@ -687,7 +685,7 @@ describe("the HA authority-failover drill over real PostgreSQL (WORK-057 D-08)",
       } as Record<string, string>;
       // Absolute binary paths only (a PATH-resolved "postgres" is not
       // a directory the drill can declare).
-      if (BINARIES !== null && BINARIES.postgres.includes("/")) {
+      if (BINARIES?.postgres.includes("/")) {
         env.ZECK_HA_POSTGRES_BIN = resolve(BINARIES.postgres, "..");
       }
       let output = "";

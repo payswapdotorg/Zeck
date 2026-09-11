@@ -18,7 +18,7 @@
  * option (honesty over silence, the WORK-002 harness convention).
  */
 
-import { randomUUID, createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Client } from "pg";
 import {
   bootstrapStandbyFromPrimary,
@@ -84,17 +84,17 @@ import {
 } from "../../../src/platform/compute/fabric";
 import { SqlComputeWorkerStore } from "../../../src/platform/compute/pg-store";
 import type { WorkerFabricPolicy } from "../../../src/platform/compute/port";
-import { startAuthoritativeDatabase } from "../../../src/platform/db/startup";
 import type { DatabasePort } from "../../../src/platform/db/port";
+import { startAuthoritativeDatabase } from "../../../src/platform/db/startup";
 import { QueueCorrelationStore } from "../../../src/platform/queue/correlation";
 import { DurableDispatcher } from "../../../src/platform/queue/dispatcher";
 import { createUuidv7Generator } from "../../../src/shared/ids";
 import { InMemoryQueueTransport } from "./queue-world";
 import {
+  CONTAINER_SPEC,
   ControllableSandboxProvider,
   TEST_RETRY_POLICY,
   TEST_WORKER_POLICY,
-  CONTAINER_SPEC,
 } from "./worker-world";
 
 export const generateId = createUuidv7Generator();

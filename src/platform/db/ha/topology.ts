@@ -22,8 +22,8 @@
  * connection contract is a configuration error, never a default.
  */
 
-import { parseConnectionConfig } from "../connection";
 import { type EnvironmentRecoveryTarget, RecoveryTargetError } from "../../recovery/rto-rpo";
+import { parseConnectionConfig } from "../connection";
 
 /** The replication modes the HA topology declares (AVA-002). */
 export type HaReplicationMode = "asynchronous" | "synchronous";

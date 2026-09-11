@@ -29,7 +29,7 @@
  * failure — never a simulated topology.
  */
 
-import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   chmodSync,
@@ -41,8 +41,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { Client } from "pg";
-import { PgReplicationProbe } from "../src/platform/db/ha/replication";
 import { redactConnectionString } from "../src/platform/db/connection";
+import { PgReplicationProbe } from "../src/platform/db/ha/replication";
 
 /** Fail-closed local-topology error (honest, never a simulated PASS). */
 export class LocalHaTopologyError extends Error {
@@ -77,7 +77,12 @@ export function resolvePostgresBinaries(env: Record<string, string | undefined>)
   // PATH lookup (spawn resolves "postgres" from PATH).
   const probe = spawnSync("postgres", ["--version"], { encoding: "utf8" });
   const initdbProbe = spawnSync("initdb", ["--version"], { encoding: "utf8" });
-  if (probe.error !== undefined || probe.status !== 0 || initdbProbe.error !== undefined || initdbProbe.status !== 0) {
+  if (
+    probe.error !== undefined ||
+    probe.status !== 0 ||
+    initdbProbe.error !== undefined ||
+    initdbProbe.status !== 0
+  ) {
     throw new LocalHaTopologyError(
       "no local PostgreSQL binaries are available (set ZECK_HA_POSTGRES_BIN to a PostgreSQL 16+ bin directory, or put postgres/initdb on PATH); the local HA drill requires REAL primary + standby instances — never a simulation",
     );
@@ -131,7 +136,11 @@ function terminateChild(child: ChildProcess, mode: "kill" | "stop"): Promise<voi
       child.kill(signal);
     } catch (error) {
       clearTimeout(timer);
-      reject(new LocalHaTopologyError(`failed to ${mode} the server process: ${(error as Error).message}`));
+      reject(
+        new LocalHaTopologyError(
+          `failed to ${mode} the server process: ${(error as Error).message}`,
+        ),
+      );
     }
   });
 }

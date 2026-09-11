@@ -61,14 +61,6 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client } from "pg";
-import {
-  assertPortFree,
-  bootstrapStandbyFromPrimary,
-  resolvePostgresBinaries,
-  startLocalPostgresServer,
-  waitForStandbyCatchup,
-  type LocalHaServer,
-} from "./ha";
 import { createBudgetRecoveryInvariants } from "../src/modules/budgets/adapters/recovery-invariants";
 import {
   createArtifactInventorySource,
@@ -86,16 +78,17 @@ import {
   restoreDataIntoCurrentState,
 } from "../src/platform/db/backup";
 import { parseConnectionConfig, redactConnectionString } from "../src/platform/db/connection";
+import { DatabaseUnavailableError } from "../src/platform/db/errors";
 import { PgAuthorityFailover } from "../src/platform/db/ha/failover";
 import { PgReplicationProbe } from "../src/platform/db/ha/replication";
 import {
   failoverTargetForMode,
-  haEndpointsFromEnvironment,
-  parseHaReplicationMode,
-  parseHaTopologyDocument,
   type HaReplicationMode,
   type HaTopologyEndpoints,
   type HaTopologyTargets,
+  haEndpointsFromEnvironment,
+  parseHaReplicationMode,
+  parseHaTopologyDocument,
 } from "../src/platform/db/ha/topology";
 import { PgDatabasePort } from "../src/platform/db/pg-database-port";
 import {
@@ -104,7 +97,6 @@ import {
   startAuthoritativeDatabase,
   verifySchemaConvergence,
 } from "../src/platform/db/startup";
-import { DatabaseUnavailableError } from "../src/platform/db/errors";
 import { evaluateEnvironmentContract } from "../src/platform/deployment/env-contract";
 import {
   createS3ObjectStore,
@@ -134,6 +126,14 @@ import {
   asSecretReference,
   createEnvSecretStore,
 } from "../src/platform/secret-store/adapters/env-secret-store";
+import {
+  assertPortFree,
+  bootstrapStandbyFromPrimary,
+  type LocalHaServer,
+  resolvePostgresBinaries,
+  startLocalPostgresServer,
+  waitForStandbyCatchup,
+} from "./ha";
 import { gitRevision, loadManifest, REPOSITORY_ROOT, requireEnvironment } from "./lib";
 import { validateDeploymentConfiguration } from "./validate";
 
@@ -761,7 +761,10 @@ async function main(): Promise<void> {
     haMode = parseHaReplicationMode(process.env.ZECK_HA_REPLICATION_MODE ?? "asynchronous");
     const haTopologies = parseHaTopologyDocument(
       JSON.parse(
-        readFileSync(resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"), "utf8"),
+        readFileSync(
+          resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"),
+          "utf8",
+        ),
       ) as unknown,
     );
     const declared = haTopologies[environment];
@@ -825,7 +828,10 @@ async function main(): Promise<void> {
           await primary.terminate("stop").catch(() => undefined);
           primary.dispose();
         }
-        drillOutput = { ...drillOutput, topologyCleanup: "disposed (disposable topology; the live authority was never touched)" };
+        drillOutput = {
+          ...drillOutput,
+          topologyCleanup: "disposed (disposable topology; the live authority was never touched)",
+        };
       };
 
       // [SETUP — outside the RTO clock: the production topology exists
@@ -843,7 +849,9 @@ async function main(): Promise<void> {
           backupArtifact = await createLogicalBackup(port, authoritativeSchemas(migrations));
         });
         if (backupArtifact === null) {
-          throw new Error("the live-authority read produced no backup artifact (internal ordering defect)");
+          throw new Error(
+            "the live-authority read produced no backup artifact (internal ordering defect)",
+          );
         }
         const liveBackup: LogicalBackup = backupArtifact;
         drillOutput = {
@@ -908,10 +916,7 @@ async function main(): Promise<void> {
             applicationName,
             60_000,
           );
-          const lag = await replicationProbe.lagEvidence(
-            scratchStandby.urlFor("postgres"),
-            haMode,
-          );
+          const lag = await replicationProbe.lagEvidence(scratchStandby.urlFor("postgres"), haMode);
           preLossReplayTimestamp = lag.lastReplayTimestamp;
           drillOutput = {
             ...drillOutput,
@@ -955,10 +960,7 @@ async function main(): Promise<void> {
       const atRiskWindowMs =
         preLossReplayTimestamp === null
           ? null
-          : Math.max(
-              0,
-              haLossAt.getTime() - new Date(preLossReplayTimestamp).getTime(),
-            );
+          : Math.max(0, haLossAt.getTime() - new Date(preLossReplayTimestamp).getTime());
       drillOutput = {
         ...drillOutput,
         loss: {
@@ -1060,7 +1062,9 @@ async function main(): Promise<void> {
                 },
               };
               if (!plan.planned) {
-                throw new Error("the replay plan hit its bounded limit before classifying every envelope");
+                throw new Error(
+                  "the replay plan hit its bounded limit before classifying every envelope",
+                );
               }
             } finally {
               await handle.close();
@@ -1155,7 +1159,8 @@ async function main(): Promise<void> {
       phases.push(
         {
           name: "replication-readiness",
-          description: "observe the standby's replication state (evidence; fail closed when not in recovery)",
+          description:
+            "observe the standby's replication state (evidence; fail closed when not in recovery)",
           action: async () => {
             const state = await replicationProbe.standbyState(endpoints.standbyUrl);
             drillOutput = { ...drillOutput, standbyState: state };
@@ -1225,7 +1230,9 @@ async function main(): Promise<void> {
                 },
               };
               if (!plan.planned) {
-                throw new Error("the replay plan hit its bounded limit before classifying every envelope");
+                throw new Error(
+                  "the replay plan hit its bounded limit before classifying every envelope",
+                );
               }
             } finally {
               await handle.close();
@@ -1244,7 +1251,11 @@ async function main(): Promise<void> {
       revision,
       lossAt: effectiveLossAt,
       lastConsistentPointAt:
-        command === "authority-loss" ? startedAt : command === "authority-failover" ? haRpoAnchor : null,
+        command === "authority-loss"
+          ? startedAt
+          : command === "authority-failover"
+            ? haRpoAnchor
+            : null,
       phases,
     },
     { now: () => new Date() },
@@ -1262,7 +1273,9 @@ async function main(): Promise<void> {
     command === "authority-failover" && haTopology !== null
       ? failoverTargetForMode(haTopology, haMode)
       : target;
-  const evaluation = measuresObjectives ? evaluateDrillAgainstTarget(report, objectiveTarget) : null;
+  const evaluation = measuresObjectives
+    ? evaluateDrillAgainstTarget(report, objectiveTarget)
+    : null;
   const output = {
     tool: "deploy/drill",
     command,
@@ -1278,7 +1291,10 @@ async function main(): Promise<void> {
           }
         : {
             measured: true,
-            target: { rtoTargetMs: objectiveTarget.rtoTargetMs, rpoTargetMs: objectiveTarget.rpoTargetMs },
+            target: {
+              rtoTargetMs: objectiveTarget.rtoTargetMs,
+              rpoTargetMs: objectiveTarget.rpoTargetMs,
+            },
             evaluation,
           },
     notRun,

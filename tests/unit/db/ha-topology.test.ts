@@ -28,8 +28,8 @@ import { describe, expect, test } from "vitest";
 import { parseConnectionConfig } from "../../../src/platform/db/connection";
 import {
   failoverTargetForMode,
-  haEndpointsFromEnvironment,
   HaTopologyError,
+  haEndpointsFromEnvironment,
   parseHaReplicationMode,
   parseHaTopologyDocument,
   parseHaTopologyTargets,
@@ -114,9 +114,9 @@ describe("the HA topology declaration (WORK-057 / AVA-002)", () => {
   });
 
   test("fail closed: a missing ha block, unknown topology shape, or missing replication path", () => {
-    expect(() => parseHaTopologyTargets({ rtoTargetMs: 1, rpoTargetMs: 0, scope: "s", measurement: "m" })).toThrow(
-      HaTopologyError,
-    );
+    expect(() =>
+      parseHaTopologyTargets({ rtoTargetMs: 1, rpoTargetMs: 0, scope: "s", measurement: "m" }),
+    ).toThrow(HaTopologyError);
     expect(() => parseHaTopologyTargets(withHa({ ...VALID_HA, topology: "multi-master" }))).toThrow(
       /ha.topology must be one of primary-standby/,
     );
@@ -150,7 +150,9 @@ describe("the HA topology declaration (WORK-057 / AVA-002)", () => {
 
   test("fail closed: unbounded or empty prose", () => {
     expect(() =>
-      parseHaTopologyTargets(withHa({ ...VALID_HA, failover: { ...VALID_HA.failover, scope: "" } })),
+      parseHaTopologyTargets(
+        withHa({ ...VALID_HA, failover: { ...VALID_HA.failover, scope: "" } }),
+      ),
     ).toThrow(/scope must be a non-empty string/);
     expect(() =>
       parseHaTopologyTargets(
