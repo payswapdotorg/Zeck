@@ -18,6 +18,7 @@ happened.
 | `submission.ts` | The standard worker submission/evidence structure (exact base, final head, changed files, battery, seven-part issue protocol, NOT RUN boundaries). |
 | `report.ts` | The cumulative report projection: observed facts, failures, hypotheses, recommendations, NOT RUN. |
 | `surfaces.ts` | Surface-ownership governance: rejects simultaneous in-flight ownership of the same protected validation surface where reconciliation is non-mechanical. |
+| `evidence/` | Validation evidence documents, one per work order (`VAL-NNN.md`) — kept out of `spec/` by convention (the product e11 containment proofs diff `spec/` against the branch merge-base). |
 | `index.ts` | The public barrel. |
 
 Everything is pure: no file access, no network, no database, no

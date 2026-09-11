@@ -40,7 +40,7 @@ const completeSubmission: SubmissionRecord = {
     },
   ],
   notRun: [{ surface: "real provider voice runs", reason: "no usable test access yet" }],
-  evidenceRefs: ["spec/validation-work-orders/VAL-001-evidence.md"],
+  evidenceRefs: ["benchmarks/validation/evidence/VAL-001.md"],
 };
 
 const completeMetadata: RunMetadata = {
