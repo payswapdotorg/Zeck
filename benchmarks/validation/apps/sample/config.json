@@ -1,0 +1,10 @@
+{
+  "applicationId": "set-at-runtime-by-the-seeded-world",
+  "baseUrl": "http://127.0.0.1:0",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "recorded-at-run-time",
+  "corpusRevision": "recorded-at-run-time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 25,
+  "completionTimeoutMs": 30000
+}
