@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T22:15:00Z",
+  "asOf": "2026-09-11T22:50:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -63,8 +63,15 @@
       "title": "Cost, latency, quality, reliability and successful-outcome accounting"
     },
     "VAL-007": {
-      "status": "planned",
-      "title": "Longitudinal experiment ledger"
+      "status": "complete",
+      "title": "Longitudinal experiment ledger and immutable run identity",
+      "mergedAs": {
+        "pr": 51,
+        "mergeCommit": "9ca54fa",
+        "implementationHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
+        "finalBranchHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
+        "baseRevision": "8f2932a"
+      }
     },
     "VAL-008": {
       "status": "complete",
