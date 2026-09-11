@@ -84,7 +84,7 @@ src/modules/audit/internal/index.ts                          (unchanged skeleton
 **Declared surface — the audit migration (next available number at base):**
 
 ```text
-src/platform/db/migrations/0031_audit_compliance.sql          (NEW file; no existing file modified)
+src/platform/db/migrations/0032_audit_compliance.sql          (NEW file; no existing file modified — renumbered from 0031 by the Architect merge reconciliation after WORK-058's 0031_isolation_profiles merged first; identical content)
 ```
 
 **Declared surfaces — tests (26 files):**
@@ -140,3 +140,11 @@ docs/runbooks/d08-audit-compliance.md                        (new)
 - The migration-count reconciliation touches other Work Orders' pinned expectations — disclosed above, mechanical, and the established precedent; the Architect should verify the reconciliation matches the merge-time state (sibling migration collisions, if WORK-057/058 took 0031 too, are reconciled by the Architect per the Work Order).
 - The `audit` schema is new: no backfill exists (nothing to backfill — the projection starts empty; pre-D-08 governed actions were never recorded, an honest boundary, not a gap in this order).
 - Chain verification cost is linear in chain length (paged, bounded memory, operator-procedure frequency) — acceptable for evidence verification; not a hot path.
+
+## Architect merge reconciliation (2026-09-11, commit d072508)
+
+After the worker's final head `780aa95`, the Architect merged wave-A siblings (WORK-057 PR #38, WORK-058 PR #37) into `main` and performed the WO-assigned merge reconciliation on this branch:
+
+- `0031_audit_compliance.sql` → `0032_audit_compliance.sql` (identical content; 0031 lands as WORK-058's `0031_isolation_profiles`); all code references updated (`sql-audit-store.ts`, `audit-boundary.test.ts`, `audit.discrimination.test.ts`).
+- Migration-count pins unified at **31** with the last = `0032_audit_compliance`, second-to-last = `0031_isolation_profiles` (`d02-production-paths`, `e11-*` boundary suites, `startup.test.ts`, the two discrimination suites).
+- The branch's own battery claims in this document were executed at the pre-reconciliation heads (`2281db2`/`780aa95`) where the migration carried the 0031 number — those claims remain exact at those revisions; the full battery was re-run by the Architect at the reconciled head before merge.
