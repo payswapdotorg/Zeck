@@ -3,7 +3,6 @@
   "program": "zeck-validation",
   "status": "active",
   "eligible": [
-    "VAL-002",
     "VAL-003",
     "VAL-004"
   ],

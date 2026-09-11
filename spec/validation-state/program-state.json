@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T20:25:00Z",
+  "asOf": "2026-09-11T20:45:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -19,8 +19,16 @@
       }
     },
     "VAL-002": {
-      "status": "planned",
-      "title": "Customer-style SDK/API integration harness"
+      "status": "complete",
+      "title": "Customer-style SDK/API integration harness",
+      "mergedAs": {
+        "pr": 44,
+        "mergeCommit": "e503895",
+        "implementationHead": "29a806c81547b7dbe14611268c300f5991d4979f",
+        "finalBranchHead": "29a806c81547b7dbe14611268c300f5991d4979f",
+        "baseRevision": "e2c280f",
+        "issue": 43
+      }
     },
     "VAL-003": {
       "status": "planned",

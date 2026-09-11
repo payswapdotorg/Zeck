@@ -113,7 +113,8 @@ The deployment roadmap (D-00..D-08) and the E1.1 implementation program are COMP
 - Contract: `docs/LLM-VALIDATION-TECH-LEAD-CONTRACT.md` (max 3 concurrent workers, customer-boundary rule, issue/solution protocol).
 - State authority: `spec/validation-state/` (program/frontier/dependency). Consistency gates: `python3 scripts/validation-check.py` + `tests/unit/validation/` (CI-gated under `test:unit`).
 - Laboratory: `benchmarks/validation/` (entrypoint, state consistency, run identity, submission/evidence contract, report projection, surface-ownership governance). Evidence documents live at `benchmarks/validation/evidence/<VAL-NNN>.md` — validation PRs keep every added file OUT of `spec/` (the product e11 containment proofs diff `spec/` against the branch merge-base).
-- VAL-001 (lab bootstrap + governance) COMPLETE: PR #42 (merge d90d0da, implementation head ac22b449, base 90ceedd, issue #41). Frontier: eligible=[VAL-002, VAL-003, VAL-004], inFlight=[].
+- VAL-001 (lab bootstrap + governance) COMPLETE: PR #42 (merge d90d0da, implementation head ac22b449, base 90ceedd, issue #41).
+- VAL-002 (customer-style SDK/API integration harness) COMPLETE: PR #44 (merge e503895, implementation head 29a806c, base e2c280f, issue #43). The harness rides the public SDK through the injected transport seam; the crown proof runs the sample app against the REAL served API + real PostgreSQL. Frontier: eligible=[VAL-003, VAL-004], inFlight=[] (VAL-009 mathematically unlocked but awaits its Architect spec).
 - Operating mode: chat.z.ai worker dispatch is unavailable (account server-side blocked until 2026-09-18 18:37 UTC); the Tech Lead implements work orders directly at the integration station with the full contract rigor (branch per WO, full sequential battery, PR, CI 5/5 green, merge, state finalization). Worker dispatch resumes when the channel returns.
 
 ## Current deployment authority
