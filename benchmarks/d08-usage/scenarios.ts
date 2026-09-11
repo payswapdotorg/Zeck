@@ -24,7 +24,7 @@
  *    competence optimizer is a planner-internal surface).
  */
 
-import type { CampaignWorld } from "./world";
+import type { CampaignWorld } from "../../deploy/usage-world";
 
 export type ScenarioId =
   | "simple-deterministic"

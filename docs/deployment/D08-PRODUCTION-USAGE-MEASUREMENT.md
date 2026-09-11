@@ -5,12 +5,12 @@
 | **Deliverable role** | D-08 gate-1 usage evidence (measured production usage) |
 | **Dispatch base** | `f2b5284baffba19eaa53e2dbee6f5ba1646fe5a9` (origin/main at dispatch — E1.1 final architecture acceptance) |
 | **Campaign harness head** | `ad2738d3cac1cf5b0554d4ad41504aad972c54ba` (worker processes, release/drill/queue operator readings taken here) |
-| **Final head** | evidence-document commit `e832819fba05e48a52fffdc7e14d55378bfb952a` (branch tip may advance by this identity pin) |
+| **Final head** | boundary-remediation commit (harness relocated to `deploy/`; SHA pinned by the follow-up identity commit — see `git log` on the branch) |
 | **Branch** | `gate/d08-measured-usage` |
 | **PR** | [#32 — "D-08 gate evidence: measured production usage baseline"](https://github.com/payswapdotorg/Zeck/pull/32) |
 | **Authorization** | Tech Lead dispatch of the D-08 Gate-Evidence Worker (no GitHub issue; roadmap gate: `docs/DEPLOYMENT-ROADMAP.md` §D-08 — "D-08 may only begin after measured production usage…"; gates 2+3 already approved on main `014fb30`) |
 | **Campaign window** | 2026-09-10 08:00:30Z → 2026-09-10 09:04:18Z (wall clock, including one disclosed interruption) |
-| **Product code touched** | NONE — `git diff f2b5284..HEAD -- src/ deploy/ spec/` is empty; changes are `benchmarks/d08-usage/**`, this document, and one disclosed lint-scope line in `biome.json` |
+| **Product code touched** | NONE — `git diff f2b5284..HEAD -- src/ spec/ sdk/ tests/` is empty (no source, spec, SDK or test line changed). `deploy/` gains exactly three `usage-*` measurement-harness files (the campaign composition root relocated there by the boundary remediation — `deploy/` is the operator-composition precedent); `benchmarks/d08-usage/` holds only pure measurement definitions + raw data; plus one disclosed lint-scope line in `biome.json` |
 
 This document is a **measurement record, not a certification**. Everything below was
 actually executed in the sandbox against the real repository-defined surfaces; every
@@ -75,7 +75,9 @@ This sandbox kills every process spawned by a tool call when that call returns. 
 **observed directly**: after the session's tool bridge died mid-campaign, recovery found
 the worker and API processes dead while the PostgreSQL authority and every durable cursor
 survived. The campaign is therefore built to run as N sequential bounded **chunks**
-(`benchmarks/d08-usage/campaign.ts`):
+(`deploy/usage-campaign.ts` — the composition root lives in `deploy/`, the
+repository's operator-composition precedent, so the benchmark tree holds only
+pure measurement definitions and raw data):
 
 - Durable campaign state lives in PostgreSQL (executions, envelopes, compute plane,
   budgets) plus `data/campaign-state.json` (the work-list cursor).
@@ -387,17 +389,33 @@ deployments. Those all remain NOT RUN (§10).
 
 | file | change |
 |---|---|
-| `benchmarks/d08-usage/README.md` | new — harness documentation |
-| `benchmarks/d08-usage/campaign.ts` | new — chunked campaign driver (measurement only) |
-| `benchmarks/d08-usage/scenarios.ts` | new — 12 scenario class definitions |
-| `benchmarks/d08-usage/summarize.ts` | new — metric computation → `data/summary.json` |
-| `benchmarks/d08-usage/world.ts` | new — per-chunk world composition (API/queue/OTLP/worker) |
+| `deploy/usage-world.ts` | new — per-chunk world composition root (API server, queue stand-in, OTLP stub, REAL worker process spawn; the only file holding raw SQL seeds and `node:http`) |
+| `deploy/usage-campaign.ts` | new — the chunked campaign driver (measurement only) |
+| `deploy/usage-summarize.ts` | new — metric computation → `benchmarks/d08-usage/data/summary.json` |
+| `benchmarks/d08-usage/README.md` | new — measurement-surface documentation |
+| `benchmarks/d08-usage/scenarios.ts` | new — 12 scenario class definitions (pure measurement definitions; imports only the harness world type) |
 | `benchmarks/d08-usage/data/**` | new — 30 raw evidence files (24 at `data/` top level + 6 chunk manifests: JSONL ledgers, operator-surface captures, summary) |
 | `docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md` | new — this document |
 | `biome.json` | +1 line: lint scope excludes `benchmarks/d08-usage/data` (raw JSONL/JSON data files are not code; keeps the baseline lint gate green with raw data committed) |
 
-`src/**`, `deploy/**`, `spec/**`, `sdk/**`, `tests/**` — **unchanged** (verified:
-`git diff f2b5284..HEAD -- src/ deploy/ spec/ sdk/ tests/` is empty).
+Harness placement note (post-review boundary remediation): the three
+composition files above were initially committed under
+`benchmarks/d08-usage/` and relocated to `deploy/` (byte-identical logic;
+import specifiers and `REPO_ROOT` adjusted for the new location) after the CI
+architecture battery flagged that the benchmark non-authority boundary
+(§21) forbids network imports, `fetch(`, raw SQL and platform/module-internal
+imports under `benchmarks/`. `deploy/` is the repository's operator-composition
+precedent (`deploy/drill.ts` composes pg + platform internals + raw SQL), and
+the relocation weakens no boundary: `src/**` and `spec/**` remain untouched,
+no test was modified, and `benchmarks/d08-usage/` now holds ONLY pure
+measurement definitions + committed raw data. The campaign data files never
+moved and were never regenerated; every measured number in this document is
+exactly as recorded.
+
+`src/**`, `spec/**`, `sdk/**`, `tests/**` — **unchanged** (verified:
+`git diff f2b5284..HEAD -- src/ spec/ sdk/ tests/` is empty). `deploy/**`
+gains exactly the three `usage-*` measurement harness files above and nothing
+else.
 
 ## 13. Reproduction
 
@@ -414,11 +432,11 @@ bun run deploy:validate && bun run deploy:bootstrap -- --environment local
 bun run deploy:migrate -- --environment local
 bun run deploy:smoke -- --environment local --allow-degraded
 
-bun benchmarks/d08-usage/campaign.ts warmup
+bun deploy/usage-campaign.ts warmup
 # the campaign, as N sequential bounded chunks (sandbox reaper contract):
-bun benchmarks/d08-usage/campaign.ts chunk --chunk-id 1 --budget-seconds 360
+bun deploy/usage-campaign.ts chunk --chunk-id 1 --budget-seconds 360
 # … repeat with increasing --chunk-id until "campaign: ALL WORK COMPLETE"
-bun benchmarks/d08-usage/campaign.ts summary
+bun deploy/usage-campaign.ts summary
 ```
 
 External operator-surface captures taken around the campaign: `deploy:release status/alerts`

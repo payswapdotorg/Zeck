@@ -1,5 +1,5 @@
 /**
- * benchmarks/d08-usage/campaign.ts — the D-08 measured-usage campaign driver.
+ * deploy/usage-campaign.ts — the D-08 measured-usage campaign driver.
  *
  * CHUNKED EXECUTION (the sandbox operating contract): this sandbox kills
  * every process spawned by a tool call when that call returns (proven by a
@@ -22,16 +22,16 @@
  *     as a single uninterrupted process).
  *
  * Usage:
- *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts warmup
- *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts chunk --chunk-id 1 --budget-seconds 360
- *   ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts summary
+ *   ZECK_DATABASE_URL=… bun deploy/usage-campaign.ts warmup
+ *   ZECK_DATABASE_URL=… bun deploy/usage-campaign.ts chunk --chunk-id 1 --budget-seconds 360
+ *   ZECK_DATABASE_URL=… bun deploy/usage-campaign.ts summary
  */
 
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createUuidv7Generator } from "../../src/shared/ids";
-import { SCENARIOS, type ScenarioId, type ScenarioSpec } from "./scenarios";
-import { type CampaignWorld, DATA_DIR, startWorld } from "./world";
+import { SCENARIOS, type ScenarioId, type ScenarioSpec } from "../benchmarks/d08-usage/scenarios";
+import { createUuidv7Generator } from "../src/shared/ids";
+import { type CampaignWorld, DATA_DIR, startWorld } from "./usage-world";
 
 const generateId = createUuidv7Generator();
 const TERMINAL = new Set(["COMPLETED", "FAILED", "CANCELLED", "EXPIRED"]);
@@ -713,11 +713,11 @@ if (command === "warmup") {
   const budgetSeconds = Number.parseInt(arg("--budget-seconds", "360") ?? "360", 10);
   await runChunk(chunkId, budgetSeconds);
 } else if (command === "summary") {
-  const { summarize } = await import("./summarize");
+  const { summarize } = await import("./usage-summarize");
   await summarize();
 } else {
   console.error(
-    "usage: bun benchmarks/d08-usage/campaign.ts [warmup|chunk --chunk-id N --budget-seconds S|summary]",
+    "usage: bun deploy/usage-campaign.ts [warmup|chunk --chunk-id N --budget-seconds S|summary]",
   );
   process.exit(2);
 }

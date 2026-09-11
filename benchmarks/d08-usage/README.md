@@ -1,10 +1,22 @@
 # D-08 gate-evidence measurement harness
 
-The measured-production-usage campaign harness for the D-08 gate
-(dispatch: `gate/d08-measured-usage`). MEASUREMENT ONLY — it never mutates
-authority outside the governed paths and never claims a plane it does not
-exercise (see `docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md` for the
-evidence document this feeds).
+The measured-production-usage campaign definitions and raw data for the
+D-08 gate (dispatch: `gate/d08-measured-usage`). MEASUREMENT ONLY — the
+harness never mutates authority outside the governed paths and never claims
+a plane it does not exercise (see
+`docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md` for the evidence
+document this feeds).
+
+This directory holds the PURE MEASUREMENT surfaces only (scenario
+definitions + committed raw data). The campaign composition root lives in
+`deploy/` — the repository's operator-composition precedent, where the
+`usage-*` harness files may compose the platform internals, the SQL
+authorities and the network the same way `deploy/drill.ts` does (the
+benchmark non-authority boundary, deployment security boundary §21,
+forbids network/SQL/platform/internal access under `benchmarks/`):
+`deploy/usage-world.ts` (per-chunk world composition),
+`deploy/usage-campaign.ts` (the chunked campaign driver) and
+`deploy/usage-summarize.ts` (the metric summary pass).
 
 ## What it composes (all REAL, repository-defined surfaces)
 
@@ -30,9 +42,9 @@ bun run deploy:validate && bun run deploy:bootstrap -- --environment local
 bun run deploy:migrate -- --environment local
 bun run deploy:smoke   -- --environment local --allow-degraded
 
-bun benchmarks/d08-usage/campaign.ts warmup     # 3-execution end-to-end sanity run
-bun benchmarks/d08-usage/campaign.ts run        # the full campaign (incl. 30-min sustained window)
-bun benchmarks/d08-usage/campaign.ts summary    # metric tables → data/summary.json
+bun deploy/usage-campaign.ts warmup     # 3-execution end-to-end sanity run
+bun deploy/usage-campaign.ts chunk --chunk-id 1 --budget-seconds 360  # one bounded chunk (repeat with increasing ids)
+bun deploy/usage-campaign.ts summary    # metric tables → data/summary.json
 ```
 
 ## Scenario classes (12)

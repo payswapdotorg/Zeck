@@ -1,5 +1,5 @@
 /**
- * benchmarks/d08-usage/world.ts — the D-08 gate-evidence campaign composition
+ * deploy/usage-world.ts — the D-08 gate-evidence campaign composition
  * root (measured-production-usage baseline).
  *
  * Composes the REAL delivered system the way the repository composes it:
@@ -49,76 +49,73 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { createServer, type Server } from "node:http";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createZeckClient, type ZeckClient } from "../../sdk";
-import { type ApiServer, createApiServer } from "../../src/api";
-import { SqlAgentStore } from "../../src/modules/agents/adapters/sql-agent-store";
+import { createZeckClient, type ZeckClient } from "../sdk";
+import { type ApiServer, createApiServer } from "../src/api";
+import { SqlAgentStore } from "../src/modules/agents/adapters/sql-agent-store";
 import {
   type AgentRegistry,
   createAgentRegistry,
-} from "../../src/modules/agents/application/agent-registry";
-import { createScopeResolver, type ScopeResolver } from "../../src/modules/auth/public";
+} from "../src/modules/agents/application/agent-registry";
+import { createScopeResolver, type ScopeResolver } from "../src/modules/auth/public";
 import {
   SqlBudgetStore,
   SqlBudgetsIdempotency,
-} from "../../src/modules/budgets/adapters/sql-budget-store";
-import { createBudgetService } from "../../src/modules/budgets/application/budget-service";
+} from "../src/modules/budgets/adapters/sql-budget-store";
+import { createBudgetService } from "../src/modules/budgets/application/budget-service";
 import {
   createCapabilityRegistry,
   createInMemoryCatalogStore,
-} from "../../src/modules/capabilities/public";
+} from "../src/modules/capabilities/public";
 import {
   createCapabilityEconomicAdmission,
   createEconomicActionService,
   createPolicyEconomicAdmission,
   createSqlEconomicsModule,
   type EconomicActionService,
-} from "../../src/modules/economics/public";
+} from "../src/modules/economics/public";
 import {
   SqlExecutionStore,
   SqlExecutionsIdempotency,
-} from "../../src/modules/executions/adapters/sql-execution-store";
+} from "../src/modules/executions/adapters/sql-execution-store";
 import {
   createExecutionService,
   type ExecutionService,
-} from "../../src/modules/executions/application/execution-service";
+} from "../src/modules/executions/application/execution-service";
 import {
   createNodeDigest,
   createOpportunityAnalyzer,
   SqlOpportunityStore,
-} from "../../src/modules/learning/public";
+} from "../src/modules/learning/public";
 import {
   createExecutionAuthorization,
   createPolicyAuthority,
   InMemoryPolicyStore,
   nodePolicyHasher,
   type PolicyAuthority,
-} from "../../src/modules/policies/public";
-import { SqlSandboxStore } from "../../src/modules/sandbox/adapters/sql-sandbox-store";
-import { createEnvironmentCatalog } from "../../src/modules/sandbox/application/environment-catalog";
-import type { ComputeEnvironmentSpec } from "../../src/modules/sandbox/domain/environment";
-import { parseConnectionConfig } from "../../src/platform/db/connection";
-import { PgDatabasePort } from "../../src/platform/db/pg-database-port";
-import { createOtlpExporter } from "../../src/platform/observability/otlp";
-import {
-  BoundedTelemetrySink,
-  bindSinkEnvironment,
-} from "../../src/platform/observability/telemetry";
-import { createCloudflareQueuesTransport } from "../../src/platform/queue/cloudflare-queues";
-import { QueueCorrelationStore } from "../../src/platform/queue/correlation";
-import { DurableDispatcher } from "../../src/platform/queue/dispatcher";
-import { validateRetryPolicy } from "../../src/platform/queue/port";
-import { createUuidv7Generator } from "../../src/shared/ids";
+} from "../src/modules/policies/public";
+import { SqlSandboxStore } from "../src/modules/sandbox/adapters/sql-sandbox-store";
+import { createEnvironmentCatalog } from "../src/modules/sandbox/application/environment-catalog";
+import type { ComputeEnvironmentSpec } from "../src/modules/sandbox/domain/environment";
+import { parseConnectionConfig } from "../src/platform/db/connection";
+import { PgDatabasePort } from "../src/platform/db/pg-database-port";
+import { createOtlpExporter } from "../src/platform/observability/otlp";
+import { BoundedTelemetrySink, bindSinkEnvironment } from "../src/platform/observability/telemetry";
+import { createCloudflareQueuesTransport } from "../src/platform/queue/cloudflare-queues";
+import { QueueCorrelationStore } from "../src/platform/queue/correlation";
+import { DurableDispatcher } from "../src/platform/queue/dispatcher";
+import { validateRetryPolicy } from "../src/platform/queue/port";
+import { createUuidv7Generator } from "../src/shared/ids";
 
 import {
   type FakeQueueServer,
   startFakeCloudflareQueues,
-} from "../../tests/integration/queue/lib/fake-cloudflare-queues";
+} from "../tests/integration/queue/lib/fake-cloudflare-queues";
 
 // ---------------------------------------------------------------------------
 // Fixed campaign topology (deterministic, recorded in the evidence)
 // ---------------------------------------------------------------------------
 
-export const REPO_ROOT = resolve(fileURLToPath(new URL("../../", import.meta.url)));
+export const REPO_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 export const DATA_DIR = join(REPO_ROOT, "benchmarks/d08-usage/data");
 
 export const API_PORT = 4100;

@@ -1,5 +1,5 @@
 /**
- * benchmarks/d08-usage/summarize.ts — the D-08 campaign summary pass.
+ * deploy/usage-summarize.ts — the D-08 campaign summary pass.
  *
  * Derives the metric tables from the raw campaign data (executions.jsonl,
  * queue-depth.jsonl, observability-samples.jsonl, worker.log) and the
@@ -7,15 +7,15 @@
  * compute plane, budgets ledger). Writes data/summary.json and prints the
  * headline tables. MEASUREMENT ONLY — it mutates nothing.
  *
- * Usage: ZECK_DATABASE_URL=… bun benchmarks/d08-usage/campaign.ts summary
+ * Usage: ZECK_DATABASE_URL=… bun deploy/usage-campaign.ts summary
  * (invoked by the CLI dispatcher in campaign.ts).
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseConnectionConfig } from "../../src/platform/db/connection";
-import { PgDatabasePort } from "../../src/platform/db/pg-database-port";
-import { DATA_DIR } from "./world";
+import { parseConnectionConfig } from "../src/platform/db/connection";
+import { PgDatabasePort } from "../src/platform/db/pg-database-port";
+import { DATA_DIR } from "./usage-world";
 
 // ---------------------------------------------------------------------------
 // Small statistics helpers (nearest-rank percentiles, like the repo's harness)
