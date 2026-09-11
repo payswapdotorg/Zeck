@@ -56,6 +56,10 @@ const POLICY = loadReleasePolicy(
         dataPolicy: "",
         teardownAllowed: true,
         credentialScope: "",
+        // +region/connectivity (WORK-060 / D-08 — the environment-matrix
+        // dimensions the stub must carry since they became required fields)
+        region: "local",
+        connectivity: { internalPaths: ["loopback"] },
         promotion: {
           nextPhase: "ci",
           requires: ["governance-check", "typecheck", "lint", "full-test-suite"],
@@ -68,6 +72,8 @@ const POLICY = loadReleasePolicy(
         dataPolicy: "",
         teardownAllowed: true,
         credentialScope: "",
+        region: "preview",
+        connectivity: { internalPaths: ["tunnel"] },
         promotion: { nextPhase: "staging", requires: ["ci-gates", "preview-smoke"] },
       },
       {
@@ -77,6 +83,8 @@ const POLICY = loadReleasePolicy(
         dataPolicy: "",
         teardownAllowed: false,
         credentialScope: "",
+        region: "staging",
+        connectivity: { internalPaths: ["tunnel", "private-endpoint"] },
         promotion: {
           nextPhase: "production",
           requires: ["architect-approval", "staging-smoke", "deployment-identity-audit"],
@@ -89,6 +97,8 @@ const POLICY = loadReleasePolicy(
         dataPolicy: "",
         teardownAllowed: false,
         credentialScope: "",
+        region: "production",
+        connectivity: { internalPaths: ["private-endpoint", "tunnel"] },
         promotion: null,
       },
     ],

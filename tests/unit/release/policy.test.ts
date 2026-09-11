@@ -46,11 +46,14 @@ function manifestWith(overrides?: {
 describe("the release policy loader (WORK-047 D-06)", () => {
   test("the repository policy loads against the real environments.json ladder", () => {
     const policy = loadReleasePolicy(POLICY_SOURCE, manifestWith());
-    // The closed gate-kind vocabulary.
+    // The closed gate-kind vocabulary (+availability: WORK-060 / D-08,
+    // AVA-001 — the availability window gate; the pinned-list extension
+    // is the disclosed mechanical reconciliation).
     const kinds = policy.gateKinds.map((gate) => gate.kind).sort();
     expect(kinds).toEqual(
       [
         "architect-approval",
+        "availability",
         "ci-gates",
         "deployment-identity-audit",
         "full-test-suite",
