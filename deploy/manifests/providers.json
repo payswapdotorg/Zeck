@@ -1,6 +1,12 @@
 {
   "schemaVersion": 1,
-  "description": "Zeck provider substitution map (Deployment & Runtime Architecture D1.0 sections 3 and 19). Zeck owns authority; providers implement operational ports. Every concern has an owning port, a reference provider and a documented replacement target. Failure behavior is explicit per dependency: the authoritative relational store fails closed; every non-authoritative dependency has an explicit degraded mode.",
+  "description": "Zeck provider substitution map (Deployment & Runtime Architecture D1.0 sections 3 and 19). Zeck owns authority; providers implement operational ports. Every concern has an owning port, a reference provider and a documented replacement target. Failure behavior is explicit per dependency: the authoritative relational store fails closed; every non-authoritative dependency has an explicit degraded mode. D-08 (WORK-060 / AVA-003) adds typed steady-state redundancy: every durable concern (relational state, artifact bytes, queue transport, hosting) declares exactly one alternate provider with a governed-procedure failover profile — automatic failover is unrepresentable, and a redundancy claim carries drill-measured evidence at exact revisions (deploy:drill provider-redundancy). Free-tier doctrine applies: disposable free-tier resources are never operationally critical.",
+  "durableConcerns": [
+    "relational-state",
+    "artifact-bytes",
+    "async-transport",
+    "experience-delivery"
+  ],
   "providers": [
     {
       "id": "neon",
@@ -10,6 +16,17 @@
       "portStatus": "established",
       "portContract": "src/platform/db/port.ts",
       "substitutionTarget": "managed PostgreSQL provider",
+      "redundancy": {
+        "alternate": {
+          "id": "managed-postgresql-standby",
+          "substitutionTarget": "any managed PostgreSQL provider hosting the HA standby replica (the WORK-057 topology is provider-agnostic: connection URLs only)",
+          "failover": {
+            "mode": "governed-procedure",
+            "procedure": "deploy:drill authority-failover (the WORK-057 governed failover: split-brain guard, pg_promote, post-conditions, control-plane repoint)",
+            "measurement": "measured failover RTO/RPO by drill at the exact revision against the real topology; recovery RESTORES authority, it never reconstructs it"
+          }
+        }
+      },
       "degradation": {
         "authority": "authoritative",
         "onFailure": "fail-closed",
@@ -25,6 +42,17 @@
       "portStatus": "established",
       "portContract": "src/platform/object-store/port.ts",
       "substitutionTarget": "any S3-compatible object store",
+      "redundancy": {
+        "alternate": {
+          "id": "s3-compatible-alternate",
+          "substitutionTarget": "any S3-compatible object store (the D-07 artifact-exit substitution engine: endpoint+credentials only, digest-verified byte migration)",
+          "failover": {
+            "mode": "governed-procedure",
+            "procedure": "deploy:drill artifact-exit (byte migration + verification through recoverArtifactBytes over two ObjectStorePort endpoints)",
+            "measurement": "measured artifact-exit RTO/RPO by drill at the exact revision; artifact metadata/provenance stay authoritative in PostgreSQL"
+          }
+        }
+      },
       "degradation": {
         "authority": "non-authoritative",
         "onFailure": "degraded",
@@ -39,6 +67,17 @@
       "owningPort": "queue",
       "portStatus": "established",
       "substitutionTarget": "managed queue / broker",
+      "redundancy": {
+        "alternate": {
+          "id": "managed-queue-alternate",
+          "substitutionTarget": "any managed queue/broker implementing the QueueTransportPort contract",
+          "failover": {
+            "mode": "governed-procedure",
+            "procedure": "deploy:drill queue-recovery (transport substitution + replay convergence through the EXISTING dispatch/execution idempotency — never provider dedup)",
+            "measurement": "measured queue-recovery RTO/RPO by drill at the exact revision; a queued message is never mistaken for execution success"
+          }
+        }
+      },
       "degradation": {
         "authority": "non-authoritative",
         "onFailure": "degraded",
@@ -85,6 +124,17 @@
       "portStatus": "established",
       "portContract": "src/api/server.ts",
       "substitutionTarget": "alternate web/API host",
+      "redundancy": {
+        "alternate": {
+          "id": "independently-runnable-host",
+          "substitutionTarget": "any host running the repository-defined API entry (the D-07 proof: the server is provider-neutral by construction — configuration-only exit, no domain semantics change)",
+          "failover": {
+            "mode": "governed-procedure",
+            "procedure": "operator re-points delivery at the alternate host running the same repository entry; readiness verified with deploy:smoke / deploy:release gate run health at the exact revision",
+            "measurement": "the health/readiness gate over the alternate host (control-plane availability facts, fail-closed semantics preserved); live provider execution is drill-measured where credentials exist"
+          }
+        }
+      },
       "commercialUse": "Hobby-tier usage is permitted for personal/non-commercial development and preview only. Commercial production requires a commercially permitted plan; the API remains independently runnable so hosting can move without domain change.",
       "degradation": {
         "authority": "non-authoritative",

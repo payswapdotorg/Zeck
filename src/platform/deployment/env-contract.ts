@@ -1,5 +1,6 @@
 /**
- * Environment contract evaluation (Work Order WORK-042 AC3/AC4).
+ * Environment contract evaluation (Work Order WORK-042 AC3/AC4;
+ * D-08 / SEC-003 private-connectivity extension by WORK-060).
  *
  * Validates a concrete process environment (the operator/CI runtime)
  * against the repository-resident variable and secret-reference
@@ -14,13 +15,19 @@
  * - cross-environment references are rejected: production material is
  *   not addressable from a non-production environment (AC3);
  * - values of credential-shaped variables are never read, copied or
- *   reported — only their presence is recorded.
+ *   reported — only their presence is recorded;
+ * - D-08 / SEC-003 (WORK-060): materialized INTERNAL control-plane/
+ *   worker endpoints are classified and evaluated against the
+ *   environment's declared connectivity profile — an internal
+ *   endpoint that resolves to a public path is rejected fail closed
+ *   (validated, not documented-only).
  *
  * The evaluation result NEVER contains environment values: only
  * variable names, reference URIs (non-secret by construction) and
  * precise problem statements.
  */
 
+import { evaluateConnectivityContract, internalEndpointsOfEnvironment } from "./connectivity";
 import type { DeploymentManifest } from "./manifest";
 import type { EnvironmentId } from "./naming";
 
@@ -107,6 +114,20 @@ export function evaluateEnvironmentContract(
   // NOTE: credential-shaped variables (ZECK_PG_ADMIN_URL, ZECK_TOKEN, …)
   // are never inspected here: presence may be recorded by callers, but
   // values are not read, copied or reported by this module.
+
+  // D-08 / SEC-003 (WORK-060): private connectivity is VALIDATED, not
+  // documented-only — the materialized internal control-plane/worker
+  // endpoints are classified against the environment's declared
+  // profile (a public internal path is refused for every class; the
+  // profile can only authorize loopback/private classes).
+  const environmentRecord = manifest.environments.find((entry) => entry.id === environment);
+  if (environmentRecord !== undefined) {
+    const connectivity = evaluateConnectivityContract(
+      environmentRecord.connectivity,
+      internalEndpointsOfEnvironment(env),
+    );
+    problems.push(...connectivity.problems);
+  }
 
   return {
     environment,

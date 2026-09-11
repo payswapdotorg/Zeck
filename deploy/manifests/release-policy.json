@@ -57,6 +57,12 @@
       "tool": "deploy:release gate run health"
     },
     {
+      "kind": "availability",
+      "scope": "environment",
+      "evidence": "The monthly control-plane availability window computed from typed interval observations at the exact release revision (AVA-001): measured availability vs the environment's declared target with fail-closed semantics classified (a refused-to-serve interval against a dead authority is CORRECT behavior, never counted as serving; a served-against-dead-authority interval violates the semantics).",
+      "tool": "deploy:release availability"
+    },
+    {
       "kind": "preview-smoke",
       "scope": "environment",
       "evidence": "deploy:smoke attestation passed for the preview environment at the exact release revision (identity + environment contract + readiness).",
