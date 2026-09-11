@@ -106,6 +106,16 @@ Stop and request Architect amendment whenever implementation would require:
 
 E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. Provider snapshots, warm pools, directory snapshots, readiness probes, scheduling and provider-local state remain mechanisms rather than Zeck authorities.
 
+## Current validation program authority (2026-09-11)
+
+The deployment roadmap (D-00..D-08) and the E1.1 implementation program are COMPLETE (e00745f). The ACTIVE program is the **Zeck Validation Roadmap** (`docs/VALIDATION-ROADMAP.md`, VAL-000..VAL-052):
+
+- Contract: `docs/LLM-VALIDATION-TECH-LEAD-CONTRACT.md` (max 3 concurrent workers, customer-boundary rule, issue/solution protocol).
+- State authority: `spec/validation-state/` (program/frontier/dependency). Consistency gates: `python3 scripts/validation-check.py` + `tests/unit/validation/` (CI-gated under `test:unit`).
+- Laboratory: `benchmarks/validation/` (entrypoint, state consistency, run identity, submission/evidence contract, report projection, surface-ownership governance). Evidence documents live at `benchmarks/validation/evidence/<VAL-NNN>.md` — validation PRs keep every added file OUT of `spec/` (the product e11 containment proofs diff `spec/` against the branch merge-base).
+- VAL-001 (lab bootstrap + governance) COMPLETE: PR #42 (merge d90d0da, implementation head ac22b449, base 90ceedd, issue #41). Frontier: eligible=[VAL-002, VAL-003, VAL-004], inFlight=[].
+- Operating mode: chat.z.ai worker dispatch is unavailable (account server-side blocked until 2026-09-18 18:37 UTC); the Tech Lead implements work orders directly at the integration station with the full contract rigor (branch per WO, full sequential battery, PR, CI 5/5 green, merge, state finalization). Worker dispatch resumes when the channel returns.
+
 ## Current deployment authority
 
 D-07 and the FULL E1.1 implementation program are complete: 048 PR #14, 049 PR #16, 050 PR #18, 051 PR #24, 052 PR #22, 053 PR #26, 054 PR #27, 055 PR #29, 056 PR #31. All ten planes merged (tool-surface, context-economics, model-economics, substrate-economics, failure-recovery, competence-economics over the execution-ir/compiler/decision-record foundation). Post-WORK-055 C9 stale-pin reconciled by the Architect (84b96af, drift-immune dynamic merge-base). Nothing is in flight; the next stage of work requires new Architect-issued Work Orders per the charter.
