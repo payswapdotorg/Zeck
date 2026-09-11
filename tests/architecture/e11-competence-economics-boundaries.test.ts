@@ -402,6 +402,19 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     expect(changed).toBe("");
     // And the branch's own commits never touch the import-only
     // surfaces (the mechanical zero-diff proof over the full branch).
+    // Main-safe guard (2026-09-11, Architect — completing the WORK-055
+    // C9 reconciliation pattern of 84b96af for this plane): the
+    // branch-shape assertions are meaningful ONLY on a work branch. On
+    // main itself the merge-base IS the checkout head, so there are no
+    // branch-local changes by construction; the proof reduces to the
+    // import-only zero-diff above. Without this guard every CI run on
+    // main fails C9 with "expected 0 to be greater than 0" (observed
+    // since the WORK-056 merge; a work branch still gets the full
+    // surface-containment check).
+    const headSha = execSync("git rev-parse HEAD", {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    }).trim();
     const branchChanges = execSync(`git diff --name-only ${mergeBase}..HEAD`, {
       cwd: REPO_ROOT,
       encoding: "utf8",
@@ -409,12 +422,14 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
       .trim()
       .split("\n")
       .filter((line) => line.length > 0);
-    expect(branchChanges.length).toBeGreaterThan(0);
-    for (const path of branchChanges) {
-      expect(
-        /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/.test(path),
-        `${path} is outside the Declared Change Surfaces`,
-      ).toBe(true);
+    if (mergeBase !== headSha) {
+      expect(branchChanges.length).toBeGreaterThan(0);
+      for (const path of branchChanges) {
+        expect(
+          /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/.test(path),
+          `${path} is outside the Declared Change Surfaces`,
+        ).toBe(true);
+      }
     }
   });
 });
