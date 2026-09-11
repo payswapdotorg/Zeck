@@ -176,9 +176,23 @@ export interface QuotaGuardRule {
   readonly defaultLimitBytes: number | null;
 }
 
+/** One environment's monthly control-plane availability target (AVA-001). */
+export interface AvailabilityTargetRecord {
+  readonly environment: string;
+  readonly monthlyAvailabilityTargetPct: number;
+}
+
 export interface QuotaGuardsPolicy {
   readonly guards: readonly QuotaGuardRule[];
   readonly operationalThresholds: readonly OperationalThreshold[];
+  /**
+   * The control-plane availability targets per environment (D-08 /
+   * WORK-060 / AVA-001) — REQUIRED: a policy without availability
+   * targets is invalid (the measurement dimension is first-class). The
+   * production target must be ≥ 99.9 (a weaker production target is
+   * unrepresentable at this loader — the AVA-001 wiring).
+   */
+  readonly availabilityTargets: readonly AvailabilityTargetRecord[];
 }
 
 export class QuotaGuardsPolicyError extends Error {
@@ -307,5 +321,56 @@ export function loadQuotaGuardsPolicy(source: string): QuotaGuardsPolicy {
       `invalid quota-guards policy (${problems.length} problem(s)):\n- ${problems.join("\n- ")}`,
     );
   }
-  return { guards, operationalThresholds };
+
+  // --- availability targets (D-08 / WORK-060 / AVA-001) -------------
+  // REQUIRED, ordered, per environment — and the production target is
+  // pinned at ≥ 99.9: the AVA-001 control-plane availability target is
+  // wired as the production-class threshold here (a weaker production
+  // target is unrepresentable, never a silent weakening).
+  const availabilitySource = record.availability;
+  if (typeof availabilitySource !== "object" || availabilitySource === null) {
+    throw new QuotaGuardsPolicyError(
+      "quota-guards.json: availability must be an object (the control-plane availability targets are required — AVA-001)",
+    );
+  }
+  const targetsSource = (availabilitySource as Record<string, unknown>).targets;
+  if (typeof targetsSource !== "object" || targetsSource === null) {
+    throw new QuotaGuardsPolicyError(
+      "quota-guards.json: availability.targets must be an object (one entry per environment class)",
+    );
+  }
+  const availabilityTargets: AvailabilityTargetRecord[] = [];
+  for (const [environment, raw] of Object.entries(targetsSource)) {
+    if (typeof raw !== "object" || raw === null) {
+      throw new QuotaGuardsPolicyError(
+        `quota-guards.json: availability.targets.${environment} must be an object`,
+      );
+    }
+    const targetPct = (raw as Record<string, unknown>).monthlyAvailabilityTargetPct;
+    if (
+      typeof targetPct !== "number" ||
+      !Number.isFinite(targetPct) ||
+      targetPct <= 0 ||
+      targetPct > 100
+    ) {
+      throw new QuotaGuardsPolicyError(
+        `quota-guards.json: availability.targets.${environment}.monthlyAvailabilityTargetPct must be a percentage in (0, 100] (got: ${String(targetPct)})`,
+      );
+    }
+    if (environment === "production" && targetPct < 99.9) {
+      throw new QuotaGuardsPolicyError(
+        `quota-guards.json: the production availability target must be ≥ 99.9 (AVA-001; got: ${targetPct}) — a weaker production target is unrepresentable`,
+      );
+    }
+    availabilityTargets.push({ environment, monthlyAvailabilityTargetPct: targetPct });
+  }
+  for (const environment of ["local", "preview", "staging", "production"]) {
+    if (!availabilityTargets.some((target) => target.environment === environment)) {
+      throw new QuotaGuardsPolicyError(
+        `quota-guards.json: availability.targets must declare "${environment}" (every environment class carries an availability target)`,
+      );
+    }
+  }
+
+  return { guards, operationalThresholds, availabilityTargets };
 }

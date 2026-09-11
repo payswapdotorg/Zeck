@@ -222,6 +222,9 @@ export const ALERT_KINDS = [
   "quota-critical",
   "error-rate",
   "deployment-failure",
+  // D-08 / WORK-060 (AVA-001): the control-plane availability alert
+  // (a below-target window, or a fail-closed-semantics violation).
+  "availability",
 ] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
