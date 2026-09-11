@@ -108,4 +108,13 @@ Secondary implementations must not create a second authority for a requirement.
 | ECO-007 | WORK-032 | economic actions are idempotent, retry-safe, concurrency-safe and fully evidenced | concurrency/provenance integration test |
 | ECO-008 | WORK-032 | economic outcomes feed Learning without authorizing spending | learning-authority discrimination test |
 
-Total requirements: **102**.
+| AVA-001 | WORK-060 | availability target measured via D-06 surfaces with fail-closed semantics | availability computation + alert integration test |
+| AVA-002 | WORK-057 | HA topology with governed failover, measured RTO/RPO, invariant-gate proof | authority-failover drill over real PostgreSQL primary+standby |
+| AVA-003 | WORK-060 | typed alternate providers per durable concern with drill-measured failover | redundancy declaration + failover drill evidence |
+| AVA-004 | WORK-057 | replay convergence on the HA topology with zero duplicated side effects | transport-loss + failover convergence drill (ledger equality) |
+| SEC-001 | WORK-058 | worker/runner tenant scoping by construction incl. evacuation/reassignment | tenant-isolation discrimination battery |
+| SEC-002 | WORK-058 | strict + dedicated-customer isolation profiles, governed selection | profile admission + pool-isolation tests |
+| SEC-003 | WORK-060 | private connectivity profiles + region/residency constraint consumed by policy | environment validation + residency fail-closed tests |
+| SEC-004 | WORK-059 | append-only audit projection with export, retention, legal hold | immutability/tamper/export/retention/hold battery |
+
+Total requirements: **110**.

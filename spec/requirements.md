@@ -157,4 +157,15 @@
 - ECO-007: Economic actions preserve idempotency, retry safety, concurrency safety and complete economic provenance.
 - ECO-008: Economic outcomes can feed Learning as evidence or recommendations but learning never authorizes spending.
 
-Total requirements: **102**.
+## D-08 availability and security (growth and enterprise hardening)
+
+- AVA-001: The control-plane availability target is at least 99.9% monthly in the production environment class, measured by the D-06 release-control/observability surfaces with exact-revision identity, preserving fail-closed semantics (a degraded control plane that refuses to serve against a dead authority is correct behavior, measured as such).
+- AVA-002: PostgreSQL remains the sole durable authority with a high-availability topology (primary + standby) and a governed failover procedure: production RPO at most 60 seconds asynchronous (0 synchronous where configured), authority-failover RTO at most 15 minutes, measured by executing the drill against the topology, with the D-07 invariant-gate restore proof passing identically after failover.
+- AVA-003: No durable concern (relational state, artifact bytes, queue transport, hosting) depends on a single external provider in the production class: each concern declares a typed alternate provider with drill-measured failover evidence, and disposable free-tier resources are never operationally critical.
+- AVA-004: Queue and workflow replay convergence proven for the D-07 total-transport-loss scenario holds on the HA topology: in-flight governed work converges through the existing dispatch/execution idempotency — never provider dedup — with zero duplicated side effects.
+- SEC-001: Cross-tenant data access is impossible by construction at the worker/runner plane: claims, artifacts, secrets and evidence are scoped to the requesting tenant/application identity through the existing identity-to-policy boundary, discrimination-tested including under worker evacuation and reassignment.
+- SEC-002: The sandbox authority provides hardened isolation profiles — a strict class for untrusted/consequential work and dedicated customer runner profiles with isolated resource pools (no shared claim/artifact/secret state) — with profile selection as a governed policy/capability decision, never an ambient default.
+- SEC-003: Internal control-plane/worker communication does not traverse public paths in the production class (private connectivity profiles in the environment matrix); region is a first-class deployment dimension with tenant-declared data-residency constraints enforced at the existing deployment/adapter seams and consumed by policy, never a new authority.
+- SEC-004: The evidence authority provides an immutable, complete audit projection of governed actions (who/what/when/why with provenance) with compliance export, retention policy and legal hold; audit records are append-only evidence, never a second ledger or authorization source.
+
+Total requirements: **110**.

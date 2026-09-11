@@ -96,7 +96,9 @@ Exact synchronized GitHub Actions at the accepted head passed: Repository Govern
 
 **Gate record (2026-09-10, Architect):** requirements satisfied by `docs/DEPLOYMENT-ROADMAP-D08-REQUIREMENTS.md` (AVA-001..004, SEC-001..004); architecture extension approved by ADR-0021 / ACR-005; measured production usage evidence in flight on branch `gate/d08-measured-usage` (`docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md`). D-08 becomes executable when that evidence is merged and the Architect issues D-08 Work Orders with frontier authorization.
 
-**Status:** GATES 2/3 SATISFIED / GATE 1 IN FLIGHT — authorized to begin once the usage-baseline evidence merges.
+**Status:** GATES COMPLETE — D-08 UNLOCKED (wave A in authorization).
+
+**Gate record (2026-09-11, Architect):** gate-1 evidence ACCEPTED and merged as PR #32 (merge commit `f5feb14`; the measured production usage baseline `docs/deployment/D08-PRODUCTION-USAGE-MEASUREMENT.md` with its raw data and reusable harness under `benchmarks/d08-usage/` + `deploy/usage-*`). All three D-08 gates are satisfied. The Architect issues the D-08 Work Orders: WORK-057 (HA authoritative state + failover, AVA-002/004), WORK-058 (compute isolation classes + runtime tenant isolation, SEC-001/002), WORK-059 (audit/compliance controls, SEC-004) — wave A, disjoint surfaces, up to three concurrent workers; WORK-060 (provider redundancy, private connectivity, residency, availability measurement, AVA-001/003 + SEC-003) — wave B, after WORK-057 merges. Frontier authorization recorded in `spec/development-state/frontier-state.json`.
 
 ## Execution ordering
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "artifact": "ai-execution-os-development-state/program-state",
   "protocol": "repository-resident parallel implementation protocol",
-  "asOf": "2026-09-10T06:30:00Z",
+  "asOf": "2026-09-11T04:30:00Z",
   "governing": {
     "architectureVersion": "v1.0",
     "architectureVersionState": "frozen-after-approval",
@@ -15,8 +15,8 @@
     ]
   },
   "requirementCatalog": {
-    "version": 3,
-    "count": 102,
+    "version": 4,
+    "count": 110,
     "source": "spec/requirements.md"
   },
   "workOrders": [
@@ -1367,6 +1367,70 @@
         "implementationHead": "dfd397cca47996522690d38d96a5a62ad347ef7b",
         "finalBranchHead": "6bf510b",
         "baseRevision": "201756c91f4451312b2e72258f2121b0022bac51"
+      }
+    },
+    {
+      "id": "WORK-057",
+      "title": "High-availability authoritative state and failover",
+      "status": "pending",
+      "dependencies": [
+        "WORK-048"
+      ],
+      "surfaces": {
+        "modules": [
+          "platform-db",
+          "deploy-drill"
+        ],
+        "haTopology": true,
+        "failover": true
+      }
+    },
+    {
+      "id": "WORK-058",
+      "title": "Compute isolation classes and runtime tenant isolation",
+      "status": "pending",
+      "dependencies": [
+        "WORK-046"
+      ],
+      "surfaces": {
+        "modules": [
+          "sandbox",
+          "platform-compute"
+        ],
+        "isolationProfiles": true,
+        "tenantIsolation": true
+      }
+    },
+    {
+      "id": "WORK-059",
+      "title": "Advanced audit and compliance controls",
+      "status": "pending",
+      "dependencies": [
+        "WORK-047"
+      ],
+      "surfaces": {
+        "modules": [
+          "audit"
+        ],
+        "auditProjection": true
+      }
+    },
+    {
+      "id": "WORK-060",
+      "title": "Provider redundancy, private connectivity, residency and availability measurement",
+      "status": "pending",
+      "dependencies": [
+        "WORK-057"
+      ],
+      "surfaces": {
+        "modules": [
+          "policies",
+          "platform-observability",
+          "platform-deployment"
+        ],
+        "providerRedundancy": true,
+        "residency": true,
+        "availability": true
       }
     }
   ],

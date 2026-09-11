@@ -35,6 +35,10 @@ For dispatch/review/orchestration behavior also read:
 - E1.1 / WORK-055: COMPLETE — merged as PR #29 (merge commit ef929a4, implementation head 962afcb, dispatch base 9b6fa2f).
 - E1.1 / WORK-056: COMPLETE — merged as PR #31 (merge commit 3318a8a, implementation head dfd397c, integration head 6bf510b incl. the Architect C9 pin reconciliation, dispatch base 201756c).
 
+- D-08 gate-1 (measured production usage): COMPLETE — merged as PR #32 (merge commit f5feb14, evidence head be6642f incl. the boundary remediation + architect C9 reconciliation; dispatch base f2b5284).
+- D-08 gates 2+3: APPROVED (014fb30 — AVA-001..004 / SEC-001..004 + ADR-0021/ACR-005).
+- D-08 UNLOCKED: WORK-057/058/059 authorized as wave A (frontier eligible), WORK-060 wave B (blocked on WORK-057). Requirements catalog v4 (110 requirements: AVA-001..004, SEC-001..004).
+
 **THE E1.1 IMPLEMENTATION PROGRAM IS COMPLETE** — all nine charter Work Orders (WORK-048 through WORK-056) are implemented, reviewed, merged and finalized. The frontier is empty; future stages require new Architect Work Orders.
 
 - E1.1 final architecture acceptance: RECORDED 2026-09-10 against `main` `8e88a84` (see `docs/architecture-changes/ACR-004-...md#final-architecture-acceptance` and `program-state.json postMergeFinalization.finalArchitectureAcceptance`). The E1.1 program is fully closed.
