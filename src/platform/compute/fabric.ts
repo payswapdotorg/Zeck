@@ -220,6 +220,14 @@ export interface WorkerIdentity {
   readonly applicationId: string;
   readonly kind: WorkerRegistrationInput["kind"];
   readonly runnerId?: string;
+  /**
+   * The dedicated runner pool binding (WORK-058 / SEC-002 — the runner
+   * profile wiring): customer-runner workers serving a dedicated pool
+   * carry the typed pool identity; first-party workers never do. The
+   * binding rides the durable registration and the claim gate enforces
+   * it (dedicated-customer environments admit only same-pool workers).
+   */
+  readonly poolId?: string;
   readonly declaredConcurrency: number;
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
@@ -266,6 +274,7 @@ export class ExecutionWorkerFabric {
       applicationId: this.identity.applicationId,
       kind: this.identity.kind,
       ...(this.identity.runnerId === undefined ? {} : { runnerId: this.identity.runnerId }),
+      ...(this.identity.poolId === undefined ? {} : { poolId: this.identity.poolId }),
       declaredConcurrency: this.identity.declaredConcurrency,
       ...(this.identity.metadata === undefined ? {} : { metadata: this.identity.metadata }),
     };

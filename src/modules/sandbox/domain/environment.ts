@@ -31,6 +31,21 @@
  *     (`containsRawSecretValue`, M8) and no value field exists anywhere.
  */
 
+// WORK-058 / SEC-002: the isolation-profile family rides the spec (typed
+// data; provider-neutral vocabulary — no substrate mechanics here). The
+// declaration is validated with the spec and projected onto the durable
+// record's class/pool columns at registration.
+import type { IsolationProfileDeclaration } from "./isolation";
+import {
+  deriveIsolationProfile,
+  type IsolationProfileClass,
+  isIsolationProfileClass,
+  validateIsolationProfileDeclaration,
+} from "./isolation";
+
+export type { IsolationProfileClass, IsolationProfileDeclaration };
+export { deriveIsolationProfile, isIsolationProfileClass };
+
 // ---------------------------------------------------------------------------
 // Environment kinds (ENV-001; aligned with the policies isolation ladder)
 // ---------------------------------------------------------------------------
@@ -211,6 +226,14 @@ export interface SandboxCostExpectation {
 export interface ComputeEnvironmentSpec {
   readonly kind: SandboxEnvironmentKind;
   /**
+   * The isolation-profile declaration (WORK-058 / SEC-002). ABSENT =
+   * the legacy `standard` class (a durable-record reading of
+   * pre-WORK-058 environments — never a runtime default; the durable
+   * columns cross-check the spec, so an ambient assignment is
+   * physically unrepresentable).
+   */
+  readonly isolation?: IsolationProfileDeclaration;
+  /**
    * Mandatory (non-null) for executing kinds; MUST be null for
    * `no-execution` (nothing runs — there is nothing to bound).
    */
@@ -237,6 +260,10 @@ export interface ComputeEnvironmentRecord {
   readonly kind: SandboxEnvironmentKind;
   readonly spec: ComputeEnvironmentSpec;
   readonly specDigest: string;
+  /** The admitted isolation-profile class (the durable spec projection). */
+  readonly isolationClass: IsolationProfileClass;
+  /** The dedicated runner pool identity (dedicated-customer only; else null). */
+  readonly poolId: string | null;
   readonly status: EnvironmentLifecycleStatus;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -482,6 +509,29 @@ function validateSecrets(
   }
 }
 
+function validateIsolation(
+  spec: ComputeEnvironmentSpec,
+  executing: boolean,
+  issues: SpecValidationIssue[],
+): void {
+  const profile = validateIsolationProfileDeclaration({
+    kind: spec.kind,
+    ...(spec.isolation === undefined ? {} : { isolation: spec.isolation }),
+    egress: spec.network?.egress ?? "",
+    workspace: spec.filesystem?.workspace ?? "",
+    secretRefs: spec.secrets?.secretRefs ?? [],
+  });
+  for (const issue of profile.issues) {
+    issues.push({ field: issue.field, reason: issue.reason });
+  }
+  if (!executing && spec.isolation !== undefined && spec.isolation.class === "strict") {
+    issues.push({
+      field: "isolation.class",
+      reason: "a no-execution environment cannot declare the strict class (nothing runs to harden)",
+    });
+  }
+}
+
 /**
  * Validate a complete provider-neutral environment specification. Pure and
  * total: every issue is typed and field-qualified; no I/O.
@@ -503,6 +553,7 @@ export function validateComputeEnvironmentSpec(spec: ComputeEnvironmentSpec): Sp
   validateNetwork(spec.network, executing, issues);
   validateFilesystem(spec.filesystem, executing, issues);
   validateSecrets(spec.secrets, executing, issues);
+  validateIsolation(spec, executing, issues);
 
   if (!executing) {
     if (spec.runtime !== null) {

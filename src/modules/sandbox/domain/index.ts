@@ -4,5 +4,6 @@
  * import from one place.
  */
 export * from "./environment";
+export * from "./isolation";
 export * from "./sandbox";
 export * from "./workload";

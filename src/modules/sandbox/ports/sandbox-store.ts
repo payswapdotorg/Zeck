@@ -54,6 +54,15 @@ export interface InsertEnvironmentInput {
   readonly kind: string;
   readonly spec: Readonly<Record<string, unknown>>;
   readonly specDigest: string;
+  /**
+   * The isolation-profile class of the spec (WORK-058 / SEC-002) — the
+   * indexed projection of `spec.isolation` (the single source). The
+   * schema's consistency trigger rejects any disagreement, so an
+   * ambient assignment through the columns is unrepresentable.
+   */
+  readonly isolationClass: string;
+  /** The dedicated runner pool identity (dedicated-customer only; else null). */
+  readonly poolId: string | null;
   readonly createdAt: string;
 }
 

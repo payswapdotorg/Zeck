@@ -30,6 +30,7 @@
  */
 
 import type { SandboxEnvironmentKind } from "./environment";
+import type { IsolationProfileClass } from "./isolation";
 
 // ---------------------------------------------------------------------------
 // Sandbox lifecycle (subordinate bookkeeping — never an execution system)
@@ -266,6 +267,17 @@ export interface SandboxRuntimeMetadata {
   readonly kind: SandboxEnvironmentKind;
   readonly environmentId: string;
   readonly environmentDigest: string;
+  /**
+   * The admitted isolation-profile class (WORK-058 / SEC-002): the
+   * governed profile this snapshot executes under — written once at
+   * admission from the environment's declared profile and replayed at
+   * dispatch from THIS immutable snapshot (a dispatch-time profile
+   * disagreement is unrepresentable — the dispatched work is always
+   * the admitted work).
+   */
+  readonly isolationClass: IsolationProfileClass;
+  /** The dedicated runner pool identity (dedicated-customer only; else null). */
+  readonly isolationPoolId: string | null;
   readonly task: SandboxTask;
   readonly limits: import("./environment").SandboxResourceLimits | null;
   readonly network: import("./environment").SandboxNetworkPolicy;
