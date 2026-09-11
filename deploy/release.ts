@@ -47,6 +47,13 @@ import {
   hasCriticalAlert,
   loadQuotaGuardsPolicy,
 } from "../src/platform/observability/alerts";
+import {
+  AVAILABILITY_OUTCOMES,
+  type AvailabilityInterval,
+  type AvailabilityWindowRecord,
+  availabilityAlertOf,
+  computeAvailabilityWindow,
+} from "../src/platform/observability/availability";
 import type {
   OperationalAlert,
   QuotaUtilizationSnapshot,
@@ -74,10 +81,19 @@ const ACTOR_DEFAULT = "release-operator";
 
 function requireReleaseCommand(argv: readonly string[]): string {
   const command = argv[0] as string;
-  const commands = ["record", "gate", "promote", "rollback", "inspect", "status", "alerts"];
+  const commands = [
+    "record",
+    "gate",
+    "promote",
+    "rollback",
+    "inspect",
+    "status",
+    "alerts",
+    "availability",
+  ];
   if (!commands.includes(command)) {
     console.error(
-      "error: command required: record | gate <run|attach> | promote | rollback | inspect | status | alerts",
+      "error: command required: record | gate <run|attach> | promote | rollback | inspect | status | alerts | availability",
     );
     process.exit(2);
   }
@@ -234,6 +250,7 @@ export async function collectOperationalSnapshots(
 export async function evaluateAlerts(
   db: DatabasePort,
   environment: string,
+  options: { readonly store?: SqlReleaseControlStore } = {},
 ): Promise<readonly OperationalAlert[]> {
   const policy = loadQuotaGuardsPolicy(
     readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/quota-guards.json`, "utf8"),
@@ -248,7 +265,252 @@ export async function evaluateAlerts(
     await collectOperationalSnapshots(db),
     policy.operationalThresholds,
   );
-  return [...quotaAlerts, ...operational];
+  // D-08 / WORK-060 (AVA-001) alert-state integration: the LATEST
+  // recorded availability window of the environment's active release
+  // contributes its availability alert (below-target or
+  // semantics-violated windows surface here — and a critical alert
+  // blocks promotion through the existing guardrail).
+  const availabilityAlerts: OperationalAlert[] = [];
+  if (options.store !== undefined) {
+    if (isHostingEnvironment(environment)) {
+      const record = await latestAvailabilityRecord(options.store, environment);
+      if (record !== null) {
+        const alert = availabilityAlertOf(record);
+        if (alert !== null) {
+          availabilityAlerts.push(alert);
+        }
+      }
+    }
+  }
+  return [...quotaAlerts, ...operational, ...availabilityAlerts];
+}
+
+// ---------------------------------------------------------------------------
+// Availability measurement (D-08 / WORK-060; AVA-001)
+// ---------------------------------------------------------------------------
+
+/** The availability gate kind (declared in release-policy.json). */
+const AVAILABILITY_GATE_KIND = "availability";
+
+/**
+ * Parse an availability window record back out of recorded gate
+ * evidence (typed, fail-closed: unparsable or non-availability detail
+ * returns null — it is not availability evidence).
+ */
+export function parseAvailabilityRecordDetail(
+  evidenceDetail: string,
+): AvailabilityWindowRecord | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(evidenceDetail);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+  if (typeof record.environment !== "string" || typeof record.window !== "string") {
+    return null;
+  }
+  if (typeof record.availabilityPct !== "number" || typeof record.targetPct !== "number") {
+    return null;
+  }
+  if (record.failClosedSemantics !== "preserved" && record.failClosedSemantics !== "violated") {
+    return null;
+  }
+  const numeric = (key: string): number =>
+    typeof record[key] === "number" ? (record[key] as number) : 0;
+  return {
+    environment: record.environment,
+    window: record.window,
+    releaseId: typeof record.releaseId === "string" ? record.releaseId : "",
+    gitRevision: typeof record.gitRevision === "string" ? record.gitRevision : "",
+    manifestDigest: typeof record.manifestDigest === "string" ? record.manifestDigest : "",
+    intervalCount: numeric("intervalCount"),
+    totalMs: numeric("totalMs"),
+    servedMs: numeric("servedMs"),
+    refusedFailClosedMs: numeric("refusedFailClosedMs"),
+    unavailableMs: numeric("unavailableMs"),
+    servedAgainstDeadAuthorityMs: numeric("servedAgainstDeadAuthorityMs"),
+    availabilityPct: record.availabilityPct,
+    targetPct: record.targetPct,
+    withinTarget: record.withinTarget === true,
+    failClosedSemantics: record.failClosedSemantics,
+    evidenceDigest: typeof record.evidenceDigest === "string" ? record.evidenceDigest : "",
+  };
+}
+
+/**
+ * The latest recorded availability window of the environment's ACTIVE
+ * release (or null when none is recorded / the release is not yet
+ * activated). Reads the release ledger only — never a provider
+ * dashboard.
+ */
+export async function latestAvailabilityRecord(
+  store: SqlReleaseControlStore,
+  environment: HostingEnvironment,
+): Promise<AvailabilityWindowRecord | null> {
+  const active = await store.activeDeployment(environment);
+  const releaseId = active?.releaseId;
+  if (releaseId === undefined) {
+    return null;
+  }
+  const gates = await store.effectiveGateResults(releaseId, environment);
+  const availabilityGates = gates.filter((gate) => gate.gateKind === AVAILABILITY_GATE_KIND);
+  const latest = availabilityGates[availabilityGates.length - 1];
+  if (latest === undefined) {
+    return null;
+  }
+  return parseAvailabilityRecordDetail(latest.evidenceDetail);
+}
+
+/** Load + validate the typed interval observations file (fail closed). */
+function loadAvailabilityObservations(source: string): readonly AvailabilityInterval[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch (error) {
+    throw new Error(`the observations file is not valid JSON: ${(error as Error).message}`);
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !Array.isArray((parsed as { intervals?: unknown }).intervals)
+  ) {
+    throw new Error(
+      'the observations file must be { "intervals": [{ startedAt, endedAt, outcome }, ...] }',
+    );
+  }
+  const intervals = (parsed as { intervals: readonly unknown[] }).intervals;
+  return intervals.map((raw, index) => {
+    if (typeof raw !== "object" || raw === null) {
+      throw new Error(`intervals[${index}] must be an object`);
+    }
+    const interval = raw as Record<string, unknown>;
+    const outcome = interval.outcome;
+    if (
+      typeof outcome !== "string" ||
+      !(AVAILABILITY_OUTCOMES as readonly string[]).includes(outcome)
+    ) {
+      throw new Error(
+        `intervals[${index}].outcome must be one of ${AVAILABILITY_OUTCOMES.join("|")} (got: "${String(outcome)}")`,
+      );
+    }
+    return {
+      startedAt: String(interval.startedAt ?? ""),
+      endedAt: String(interval.endedAt ?? ""),
+      outcome: outcome as AvailabilityInterval["outcome"],
+    };
+  });
+}
+
+/**
+ * Compute + record one monthly availability window as exact-revision
+ * gate evidence (the AVA-001 measurement surface):
+ *  - observations arrive as a typed JSON file (accumulated from the
+ *    readiness/telemetry plane — the smoke/health gate runs and the
+ *    readiness evaluator feed the same outcome vocabulary);
+ *  - the target comes from the repository quota-guards policy (the
+ *    production threshold is pinned ≥ 99.9 at the loader);
+ *  - the record carries the exact release identity (releaseId over
+ *    gitRevision + manifestDigest — RELEASE-IDENTITY);
+ *  - the evidence is append-only gate evidence; the computation is
+ *    deterministic per observation set (IDENTITY-IDEMPOTENCY: the
+ *    same window + observations + revision produce the identical
+ *    evidence digest);
+ *  - a below-target or semantics-violated window records a FAILED
+ *    gate and exits 1 (honest measurement, never a silent PASS).
+ */
+async function commandAvailability(
+  environment: HostingEnvironment,
+  windowLabel: string,
+  observationsPath: string,
+  actor: string,
+): Promise<void> {
+  const policy = loadQuotaGuardsPolicy(
+    readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/quota-guards.json`, "utf8"),
+  );
+  const target = policy.availabilityTargets.find((entry) => entry.environment === environment);
+  if (target === undefined) {
+    console.error(
+      `error: no availability target declared for environment "${environment}" in quota-guards.json`,
+    );
+    process.exit(2);
+  }
+  let observationsSource: string;
+  try {
+    observationsSource = readFileSync(resolve(process.cwd(), observationsPath), "utf8");
+  } catch (error) {
+    console.error(`error: cannot read the observations file: ${(error as Error).message}`);
+    process.exit(2);
+  }
+  const intervals = loadAvailabilityObservations(observationsSource);
+  const checkout = checkoutRelease();
+  const record = computeAvailabilityWindow({
+    environment,
+    window: windowLabel,
+    revision: {
+      releaseId: checkout.releaseId,
+      gitRevision: checkout.gitRevision,
+      manifestDigest: checkout.manifestDigest,
+    },
+    intervals,
+    targetPct: target.monthlyAvailabilityTargetPct,
+  });
+
+  const status =
+    record.withinTarget && record.failClosedSemantics === "preserved" ? "passed" : "failed";
+  const { store, db } = await openStore(environment);
+  try {
+    await store.recordRelease({
+      gitRevision: checkout.gitRevision,
+      manifestDigest: checkout.manifestDigest,
+      actor,
+    });
+    const evidenceDetail = JSON.stringify(record);
+    if (evidenceDetail.length > 4096) {
+      console.error("error: the availability record exceeds the evidence bound (internal defect)");
+      process.exit(1);
+    }
+    const gate = await store.recordGateResult({
+      releaseId: checkout.releaseId,
+      environment,
+      gateKind: AVAILABILITY_GATE_KIND,
+      status,
+      evidenceDigest: record.evidenceDigest,
+      evidenceDetail,
+      source: "tool-run",
+      actor,
+    });
+    const alert = availabilityAlertOf(record);
+    console.log(
+      JSON.stringify(
+        {
+          tool: "deploy/release",
+          command: "availability",
+          environment,
+          window: windowLabel,
+          releaseId: checkout.releaseId,
+          gitRevision: checkout.gitRevision,
+          record,
+          gate: {
+            gateKind: gate.gateKind,
+            attempt: gate.attempt,
+            status: gate.status,
+            evidenceDigest: gate.evidenceDigest,
+          },
+          alert,
+          critical: alert !== null && alert.severity === "critical",
+        },
+        null,
+        2,
+      ),
+    );
+    process.exit(status === "passed" ? 0 : 1);
+  } finally {
+    await db.close();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -449,9 +711,10 @@ async function evaluateGate(
       return runSmokeGate("staging", stringOption(process.argv, "--branch"));
     case "ci-gates":
     case "architect-approval":
+    case "availability":
       return {
         status: "failed",
-        evidence: `gate "${kind}" is attach-only evidence (external-attach): attach it with gate attach`,
+        evidence: `gate "${kind}" is computed evidence (the availability command computes and records it): run deploy:release availability --environment <env> --window <YYYY-MM> --observations <file>`,
       };
     default:
       return {
@@ -614,7 +877,7 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
     // uncontrolled overage).
     let alerts: readonly OperationalAlert[] = [];
     try {
-      alerts = await evaluateAlerts(db, ledgerEnvironment);
+      alerts = await evaluateAlerts(db, ledgerEnvironment, { store });
     } catch {
       // The snapshot collection failed (e.g. an empty fresh ledger
       // database): the guardrail is best-effort on read, fail-closed
@@ -846,10 +1109,9 @@ async function commandStatus(environment: HostingEnvironment): Promise<void> {
 }
 
 async function commandAlerts(environment: HostingEnvironment): Promise<void> {
-  const { store: _store, db } = await openStore(environment);
-  void _store;
+  const { store, db } = await openStore(environment);
   try {
-    const alerts = await evaluateAlerts(db, environment);
+    const alerts = await evaluateAlerts(db, environment, { store });
     console.log(
       JSON.stringify(
         {
@@ -918,6 +1180,27 @@ async function main(): Promise<void> {
   }
   if (command === "alerts") {
     await commandAlerts(requireHostingEnvironment(environmentOption));
+    return;
+  }
+  if (command === "availability") {
+    const windowLabel = stringOption(argv, "--window");
+    if (windowLabel === undefined) {
+      console.error("error: availability requires --window <YYYY-MM> (the calendar month)");
+      process.exit(2);
+    }
+    const observationsPath = stringOption(argv, "--observations");
+    if (observationsPath === undefined) {
+      console.error(
+        "error: availability requires --observations <file> (the typed interval observation log: { intervals: [{ startedAt, endedAt, outcome }] })",
+      );
+      process.exit(2);
+    }
+    await commandAvailability(
+      requireHostingEnvironment(environmentOption),
+      windowLabel,
+      observationsPath,
+      actor,
+    );
     return;
   }
 }

@@ -40,6 +40,19 @@
  *                       engine — never touched); provider environments
  *                       drill the operator's topology through
  *                       ZECK_HA_PRIMARY_URL/ZECK_HA_STANDBY_URL.
+ *   provider-redundancy — the D-08 steady-state redundancy drill
+ *                       (WORK-060, AVA-003): the typed failover
+ *                       selection executes for EVERY durable concern
+ *                       (governed profile, idempotent provenance,
+ *                       ambient-substitution refusal proven live), and
+ *                       the relational-state alternate is DRILLED FOR
+ *                       REAL in the local disposable form (real
+ *                       primary+standby, real governed promotion,
+ *                       measured RTO/RPO against the HA failover
+ *                       target, data-survival proof). Concerns whose
+ *                       alternate credentials do not exist in this
+ *                       environment are recorded NOT RUN — honestly,
+ *                       never as PASS.
  *
  * RTO/RPO are MEASURED per drill and evaluated against
  * deploy/manifests/recovery-targets.json (repository truth). Every
@@ -55,6 +68,7 @@
  *   bun run deploy:drill -- outage-readiness  [--environment local]
  *   bun run deploy:drill -- authority-failover [--environment local] [--primary-port <p>] [--standby-port <p>] [--keep-topology]
  *                          [--environment preview|staging|production] [--loss-at <iso8601>] (requires ZECK_HA_PRIMARY_URL/ZECK_HA_STANDBY_URL)
+ *   bun run deploy:drill -- provider-redundancy [--environment local] [--primary-port <p>] [--standby-port <p>] [--keep-topology]
  */
 
 import { createHash, randomUUID } from "node:crypto";
@@ -98,6 +112,10 @@ import {
   verifySchemaConvergence,
 } from "../src/platform/db/startup";
 import { evaluateEnvironmentContract } from "../src/platform/deployment/env-contract";
+import {
+  providerFailoverProfiles,
+  selectFailoverProvider,
+} from "../src/platform/deployment/provider-failover";
 import {
   createS3ObjectStore,
   type S3ObjectStoreConfig,
@@ -143,7 +161,8 @@ type DrillCommand =
   | "queue-recovery"
   | "worker-evacuation"
   | "outage-readiness"
-  | "authority-failover";
+  | "authority-failover"
+  | "provider-redundancy";
 
 const DRILL_COMMANDS: readonly DrillCommand[] = [
   "authority-loss",
@@ -152,6 +171,7 @@ const DRILL_COMMANDS: readonly DrillCommand[] = [
   "worker-evacuation",
   "outage-readiness",
   "authority-failover",
+  "provider-redundancy",
 ];
 
 function argumentValue(argv: readonly string[], name: string): string | undefined {
@@ -1243,6 +1263,412 @@ async function main(): Promise<void> {
     }
   }
 
+  // ==== provider-redundancy (WORK-060 / D-08, AVA-003) ================
+  let providerRedundancyCleanup: ((recovered: boolean) => Promise<void>) | null = null;
+
+  if (command === "provider-redundancy") {
+    const profiles = providerFailoverProfiles(manifest);
+    const durableGaps = [
+      "relational-state",
+      "artifact-bytes",
+      "async-transport",
+      "experience-delivery",
+    ].filter((concern) => !profiles.some((profile) => profile.concern === concern));
+    if (durableGaps.length > 0) {
+      console.error(
+        `error: durable concerns without a typed alternate: ${durableGaps.join(", ")} (providers.json redundancy — AVA-003)`,
+      );
+      process.exit(2);
+    }
+
+    // Phase 1 — the typed declarations (always executable; repository truth).
+    phases.push({
+      name: "redundancy-declarations",
+      description:
+        "every durable concern declares exactly one typed alternate with a governed-procedure failover profile (AVA-003)",
+      action: async () => {
+        drillOutput = {
+          ...drillOutput,
+          redundancy: {
+            durableConcerns: profiles.map((profile) => ({
+              concern: profile.concern,
+              primary: profile.primaryId,
+              alternate: profile.alternate.id,
+              failoverMode: profile.alternate.failover.mode,
+              procedure: profile.alternate.failover.procedure,
+              measurement: profile.alternate.failover.measurement,
+            })),
+            freeTierDoctrine:
+              "disposable free-tier resources are never operationally critical (the commercialUse note carries the doctrine where it applies)",
+          },
+        };
+      },
+    });
+
+    // Phase 2 — the typed failover selection machinery, executed live for
+    // every durable concern: governed selection, idempotent provenance,
+    // and the ambient-substitution refusal (executed, not asserted).
+    phases.push({
+      name: "failover-selection",
+      description:
+        "the typed selection resolves every concern's declared alternate with idempotent provenance; ambient substitution is refused live",
+      action: async () => {
+        const window = { revision, windowId: `provider-redundancy-${startedAt.toISOString()}` };
+        const selections: Record<
+          string,
+          { alternate: string; selectionId: string; idempotent: boolean }
+        > = {};
+        for (const profile of profiles) {
+          const observation = {
+            concern: profile.concern,
+            providerId: profile.primaryId,
+            failureKind: "unavailable" as const,
+            evidence: "drill-observed primary unavailability (typed observation)",
+          };
+          const selection = selectFailoverProvider(manifest, observation, window);
+          if (selection.kind !== "alternate") {
+            throw new Error(
+              `the typed selection refused concern "${profile.concern}": ${selection.refusal.message}`,
+            );
+          }
+          // IDENTITY-IDEMPOTENCY: re-selecting over the same revision
+          // window produces the byte-identical selection identity.
+          const reselection = selectFailoverProvider(manifest, observation, window);
+          if (
+            reselection.kind !== "alternate" ||
+            reselection.provenance.selectionId !== selection.provenance.selectionId
+          ) {
+            throw new Error(
+              `the failover selection for "${profile.concern}" is not idempotent over the revision window`,
+            );
+          }
+          // The ambient-substitution refusal, EXECUTED: a hostile
+          // configuration pointing at an undeclared provider is refused.
+          const ambient = selectFailoverProvider(
+            manifest,
+            observation,
+            window,
+            "ambient-rogue-provider",
+          );
+          if (ambient.kind !== "refused" || ambient.refusal.kind !== "ambient-substitution") {
+            throw new Error(
+              `ambient provider substitution was NOT refused for "${profile.concern}" (the typed boundary is load-bearing)`,
+            );
+          }
+          selections[profile.concern] = {
+            alternate: selection.providerId,
+            selectionId: selection.provenance.selectionId,
+            idempotent: true,
+          };
+        }
+        drillOutput = { ...drillOutput, failoverSelection: selections };
+      },
+    });
+
+    // Phase 3 — the relational-state alternate, DRILLED FOR REAL in the
+    // local disposable form (real primary+standby, real governed
+    // promotion, measured RTO/RPO, data-survival proof). Operator
+    // environments execute the dedicated authority-failover drill
+    // against their real topology (the profile's declared procedure).
+    let binaries: ReturnType<typeof resolvePostgresBinaries> | null = null;
+    try {
+      binaries = resolvePostgresBinaries(process.env);
+    } catch (error) {
+      notRun.push(
+        `relational-state-failover: ${(error as Error).message} — the local disposable topology needs real PostgreSQL binaries (never a simulation)`,
+      );
+    }
+    if (environment !== "local" && binaries !== null) {
+      notRun.push(
+        "relational-state-failover: the operator form is the dedicated authority-failover drill (ZECK_HA_PRIMARY_URL/ZECK_HA_STANDBY_URL — the profile's declared procedure); execute it there for the measured RTO/RPO at the operator topology",
+      );
+      binaries = null;
+    }
+
+    if (binaries !== null && environment === "local") {
+      const keepTopology = hasFlag(argv, "--keep-topology");
+      const primaryPort = Number.parseInt(
+        argumentValue(argv, "--primary-port") ?? process.env.ZECK_HA_LOCAL_PRIMARY_PORT ?? "55611",
+        10,
+      );
+      const standbyPort = Number.parseInt(
+        argumentValue(argv, "--standby-port") ?? process.env.ZECK_HA_LOCAL_STANDBY_PORT ?? "55612",
+        10,
+      );
+      if (
+        !Number.isInteger(primaryPort) ||
+        primaryPort < 1024 ||
+        !Number.isInteger(standbyPort) ||
+        standbyPort < 1024 ||
+        primaryPort === standbyPort
+      ) {
+        console.error("error: --primary-port/--standby-port must be distinct integers >= 1024");
+        process.exit(2);
+      }
+      const dataRoot =
+        process.env.ZECK_LOCAL_DATA_ROOT ?? `${process.env.HOME ?? "/tmp"}/.local/share/zeck`;
+      const topologyRoot = `${dataRoot}/redundancy-drill/${randomUUID().slice(0, 8)}`;
+      mkdirSync(topologyRoot, { recursive: true });
+      const authorityDatabase = "zeck_redundancy_drill";
+      const applicationName = "zeck_redundancy_standby";
+      const haTopologies = parseHaTopologyDocument(
+        JSON.parse(
+          readFileSync(
+            resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"),
+            "utf8",
+          ),
+        ) as unknown,
+      );
+      const declaredHa = haTopologies[environment];
+      if (declaredHa === undefined) {
+        console.error(
+          `error: no ha topology declared for environment "${environment}" (recovery-targets.json)`,
+        );
+        process.exit(2);
+      }
+      const drillHaMode = parseHaReplicationMode(
+        process.env.ZECK_HA_REPLICATION_MODE ?? "asynchronous",
+      );
+
+      let primary: LocalHaServer | null = null;
+      let standby: LocalHaServer | null = null;
+      providerRedundancyCleanup = async (recovered: boolean) => {
+        if (keepTopology) {
+          drillOutput = {
+            ...drillOutput,
+            redundancyTopologyCleanup: `kept (operator --keep-topology; recovered: ${recovered}; root: ${topologyRoot})`,
+          };
+          return;
+        }
+        if (standby !== null) {
+          await standby.terminate("stop").catch(() => undefined);
+          standby.dispose();
+        }
+        if (primary !== null) {
+          await primary.terminate("stop").catch(() => undefined);
+          primary.dispose();
+        }
+        drillOutput = {
+          ...drillOutput,
+          redundancyTopologyCleanup:
+            "disposed (disposable topology; the live authority was never touched)",
+        };
+      };
+
+      // [SETUP — outside the RTO clock: the topology exists before the
+      // loss] — a REAL disposable primary (initdb + the production
+      // startup path) + a REAL streaming standby; a governed marker
+      // write proves data survival through the failover.
+      let primaryAuthorityUrl = "";
+      let standbyAuthorityUrl = "";
+      let markerId = "";
+      try {
+        await assertPortFree(primaryPort);
+        await assertPortFree(standbyPort);
+        const scratchPrimary = await startLocalPostgresServer({
+          dataDir: `${topologyRoot}/primary`,
+          port: primaryPort,
+          binaries,
+          label: "redundancy-drill disposable primary",
+        });
+        primary = scratchPrimary;
+        const adminClient = new Client({ connectionString: scratchPrimary.adminUrl });
+        await adminClient.connect();
+        try {
+          await adminClient.query(`CREATE DATABASE ${authorityDatabase}`);
+        } finally {
+          await adminClient.end();
+        }
+        primaryAuthorityUrl = scratchPrimary.urlFor(authorityDatabase);
+        const primaryHandle = await startAuthoritativeDatabase(primaryAuthorityUrl, {
+          poolOverrides: { max: 4 },
+        });
+        try {
+          // A governed durable write: the data-survival marker (RPO
+          // evidence by data equality across the failover).
+          markerId = randomUUID();
+          await primaryHandle.port.execute({
+            sql: "CREATE SCHEMA IF NOT EXISTS zeck_drill",
+          });
+          await primaryHandle.port.execute({
+            sql: "CREATE TABLE IF NOT EXISTS zeck_drill.redundancy_marker (id text PRIMARY KEY, written_at timestamptz NOT NULL)",
+          });
+          await primaryHandle.port.execute({
+            sql: "INSERT INTO zeck_drill.redundancy_marker (id, written_at) VALUES ($1, now())",
+            parameters: [markerId],
+          });
+          const scratchStandby = await bootstrapStandbyFromPrimary({
+            primary: scratchPrimary,
+            standbyDataDir: `${topologyRoot}/standby`,
+            standbyPort,
+            binaries,
+            applicationName,
+          });
+          standby = scratchStandby;
+          standbyAuthorityUrl = scratchStandby.urlFor(authorityDatabase);
+          const catchup = await waitForStandbyCatchup(
+            scratchPrimary.adminUrl,
+            applicationName,
+            60_000,
+          );
+          drillOutput = {
+            ...drillOutput,
+            redundancyTopology: {
+              form: "local-disposable",
+              primaryPort,
+              standbyPort,
+              replicationMode: drillHaMode,
+              catchup,
+              note: "a real disposable primary+standby (initdb + production startup + streaming replication); the live authority is never touched",
+            },
+          };
+        } finally {
+          await primaryHandle.close();
+        }
+      } catch (error) {
+        await providerRedundancyCleanup(false);
+        throw error;
+      }
+
+      phases.push({
+        name: "relational-state-failover",
+        description:
+          "lose the disposable primary → the governed promotion of the standby (the declared alternate hosting) → data-survival + measured RTO/RPO against the HA failover target",
+        action: async () => {
+          const lossStart = new Date();
+          await (primary as LocalHaServer).terminate("kill");
+          const failoverReport = await failoverExecutor.failover({
+            primaryUrl: primaryAuthorityUrl,
+            standbyUrl: standbyAuthorityUrl,
+            mode: drillHaMode,
+          });
+          // The promoted authority serves the pre-loss durable write
+          // (RPO 0 by data survival) and is schema-converged.
+          const handle = await startAuthoritativeDatabase(standbyAuthorityUrl, {
+            poolOverrides: { max: 4 },
+          });
+          try {
+            const marker = await handle.port.execute<{ written_at: string }>({
+              sql: "SELECT written_at FROM zeck_drill.redundancy_marker WHERE id = $1",
+              parameters: [markerId],
+            });
+            if (marker.rows.length !== 1) {
+              throw new Error(
+                "the pre-loss durable write did not survive the failover (RPO breach by data loss)",
+              );
+            }
+            const migrationCount = await handle.port.execute<{ count: string }>({
+              sql: "SELECT count(*) AS count FROM platform.schema_migrations",
+            });
+            if (Number(migrationCount.rows[0]?.count ?? 0) !== shippedMigrations().length) {
+              throw new Error("the promoted authority is not schema-converged");
+            }
+            const rtoMs = Date.now() - lossStart.getTime();
+            const haFailoverTarget = failoverTargetForMode(declaredHa, drillHaMode);
+            drillOutput = {
+              ...drillOutput,
+              relationalStateFailover: {
+                failover: failoverReport,
+                measuredRtoMs: rtoMs,
+                measuredRpoMs: 0,
+                rpoSemantics:
+                  "RPO 0 by data survival: the governed marker write made before the loss is readable on the promoted authority",
+                target: {
+                  rtoTargetMs: haFailoverTarget.rtoTargetMs,
+                  rpoTargetMs: haFailoverTarget.rpoTargetMs,
+                },
+                withinTarget: rtoMs <= haFailoverTarget.rtoTargetMs,
+              },
+            };
+            if (rtoMs > haFailoverTarget.rtoTargetMs) {
+              throw new Error(
+                `the measured failover RTO ${rtoMs}ms breaches the environment's HA failover target ${haFailoverTarget.rtoTargetMs}ms`,
+              );
+            }
+          } finally {
+            await handle.close();
+          }
+        },
+      });
+    }
+
+    // Phase 4 — the artifact-bytes alternate: REAL through the
+    // production object-store adapter when the alternate configuration
+    // exists; honest NOT RUN otherwise.
+    const alternateObjectStoreValues = {
+      endpoint: process.env.ZECK_DRILL_ALTERNATE_OBJECT_STORE_ENDPOINT,
+      bucket: process.env.ZECK_DRILL_ALTERNATE_OBJECT_STORE_BUCKET,
+      region: process.env.ZECK_DRILL_ALTERNATE_OBJECT_STORE_REGION,
+      accessKeyId: process.env.ZECK_DRILL_ALTERNATE_OBJECT_STORE_ACCESS_KEY_ID,
+      secretAccessKey: process.env.ZECK_DRILL_ALTERNATE_OBJECT_STORE_SECRET_ACCESS_KEY,
+    };
+    const missingObjectStore = Object.entries(alternateObjectStoreValues)
+      .filter(([, value]) => value === undefined || value.length === 0)
+      .map(
+        ([name]) =>
+          `ZECK_DRILL_ALTERNATE_OBJECT_STORE_${name.replace(/([A-Z])/g, "_$1").toUpperCase()}`,
+      );
+    if (missingObjectStore.length > 0) {
+      notRun.push(
+        `artifact-bytes-alternate: the alternate object-store configuration is incomplete (missing: ${missingObjectStore.join(", ")}) — NOT RUN without it, never claimed as PASS`,
+      );
+    } else {
+      phases.push({
+        name: "artifact-bytes-alternate",
+        description:
+          "the declared alternate object store is reachable and byte-correct through the production adapter (put/get/verify a content-addressed probe)",
+        action: async () => {
+          const config = alternateObjectStoreValues as unknown as S3ObjectStoreConfig;
+          const store = createS3ObjectStore(config);
+          const head = await store.headBucket();
+          if (!head.ok) {
+            throw new Error(
+              `the alternate artifact store is not reachable (headBucket status ${head.status})`,
+            );
+          }
+          const probe = Buffer.from(
+            `zeck-provider-redundancy-probe:${revision}:${startedAt.toISOString()}`,
+            "utf8",
+          );
+          const key = `zeck-drill/provider-redundancy/${digestOf(probe)}`;
+          const probeStart = Date.now();
+          await store.put(key, new Uint8Array(probe));
+          const fetched = await store.get(key);
+          if (fetched === null || digestOf(fetched.body) !== digestOf(probe)) {
+            throw new Error(
+              "the alternate artifact store failed the content-addressed byte round-trip (digest mismatch)",
+            );
+          }
+          await store.delete(key);
+          drillOutput = {
+            ...drillOutput,
+            artifactBytesAlternate: {
+              endpoint: config.endpoint,
+              bucket: config.bucket,
+              roundTripMs: Date.now() - probeStart,
+              note: "a content-addressed probe through the production S3 adapter: put → get → digest-verified → deleted",
+            },
+          };
+        },
+      });
+    }
+
+    // Phase 5 — the async-transport alternate: honest NOT RUN without
+    // alternate queue credentials (no queue transport credentials exist
+    // in this environment; the D-07 queue-recovery drill executes the
+    // substitution where they do).
+    notRun.push(
+      "async-transport-alternate: no alternate queue transport configuration exists in this environment (the replay-convergence substitution is executed by deploy:drill queue-recovery where transport credentials exist)",
+    );
+
+    // Phase 6 — the experience-delivery alternate: honest NOT RUN
+    // without an alternate host (the exit is configuration-only by
+    // construction — the D-07 provider-neutrality proof).
+    notRun.push(
+      "experience-delivery-alternate: no alternate host endpoint exists in this environment (the API is independently runnable by construction — the D-07 proof; live execution is drill-measured where an alternate host exists)",
+    );
+  }
+
   const effectiveLossAt = haLossAt ?? startedAt;
   const report = await runRecoveryDrill(
     {
@@ -1263,9 +1689,15 @@ async function main(): Promise<void> {
   if (command === "authority-failover" && haCleanup !== null) {
     await haCleanup(report.recovered);
   }
+  if (command === "provider-redundancy" && providerRedundancyCleanup !== null) {
+    await providerRedundancyCleanup(report.recovered);
+  }
   // Objective evaluation applies only to LOSS scenarios (outage-
-  // readiness is a configuration gate, not a recovery measurement).
-  const measuresObjectives = command !== "outage-readiness";
+  // readiness is a configuration gate, not a recovery measurement;
+  // provider-redundancy measures its objectives IN PHASE — the
+  // relational-state failover against the HA failover target — so the
+  // whole-drill clock is not its RTO anchor).
+  const measuresObjectives = command !== "outage-readiness" && command !== "provider-redundancy";
   // authority-failover is evaluated against the HA failover targets
   // (the replication-path RPO + failover RTO from recovery-targets
   // .json), never the whole-environment D-07 target.
@@ -1286,7 +1718,7 @@ async function main(): Promise<void> {
       evaluation === null
         ? {
             measured: false,
-            note: "readiness gate: RTO/RPO are measured by the loss scenarios (authority-loss, artifact-exit, queue-recovery, worker-evacuation, authority-failover)",
+            note: "readiness/redundancy gate: RTO/RPO are measured by the loss scenarios (authority-loss, artifact-exit, queue-recovery, worker-evacuation, authority-failover) and in-phase by provider-redundancy (the relational-state failover against the HA failover target)",
             target: { rtoTargetMs: target.rtoTargetMs, rpoTargetMs: target.rpoTargetMs },
           }
         : {
