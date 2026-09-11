@@ -41,15 +41,16 @@ For dispatch/review/orchestration behavior also read:
 - D-08 / WORK-057: COMPLETE — merged as PR #38 (merge commit 5850e91, implementation head 76292e9, final branch head 4aa3f86; dispatch base 1a86262; measured RTO 1081ms / RPO 0ms, 12-check invariant gate green post-failover).
 - D-08 / WORK-058: COMPLETE — merged as PR #37 (merge commit d6a9ffa, implementation head 1fe05d4, final branch head f6fcddd; dispatch base 1a86262; physical tenant-isolation claim gate migration 0031_isolation_profiles).
 - D-08 / WORK-059: COMPLETE — merged as PR #36 (merge commit 4ee2ce8, implementation head 2281db2, final branch head eb80d3f incl. the Architect merge reconciliation — 0031_audit_compliance renumbered to 0032; dispatch base 1a86262).
-- D-08 wave A COMPLETE. Frontier: WORK-060 (wave B) eligible.
+- D-08 / WORK-060: COMPLETE — merged as PR #39 (merge commit aad849d, implementation head d87eb46, final branch head 62dc7b8; dispatch base f9386a4; typed governed-procedure failover per durable concern, three-layer private-connectivity enforcement, residency as a policy-consumed fail-closed constraint, pure exact-revision availability measurement on the D-06 ledger; authorization issue #40).
+- D-08 COMPLETE. **THE FULL DEPLOYMENT ROADMAP D-00 THROUGH D-08 IS COMPLETE — 60/60 Work Orders.** The frontier is empty; the program is closed. Future stages require new Architect Work Orders (new requirements, new architecture extensions, new gates).
 
 **THE E1.1 IMPLEMENTATION PROGRAM IS COMPLETE** — all nine charter Work Orders (WORK-048 through WORK-056) are implemented, reviewed, merged and finalized. The frontier is empty; future stages require new Architect Work Orders.
 
 - E1.1 final architecture acceptance: RECORDED 2026-09-10 against `main` `8e88a84` (see `docs/architecture-changes/ACR-004-...md#final-architecture-acceptance` and `program-state.json postMergeFinalization.finalArchitectureAcceptance`). The E1.1 program is fully closed.
 
-## D-08 unlock in progress (2026-09-10)
+## D-08 complete (2026-09-11)
 
-The final deployment phase D-08 is being unlocked: gate-2 requirements APPROVED (`docs/DEPLOYMENT-ROADMAP-D08-REQUIREMENTS.md`, AVA-001..004 / SEC-001..004), gate-3 extension APPROVED (ADR-0021 + ACR-005), gate-1 measured-usage evidence IN FLIGHT on branch `gate/d08-measured-usage`. When that PR merges, the Architect issues D-08 Work Orders (WORK-057+) with frontier/dependency authorization per ADR-0021.
+The final deployment phase D-08 is COMPLETE: all three gates satisfied (measured production usage PR #32; requirements AVA-001..004 / SEC-001..004; architecture extension ADR-0021/ACR-005), all four Work Orders delivered (wave A: WORK-057/058/059 — PRs #38/#37/#36; wave B: WORK-060 — PR #39). The deployment roadmap D-00..D-08 and the E1.1 implementation program are both fully closed; 60/60 Work Orders complete. No frontier remains.
 
 Current frontier is `eligible=[]`, `inFlight=[]`, `blocked=[]` — the E1.1 program is complete.
 
