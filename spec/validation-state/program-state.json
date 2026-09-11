@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T21:30:00Z",
+  "asOf": "2026-09-11T22:00:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -71,8 +71,15 @@
       "title": "Evaluation/scoring engine and error taxonomy"
     },
     "VAL-009": {
-      "status": "planned",
-      "title": "Model/provider capability matrix and access probe"
+      "status": "complete",
+      "title": "Model/provider capability matrix and access/readiness probe",
+      "mergedAs": {
+        "pr": 49,
+        "mergeCommit": "9941fda",
+        "implementationHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
+        "finalBranchHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
+        "baseRevision": "80b6079"
+      }
     },
     "VAL-010": {
       "status": "planned",
