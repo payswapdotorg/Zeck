@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T21:10:00Z",
+  "asOf": "2026-09-11T21:30:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -43,8 +43,16 @@
       }
     },
     "VAL-004": {
-      "status": "planned",
-      "title": "Universal trace, trajectory, environment-state and evidence recorder"
+      "status": "complete",
+      "title": "Universal trace, trajectory, environment-state and evidence recorder",
+      "mergedAs": {
+        "pr": 48,
+        "mergeCommit": "36d9045",
+        "implementationHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
+        "finalBranchHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
+        "baseRevision": "7b12a3c",
+        "issue": 47
+      }
     },
     "VAL-005": {
       "status": "planned",
