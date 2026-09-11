@@ -52,6 +52,14 @@ jobs:
     steps:
       - name: Checkout exact revision
         uses: actions/checkout@v4
+        with:
+          # full history: the full-test-suite gate runs architecture suites
+          # whose containment proofs pin FIXED historical git ranges
+          # (e.g. the WORK-056 C9 window 201756c..3318a8a) — unreachable
+          # in a shallow checkout, which red-failed every push-to-main
+          # release-control run since 9f1f632. Matches governance.yml's
+          # full-history checkouts (the PR-side CI that always passed).
+          fetch-depth: 0
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
