@@ -37,6 +37,7 @@ const safeConfig: ContainerConfiguration = {
   mounts: [{ source: "artifact-1", target: "/inputs/artifact-1", readOnly: true }],
   network: { mode: "allowlist", allowedHosts: ["api.example.com"] },
   resourceLimits: { cpuMilliCores: 1000, memoryMiB: 256, executionTimeoutMs: 60_000 },
+  isolationClass: "standard",
   readOnlyRootfs: true,
   runAsNonRoot: true,
   privileged: false,
@@ -127,6 +128,7 @@ describe("container provider (the module-side projection)", () => {
     tenantId: "00000000-0000-7000-8000-0000000000a1",
     executionId: "00000000-0000-7000-8000-0000000000e1",
     kind: "container",
+    isolationClass: "standard",
     task: { command: "python3", args: ["analyze.py"], publicEnv: { MODE: "batch" } },
     limits: { cpuMilliCores: 1000, memoryMiB: 256, executionTimeoutMs: 60_000 },
     network: { egress: "allowlist", allowedHosts: ["api.example.com"] },
@@ -211,11 +213,11 @@ describe("container provider (the module-side projection)", () => {
     await provider.execute(spec);
     expect(captured).toHaveLength(1);
     expect(captured[0]?.timeoutMs).toBe(60_000);
-    // The identity is the durable spec binding (application + parent
-    // execution + sandbox row) — the runtime client binds it into the
-    // external run id derivation.
+    // The identity is the durable spec binding (tenant + application +
+    // parent execution + sandbox row — WORK-058: tenant-scoped) — the
+    // runtime client binds it into the external run id derivation.
     expect(captured[0]?.runIdentity).toBe(
-      `zeck-run:00000000-0000-7000-8000-0000000000b1:00000000-0000-7000-8000-0000000000e1:00000000-0000-7000-8000-000000000001`,
+      `zeck-run:00000000-0000-7000-8000-0000000000a1:00000000-0000-7000-8000-0000000000b1:00000000-0000-7000-8000-0000000000e1:00000000-0000-7000-8000-000000000001`,
     );
   });
 
