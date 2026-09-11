@@ -417,10 +417,10 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     // reachable).
     const WORK_056_BASE = "201756c";
     const WORK_056_MERGE = "3318a8a";
-    const windowChanges = execSync(
-      `git diff --name-only ${WORK_056_BASE}..${WORK_056_MERGE}`,
-      { cwd: REPO_ROOT, encoding: "utf8" },
-    )
+    const windowChanges = execSync(`git diff --name-only ${WORK_056_BASE}..${WORK_056_MERGE}`, {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+    })
       .trim()
       .split("\n")
       .filter((line) => line.length > 0);
