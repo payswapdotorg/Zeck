@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-11T22:50:00Z",
+  "asOf": "2026-09-11T23:30:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -55,8 +55,15 @@
       }
     },
     "VAL-005": {
-      "status": "planned",
-      "title": "Baseline/comparator harness"
+      "status": "complete",
+      "title": "Baseline/comparator harness for direct, optimized and competing stacks",
+      "mergedAs": {
+        "pr": 52,
+        "mergeCommit": "802f2ae",
+        "implementationHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
+        "finalBranchHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
+        "baseRevision": "9c9c0b6"
+      }
     },
     "VAL-006": {
       "status": "planned",
