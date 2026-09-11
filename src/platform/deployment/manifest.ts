@@ -1,6 +1,6 @@
 /**
  * Deployment manifest loader and validator (Deployment Roadmap D-01;
- * Work Order WORK-042).
+ * Work Order WORK-042; D-08 extensions by WORK-060).
  *
  * The repository is the only source of truth for Zeck deployment
  * configuration (D1.0 §1). This module loads the five repository-resident
@@ -20,7 +20,14 @@
  * - secret references: environment-scoped inventory, valid variable
  *   names, consistent name→variable mapping across environments;
  * - variables: unique names; `ZECK_SECRET_*_REF` variables correspond
- *   exactly to the secret-reference inventory (both directions).
+ *   exactly to the secret-reference inventory (both directions);
+ * - D-08 / SEC-003 (WORK-060): every environment declares a first-class
+ *   `region` dimension and a connectivity profile over the CLOSED
+ *   internal-path vocabulary (loopback|tunnel|private-endpoint — a
+ *   `public` internal path is unrepresentable); every durable concern
+ *   (AVA-003) declares exactly one typed alternate provider with a
+ *   governed-procedure failover profile (an `automatic` mode is
+ *   unrepresentable — failover is typed, drilled and explicit).
  *
  * IO is injected (`ManifestFileReader`) so tests can validate synthetic
  * manifests without touching the filesystem, and the real reader stays
@@ -63,6 +70,26 @@ export class DeploymentManifestError extends Error {
 
 export type EnvironmentClass = "disposable" | "persistent";
 
+/**
+ * The CLOSED internal-connectivity vocabulary (SEC-003): the path
+ * classes internal control-plane/worker communication may use. `public`
+ * is deliberately NOT a member — a public internal path is
+ * unrepresentable in the environment matrix by construction.
+ */
+export const INTERNAL_CONNECTIVITY_PATHS = ["loopback", "tunnel", "private-endpoint"] as const;
+export type InternalConnectivityPath = (typeof INTERNAL_CONNECTIVITY_PATHS)[number];
+
+/**
+ * The connectivity profile of one environment class (SEC-003): which
+ * internal-path classes its control-plane/worker communication may
+ * use. Validated, never documented-only — `deploy:validate` enforces the
+ * production-class rule and the environment contract evaluates
+ * materialized internal endpoints against it.
+ */
+export interface ConnectivityProfile {
+  readonly internalPaths: readonly InternalConnectivityPath[];
+}
+
 export interface EnvironmentRecord {
   readonly id: EnvironmentId;
   readonly environmentClass: EnvironmentClass;
@@ -70,6 +97,10 @@ export interface EnvironmentRecord {
   readonly dataPolicy: string;
   readonly teardownAllowed: boolean;
   readonly credentialScope: string;
+  /** The repository-declared data-at-rest region (SEC-003; kebab-case). */
+  readonly region: string;
+  /** The private-connectivity profile (SEC-003; closed vocabulary). */
+  readonly connectivity: ConnectivityProfile;
   readonly promotion: { readonly nextPhase: string; readonly requires: readonly string[] } | null;
 }
 
@@ -78,6 +109,31 @@ export interface DegradationRecord {
   readonly onFailure: "fail-closed" | "degraded";
   readonly mode: string;
   readonly effect: string;
+}
+
+/**
+ * The typed failover mode vocabulary (AVA-003): failover is a GOVERNED
+ * PROCEDURE — typed, drilled, explicit. An `automatic` mode is
+ * unrepresentable (silent automatic cross-provider migration of
+ * authority is the forbidden direction).
+ */
+export const PROVIDER_FAILOVER_MODES = ["governed-procedure"] as const;
+export type ProviderFailoverMode = (typeof PROVIDER_FAILOVER_MODES)[number];
+
+/**
+ * The typed alternate-provider declaration of one concern (AVA-003):
+ * a steady-state redundancy claim with its governed failover profile.
+ * Every claim carries drill-measured evidence at exact revisions —
+ * the profile names the procedure and the measurement discipline.
+ */
+export interface AlternateProviderDeclaration {
+  readonly id: string;
+  readonly substitutionTarget: string;
+  readonly failover: {
+    readonly mode: ProviderFailoverMode;
+    readonly procedure: string;
+    readonly measurement: string;
+  };
 }
 
 export interface ProviderRecord {
@@ -90,8 +146,25 @@ export interface ProviderRecord {
   readonly plannedPhase: string | null;
   readonly substitutionTarget: string;
   readonly commercialUse: string | null;
+  /** The declared alternate (required for durable concerns; optional otherwise). */
+  readonly redundancyAlternate: AlternateProviderDeclaration | null;
   readonly degradation: DegradationRecord;
 }
+
+/**
+ * The durable concerns of AVA-003 (relational state, artifact bytes,
+ * queue transport, hosting): each must declare exactly one typed
+ * alternate provider. The manifest's own `durableConcerns` list must
+ * equal this frozen set exactly — drifting the list (dropping a
+ * concern to dodge its redundancy duty) is unrepresentable.
+ */
+export const DURABLE_CONCERNS = [
+  "relational-state",
+  "artifact-bytes",
+  "async-transport",
+  "experience-delivery",
+] as const;
+export type DurableConcern = (typeof DURABLE_CONCERNS)[number];
 
 export interface ResourceRecord {
   readonly id: string;
@@ -220,6 +293,53 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
           `environments.json: ${id}.class must be disposable|persistent (got "${environmentClass}")`,
         );
       }
+      // D-08 / SEC-003 (WORK-060): the region dimension is first-class —
+      // every environment declares where its data-at-rest lives
+      // (kebab-case; absence is unrepresentable).
+      const region = str(record.region, `environments.environments.${id}.region`);
+      if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(region)) {
+        problems.push(
+          `environments.json: ${id}.region must be a lowercase kebab-case region id (got "${region}")`,
+        );
+      }
+      // D-08 / SEC-003 (WORK-060): the connectivity profile over the
+      // CLOSED internal-path vocabulary — a `public` internal path is
+      // unrepresentable; the profile must be declared and non-empty.
+      const connectivitySource = asRecord(
+        record.connectivity,
+        `environments.environments.${id}.connectivity`,
+      );
+      const internalPathsSource = asArray(
+        connectivitySource.internalPaths,
+        `environments.environments.${id}.connectivity.internalPaths`,
+      );
+      const internalPaths: InternalConnectivityPath[] = [];
+      const seenPaths = new Set<string>();
+      for (const [pathIndex, rawPath] of internalPathsSource.entries()) {
+        const path = str(
+          rawPath,
+          `environments.environments.${id}.connectivity.internalPaths[${pathIndex}]`,
+        );
+        if (!(INTERNAL_CONNECTIVITY_PATHS as readonly string[]).includes(path)) {
+          problems.push(
+            `environments.json: ${id}.connectivity.internalPaths[${pathIndex}] must be loopback|tunnel|private-endpoint (got "${path}"; a public internal path is unrepresentable)`,
+          );
+          continue;
+        }
+        if (seenPaths.has(path)) {
+          problems.push(
+            `environments.json: ${id}.connectivity.internalPaths declares "${path}" twice`,
+          );
+          continue;
+        }
+        seenPaths.add(path);
+        internalPaths.push(path as InternalConnectivityPath);
+      }
+      if (internalPathsSource.length === 0) {
+        problems.push(
+          `environments.json: ${id}.connectivity.internalPaths must declare at least one internal path class`,
+        );
+      }
       const promotion =
         record.promotion === null || record.promotion === undefined
           ? null
@@ -246,6 +366,8 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
           record.credentialScope,
           `environments.environments.${id}.credentialScope`,
         ),
+        region,
+        connectivity: { internalPaths },
         promotion,
       };
     });
@@ -287,6 +409,28 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
     if (provDoc.schemaVersion !== 1) {
       problems.push("providers.json: unsupported schemaVersion (expected 1)");
     }
+    // D-08 / AVA-003 (WORK-060): the manifest's durableConcerns list
+    // must equal the frozen AVA-003 set EXACTLY — drifting the list to
+    // dodge a concern's redundancy duty is unrepresentable.
+    const declaredDurableConcerns = asArray(
+      provDoc.durableConcerns,
+      "providers.durableConcerns",
+    ).map((v, i) => str(v, `providers.durableConcerns[${i}]`));
+    const expectedDurable = [...DURABLE_CONCERNS];
+    for (const concern of expectedDurable) {
+      if (!declaredDurableConcerns.includes(concern)) {
+        problems.push(
+          `providers.json: durableConcerns must include "${concern}" (AVA-003: every durable concern declares an alternate)`,
+        );
+      }
+    }
+    for (const concern of declaredDurableConcerns) {
+      if (!expectedDurable.includes(concern as DurableConcern)) {
+        problems.push(
+          `providers.json: durableConcerns entry "${concern}" is not a known durable concern (relational-state|artifact-bytes|async-transport|experience-delivery)`,
+        );
+      }
+    }
     providers = asArray(provDoc.providers, "providers.providers").map((raw, i) => {
       const record = asRecord(raw, `providers.providers[${i}]`);
       const degradation = asRecord(record.degradation, `providers.providers[${i}].degradation`);
@@ -295,6 +439,55 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
         problems.push(
           `providers.json: provider[${i}].portStatus must be established|planned (got "${portStatus}")`,
         );
+      }
+      // D-08 / AVA-003 (WORK-060): the typed alternate-provider
+      // declaration — governed-procedure failover only; an automatic
+      // mode is unrepresentable (typed, drilled, explicit — never a
+      // silent cross-provider migration).
+      let redundancyAlternate: AlternateProviderDeclaration | null = null;
+      if (record.redundancy !== undefined && record.redundancy !== null) {
+        const redundancy = asRecord(record.redundancy, `providers.providers[${i}].redundancy`);
+        const alternateSource = asRecord(
+          redundancy.alternate,
+          `providers.providers[${i}].redundancy.alternate`,
+        );
+        const failover = asRecord(
+          alternateSource.failover,
+          `providers.providers[${i}].redundancy.alternate.failover`,
+        );
+        const failoverMode = str(
+          failover.mode,
+          `providers.providers[${i}].redundancy.alternate.failover.mode`,
+        );
+        if (!(PROVIDER_FAILOVER_MODES as readonly string[]).includes(failoverMode)) {
+          problems.push(
+            `providers.json: provider[${i}].redundancy.alternate.failover.mode must be governed-procedure (got "${failoverMode}"; automatic failover is unrepresentable — failover is typed, drilled and explicit)`,
+          );
+        }
+        redundancyAlternate = {
+          id: str(alternateSource.id, `providers.providers[${i}].redundancy.alternate.id`),
+          substitutionTarget: str(
+            alternateSource.substitutionTarget,
+            `providers.providers[${i}].redundancy.alternate.substitutionTarget`,
+          ),
+          failover: {
+            mode: failoverMode as ProviderFailoverMode,
+            procedure: str(
+              failover.procedure,
+              `providers.providers[${i}].redundancy.alternate.failover.procedure`,
+            ),
+            measurement: str(
+              failover.measurement,
+              `providers.providers[${i}].redundancy.alternate.failover.measurement`,
+            ),
+          },
+        };
+        const providerId = str(record.id, `providers.providers[${i}].id`);
+        if (redundancyAlternate.id === providerId) {
+          problems.push(
+            `providers.json: provider "${providerId}" declares itself as its own alternate (a concern's alternate must be an independent provider)`,
+          );
+        }
       }
       return {
         id: str(record.id, `providers.providers[${i}].id`),
@@ -309,6 +502,7 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
           `providers.providers[${i}].substitutionTarget`,
         ),
         commercialUse: optStr(record.commercialUse, `providers.providers[${i}].commercialUse`),
+        redundancyAlternate,
         degradation: {
           authority: str(
             degradation.authority,
@@ -369,6 +563,23 @@ export function loadDeploymentManifest(readFile: ManifestFileReader): Deployment
       } else if (provider.plannedPhase === null) {
         problems.push(
           `providers.json: planned provider "${provider.id}" must declare the roadmap phase that owns its port`,
+        );
+      }
+    }
+    // D-08 / AVA-003 (WORK-060): every durable concern declares
+    // EXACTLY ONE typed alternate — a durable concern depending on a
+    // single external provider is unrepresentable in the production
+    // class. Free-tier doctrine: disposable free-tier resources are
+    // never operationally critical (the commercialUse note carries
+    // the doctrine where it applies).
+    for (const concern of expectedDurable) {
+      const owner = providers.find((p) => p.concern === concern);
+      if (owner === undefined) {
+        continue; // The unique-concern/authority rules above already report gaps.
+      }
+      if (owner.redundancyAlternate === null) {
+        problems.push(
+          `providers.json: durable concern "${concern}" (provider "${owner.id}") must declare exactly one redundancy.alternate (AVA-003: no durable concern depends on a single external provider)`,
         );
       }
     }

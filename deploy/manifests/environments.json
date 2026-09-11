@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "description": "Zeck environment matrix (Deployment & Runtime Architecture D1.0 section 4). Repository truth: the four logical environment classes, their isolation contract, teardown policy and promotion ladder. Provider consoles cannot redefine this matrix.",
   "promotionOrder": ["local", "ci", "preview", "staging", "production"],
-  "note": "ci is a check phase on the promotion ladder, not a hosting environment class. The four environment classes are exactly local, preview, staging and production.",
+  "note": "ci is a check phase on the promotion ladder, not a hosting environment class. The four environment classes are exactly local, preview, staging and production. D-08 (WORK-060 / SEC-003) adds two first-class dimensions to every environment: `region` (the repository-declared data-at-rest region of the environment class — the deployment is single-region per class today; a multi-region production edits this repository truth, never a provider console) and `connectivity` (the closed internal-path vocabulary control-plane/worker communication may use — `public` is unrepresentable by construction).",
   "environments": {
     "local": {
       "class": "disposable",
@@ -10,6 +10,10 @@
       "dataPolicy": "synthetic-only",
       "teardownAllowed": true,
       "credentialScope": "developer-local",
+      "region": "local",
+      "connectivity": {
+        "internalPaths": ["loopback"]
+      },
       "promotion": {
         "nextPhase": "ci",
         "requires": ["governance-check", "typecheck", "lint", "full-test-suite"]
@@ -21,6 +25,10 @@
       "dataPolicy": "synthetic-only",
       "teardownAllowed": true,
       "credentialScope": "preview-isolated",
+      "region": "preview",
+      "connectivity": {
+        "internalPaths": ["tunnel"]
+      },
       "promotion": {
         "nextPhase": "staging",
         "requires": ["ci-gates", "preview-smoke"]
@@ -32,6 +40,10 @@
       "dataPolicy": "staging-only",
       "teardownAllowed": false,
       "credentialScope": "staging-isolated",
+      "region": "staging",
+      "connectivity": {
+        "internalPaths": ["tunnel", "private-endpoint"]
+      },
       "promotion": {
         "nextPhase": "production",
         "requires": ["architect-approval", "staging-smoke", "deployment-identity-audit"]
@@ -43,6 +55,10 @@
       "dataPolicy": "authoritative",
       "teardownAllowed": false,
       "credentialScope": "production-only",
+      "region": "production",
+      "connectivity": {
+        "internalPaths": ["private-endpoint", "tunnel"]
+      },
       "promotion": null
     }
   }

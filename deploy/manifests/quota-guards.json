@@ -41,5 +41,22 @@
       "criticalAbove": 10,
       "action": "inspect the release gate evidence with deploy:release inspect; repeated gate failures block promotion by design (fail-closed)"
     }
-  ]
+  ],
+  "availability": {
+    "description": "Control-plane availability targets (D-08 / WORK-060; AVA-001): the request-facing control plane's MONTHLY availability target per environment class, measured from typed interval observations by the D-06 release-control/observability surfaces with exact-revision identity (deploy:release availability). Fail-closed semantics are preserved: a control plane refusing to serve against a dead authority is CORRECT behavior, measured as such — the target is never met by weakening the authoritative-dependency rule. The production target may not be declared below 99.9 (unrepresentable at the loader).",
+    "targets": {
+      "local": {
+        "monthlyAvailabilityTargetPct": 99.0
+      },
+      "preview": {
+        "monthlyAvailabilityTargetPct": 99.0
+      },
+      "staging": {
+        "monthlyAvailabilityTargetPct": 99.5
+      },
+      "production": {
+        "monthlyAvailabilityTargetPct": 99.9
+      }
+    }
+  }
 }

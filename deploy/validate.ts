@@ -1,7 +1,8 @@
 /**
  * deploy/validate — the deployment configuration validation gate
  * (WORK-042 Required Verification: "deployment configuration
- * validation"; extended by WORK-047 / D-06).
+ * validation"; extended by WORK-047 / D-06, WORK-057 / D-08 HA, and
+ * WORK-060 / D-08 wave B).
  *
  * Pure repository check, no network, no mutation:
  *  1. the five manifests load and pass every cross-consistency rule
@@ -26,7 +27,21 @@
  *     fail-closed for every environment: primary+standby topology,
  *     bounded replication-path RPO targets (asynchronous and
  *     synchronous), bounded failover RTO, scope and measurement
- *     procedure (drift is unrepresentable).
+ *     procedure (drift is unrepresentable);
+ * 11. (D-08 / WORK-060, SEC-003) every environment declares its
+ *     connectivity profile over the closed internal-path vocabulary,
+ *     and the PRODUCTION class declares a private-path profile that
+ *     spans hosts (tunnel or private-endpoint): public internal
+ *     communication is unrepresentable in the environment matrix, and
+ *     a loopback-only production cannot carry its multi-host HA
+ *     topology;
+ * 12. (D-08 / WORK-060, SEC-003) every environment declares its
+ *     first-class region dimension (the repository-declared
+ *     data-at-rest region consumed by residency enforcement);
+ * 13. (D-08 / WORK-060, AVA-003) every durable concern declares
+ *     exactly one typed alternate provider with a governed-procedure
+ *     failover profile (a durable concern depending on a single
+ *     external provider is unrepresentable).
  *
  * Exit 0 = the configuration is valid; exit 1 = violations listed.
  */
@@ -36,7 +51,9 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseHaTopologyDocument } from "../src/platform/db/ha/topology";
 import { shippedMigrations } from "../src/platform/db/startup";
+import { isPrivateOnlyProfile } from "../src/platform/deployment/connectivity";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
+import { DURABLE_CONCERNS } from "../src/platform/deployment/manifest";
 import { computeResourceNames, previewBranchSlug } from "../src/platform/deployment/naming";
 import { loadQuotaGuardsPolicy } from "../src/platform/observability/alerts";
 import { parseRecoveryTargets } from "../src/platform/recovery/rto-rpo";
@@ -64,6 +81,12 @@ export interface DeploymentValidationReport {
   readonly recoveryTargetEnvironments: number;
   /** (D-08) environments whose HA topology extension parsed fail-closed. */
   readonly haTopologyEnvironments: number;
+  /** (D-08 / WORK-060) environments declaring a private-path connectivity profile. */
+  readonly connectivityEnvironments: number;
+  /** (D-08 / WORK-060) environments declaring the first-class region dimension. */
+  readonly regionEnvironments: number;
+  /** (D-08 / WORK-060) durable concerns with a typed alternate provider declared. */
+  readonly providerRedundancyProfiles: number;
 }
 
 /** The full validation core (the CLI and the D-06 validation gate share one path). */
@@ -178,6 +201,76 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     problems.push(`recovery-targets.json ha extension: ${(error as Error).message}`);
   }
 
+  // Rule 11 (D-08 / WORK-060, SEC-003): every environment declares a
+  // connectivity profile over the CLOSED internal-path vocabulary
+  // (the manifest loader rejects `public` and unknown values), and the
+  // PRODUCTION class declares a private-path profile that spans
+  // hosts — loopback-only is not a production-class internal path
+  // vocabulary because the production HA topology (primary + standby,
+  // AVA-002) is multi-host by construction.
+  const connectivityEnvironments = manifest.environments.filter(
+    (environment) => environment.connectivity.internalPaths.length > 0,
+  ).length;
+  for (const environment of manifest.environments) {
+    if (environment.connectivity.internalPaths.length === 0) {
+      problems.push(
+        `environments.json: environment "${environment.id}" declares no connectivity profile (every environment class declares its internal-path vocabulary)`,
+      );
+    }
+    if (!isPrivateOnlyProfile(environment.connectivity)) {
+      problems.push(
+        `environments.json: environment "${environment.id}" connectivity profile carries a non-vocabulary internal path (only loopback|tunnel|private-endpoint are representable)`,
+      );
+    }
+  }
+  const production = manifest.environments.find((entry) => entry.id === "production");
+  if (production !== undefined) {
+    const paths = production.connectivity.internalPaths;
+    if (!paths.includes("tunnel") && !paths.includes("private-endpoint")) {
+      problems.push(
+        "environments.json: the production class must declare tunnel or private-endpoint internal paths (its HA topology spans hosts; public internal communication is unrepresentable — SEC-003)",
+      );
+    }
+  }
+
+  // Rule 12 (D-08 / WORK-060, SEC-003): the region dimension is
+  // first-class — every environment declares its repository-declared
+  // data-at-rest region (the manifest loader validates the shape;
+  // this rule proves coverage — an environment without a declared
+  // region cannot satisfy ANY tenant residency constraint).
+  const regionEnvironments = manifest.environments.filter(
+    (environment) => environment.region.trim().length > 0,
+  ).length;
+  for (const environment of manifest.environments) {
+    if (environment.region.trim().length === 0) {
+      problems.push(
+        `environments.json: environment "${environment.id}" declares no region (the data-at-rest region is a first-class deployment dimension — SEC-003)`,
+      );
+    }
+  }
+
+  // Rule 13 (D-08 / WORK-060, AVA-003): every durable concern declares
+  // exactly one typed alternate provider with a governed-procedure
+  // failover profile (the manifest loader validates the shapes and the
+  // mode vocabulary; this rule proves durable-concern coverage).
+  const providerRedundancyProfiles = manifest.providers.filter(
+    (provider) => provider.redundancyAlternate !== null,
+  ).length;
+  for (const concern of DURABLE_CONCERNS) {
+    const owner = manifest.providers.find((provider) => provider.concern === concern);
+    if (owner === undefined) {
+      problems.push(
+        `providers.json: durable concern "${concern}" has no owning provider (the manifest loader reports authority/coverage gaps; this rule pins the redundancy duty)`,
+      );
+      continue;
+    }
+    if (owner.redundancyAlternate === null) {
+      problems.push(
+        `providers.json: durable concern "${concern}" declares no typed alternate provider (AVA-003: no durable concern depends on a single external provider)`,
+      );
+    }
+  }
+
   return {
     valid: problems.length === 0,
     problems,
@@ -192,6 +285,9 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     migrations: shipped.length,
     recoveryTargetEnvironments: recoveryTargetCount,
     haTopologyEnvironments: haTopologyCount,
+    connectivityEnvironments,
+    regionEnvironments,
+    providerRedundancyProfiles,
   };
 }
 

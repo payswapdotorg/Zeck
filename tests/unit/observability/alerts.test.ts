@@ -139,6 +139,17 @@ describe("the quota-guards policy loader (fail closed on weakening)", () => {
         action: "inspect",
       },
     ],
+    // +availability (WORK-060 / D-08, AVA-001): the availability targets
+    // became a REQUIRED block (the loader pins production ≥ 99.9) — the
+    // fixture carries the repository shape.
+    availability: {
+      targets: {
+        local: { monthlyAvailabilityTargetPct: 99.0 },
+        preview: { monthlyAvailabilityTargetPct: 99.0 },
+        staging: { monthlyAvailabilityTargetPct: 99.5 },
+        production: { monthlyAvailabilityTargetPct: 99.9 },
+      },
+    },
   });
 
   test("the repository-shape policy loads", () => {
@@ -146,6 +157,11 @@ describe("the quota-guards policy loader (fail closed on weakening)", () => {
     expect(policy.guards).toHaveLength(1);
     expect(policy.guards[0]?.thresholds.criticalAtPct).toBe(95);
     expect(policy.operationalThresholds).toHaveLength(1);
+    expect(policy.availabilityTargets).toHaveLength(4);
+    expect(
+      policy.availabilityTargets.find((target) => target.environment === "production")
+        ?.monthlyAvailabilityTargetPct,
+    ).toBe(99.9);
   });
 
   test("the weakening mutation — a missing critical threshold — is rejected", () => {

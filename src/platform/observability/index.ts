@@ -3,6 +3,7 @@
  */
 
 export {
+  type AvailabilityTargetRecord,
   DEFAULT_QUOTA_THRESHOLDS,
   evaluateOperationalAlerts,
   evaluateQuotaAlerts,
@@ -15,6 +16,21 @@ export {
   type QuotaGuardsPolicy,
   QuotaGuardsPolicyError,
 } from "./alerts";
+export {
+  AVAILABILITY_OUTCOMES,
+  AvailabilityComputationError,
+  type AvailabilityInterval,
+  type AvailabilityOutcome,
+  type AvailabilityRevisionIdentity,
+  type AvailabilityWindowInput,
+  type AvailabilityWindowRecord,
+  availabilityAlertOf,
+  availabilityOutcomeOfReadiness,
+  computeAvailabilityWindow,
+  isCriticalAvailabilityAlert,
+  MAX_AVAILABILITY_INTERVALS,
+  PRODUCTION_AVAILABILITY_TARGET_FLOOR_PCT,
+} from "./availability";
 export { loadTelemetryConfig, type TelemetryConfig, TelemetryConfigError } from "./config";
 export { createOtlpExporter, type OtlpExporterOptions } from "./otlp";
 export * from "./port";

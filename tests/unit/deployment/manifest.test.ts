@@ -349,3 +349,224 @@ describe("the loader fails closed on synthetic mutations", () => {
     expect(() => loadDeploymentManifest(filesystemManifestReader(empty))).toThrow();
   });
 });
+
+describe("the D-08 dimensions (WORK-060: region, connectivity, redundancy)", () => {
+  test("the real tree declares a region and a private-path connectivity profile for every environment", () => {
+    const manifest = loadDeploymentManifest(realReader());
+    for (const environment of manifest.environments) {
+      expect(environment.region).toMatch(/^[a-z0-9][a-z0-9-]{0,63}$/);
+      expect(environment.connectivity.internalPaths.length).toBeGreaterThan(0);
+    }
+    const byId = Object.fromEntries(manifest.environments.map((e) => [e.id, e]));
+    expect(byId.local?.region).toBe("local");
+    expect(byId.local?.connectivity.internalPaths).toEqual(["loopback"]);
+    expect(byId.production?.connectivity.internalPaths).toContain("private-endpoint");
+    expect(byId.production?.connectivity.internalPaths).toContain("tunnel");
+  });
+
+  test("the real tree declares exactly one typed alternate for every durable concern", () => {
+    const manifest = loadDeploymentManifest(realReader());
+    const alternates = manifest.providers
+      .filter((provider) => provider.redundancyAlternate !== null)
+      .map((provider) => ({
+        concern: provider.concern,
+        primary: provider.id,
+        alternate: provider.redundancyAlternate?.id ?? "",
+      }))
+      .sort((a, b) => a.concern.localeCompare(b.concern));
+    expect(alternates).toEqual([
+      { concern: "artifact-bytes", primary: "cloudflare-r2", alternate: "s3-compatible-alternate" },
+      {
+        concern: "async-transport",
+        primary: "cloudflare-queues",
+        alternate: "managed-queue-alternate",
+      },
+      {
+        concern: "experience-delivery",
+        primary: "vercel",
+        alternate: "independently-runnable-host",
+      },
+      { concern: "relational-state", primary: "neon", alternate: "managed-postgresql-standby" },
+    ]);
+  });
+
+  test("every declared alternate carries a governed-procedure failover profile", () => {
+    const manifest = loadDeploymentManifest(realReader());
+    for (const provider of manifest.providers) {
+      const alternate = provider.redundancyAlternate;
+      if (alternate === null) {
+        continue;
+      }
+      expect(alternate.failover.mode).toBe("governed-procedure");
+      expect(alternate.failover.procedure.length).toBeGreaterThan(0);
+      expect(alternate.failover.measurement.length).toBeGreaterThan(0);
+      expect(alternate.id).not.toBe(provider.id);
+    }
+  });
+});
+
+describe("the loader fails closed on D-08 dimension mutations", () => {
+  test("a missing region is rejected (the dimension is first-class)", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    delete environments.environments.staging?.region;
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/staging.region/);
+  });
+
+  test("a malformed region is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    (environments.environments.staging as Record<string, unknown>).region = "Not A Region";
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/kebab-case region id/);
+  });
+
+  test("a PUBLIC internal path is unrepresentable in the environment matrix", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    (environments.environments.staging as Record<string, unknown>).connectivity = {
+      internalPaths: ["public"],
+    };
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(
+      /must be loopback\|tunnel\|private-endpoint \(got "public"; a public internal path is unrepresentable\)/,
+    );
+  });
+
+  test("an unknown internal path is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    (environments.environments.local as Record<string, unknown>).connectivity = {
+      internalPaths: ["carrier-pigeon"],
+    };
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/must be loopback/);
+  });
+
+  test("a missing connectivity profile is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    delete environments.environments.preview?.connectivity;
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/preview.connectivity/);
+  });
+
+  test("an empty internal-path list is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const environments = JSON.parse(sources.get("environments.json") ?? "{}") as {
+      environments: Record<string, Record<string, unknown>>;
+    };
+    (environments.environments.local as Record<string, unknown>).connectivity = {
+      internalPaths: [],
+    };
+    sources.set("environments.json", JSON.stringify(environments));
+    expect(() => loadDeploymentManifest(reader)).toThrow(
+      /must declare at least one internal path class/,
+    );
+  });
+
+  test("an AUTOMATIC failover mode is unrepresentable", () => {
+    const { reader, sources } = syntheticReader();
+    const providers = JSON.parse(sources.get("providers.json") ?? "{}") as {
+      providers: Array<Record<string, unknown>>;
+    };
+    const artifactStore = providers.providers.find(
+      (provider) => provider.concern === "artifact-bytes",
+    );
+    if (artifactStore === undefined) {
+      throw new Error("synthetic mutation failed: artifact-bytes provider missing");
+    }
+    (
+      (artifactStore.redundancy as Record<string, Record<string, Record<string, unknown>>>)
+        .alternate as Record<string, Record<string, unknown>>
+    ).failover = {
+      mode: "automatic",
+      procedure: "some ambient automatic switch",
+      measurement: "provider dashboard claims",
+    };
+    sources.set("providers.json", JSON.stringify(providers));
+    expect(() => loadDeploymentManifest(reader)).toThrow(
+      /must be governed-procedure \(got "automatic"; automatic failover is unrepresentable/,
+    );
+  });
+
+  test("a durable concern without an alternate is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const providers = JSON.parse(sources.get("providers.json") ?? "{}") as {
+      providers: Array<Record<string, unknown>>;
+    };
+    const artifactStore = providers.providers.find(
+      (provider) => provider.concern === "artifact-bytes",
+    );
+    if (artifactStore === undefined) {
+      throw new Error("synthetic mutation failed: artifact-bytes provider missing");
+    }
+    delete artifactStore.redundancy;
+    sources.set("providers.json", JSON.stringify(providers));
+    expect(() => loadDeploymentManifest(reader)).toThrow(
+      /durable concern "artifact-bytes".*must declare exactly one redundancy.alternate/,
+    );
+  });
+
+  test("a provider declaring itself as its own alternate is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const providers = JSON.parse(sources.get("providers.json") ?? "{}") as {
+      providers: Array<Record<string, unknown>>;
+    };
+    const artifactStore = providers.providers.find(
+      (provider) => provider.concern === "artifact-bytes",
+    );
+    if (artifactStore === undefined) {
+      throw new Error("synthetic mutation failed: artifact-bytes provider missing");
+    }
+    (
+      (artifactStore.redundancy as Record<string, Record<string, unknown>>).alternate as Record<
+        string,
+        unknown
+      >
+    ).id = "cloudflare-r2";
+    sources.set("providers.json", JSON.stringify(providers));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/declares itself as its own alternate/);
+  });
+
+  test("drifting the durableConcerns list (dropping a concern) is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const providers = JSON.parse(sources.get("providers.json") ?? "{}") as {
+      durableConcerns?: string[];
+      providers: Array<Record<string, unknown>>;
+    };
+    providers.durableConcerns = ["relational-state", "artifact-bytes", "async-transport"];
+    sources.set("providers.json", JSON.stringify(providers));
+    expect(() => loadDeploymentManifest(reader)).toThrow(
+      /durableConcerns must include "experience-delivery"/,
+    );
+  });
+
+  test("a malformed alternate failover block is rejected", () => {
+    const { reader, sources } = syntheticReader();
+    const providers = JSON.parse(sources.get("providers.json") ?? "{}") as {
+      providers: Array<Record<string, unknown>>;
+    };
+    const queueProvider = providers.providers.find(
+      (provider) => provider.concern === "async-transport",
+    );
+    if (queueProvider === undefined) {
+      throw new Error("synthetic mutation failed: async-transport provider missing");
+    }
+    const redundancy = queueProvider.redundancy as Record<string, Record<string, unknown>>;
+    delete redundancy.alternate?.failover;
+    sources.set("providers.json", JSON.stringify(providers));
+    expect(() => loadDeploymentManifest(reader)).toThrow(/redundancy.alternate.failover/);
+  });
+});
