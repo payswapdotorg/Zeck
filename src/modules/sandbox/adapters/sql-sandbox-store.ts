@@ -21,8 +21,16 @@
 
 import type { DatabasePort, Transaction } from "../../../platform/db/port";
 import { PlatformError } from "../../../shared/errors";
-import type { ComputeEnvironmentRecord, ComputeEnvironmentSpec } from "../domain/environment";
-import { isEnvironmentLifecycleStatus, isSandboxEnvironmentKind } from "../domain/environment";
+import type {
+  ComputeEnvironmentRecord,
+  ComputeEnvironmentSpec,
+  IsolationProfileClass,
+} from "../domain/environment";
+import {
+  isEnvironmentLifecycleStatus,
+  isIsolationProfileClass,
+  isSandboxEnvironmentKind,
+} from "../domain/environment";
 import type {
   SandboxDenialClass,
   SandboxDenialCode,
@@ -52,6 +60,8 @@ interface EnvironmentRow {
   readonly kind: string;
   readonly spec: unknown;
   readonly spec_digest: string;
+  readonly isolation_class: string;
+  readonly pool_id: string | null;
   readonly status: string;
   readonly created_at: Date;
   readonly updated_at: Date;
@@ -88,7 +98,7 @@ interface SandboxRow {
 }
 
 const ENVIRONMENT_COLUMNS =
-  "id, application_id, tenant_id, slug, name, description, kind, spec, spec_digest, status, created_at, updated_at";
+  "id, application_id, tenant_id, slug, name, description, kind, spec, spec_digest, isolation_class, pool_id, status, created_at, updated_at";
 const SANDBOX_COLUMNS =
   "id, application_id, tenant_id, execution_id, sandbox_key, request_fingerprint, environment_id, kind, status, runtime_metadata, denial_class, denial_code, denial_reason, outcome_class, failure_class, failure_message, retryable, output_digest, output, usage_micro_usd, budget_operation_id, ledger_admitted_sequence, ledger_completed_sequence, created_at, dispatched_at, completed_at, duration_ms";
 
@@ -113,6 +123,12 @@ function toEnvironment(row: EnvironmentRow): ComputeEnvironmentRecord {
       message: `stored environment ${row.id} carries an unknown status "${row.status}"`,
     });
   }
+  if (!isIsolationProfileClass(row.isolation_class)) {
+    throw new PlatformError({
+      code: "SANDBOX_ERROR",
+      message: `stored environment ${row.id} carries an unknown isolation class "${row.isolation_class}"`,
+    });
+  }
   return {
     id: row.id,
     applicationId: row.application_id,
@@ -123,6 +139,8 @@ function toEnvironment(row: EnvironmentRow): ComputeEnvironmentRecord {
     kind: row.kind,
     spec: row.spec as ComputeEnvironmentSpec,
     specDigest: row.spec_digest,
+    isolationClass: row.isolation_class as IsolationProfileClass,
+    poolId: row.pool_id,
     status: row.status,
     createdAt: isoOf(row.created_at),
     updatedAt: isoOf(row.updated_at),
@@ -182,8 +200,8 @@ export class SqlSandboxStore implements SandboxStore {
     input: InsertEnvironmentInput,
   ): Promise<ClaimOutcome<ComputeEnvironmentRecord>> {
     const inserted = await this.db.execute<EnvironmentRow>({
-      sql: `INSERT INTO sandbox.compute_environments (id, application_id, tenant_id, slug, name, description, kind, spec, spec_digest, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, 'available', $10, $10)
+      sql: `INSERT INTO sandbox.compute_environments (id, application_id, tenant_id, slug, name, description, kind, spec, spec_digest, isolation_class, pool_id, status, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, 'available', $12, $12)
 ON CONFLICT (application_id, slug) DO NOTHING
 RETURNING ${ENVIRONMENT_COLUMNS}`,
       parameters: [
@@ -196,6 +214,8 @@ RETURNING ${ENVIRONMENT_COLUMNS}`,
         input.kind,
         JSON.stringify(input.spec),
         input.specDigest,
+        input.isolationClass,
+        input.poolId,
         input.createdAt,
       ],
     });

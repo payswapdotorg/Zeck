@@ -2,7 +2,7 @@
  * SQL audit store (audit module adapter; WORK-059 / SEC-004).
  *
  * The durable implementation of the audit ports over the
- * provider-neutral `DatabasePort` (migration `0031_audit_compliance`).
+ * provider-neutral `DatabasePort` (migration `0032_audit_compliance`).
  * PostgreSQL is the SOLE durable authority for audit records — this is
  * the ONLY durable implementation (no second store, cache or ledger
  * of audit evidence exists anywhere).

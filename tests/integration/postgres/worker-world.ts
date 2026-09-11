@@ -136,6 +136,21 @@ export const CONTAINER_SPEC: ComputeEnvironmentSpec = {
   cost: { estimatedCostMicroUsd: "0" },
 };
 
+/** A DEDICATED-CUSTOMER container spec (WORK-058 / SEC-002). */
+export const dedicatedContainerSpec = (poolId: string): ComputeEnvironmentSpec => ({
+  ...CONTAINER_SPEC,
+  network: { egress: "none", allowedHosts: [] },
+  isolation: { class: "dedicated-customer", poolId },
+});
+
+/** A STRICT container spec (WORK-058 / SEC-002 — the tightened surface). */
+export const STRICT_CONTAINER_SPEC: ComputeEnvironmentSpec = {
+  ...CONTAINER_SPEC,
+  network: { egress: "none", allowedHosts: [] },
+  filesystem: { workspace: "ephemeral-read-only", readOnlyArtifactRefs: [] },
+  isolation: { class: "strict" },
+};
+
 export const PROCESS_SPEC: ComputeEnvironmentSpec = {
   kind: "process",
   limits: { cpuMilliCores: 500, memoryMiB: 128, executionTimeoutMs: 30_000 },
@@ -267,6 +282,14 @@ export interface WorkerFabricWorld {
   readonly containerEnvironmentId: string;
   readonly processEnvironmentId: string;
   readonly policy: WorkerFabricPolicy;
+  /** Register + activate a governed customer runner (WORK-058 pools). */
+  registerActiveRunner(): Promise<string>;
+  /** Register a dedicated-customer container environment bound to a pool. */
+  registerDedicatedEnvironment(poolId: string): Promise<string>;
+  /** Register a strict container environment. */
+  registerStrictEnvironment(): Promise<string>;
+  /** A worker-executable task bound to an explicit compute environment. */
+  taskForEnvironment: (environmentId: string, command: string) => Readonly<Record<string, unknown>>;
   /** A worker-executable task bound to the registered container environment. */
   taskFor: (command: string) => Readonly<Record<string, unknown>>;
   /** Create + drive one execution through the REAL lifecycle to QUEUED + dispatch. */
@@ -280,6 +303,8 @@ export interface WorkerFabricWorld {
     readonly declaredConcurrency?: number;
     readonly kind?: "first-party" | "customer-runner";
     readonly runnerId?: string;
+    /** The dedicated runner pool binding (WORK-058 / SEC-002). */
+    readonly poolId?: string;
     readonly policy?: Partial<WorkerFabricPolicy>;
     readonly sleep?: (ms: number) => Promise<void>;
     /** The D-06 bounded telemetry seam (observation only). */
@@ -468,6 +493,69 @@ export async function seedWorkerFabricWorld(
     },
   });
 
+  const taskForEnvironment = (
+    environmentId: string,
+    command: string,
+  ): Readonly<Record<string, unknown>> => ({
+    kind: "worker-fabric-test",
+    sandbox: {
+      environmentId,
+      command,
+      args: ["--mode", "batch"],
+      publicEnv: { MODE: "batch" },
+    },
+  });
+
+  const registerActiveRunner = async (): Promise<string> => {
+    const runnerId = generateId();
+    await computeStore.registerRunner(
+      {
+        runnerId,
+        applicationId,
+        tenantId,
+        endpointUrl: `https://runner-${runnerId.slice(-6)}.example`,
+        tokenSecretRef: `zeck-secret://local/runner-${runnerId.slice(-6)}`,
+        registeredBy: ACTOR_ID,
+      },
+      new Date().toISOString(),
+    );
+    await computeStore.transitionRunner(runnerId, "active", {
+      actorId: ACTOR_ID,
+      now: new Date().toISOString(),
+    });
+    return runnerId;
+  };
+
+  const registerDedicatedEnvironment = async (poolId: string): Promise<string> => {
+    const record = await catalog.register(
+      {
+        applicationId,
+        tenantId,
+        slug: `ded-${poolId}-${generateId().slice(-6)}`,
+        name: `dedicated ${poolId}`,
+        spec: dedicatedContainerSpec(poolId),
+      },
+      `ded-${poolId}-${generateId()}`,
+      actor(),
+    );
+    return record.id;
+  };
+
+  const registerStrictEnvironment = async (): Promise<string> => {
+    const record = await catalog.register(
+      {
+        applicationId,
+        tenantId,
+        slug: `strict-${generateId().slice(-6)}`,
+        name: "strict",
+        spec: STRICT_CONTAINER_SPEC,
+      },
+      `strict-${generateId()}`,
+      actor(),
+    );
+    return record.id;
+  };
+
   const createDispatchedExecution = async (
     suffix: string,
     task?: Readonly<Record<string, unknown>>,
@@ -495,6 +583,8 @@ export async function seedWorkerFabricWorld(
     readonly declaredConcurrency?: number;
     readonly kind?: "first-party" | "customer-runner";
     readonly runnerId?: string;
+    /** The dedicated runner pool binding (WORK-058 / SEC-002). */
+    readonly poolId?: string;
     readonly policy?: Partial<WorkerFabricPolicy>;
     readonly sleep?: (ms: number) => Promise<void>;
     readonly telemetry?: TelemetrySink;
@@ -544,6 +634,7 @@ export async function seedWorkerFabricWorld(
         applicationId,
         kind: options?.kind ?? "first-party",
         ...(options?.runnerId === undefined ? {} : { runnerId: options.runnerId }),
+        ...(options?.poolId === undefined ? {} : { poolId: options.poolId }),
         declaredConcurrency: options?.declaredConcurrency ?? 4,
         metadata: { world: "worker-fabric", ...(options?.metadata ?? {}) },
       },
@@ -584,6 +675,10 @@ export async function seedWorkerFabricWorld(
     containerEnvironmentId: containerEnvironment.id,
     processEnvironmentId: processEnvironment.id,
     policy,
+    registerActiveRunner,
+    registerDedicatedEnvironment,
+    registerStrictEnvironment,
+    taskForEnvironment,
     taskFor,
     createDispatchedExecution,
     createFabric,

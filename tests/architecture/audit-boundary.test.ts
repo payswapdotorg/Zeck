@@ -48,7 +48,7 @@ import { type SourceFile, scanDependencyRules } from "./lib/dependency-rules";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-const MIGRATION_PATH = "src/platform/db/migrations/0031_audit_compliance.sql";
+const MIGRATION_PATH = "src/platform/db/migrations/0032_audit_compliance.sql";
 
 function listFiles(dir: string): string[] {
   const base = join(REPO_ROOT, dir);
@@ -145,9 +145,9 @@ describe("D-08 audit/compliance architecture boundaries (WORK-059)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .sort();
-    expect(migrations).toContain("0031_audit_compliance.sql");
+    expect(migrations).toContain("0032_audit_compliance.sql");
     const highest = migrations[migrations.length - 1];
-    expect(highest).toBe("0031_audit_compliance.sql");
+    expect(highest).toBe("0032_audit_compliance.sql");
     const sql = readFileSync(join(REPO_ROOT, MIGRATION_PATH), "utf8");
     expect(sql).toContain("CREATE SCHEMA audit");
     expect(sql).toContain("audit.audit_records");

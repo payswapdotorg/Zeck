@@ -444,8 +444,8 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations")).filter((name) =>
       name.endsWith(".sql"),
     );
-    expect(migrations).toHaveLength(30);
-    expect(migrations[migrations.length - 1]).toMatch(/^0031_audit_compliance/);
+    expect(migrations).toHaveLength(31); // +0031_isolation_profiles (WORK-058) +0032_audit_compliance (WORK-059 / D-08)
+    expect(migrations[migrations.length - 1]).toMatch(/^0032_audit_compliance/); // WORK-059 / D-08
   });
 
   test("D4b applying a continuation twice is a bounded no-op (pure data, zero side effects)", () => {

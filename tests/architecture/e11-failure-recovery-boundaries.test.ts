@@ -224,8 +224,8 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .sort();
-    expect(migrations).toHaveLength(30);
-    expect(migrations[migrations.length - 1]).toMatch(/^0031_audit_compliance/);
+    expect(migrations).toHaveLength(31); // +0031_isolation_profiles (WORK-058) +0032_audit_compliance (WORK-059 / D-08)
+    expect(migrations[migrations.length - 1]).toMatch(/^0032_audit_compliance/); // WORK-059 / D-08
     // No store implementation exists beyond the WORK-049 one.
     const implementors = collectSourceFiles(REPO_ROOT).filter((file) =>
       file.content.includes("implements OptimizationDecisionStore"),

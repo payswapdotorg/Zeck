@@ -84,6 +84,16 @@ export interface WorkerRegistrationRecord {
   readonly kind: WorkerRegistrationKind;
   /** The governed runner row this worker binds to (customer-runner kind only). */
   readonly runnerId: string | null;
+  /**
+   * The dedicated runner pool this worker serves (WORK-058 / SEC-002):
+   * the typed pool identity bound at registration — first-party workers
+   * carry none (the platform's shared pool); a customer-runner worker
+   * MAY bind one pool and never changes it (the binding is immutable;
+   * a restarted process registers a NEW identity). Workers bound to a
+   * pool execute that pool's dedicated-customer work; unbound workers
+   * never do (physically enforced at claim admission).
+   */
+  readonly poolId: string | null;
   readonly status: WorkerRegistrationStatus;
   /**
    * The worker's declared concurrent-work bound. Enforced durably at
@@ -109,6 +119,12 @@ export interface WorkerRegistrationInput {
   readonly kind: WorkerRegistrationKind;
   /** The governed runner binding (required when kind is customer-runner). */
   readonly runnerId?: string;
+  /**
+   * The dedicated runner pool binding (WORK-058 / SEC-002):
+   * customer-runner workers only, never first-party (a first-party
+   * worker with a pool is unrepresentable), bounded kebab-case shape.
+   */
+  readonly poolId?: string;
   readonly declaredConcurrency: number;
   readonly metadata?: Readonly<Record<string, unknown>>;
 }
@@ -287,6 +303,15 @@ export interface WorkerClaimRecord {
   /** The sandbox compute environment the work executes in (quota dimension). */
   readonly computeEnvironmentId: string;
   readonly workerId: string;
+  /**
+   * The dedicated runner pool of the CLAIMED WORK (WORK-058 /
+   * SEC-002): derived at admission from the compute environment's
+   * declaration INSIDE the admission transaction (scoped resolution
+   * at the seam — never a caller-supplied value; the physical gate
+   * assigns it). Non-null exactly when the environment's isolation
+   * class is dedicated-customer.
+   */
+  readonly poolId: string | null;
   /** Monotonic claim generation for this execution (bounded by policy). */
   readonly claimEpoch: number;
   /** The executions-module lease correlation (owner + epoch, once acquired). */
@@ -668,7 +693,24 @@ export type ClaimRefusalReason =
   | { readonly kind: "attempts-exhausted"; readonly attempts: number; readonly bound: number }
   | { readonly kind: "worker-not-active"; readonly status: WorkerRegistrationStatus }
   | { readonly kind: "worker-unknown" }
-  | { readonly kind: "duplicate-live-claim" };
+  | { readonly kind: "duplicate-live-claim" }
+  /**
+   * WORK-058 / SEC-001: the claim's tenant disagrees with the
+   * authoritative execution/environment tenant (the misrouted/
+   * hostile claim — fails closed with a typed denial).
+   */
+  | { readonly kind: "tenant-scope-refused" }
+  /**
+   * WORK-058 / SEC-002: the claiming worker is not bound to the
+   * dedicated runner pool the compute environment declares (dedicated
+   * pools share nothing — pool cross-talk fails closed with a typed
+   * denial).
+   */
+  | {
+      readonly kind: "pool-mismatch";
+      readonly environmentPool: string;
+      readonly workerPool: string | null;
+    };
 
 export interface ClaimCompletionInput {
   readonly claimId: string;

@@ -231,6 +231,8 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
       kind: environment.kind,
       environmentId: environment.id,
       environmentDigest: environment.specDigest,
+      isolationClass: environment.isolationClass,
+      isolationPoolId: environment.poolId,
       task,
       limits: environment.spec.limits,
       network: environment.spec.network,
@@ -424,11 +426,16 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
     }
 
     // ----- 4. POLICY admission (the gate — before anything durable). --------
+    // The DECLARED isolation-profile class rides the same frozen isolation
+    // fact through its ladder anchor (WORK-058 / SEC-002): the governed
+    // selection — policy declares the required class, the sandbox authority
+    // admits/constructs it.
     const decision = await admission.admit({
       tenantId: execution.tenantId,
       applicationId: actor.applicationId,
       executionId: input.executionId,
       kind: environment.kind,
+      isolationProfile: environment.isolationClass,
       hosts: [...environment.spec.network.allowedHosts],
       secretRefs: [...environment.spec.secrets.secretRefs],
     });
@@ -546,6 +553,11 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
       kind: environment.kind,
       environmentId: environment.id,
       environmentDigest: environment.specDigest,
+      // The admitted isolation profile (WORK-058 / SEC-002): written once
+      // from the environment's declared profile; dispatch replays THIS
+      // snapshot (a dispatch-time profile disagreement is unrepresentable).
+      isolationClass: environment.isolationClass,
+      isolationPoolId: environment.poolId,
       task,
       limits: environment.spec.limits,
       network: environment.spec.network,
@@ -602,6 +614,10 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
     filesystem: record.runtimeMetadata.filesystem,
     secretRefs: [...record.runtimeMetadata.secretRefs],
     runtime: record.runtimeMetadata.runtime,
+    // The admitted isolation profile (WORK-058 / SEC-002) rides the
+    // admission evidence: the durable record of the governed selection.
+    isolationClass: record.runtimeMetadata.isolationClass,
+    isolationPoolId: record.runtimeMetadata.isolationPoolId,
     policyEvidence: record.runtimeMetadata.policyEvidence,
     capabilitySatisfaction: record.runtimeMetadata.capabilitySatisfaction,
     budgetOperationId: record.runtimeMetadata.budgetOperationId,
@@ -737,6 +753,9 @@ export function createSandboxService(deps: SandboxServiceDeps): SandboxService {
       tenantId: record.tenantId,
       executionId: record.executionId,
       kind: metadata.kind,
+      // The admitted isolation-profile class — replayed from the snapshot
+      // (the substrate constructs EXACTLY the admitted profile).
+      isolationClass: metadata.isolationClass,
       task: metadata.task,
       limits: metadata.limits,
       network: metadata.network,

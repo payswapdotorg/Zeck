@@ -44,6 +44,25 @@ export class ProcessSandboxProvider implements SandboxProvider {
         },
       };
     }
+    if (spec.isolationClass === "strict") {
+      // WORK-058 / SEC-002 defense-in-depth: the strict class is
+      // domain-validatable only on isolation-substrate kinds (the
+      // process class is not a security boundary for untrusted work).
+      // A strict profile reaching the process substrate — whatever the
+      // path — fails CLOSED rather than executing under-hardened work.
+      return {
+        outcomeClass: "sandbox-failure",
+        outputDigest: null,
+        output: null,
+        usageMicroUsd: null,
+        failure: {
+          failureClass: "runtime-unavailable",
+          message:
+            "the strict isolation class cannot execute on the process substrate (process controls are not a security boundary for untrusted work); refusing to execute",
+          retryable: false,
+        },
+      };
+    }
     const result = await runIsolatedProcess({
       command: spec.task.command,
       args: [...spec.task.args],

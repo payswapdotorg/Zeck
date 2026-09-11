@@ -46,6 +46,7 @@ describe.skipIf(!LIVE)("container runner LIVE round trip (WORK-046 D-05)", () =>
         mounts: [],
         network: { mode: "none", allowedHosts: [] },
         resourceLimits: { cpuMilliCores: 500, memoryMiB: 64, executionTimeoutMs: 30_000 },
+        isolationClass: "standard",
         readOnlyRootfs: true,
         runAsNonRoot: true,
         privileged: false,

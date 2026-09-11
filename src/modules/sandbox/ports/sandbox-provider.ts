@@ -34,6 +34,7 @@ import type {
   SandboxNetworkPolicy,
   SandboxResourceLimits,
 } from "../domain/environment";
+import type { IsolationProfileClass } from "../domain/isolation";
 import type { SandboxFailureClass, SandboxOutcomeClass, SandboxTask } from "../domain/sandbox";
 
 /** The sanitized runtime specification a substrate executes. */
@@ -43,6 +44,15 @@ export interface SandboxRuntimeSpec {
   readonly tenantId: string;
   readonly executionId: string;
   readonly kind: SandboxEnvironmentKind;
+  /**
+   * The admitted isolation-profile class (WORK-058 / SEC-002): the
+   * governed profile this execution runs under — replayed from the
+   * immutable admitted snapshot, never a dispatch-time assignment. The
+   * substrate constructs EXACTLY this profile (a strict-class runtime
+   * enforces the tightened capability surface; anything it cannot
+   * enforce fails closed).
+   */
+  readonly isolationClass: IsolationProfileClass;
   readonly task: SandboxTask;
   readonly limits: SandboxResourceLimits | null;
   readonly network: SandboxNetworkPolicy;

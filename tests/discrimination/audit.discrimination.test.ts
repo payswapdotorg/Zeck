@@ -54,7 +54,7 @@ import { scanAuditRules } from "../architecture/lib/audit-boundary-rules";
 
 const digest = createAuditNodeDigest();
 
-const MIGRATION_PATH = "src/platform/db/migrations/0031_audit_compliance.sql";
+const MIGRATION_PATH = "src/platform/db/migrations/0032_audit_compliance.sql";
 const REAL_MIGRATION = await import("node:fs").then((fs) =>
   fs.readFileSync(new URL(`../../${MIGRATION_PATH}`, import.meta.url), "utf8"),
 );

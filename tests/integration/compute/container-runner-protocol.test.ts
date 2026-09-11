@@ -64,6 +64,7 @@ const SAFE_CONFIG: ContainerConfiguration = {
   mounts: [],
   network: { mode: "none", allowedHosts: [] },
   resourceLimits: { cpuMilliCores: 500, memoryMiB: 128, executionTimeoutMs: 5_000 },
+  isolationClass: "standard",
   readOnlyRootfs: true,
   runAsNonRoot: true,
   privileged: false,

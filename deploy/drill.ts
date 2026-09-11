@@ -28,6 +28,18 @@
  *                       are fenced at the authority.
  *   outage-readiness  — the fail-closed readiness gate: the recovery
  *                       targets load and cover every environment.
+ *   authority-failover — the D-08 HA drill (WORK-057, AVA-002/004):
+ *                       on a REAL primary+standby PostgreSQL topology,
+ *                       lose the primary → promote the standby → repoint
+ *                       the control plane → the D-07 invariant-gate
+ *                       restore proof green on the promoted authority →
+ *                       replay classification + fail-closed proof →
+ *                       measured RTO/RPO against the HA targets. Local
+ *                       runs the SAFE DISPOSABLE form (the live
+ *                       authority is only read through the D-07 backup
+ *                       engine — never touched); provider environments
+ *                       drill the operator's topology through
+ *                       ZECK_HA_PRIMARY_URL/ZECK_HA_STANDBY_URL.
  *
  * RTO/RPO are MEASURED per drill and evaluated against
  * deploy/manifests/recovery-targets.json (repository truth). Every
@@ -41,10 +53,12 @@
  *   bun run deploy:drill -- queue-recovery    [--environment local] [--limit 100]
  *   bun run deploy:drill -- worker-evacuation [--environment local] --region <label> [--mode drain|fence]
  *   bun run deploy:drill -- outage-readiness  [--environment local]
+ *   bun run deploy:drill -- authority-failover [--environment local] [--primary-port <p>] [--standby-port <p>] [--keep-topology]
+ *                          [--environment preview|staging|production] [--loss-at <iso8601>] (requires ZECK_HA_PRIMARY_URL/ZECK_HA_STANDBY_URL)
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { Client } from "pg";
 import { createBudgetRecoveryInvariants } from "../src/modules/budgets/adapters/recovery-invariants";
@@ -64,6 +78,18 @@ import {
   restoreDataIntoCurrentState,
 } from "../src/platform/db/backup";
 import { parseConnectionConfig, redactConnectionString } from "../src/platform/db/connection";
+import { DatabaseUnavailableError } from "../src/platform/db/errors";
+import { PgAuthorityFailover } from "../src/platform/db/ha/failover";
+import { PgReplicationProbe } from "../src/platform/db/ha/replication";
+import {
+  failoverTargetForMode,
+  type HaReplicationMode,
+  type HaTopologyEndpoints,
+  type HaTopologyTargets,
+  haEndpointsFromEnvironment,
+  parseHaReplicationMode,
+  parseHaTopologyDocument,
+} from "../src/platform/db/ha/topology";
 import { PgDatabasePort } from "../src/platform/db/pg-database-port";
 import {
   authoritativeSchemas,
@@ -100,6 +126,14 @@ import {
   asSecretReference,
   createEnvSecretStore,
 } from "../src/platform/secret-store/adapters/env-secret-store";
+import {
+  assertPortFree,
+  bootstrapStandbyFromPrimary,
+  type LocalHaServer,
+  resolvePostgresBinaries,
+  startLocalPostgresServer,
+  waitForStandbyCatchup,
+} from "./ha";
 import { gitRevision, loadManifest, REPOSITORY_ROOT, requireEnvironment } from "./lib";
 import { validateDeploymentConfiguration } from "./validate";
 
@@ -108,7 +142,8 @@ type DrillCommand =
   | "artifact-exit"
   | "queue-recovery"
   | "worker-evacuation"
-  | "outage-readiness";
+  | "outage-readiness"
+  | "authority-failover";
 
 const DRILL_COMMANDS: readonly DrillCommand[] = [
   "authority-loss",
@@ -116,6 +151,7 @@ const DRILL_COMMANDS: readonly DrillCommand[] = [
   "queue-recovery",
   "worker-evacuation",
   "outage-readiness",
+  "authority-failover",
 ];
 
 function argumentValue(argv: readonly string[], name: string): string | undefined {
@@ -290,7 +326,7 @@ async function main(): Promise<void> {
   const command = argv[0] as DrillCommand;
   if (!DRILL_COMMANDS.includes(command)) {
     console.error(
-      "error: command required: authority-loss | artifact-exit | queue-recovery | worker-evacuation | outage-readiness",
+      "error: command required: authority-loss | artifact-exit | queue-recovery | worker-evacuation | outage-readiness | authority-failover",
     );
     process.exit(2);
   }
@@ -712,21 +748,534 @@ async function main(): Promise<void> {
     });
   }
 
+  // ==== authority-failover (WORK-057 / D-08, AVA-002/AVA-004) ==========
+  let haMode: HaReplicationMode = "asynchronous";
+  let haTopology: HaTopologyTargets | null = null;
+  let haLossAt: Date | null = null;
+  let haRpoAnchor: Date | null = null;
+  let haCleanup: ((recovered: boolean) => Promise<void>) | null = null;
+  const failoverExecutor = new PgAuthorityFailover();
+  const replicationProbe = new PgReplicationProbe();
+
+  if (command === "authority-failover") {
+    haMode = parseHaReplicationMode(process.env.ZECK_HA_REPLICATION_MODE ?? "asynchronous");
+    const haTopologies = parseHaTopologyDocument(
+      JSON.parse(
+        readFileSync(
+          resolve(REPOSITORY_ROOT, "deploy", "manifests", "recovery-targets.json"),
+          "utf8",
+        ),
+      ) as unknown,
+    );
+    const declared = haTopologies[environment];
+    if (declared === undefined) {
+      console.error(
+        `error: no ha topology declared for environment "${environment}" (recovery-targets.json)`,
+      );
+      process.exit(2);
+    }
+    haTopology = declared;
+
+    if (environment === "local") {
+      // THE SAFE DISPOSABLE FORM: the live authority is only READ
+      // (D-07 logical backup); the drill builds a real disposable
+      // primary+standby pair and fails over between them.
+      const keepTopology = hasFlag(argv, "--keep-topology");
+      const primaryPort = Number.parseInt(
+        argumentValue(argv, "--primary-port") ?? process.env.ZECK_HA_LOCAL_PRIMARY_PORT ?? "55601",
+        10,
+      );
+      const standbyPort = Number.parseInt(
+        argumentValue(argv, "--standby-port") ?? process.env.ZECK_HA_LOCAL_STANDBY_PORT ?? "55602",
+        10,
+      );
+      if (
+        !Number.isInteger(primaryPort) ||
+        primaryPort < 1024 ||
+        !Number.isInteger(standbyPort) ||
+        standbyPort < 1024 ||
+        primaryPort === standbyPort
+      ) {
+        console.error("error: --primary-port/--standby-port must be distinct integers >= 1024");
+        process.exit(2);
+      }
+      const binaries = resolvePostgresBinaries(process.env);
+      await assertPortFree(primaryPort);
+      await assertPortFree(standbyPort);
+      const dataRoot =
+        process.env.ZECK_LOCAL_DATA_ROOT ?? `${process.env.HOME ?? "/tmp"}/.local/share/zeck`;
+      const topologyRoot = `${dataRoot}/ha-drill/${randomUUID().slice(0, 8)}`;
+      mkdirSync(topologyRoot, { recursive: true });
+      const liveUrl = authorityUrlFor(environment);
+      const authorityDatabase = "zeck_ha_drill";
+      const applicationName = "zeck_ha_standby";
+
+      let primary: LocalHaServer | null = null;
+      let standby: LocalHaServer | null = null;
+      haCleanup = async (recovered: boolean) => {
+        if (keepTopology) {
+          drillOutput = {
+            ...drillOutput,
+            topologyCleanup: `kept (operator --keep-topology; recovered: ${recovered}; root: ${topologyRoot})`,
+          };
+          return;
+        }
+        if (standby !== null) {
+          await standby.terminate("stop").catch(() => undefined);
+          standby.dispose();
+        }
+        if (primary !== null) {
+          await primary.terminate("stop").catch(() => undefined);
+          primary.dispose();
+        }
+        drillOutput = {
+          ...drillOutput,
+          topologyCleanup: "disposed (disposable topology; the live authority was never touched)",
+        };
+      };
+
+      // [SETUP — outside the RTO clock: the production topology exists
+      // before the loss; the drill only constructs its disposable
+      // stand-in] — every step fails closed and disposes the topology.
+      const setupStart = Date.now();
+      let primaryAuthorityUrl = "";
+      let preLossReplayTimestamp: string | null = null;
+      try {
+        // 1. READ the live authority once (the safe operator form).
+        let backupArtifact: LogicalBackup | null = null;
+        await withAuthorityPort(liveUrl, async (port) => {
+          const migrations = shippedMigrations();
+          await verifySchemaConvergence(port, migrations);
+          backupArtifact = await createLogicalBackup(port, authoritativeSchemas(migrations));
+        });
+        if (backupArtifact === null) {
+          throw new Error(
+            "the live-authority read produced no backup artifact (internal ordering defect)",
+          );
+        }
+        const liveBackup: LogicalBackup = backupArtifact;
+        drillOutput = {
+          ...drillOutput,
+          topologyForm: "local-disposable",
+          liveAuthorityRead: {
+            tables: liveBackup.tables.length,
+            rows: liveBackup.tables.reduce((total, table) => total + table.rowCount, 0),
+          },
+        };
+        // 2. The disposable primary: real initdb + the production
+        //    startup path (deterministic migrations).
+        const scratchPrimary = await startLocalPostgresServer({
+          dataDir: `${topologyRoot}/primary`,
+          port: primaryPort,
+          binaries,
+          label: "disposable primary",
+        });
+        primary = scratchPrimary;
+        const adminClient = new Client({ connectionString: scratchPrimary.adminUrl });
+        await adminClient.connect();
+        try {
+          await adminClient.query(`CREATE DATABASE ${authorityDatabase}`);
+        } finally {
+          await adminClient.end();
+        }
+        const primaryAuthorityUrlOfPrimary = scratchPrimary.urlFor(authorityDatabase);
+        primaryAuthorityUrl = primaryAuthorityUrlOfPrimary;
+        const primaryHandle = await startAuthoritativeDatabase(primaryAuthorityUrlOfPrimary, {
+          poolOverrides: { max: 4 },
+        });
+        try {
+          // 3. The real standby FIRST (base backup of the migrated
+          //    primary), THEN the live-state restore streams to it:
+          //    the drill exercises replication-under-write — the
+          //    steady-state production shape — and the standby's last
+          //    replayed transaction becomes the measured anchor.
+          const scratchStandby = await bootstrapStandbyFromPrimary({
+            primary: scratchPrimary,
+            standbyDataDir: `${topologyRoot}/standby`,
+            standbyPort,
+            binaries,
+            applicationName,
+          });
+          standby = scratchStandby;
+          const outcome = await restoreDataIntoCurrentState(primaryHandle.port, liveBackup);
+          if (!outcome.verification.every((entry) => entry.verified)) {
+            throw new Error("restore self-verification failed (checksum drift detected)");
+          }
+          drillOutput = {
+            ...drillOutput,
+            disposablePrimary: {
+              port: primaryPort,
+              tablesRestored: outcome.tables.length,
+              rowsRestored: outcome.tables.reduce((total, table) => total + table.rows, 0),
+            },
+          };
+          // 4. Readiness + catch-up + lag evidence (RPO machinery):
+          //    the catch-up gate proves LSN equality before the loss.
+          const catchup = await waitForStandbyCatchup(
+            scratchPrimary.adminUrl,
+            applicationName,
+            60_000,
+          );
+          const lag = await replicationProbe.lagEvidence(scratchStandby.urlFor("postgres"), haMode);
+          preLossReplayTimestamp = lag.lastReplayTimestamp;
+          drillOutput = {
+            ...drillOutput,
+            replication: {
+              mode: haMode,
+              applicationName,
+              standbyPort,
+              streaming: true,
+              catchup,
+              lag,
+            },
+          };
+        } finally {
+          await primaryHandle.close();
+        }
+      } catch (error) {
+        await haCleanup(false);
+        throw error;
+      }
+      const setupMs = Date.now() - setupStart;
+
+      // [LOSS] — the primary dies NOW (SIGKILL: the unplanned-loss
+      // form); the RTO clock and the RPO window anchor here.
+      const drillStandby = standby as LocalHaServer;
+      const drillPrimary = primary as LocalHaServer;
+      const standbyUrl = drillStandby.urlFor(authorityDatabase);
+      await drillPrimary.terminate("kill");
+      haLossAt = new Date();
+      // THE MEASURED RPO SEMANTICS (kept honest):
+      //  - The catch-up gate proved LSN equality (the standby replayed
+      //    the primary's final WAL position) and the drill writes
+      //    NOTHING between catch-up and the loss — the last consistent
+      //    recovery point IS the loss instant, so the measured RPO is
+      //    0 (nothing at risk; the promoted authority carries every
+      //    durable write the primary ever accepted).
+      //  - The at-risk window (loss − last replayed transaction) is
+      //    recorded separately as supplementary evidence — on the
+      //    asynchronous production path THAT window is the RPO
+      //    contract (≤ 60s), bounded by the replication lag.
+      haRpoAnchor = haLossAt;
+      const atRiskWindowMs =
+        preLossReplayTimestamp === null
+          ? null
+          : Math.max(0, haLossAt.getTime() - new Date(preLossReplayTimestamp).getTime());
+      drillOutput = {
+        ...drillOutput,
+        loss: {
+          at: haLossAt.toISOString(),
+          form: "sigkill (the disposable primary — never the live authority)",
+          rpoAnchorAt: haRpoAnchor.toISOString(),
+          rpoSemantics:
+            "recovery point = loss instant: LSN-equality catch-up gate + zero writes between catch-up and loss; the at-risk window is recorded separately",
+          rpoAtRiskWindowMs: atRiskWindowMs,
+          lastReplayedTransactionAt: preLossReplayTimestamp,
+          setupMs,
+        },
+      };
+
+      phases.push(
+        {
+          name: "standby-promotion",
+          description:
+            "fail-closed preconditions (primary unreachable, standby in recovery) then pg_promote on the real standby",
+          action: async () => {
+            const failoverReport = await failoverExecutor.failover({
+              primaryUrl: primaryAuthorityUrl,
+              standbyUrl,
+              mode: haMode,
+            });
+            drillOutput = { ...drillOutput, failover: failoverReport };
+          },
+        },
+        {
+          name: "authority-repoint",
+          description:
+            "the control plane repoints to the promoted authority through the production startup path (connect + compatibility + migrations + convergence)",
+          action: async () => {
+            const handle = await startAuthoritativeDatabase(standbyUrl, {
+              poolOverrides: { max: 4 },
+            });
+            try {
+              const result = await handle.port.execute<{ count: string }>({
+                sql: "SELECT count(*) AS count FROM platform.schema_migrations",
+              });
+              if (Number(result.rows[0]?.count ?? 0) !== shippedMigrations().length) {
+                throw new Error("the promoted authority is not schema-converged");
+              }
+              drillOutput = {
+                ...drillOutput,
+                repoint: { endpoint: handle.endpoint, migrations: handle.migrations },
+              };
+            } finally {
+              await handle.close();
+            }
+          },
+        },
+        {
+          name: "authority-invariants",
+          description:
+            "the D-07 recovered-authority invariant gate (identically green after failover: state machine, ledgers, vocabularies, chains)",
+          action: async () => {
+            const handle = await startAuthoritativeDatabase(standbyUrl, {
+              poolOverrides: { max: 4 },
+            });
+            try {
+              const report = await verifyRecoveredAuthority(handle.port, {
+                expectedMigrationCount: shippedMigrations().length,
+                moduleInvariants: [
+                  createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+                  createBudgetRecoveryInvariants(handle.port),
+                  createArtifactLedgerRecoveryInvariants(handle.port),
+                ],
+              });
+              drillOutput = { ...drillOutput, authorityInvariants: report };
+              if (!report.verified) {
+                const violations = report.violations
+                  .map((violation) => `${violation.check}: ${violation.detail}`)
+                  .join("; ");
+                throw new Error(`recovered-authority invariant violations: ${violations}`);
+              }
+            } finally {
+              await handle.close();
+            }
+          },
+        },
+        {
+          name: "replay-convergence",
+          description:
+            "the durable replay classification from the promoted authority (AVA-004: replay rides the EXISTING dispatch idempotency)",
+          action: async () => {
+            const handle = await startAuthoritativeDatabase(standbyUrl, {
+              poolOverrides: { max: 4 },
+            });
+            try {
+              const plan = await planTransportRecovery(handle.port, 10_000);
+              drillOutput = {
+                ...drillOutput,
+                replayPlan: {
+                  items: plan.items.length,
+                  byClass: plan.byClass,
+                  complete: plan.planned,
+                  note: "the durable classification of every dispatch envelope on the promoted authority; the in-flight convergence with zero duplicated side effects is executed by the HA integration drill over the same machinery (tests/integration/postgres/ha-failover.test.ts)",
+                },
+              };
+              if (!plan.planned) {
+                throw new Error(
+                  "the replay plan hit its bounded limit before classifying every envelope",
+                );
+              }
+            } finally {
+              await handle.close();
+            }
+          },
+        },
+        {
+          name: "fail-closed-verification",
+          description:
+            "the control plane REFUSES to serve against the dead primary (fail-closed degradation is correct behavior, measured as such)",
+          action: async () => {
+            let refused = false;
+            try {
+              await withAuthorityPort(primaryAuthorityUrl, async (port) => {
+                await port.execute({ sql: "SELECT 1" });
+              });
+            } catch (error) {
+              refused = error instanceof DatabaseUnavailableError;
+              if (!refused) {
+                throw error;
+              }
+            }
+            if (!refused) {
+              throw new Error(
+                "the control plane served against the dead primary — the fail-closed authoritative-dependency rule is violated",
+              );
+            }
+            drillOutput = {
+              ...drillOutput,
+              failClosed: {
+                deadPrimaryRefused: true,
+                note: "a degraded control plane refusing to serve against a dead authority is CORRECT behavior",
+              },
+            };
+          },
+        },
+        {
+          name: "idempotent-re-run",
+          description:
+            "re-running the failover against the already-promoted topology is a bounded no-op (never a second promotion)",
+          action: async () => {
+            const rerun = await failoverExecutor.failover({
+              primaryUrl: primaryAuthorityUrl,
+              standbyUrl,
+              mode: haMode,
+            });
+            drillOutput = { ...drillOutput, failoverRerun: rerun };
+            if (rerun.promoted || !rerun.alreadyPromoted) {
+              throw new Error(
+                "the re-run was not the bounded no-op (a second promotion or an unexpected state is a failover defect)",
+              );
+            }
+          },
+        },
+      );
+    } else {
+      // THE OPERATOR TOPOLOGY FORM (preview/staging/production): the
+      // drill executes the SAME machinery against the environment's
+      // declared HA endpoints (environment-materialized, never
+      // committed). Missing endpoints are an honest NOT RUN refusal.
+      let endpoints: HaTopologyEndpoints;
+      try {
+        endpoints = haEndpointsFromEnvironment(process.env);
+      } catch (error) {
+        console.error(`error: ${(error as Error).message}`);
+        process.exit(2);
+      }
+      const preProbe = await replicationProbe.standbyState(endpoints.standbyUrl);
+      haRpoAnchor =
+        preProbe.lastReplayTimestamp === null ? null : new Date(preProbe.lastReplayTimestamp);
+      // The operator-declared loss instant: `--loss-at <iso8601>` (the
+      // recorded instant the primary was declared lost; defaults to
+      // the drill start — the honest, conservative operator clock).
+      const declaredLossAt = argumentValue(argv, "--loss-at");
+      if (declaredLossAt !== undefined) {
+        const parsed = Date.parse(declaredLossAt);
+        if (Number.isNaN(parsed)) {
+          console.error("error: --loss-at must be an ISO-8601 instant");
+          process.exit(2);
+        }
+        haLossAt = new Date(parsed);
+      } else {
+        haLossAt = startedAt;
+      }
+      drillOutput = {
+        ...drillOutput,
+        topologyForm: "operator-topology",
+        replicationMode: endpoints.mode,
+        rpoAnchorAt: haRpoAnchor?.toISOString() ?? null,
+        note: "the operator form measures from the declared loss instant (--loss-at, defaulting to the drill start); the primary must be fenced by the operator before the drill — the split-brain guard refuses a reachable primary",
+      };
+      phases.push(
+        {
+          name: "replication-readiness",
+          description:
+            "observe the standby's replication state (evidence; fail closed when not in recovery)",
+          action: async () => {
+            const state = await replicationProbe.standbyState(endpoints.standbyUrl);
+            drillOutput = { ...drillOutput, standbyState: state };
+            if (!state.inRecovery) {
+              throw new Error(
+                "the standby is not in recovery (nothing to promote — failover restores a replica, it never constructs an authority)",
+              );
+            }
+          },
+        },
+        {
+          name: "standby-promotion",
+          description: "fail-closed preconditions then pg_promote on the operator's standby",
+          action: async () => {
+            const failoverReport = await failoverExecutor.failover({
+              primaryUrl: endpoints.primaryUrl,
+              standbyUrl: endpoints.standbyUrl,
+              mode: endpoints.mode,
+            });
+            drillOutput = { ...drillOutput, failover: failoverReport };
+          },
+        },
+        {
+          name: "authority-invariants",
+          description: "the D-07 recovered-authority invariant gate on the promoted authority",
+          action: async () => {
+            const handle = await startAuthoritativeDatabase(endpoints.standbyUrl, {
+              poolOverrides: { max: 4 },
+            });
+            try {
+              const report = await verifyRecoveredAuthority(handle.port, {
+                expectedMigrationCount: shippedMigrations().length,
+                moduleInvariants: [
+                  createExecutionRecoveryInvariants(handle.port, EXECUTION_STATES),
+                  createBudgetRecoveryInvariants(handle.port),
+                  createArtifactLedgerRecoveryInvariants(handle.port),
+                ],
+              });
+              drillOutput = { ...drillOutput, authorityInvariants: report };
+              if (!report.verified) {
+                const violations = report.violations
+                  .map((violation) => `${violation.check}: ${violation.detail}`)
+                  .join("; ");
+                throw new Error(`recovered-authority invariant violations: ${violations}`);
+              }
+            } finally {
+              await handle.close();
+            }
+          },
+        },
+        {
+          name: "replay-convergence",
+          description: "the durable replay classification from the promoted authority",
+          action: async () => {
+            const handle = await startAuthoritativeDatabase(endpoints.standbyUrl, {
+              poolOverrides: { max: 4 },
+            });
+            try {
+              const plan = await planTransportRecovery(handle.port, 10_000);
+              drillOutput = {
+                ...drillOutput,
+                replayPlan: {
+                  items: plan.items.length,
+                  byClass: plan.byClass,
+                  complete: plan.planned,
+                  note: "the durable classification of every dispatch envelope on the promoted authority; the in-flight convergence with zero duplicated side effects is executed by the HA integration drill over the same machinery",
+                },
+              };
+              if (!plan.planned) {
+                throw new Error(
+                  "the replay plan hit its bounded limit before classifying every envelope",
+                );
+              }
+            } finally {
+              await handle.close();
+            }
+          },
+        },
+      );
+    }
+  }
+
+  const effectiveLossAt = haLossAt ?? startedAt;
   const report = await runRecoveryDrill(
     {
       scenarioId: command,
       environment,
       revision,
-      lossAt: startedAt,
-      lastConsistentPointAt: command === "authority-loss" ? startedAt : null,
+      lossAt: effectiveLossAt,
+      lastConsistentPointAt:
+        command === "authority-loss"
+          ? startedAt
+          : command === "authority-failover"
+            ? haRpoAnchor
+            : null,
       phases,
     },
     { now: () => new Date() },
   );
+  if (command === "authority-failover" && haCleanup !== null) {
+    await haCleanup(report.recovered);
+  }
   // Objective evaluation applies only to LOSS scenarios (outage-
   // readiness is a configuration gate, not a recovery measurement).
   const measuresObjectives = command !== "outage-readiness";
-  const evaluation = measuresObjectives ? evaluateDrillAgainstTarget(report, target) : null;
+  // authority-failover is evaluated against the HA failover targets
+  // (the replication-path RPO + failover RTO from recovery-targets
+  // .json), never the whole-environment D-07 target.
+  const objectiveTarget =
+    command === "authority-failover" && haTopology !== null
+      ? failoverTargetForMode(haTopology, haMode)
+      : target;
+  const evaluation = measuresObjectives
+    ? evaluateDrillAgainstTarget(report, objectiveTarget)
+    : null;
   const output = {
     tool: "deploy/drill",
     command,
@@ -737,12 +1286,15 @@ async function main(): Promise<void> {
       evaluation === null
         ? {
             measured: false,
-            note: "readiness gate: RTO/RPO are measured by the loss scenarios (authority-loss, artifact-exit, queue-recovery, worker-evacuation)",
+            note: "readiness gate: RTO/RPO are measured by the loss scenarios (authority-loss, artifact-exit, queue-recovery, worker-evacuation, authority-failover)",
             target: { rtoTargetMs: target.rtoTargetMs, rpoTargetMs: target.rpoTargetMs },
           }
         : {
             measured: true,
-            target: { rtoTargetMs: target.rtoTargetMs, rpoTargetMs: target.rpoTargetMs },
+            target: {
+              rtoTargetMs: objectiveTarget.rtoTargetMs,
+              rpoTargetMs: objectiveTarget.rpoTargetMs,
+            },
             evaluation,
           },
     notRun,
