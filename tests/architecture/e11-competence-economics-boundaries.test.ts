@@ -400,36 +400,36 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
       { cwd: REPO_ROOT, encoding: "utf8" },
     ).trim();
     expect(changed).toBe("");
-    // And the branch's own commits never touch the import-only
-    // surfaces (the mechanical zero-diff proof over the full branch).
-    // Main-safe guard (2026-09-11, Architect — completing the WORK-055
-    // C9 reconciliation pattern of 84b96af for this plane): the
-    // branch-shape assertions are meaningful ONLY on a work branch. On
-    // main itself the merge-base IS the checkout head, so there are no
-    // branch-local changes by construction; the proof reduces to the
-    // import-only zero-diff above. Without this guard every CI run on
-    // main fails C9 with "expected 0 to be greater than 0" (observed
-    // since the WORK-056 merge; a work branch still gets the full
-    // surface-containment check).
-    const headSha = execSync("git rev-parse HEAD", {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-    }).trim();
-    const branchChanges = execSync(`git diff --name-only ${mergeBase}..HEAD`, {
-      cwd: REPO_ROOT,
-      encoding: "utf8",
-    })
+    // And the WORK-056 merge window never touched anything outside this
+    // plane's Declared Change Surfaces. Historical-window form
+    // (2026-09-11, Architect — completing the 84b96af WORK-055
+    // reconciliation pattern for this plane): the containment proof is
+    // pinned to the FIXED historical range (dispatch base 201756c ..
+    // merge commit 3318a8a, PR #31). The previous runtime form
+    // (`git diff mergeBase..HEAD` asserted non-empty and inside this
+    // plane's surfaces) was satisfiable ONLY while HEAD was the WORK-056
+    // work branch: it failed every CI run on main itself (zero
+    // branch-local changes) and would fail every future work branch
+    // whose legitimate changes live outside this plane. The pinned
+    // window is the durable invariant — the 056 implementation touched
+    // only its declared surfaces — provable at any future revision
+    // (CI checks out with fetch-depth: 0, so the range is always
+    // reachable).
+    const WORK_056_BASE = "201756c";
+    const WORK_056_MERGE = "3318a8a";
+    const windowChanges = execSync(
+      `git diff --name-only ${WORK_056_BASE}..${WORK_056_MERGE}`,
+      { cwd: REPO_ROOT, encoding: "utf8" },
+    )
       .trim()
       .split("\n")
       .filter((line) => line.length > 0);
-    if (mergeBase !== headSha) {
-      expect(branchChanges.length).toBeGreaterThan(0);
-      for (const path of branchChanges) {
-        expect(
-          /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/.test(path),
-          `${path} is outside the Declared Change Surfaces`,
-        ).toBe(true);
-      }
+    expect(windowChanges.length).toBeGreaterThan(0);
+    for (const path of windowChanges) {
+      expect(
+        /^(src\/platform\/competence-economics\/|tests\/|docs\/work-items\/WORK-056)/.test(path),
+        `${path} is outside the Declared Change Surfaces`,
+      ).toBe(true);
     }
   });
 });
