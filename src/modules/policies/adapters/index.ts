@@ -13,3 +13,6 @@ export * from "./dispatch-admission";
 export * from "./execution-authorization";
 export * from "./in-memory-policy-store";
 export * from "./node-policy-hasher";
+// D-08 / WORK-060 (SEC-003): the deployment-seam residency enforcement
+// (pure data projection — plain typed inputs, no platform import).
+export * from "./residency-enforcement";

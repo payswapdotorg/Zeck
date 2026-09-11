@@ -24,6 +24,7 @@ import { createDispatchAdmission } from "./adapters/dispatch-admission";
 import { createExecutionAuthorization } from "./adapters/execution-authorization";
 import { InMemoryPolicyStore } from "./adapters/in-memory-policy-store";
 import { nodePolicyHasher } from "./adapters/node-policy-hasher";
+import { createResidencyEnforcement } from "./adapters/residency-enforcement";
 import type { PolicyAuthorityOptions } from "./application/policy-authority";
 import { createPolicyAuthority } from "./application/policy-authority";
 import type {
@@ -84,6 +85,17 @@ import {
   validatePolicySet,
 } from "./domain/policy";
 import type {
+  DataAtRestLocality,
+  DataAtRestSurface,
+  ResidencyConstraint,
+  ResidencyOutcome,
+} from "./domain/residency";
+import {
+  DATA_AT_REST_SURFACES,
+  evaluateResidencyConstraint,
+  isResidencyRefused,
+} from "./domain/residency";
+import type {
   PolicyAdmissionEvidence,
   PolicyAdmissionRequest,
   PolicyAdmissionResult,
@@ -101,14 +113,21 @@ export const moduleDescriptor: ModuleDescriptor = { id: "policies" };
 export { FACT_LADDERS } from "./domain/admission";
 // Domain: scope precedence + restriction vocabulary (POL-001/POL-002/POL-003).
 // Domain: admission fact evaluation (the typed decision core).
+// Domain: the data-residency constraint (D-08 / WORK-060 / SEC-003) — a
+// policy-CONSUMED input with pure fail-closed evaluation; NOT a restriction
+// dimension and NOT an authority (the nine-dimension vocabulary above is
+// untouched; the authority never consults residency).
 // Application: the policy authority (publish arbitration + admission).
 // Ports: store + hasher seams (WORK-005 store-port precedent).
-// Adapters: node hasher, in-memory store, and the two REQUIRED seam
-// implementations (executions authorize seam; models dispatch seam).
+// Adapters: node hasher, in-memory store, the two REQUIRED seam
+// implementations (executions authorize seam; models dispatch seam), and
+// the deployment-seam residency enforcement (plain-data projection).
 export type {
   AutonomyMode,
   AutonomyRestriction,
   CostRestriction,
+  DataAtRestLocality,
+  DataAtRestSurface,
   DispatchFacts,
   EgressMode,
   ExecutionAdmissionFacts,
@@ -140,6 +159,8 @@ export type {
   PolicyStore,
   ProviderModelRestriction,
   QualityRestriction,
+  ResidencyConstraint,
+  ResidencyOutcome,
   RestrictionSet,
   SecretsRestriction,
   TighteningCheck,
@@ -155,14 +176,18 @@ export {
   createDispatchAdmission,
   createExecutionAuthorization,
   createPolicyAuthority,
+  createResidencyEnforcement,
+  DATA_AT_REST_SURFACES,
   DIMENSION_FIELD_ORDERS,
   documentApplies,
   EGRESS_MODES,
   evaluateDispatchFacts,
   evaluateExecutionFacts,
+  evaluateResidencyConstraint,
   InMemoryPolicyStore,
   ISOLATION_LEVELS,
   isEmptyRestrictionSet,
+  isResidencyRefused,
   learnedOutputRestrictionViolations,
   nodePolicyHasher,
   POLICY_DIMENSIONS,

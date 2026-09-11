@@ -25,8 +25,8 @@ export type { PolicySetIdentity };
 
 /**
  * Storage seam for policy DEFINITIONS (WORK-005 store-port precedent).
- * The in-memory adapter ships this round: definitions are configuration-
- * resident versioned data; durable ADMISSION DECISIONS are recorded by the
+ * The in-memory adapter ships this round: definitions are versioned
+ * configuration data; durable ADMISSION DECISIONS are recorded by the
  * executions EventEnvelope ledger (see docs/work-items/WORK-007.md — no
  * migration is required). A durable adapter implements the identical
  * contract without touching the authority.
