@@ -5,7 +5,7 @@
 | **Deliverable role** | D-08 gate-1 usage evidence (measured production usage) |
 | **Dispatch base** | `f2b5284baffba19eaa53e2dbee6f5ba1646fe5a9` (origin/main at dispatch — E1.1 final architecture acceptance) |
 | **Campaign harness head** | `ad2738d3cac1cf5b0554d4ad41504aad972c54ba` (worker processes, release/drill/queue operator readings taken here) |
-| **Final head** | boundary-remediation commit (harness relocated to `deploy/`; SHA pinned by the follow-up identity commit — see `git log` on the branch) |
+| **Final head** | boundary-remediation commit `38c6c08a09aa0c3a3a9bb9d07b28dc85c0597844` (campaign harness relocated to `deploy/`; the branch tip may advance by this identity pin itself) |
 | **Branch** | `gate/d08-measured-usage` |
 | **PR** | [#32 — "D-08 gate evidence: measured production usage baseline"](https://github.com/payswapdotorg/Zeck/pull/32) |
 | **Authorization** | Tech Lead dispatch of the D-08 Gate-Evidence Worker (no GitHub issue; roadmap gate: `docs/DEPLOYMENT-ROADMAP.md` §D-08 — "D-08 may only begin after measured production usage…"; gates 2+3 already approved on main `014fb30`) |
