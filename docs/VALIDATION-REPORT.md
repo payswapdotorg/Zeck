@@ -52,13 +52,65 @@ For every material issue:
 - verification required;
 - disposition.
 
+## Observed facts
+
+_Every entry names the exact submission (work order + final head) and the
+battery command that produced it. Facts are observations only — no
+interpretation. Populated by the report projection
+(`benchmarks/validation/report.ts`) from validated submissions
+(`benchmarks/validation/submission.ts`)._
+
+| Work order | Command | Outcome | Detail | Source |
+|---|---|---|---|---|
+| — | — | — | — | — |
+
+## Failures and root causes
+
+_Failed battery commands and every material issue, each with its
+seven-part solution protocol (reproduction, impact, root-cause
+classification, viable solutions, recommended solution with trade-offs,
+defect classification, required verification evidence)._
+
+| Work order | Failure | Root cause | Classification | Status |
+|---|---|---|---|---|
+| — | — | — | — | — |
+
+## Hypotheses (open)
+
+_Interpretation lives here, never in the facts section. A hypothesis is
+recorded explicitly with the experiment that would confirm or refute
+it; none is promoted to a finding without that evidence._
+
+| Hypothesis | Confirming experiment | Status |
+|---|---|---|
+| — | — | — |
+
+## Recommendations
+
+_Each recommendation traces to the issue or finding that produced it
+and names the verification required before it is acted on._
+
+| Recommendation | Traces to | Verification required | Status |
+|---|---|---|---|
+| — | — | — | — |
+
+## NOT RUN boundaries
+
+_An unavailable run is recorded with its exact reason and surfaced to
+the operator as a missing-access requirement. A NOT RUN boundary never
+converts into a pass._
+
+| Surface | Exact reason | Surfaced to operator |
+|---|---|---|
+| — | — | — |
+
 ## Provider/model coverage and access
 
 Record models/providers actually exercised. Record unavailable provider/model access as NOT RUN with exact reason. Never include credentials or secrets.
 
 ## Reproducibility
 
-Every claimed result must identify application revision, Zeck revision, corpus version, experiment/run identity, environment class, relevant configuration and exact evidence location.
+Every claimed result must identify application revision, Zeck revision, corpus version, experiment/run identity, environment class, relevant configuration and exact evidence location. Run identities are derived deterministically by the validation laboratory (`benchmarks/validation/run-identity.ts`); the governed program state is `spec/validation-state/` (checked by `scripts/validation-check.py` and the CI validation tests under `tests/unit/validation/`).
 
 ## Final recommendation
 
