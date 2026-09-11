@@ -38,6 +38,10 @@ For dispatch/review/orchestration behavior also read:
 - D-08 gate-1 (measured production usage): COMPLETE — merged as PR #32 (merge commit f5feb14, evidence head be6642f incl. the boundary remediation + architect C9 reconciliation; dispatch base f2b5284).
 - D-08 gates 2+3: APPROVED (014fb30 — AVA-001..004 / SEC-001..004 + ADR-0021/ACR-005).
 - D-08 UNLOCKED: WORK-057/058/059 authorized as wave A (frontier eligible), WORK-060 wave B (blocked on WORK-057). Requirements catalog v4 (110 requirements: AVA-001..004, SEC-001..004).
+- D-08 / WORK-057: COMPLETE — merged as PR #38 (merge commit 5850e91, implementation head 76292e9, final branch head 4aa3f86; dispatch base 1a86262; measured RTO 1081ms / RPO 0ms, 12-check invariant gate green post-failover).
+- D-08 / WORK-058: COMPLETE — merged as PR #37 (merge commit d6a9ffa, implementation head 1fe05d4, final branch head f6fcddd; dispatch base 1a86262; physical tenant-isolation claim gate migration 0031_isolation_profiles).
+- D-08 / WORK-059: COMPLETE — merged as PR #36 (merge commit 4ee2ce8, implementation head 2281db2, final branch head eb80d3f incl. the Architect merge reconciliation — 0031_audit_compliance renumbered to 0032; dispatch base 1a86262).
+- D-08 wave A COMPLETE. Frontier: WORK-060 (wave B) eligible.
 
 **THE E1.1 IMPLEMENTATION PROGRAM IS COMPLETE** — all nine charter Work Orders (WORK-048 through WORK-056) are implemented, reviewed, merged and finalized. The frontier is empty; future stages require new Architect Work Orders.
 
