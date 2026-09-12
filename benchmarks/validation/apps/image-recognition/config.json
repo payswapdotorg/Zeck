@@ -1,0 +1,16 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 120000,
+  "tasks": [
+    { "kind": "classify-image", "image": "img-c-001", "labels": ["bicycle", "bus", "car"] },
+    { "kind": "classify-image", "image": "img-c-002", "labels": ["bicycle", "bus", "car"] },
+    { "kind": "classify-image", "image": "img-c-003", "labels": ["bicycle", "bus", "car"] },
+    { "kind": "classify-image", "image": "img-corrupt", "labels": ["bicycle", "bus", "car"] }
+  ]
+}
