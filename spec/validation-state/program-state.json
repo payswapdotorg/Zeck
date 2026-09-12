@@ -110,8 +110,15 @@
       }
     },
     "VAL-010": {
-      "status": "planned",
-      "title": "Text generation, extraction and transformation apps"
+      "status": "complete",
+      "title": "Text generation, extraction and transformation apps",
+      "mergedAs": {
+        "pr": 56,
+        "mergeCommit": "35b0e38",
+        "implementationHead": "8a4bf79",
+        "finalBranchHead": "8a4bf79",
+        "baseRevision": "441e49e"
+      }
     },
     "VAL-011": {
       "status": "planned",
