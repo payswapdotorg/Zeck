@@ -1,0 +1,19 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 180000,
+  "tasks": [
+    { "kind": "transcribe-utterance", "clip": "utt-001" },
+    { "kind": "transcribe-utterance", "clip": "brf-001" },
+    { "kind": "transcribe-roundtrip", "phrase": "phrase-001", "voice": "Cherry" },
+    { "kind": "transcribe-utterance", "clip": "audio-corrupt" },
+    { "kind": "synthesize-speech", "phrase": "phrase-002", "voice": "Cherry" },
+    { "kind": "synthesize-speech", "phrase": "phrase-003", "voice": "Cherry" },
+    { "kind": "synthesize-speech", "phrase": "phrase-blank", "voice": "Cherry" }
+  ]
+}
