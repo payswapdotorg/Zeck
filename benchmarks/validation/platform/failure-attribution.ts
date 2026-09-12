@@ -493,6 +493,24 @@ export interface AttributionRailRequest {
   readonly endpoint: "multimodal-generation" | "video-synthesis" | "chat-completions";
   readonly model: string;
   readonly prompt: string;
+  /**
+   * 2026-09-12 Lead live re-pin: request the model's FULL default
+   * completion budget (omit max_tokens) — the genuinely unaffordable
+   * posture the account's credit limit rejects with the REAL 402
+   * envelope ("You requested up to <N> tokens, but can only afford
+   * <M>"). Live-proven on the default chat model; no premium-model
+   * pinning needed.
+   */
+  readonly unaffordableBudget?: boolean;
+  /**
+   * 2026-09-12 Lead live re-pin: set X-DashScope-Async: enable. The
+   * video-synthesis tier boundary is SYNCHRONOUS-CALL-ONLY — the REAL
+   * AccessDenied 403 ("current user api does not support synchronous
+   * calls") fires WITHOUT the header; WITH it the endpoint ACCEPTS the
+   * async task (200 + task_id PENDING — a success, not a failure). The
+   * attribution rows probe the genuine boundary synchronously.
+   */
+  readonly asyncSubmission?: boolean;
 }
 
 /** The outcome of ONE rail dispatch attempt (one transport roundtrip). */
@@ -521,12 +539,15 @@ export function railRequestDigest(request: AttributionRailRequest): string {
 /** The canonical byte-stable request body per rail/endpoint family. */
 export function buildRailBody(request: AttributionRailRequest): Record<string, unknown> {
   if (request.rail === "openrouter") {
-    return {
+    const body: Record<string, unknown> = {
       model: request.model,
       messages: [{ role: "user", content: request.prompt }],
-      max_tokens: 16,
       temperature: 0,
     };
+    if (request.unaffordableBudget !== true) {
+      body.max_tokens = 16;
+    }
+    return body;
   }
   if (request.endpoint === "video-synthesis") {
     // The VAL-016 live-proven video-synthesis submission shape (the
@@ -645,7 +666,11 @@ export function createAttributionRail(options: {
       Authorization: `Bearer ${options.apiKey}`,
       "Content-Type": "application/json",
     };
-    if (request.rail === "dashscope" && request.endpoint === "video-synthesis") {
+    if (
+      request.rail === "dashscope" &&
+      request.endpoint === "video-synthesis" &&
+      request.asyncSubmission === true
+    ) {
       headers["X-DashScope-Async"] = "enable";
     }
     const body = JSON.stringify(buildRailBody(request));

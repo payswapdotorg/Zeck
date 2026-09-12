@@ -50,6 +50,10 @@ export interface FailureCorpusRow extends AttributionOracle {
     /** Live rows: the env var that overrides the model. */
     readonly modelEnvVar?: string;
     readonly prompt: string;
+    /** The unaffordable-budget posture (max_tokens omitted — see platform). */
+    readonly unaffordableBudget?: boolean;
+    /** The async-submission posture (X-DashScope-Async — see platform). */
+    readonly asyncSubmission?: boolean;
   };
   /** The tool invocation (tool rows). */
   readonly toolInvocation?: {
@@ -270,10 +274,18 @@ export const FAILURE_CORPUS: readonly FailureCorpusRow[] = [
     source: "the VAL-019 live-proven OpenRouter rail posture (credential-bearing)",
   },
   {
-    rowId: "live-qwen-imagegen-quota",
+    // 2026-09-12 Lead live re-pin: the documented AllocationQuota.FreeTierOnly
+    // 403 posture was REAL until ~22:40 UTC (VAL-014/015/018 live runs); the
+    // operator then LIFTED the image-generation quota AND the endpoint's API
+    // shape changed (input.messages now required — input.prompt is rejected).
+    // The CURRENT genuine failure this canonical body produces is the REAL
+    // 400 InvalidParameter envelope ("Field required: input.messages") —
+    // attributed provider/invalid-request, NON-retryable. The posture change
+    // is recorded here per the fails-honestly precedent.
+    rowId: "live-qwen-imagegen-shape-rejected",
     kind: "dispatch-probe",
     description:
-      "The REAL dashscope multimodal-generation dispatch with the QWEN key's documented quota-blocked posture: the AllocationQuota.FreeTierOnly 403 envelope attributed PROVIDER/quota, NON-retryable, exactly one attempt, the honest FAILED terminal.",
+      "The REAL dashscope multimodal-generation dispatch with the canonical input.prompt body: the API's current shape contract rejects it with the 400 InvalidParameter envelope (Field required: input.messages) — attributed PROVIDER/invalid-request, NON-retryable, exactly one attempt, the honest FAILED terminal. (The earlier-documented AllocationQuota 403 posture was lifted by the operator on 2026-09-12; the quota-free rail now requires the input.messages shape.)",
     scenario: null,
     railRequest: {
       rail: "dashscope",
@@ -285,10 +297,11 @@ export const FAILURE_CORPUS: readonly FailureCorpusRow[] = [
     liveGate: {
       envVars: ["QWEN_API_KEY"],
       requirement:
-        "operator-authorized dashscope-international credential (env QWEN_API_KEY); the DOCUMENTED posture is image-generation quota-blocked (AllocationQuota.FreeTierOnly)",
+        "operator-authorized dashscope-international credential (env QWEN_API_KEY); the CURRENT live posture is the shape-contract 400 InvalidParameter (the quota-blocked posture was lifted 2026-09-12 ~22:40 UTC)",
     },
-    ...or("quota", false, "quota", "provider", 1, failures(1), "FAILED"),
-    source: "REAL live posture (VAL-014/VAL-015/VAL-018 documented findings)",
+    ...or("invalid-request", false, "invalid-request", "provider", 1, failures(1), "FAILED"),
+    source:
+      "REAL live posture (re-pinned 2026-09-12 22:45 UTC after the quota lift + API shape change)",
   },
   {
     rowId: "live-qwen-video-access-denied",
@@ -312,26 +325,34 @@ export const FAILURE_CORPUS: readonly FailureCorpusRow[] = [
     source: "REAL live posture (VAL-014/VAL-016 documented findings)",
   },
   {
+    // 2026-09-12 Lead live re-pin: with a bounded completion budget
+    // (max_tokens: 16) the account's free allowance covers every available
+    // model — no 402 is reachable. The GENUINE credit-limit posture is the
+    // FULL DEFAULT completion budget (max_tokens omitted): the affordability
+    // check rejects the request with the REAL 402 envelope. Live-proven on
+    // the default chat model (qwen2.5-vl-72b: "You requested up to 115189
+    // tokens, but can only afford 18871"); no premium-model pinning needed.
     rowId: "live-openrouter-credit-402",
     kind: "dispatch-probe",
     description:
-      "The REAL OpenRouter dispatch against a model the account's credits do not cover (the Lead pins it via ZECK_VAL_020_OPENROUTER_402_MODEL): the credit-limit 402 envelope attributed PROVIDER/quota, NON-retryable, exactly one attempt, the honest FAILED terminal.",
+      "The REAL OpenRouter dispatch requesting the model's FULL default completion budget (the unaffordable posture): the credit-limit 402 envelope attributed PROVIDER/quota, NON-retryable, exactly one attempt, the honest FAILED terminal.",
     scenario: null,
     railRequest: {
       rail: "openrouter",
       endpoint: "chat-completions",
-      model: "",
+      model: "qwen/qwen2.5-vl-72b-instruct",
       modelEnvVar: "ZECK_VAL_020_OPENROUTER_402_MODEL",
       prompt: "Reply with exactly the single word: healthy.",
+      unaffordableBudget: true,
     },
     liveGate: {
-      envVars: ["OPENROUTER_API_KEY", "ZECK_VAL_020_OPENROUTER_402_MODEL"],
+      envVars: ["OPENROUTER_API_KEY"],
       requirement:
-        "operator-authorized OpenRouter credential (env OPENROUTER_API_KEY) PLUS a deliberately pinned premium model (env ZECK_VAL_020_OPENROUTER_402_MODEL) whose per-request cost exceeds the account's remaining credits — the deliberate Lead setup that drives the REAL 402",
+        "operator-authorized OpenRouter credential (env OPENROUTER_API_KEY); the unaffordable-budget posture requests the model's full default completion budget (max_tokens omitted) — the account's credit limit genuinely rejects it with the 402 envelope",
     },
     ...or("quota", false, "quota", "provider", 1, failures(1), "FAILED"),
     source:
-      "the documented OpenRouter credit-limit envelope class (the work order's verbatim prefix)",
+      "the documented OpenRouter credit-limit envelope class (the work order's verbatim prefix; re-pinned to the unaffordable-budget producer 2026-09-12 22:50 UTC)",
   },
 ];
 
@@ -373,5 +394,7 @@ export function resolveRailRequest(row: FailureCorpusRow): AttributionRailReques
     endpoint: row.railRequest.endpoint,
     model,
     prompt: row.railRequest.prompt,
+    ...(row.railRequest.unaffordableBudget === true ? { unaffordableBudget: true } : {}),
+    ...(row.railRequest.asyncSubmission === true ? { asyncSubmission: true } : {}),
   };
 }

@@ -95,9 +95,16 @@ export async function runFailureAttributionApp(options: {
   // The deterministic outcome contract per corpus row: failure rows
   // EXPECT the honest FAILED terminal (a fabricated COMPLETED fails
   // the app); the empty-completion and healthy rows expect COMPLETED.
+  // 2026-09-12 Lead review fix: in THIS slice the verification criteria
+  // prove the ATTRIBUTION (class/layer/attempts vs the row's oracle) —
+  // a correctly-attributed provider failure PASSES its criteria while
+  // the terminal stays honestly FAILED. The generic FAIL-status
+  // expectation (the VAL-019 outcome-template) never held here: the
+  // live crown's first PG-backed run surfaced all-PASS criteria on
+  // FAILED rows as the DESIGNED outcome, failing the app's assertion.
   const passed = harness.assertOutcome({
     expectTerminalStatus: expectedTerminal,
-    expectVerificationStatuses: [expectedTerminal === "COMPLETED" ? "PASS" : "FAIL"],
+    expectVerificationStatuses: ["PASS"],
     forbiddenTerminalStatuses: [expectedTerminal === "COMPLETED" ? "FAILED" : "COMPLETED"],
     forbidRetryableErrors: true,
   });

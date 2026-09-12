@@ -99,27 +99,20 @@ function createFakeApiWorld(options: { readonly terminal: "COMPLETED" | "FAILED"
         cost: pass ? { totalMicroUsd: "50", currency: "usd" } : null,
         usage: pass ? { inputTokens: 60, outputTokens: 12 } : null,
         outputArtifacts: [],
-        verification: pass
-          ? [
-              {
-                id: "v1",
-                executionId: resultMatch[1],
-                criterionId: "attribution-class",
-                strategy: "deterministic",
-                status: "PASS",
-                recordedBy: "fake-platform",
-              },
-            ]
-          : [
-              {
-                id: "v1",
-                executionId: resultMatch[1],
-                criterionId: "attribution-class",
-                strategy: "deterministic",
-                status: "FAIL",
-                recordedBy: "fake-platform",
-              },
-            ],
+        // 2026-09-12 Lead review fix: the fake mirrors the REAL platform
+        // semantics for this slice — the criteria verify the ATTRIBUTION
+        // (correctly-attributed failures PASS their criteria; the honest
+        // FAILED terminal carries the failure itself).
+        verification: [
+          {
+            id: "v1",
+            executionId: resultMatch[1],
+            criterionId: "attribution-class",
+            strategy: "deterministic",
+            status: "PASS",
+            recordedBy: "fake-platform",
+          },
+        ],
         warnings: [],
         terminalAt: new Date().toISOString(),
       });

@@ -42,7 +42,7 @@
     },
     {
       "kind": "dispatch-probe",
-      "scenario": "live-qwen-imagegen-quota",
+      "scenario": "live-qwen-imagegen-shape-rejected",
       "expectedTerminal": "FAILED"
     },
     {
