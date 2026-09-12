@@ -23,7 +23,7 @@
     {
       "kind": "computer-task",
       "workspace": "ws-empty",
-      "goal": "In workspace ws-empty, move each file into a folder named after its extension. List the directory first and report what you found.",
+      "goal": "In workspace ws-empty (the directory /workspace), move each file into a folder named after its extension. List the /workspace directory first and report what you found.",
       "expectedTerminal": "COMPLETED"
     }
   ]

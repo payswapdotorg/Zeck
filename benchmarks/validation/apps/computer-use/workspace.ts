@@ -207,22 +207,20 @@ export const COMPUTER_TASK_GROUND_TRUTHS: readonly (AgenticTaskGroundTruth & {
       "/workspace/photo.jpg": "synthetic-jpeg-bytes",
       "/workspace/notes.md": "# meeting notes",
     },
+    // 2026-09-12 Lead live-calibration: the goal mandates listing FIRST (the
+    // trace's in-order comparison pins that) but not a file-processing order —
+    // a competent live model may move the files in any order. The exact
+    // per-file moves are pinned mechanically by the workspace-tree EFFECT
+    // below (fixture-state), not by argument replay.
     expectedTrace: [
       { tool: "list-dir", exactArguments: { path: "/workspace" } },
-      {
-        tool: "move-file",
-        exactArguments: { from: "/workspace/report.txt", to: "/workspace/txt/report.txt" },
-      },
-      {
-        tool: "move-file",
-        exactArguments: { from: "/workspace/photo.jpg", to: "/workspace/jpg/photo.jpg" },
-      },
-      {
-        tool: "move-file",
-        exactArguments: { from: "/workspace/notes.md", to: "/workspace/md/notes.md" },
-      },
+      { tool: "move-file" },
+      { tool: "move-file" },
+      { tool: "move-file" },
     ],
-    expectedAnswerTerms: ["txt"],
+    // 2026-09-12 Lead live-calibration: the goal mandates no report content
+    // (unlike the ws-empty row's "report what you found") — the exact final
+    // layout is pinned by the workspace-tree effect, so no answer-term oracle.
     goalAchievable: true,
     traceComparison: "in-order",
     expectedEffects: [
@@ -250,9 +248,14 @@ export const COMPUTER_TASK_GROUND_TRUTHS: readonly (AgenticTaskGroundTruth & {
     ],
   },
   {
+    // 2026-09-12 Lead live-calibration: the goal now carries the same
+    // /workspace path hints as the ws-001 row — without them the live model
+    // reasonably listed the workspace NAME ('ws-empty') and the confined
+    // tool correctly refused; with them the first call lands on /workspace.
     goal:
-      "In workspace ws-empty, move each file into a folder named after its extension. " +
-      "List the directory first and report what you found.",
+      "In workspace ws-empty (the directory /workspace), move each file into a folder " +
+      "named after its extension. List the /workspace directory first and report what " +
+      "you found.",
     exposedTools: ["list-dir", "read-file", "move-file"],
     files: {},
     expectedTrace: [{ tool: "list-dir", exactArguments: { path: "/workspace" } }],
