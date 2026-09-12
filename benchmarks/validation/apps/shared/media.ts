@@ -337,3 +337,124 @@ export function corruptPng(): Buffer {
 export function corruptWav(): Buffer {
   return Buffer.concat([Buffer.from("RIFF____WAVEjunk"), Buffer.alloc(64, 0x7f)]);
 }
+
+// ---------------------------------------------------------------------------
+// Generation-prompt and image-edit fixtures (VAL-015 — additive, the
+// VAL-003 "seeded prompt" recipe). Prompts are pinned text (the same
+// key always yields the same prompt bytes, so the same request digest);
+// edit fixtures couple a seeded edit instruction with the deterministic
+// synthetic source image it is defined against and the instruction's
+// declared TARGET REGION in source pixel coordinates — the mechanical
+// ground truth for transformed-output verification (pixel-region change
+// bounds; never aesthetic judgment).
+// ---------------------------------------------------------------------------
+
+/** A seeded text-to-image prompt fixture. */
+export interface GenerationPromptFixture {
+  readonly key: string;
+  /** The exact prompt text dispatched (deterministic per key). */
+  readonly prompt: string;
+  /**
+   * Structural ground-truth annotation (provenance only — recorded in
+   * evidence; it is NEVER used as an aesthetic oracle).
+   */
+  readonly annotation: string;
+}
+
+/** A seeded image-edit (transformation) instruction fixture. */
+export interface ImageEditFixture {
+  readonly key: string;
+  /** The exact edit instruction dispatched (deterministic per key). */
+  readonly instruction: string;
+  /** The synthetic source-image fixture key this edit is defined against. */
+  readonly source: string;
+  /**
+   * [x0, y0, x1, y1] in SOURCE pixel coordinates — the region the
+   * instruction targets (the fixture's own mechanical ground truth).
+   */
+  readonly targetRegion: readonly [number, number, number, number];
+  readonly annotation: string;
+}
+
+const GENERATION_PROMPTS: readonly GenerationPromptFixture[] = [
+  {
+    key: "img-prompt-001",
+    prompt:
+      "A single large red filled circle centered on a plain white background. Flat minimal vector style, even lighting, no shadows, no text, no watermark.",
+    annotation: "single red circle on white",
+  },
+  {
+    key: "img-prompt-002",
+    prompt:
+      "Two flat shapes side by side on a plain light gray background: a yellow filled square on the left and a blue filled circle on the right, clearly separated. Minimal flat illustration, no text, no watermark.",
+    annotation: "yellow square left, blue circle right",
+  },
+  {
+    key: "img-prompt-003",
+    prompt:
+      "A simple flat illustration of a street scene: a small blue car on a straight gray road, a light blue sky above with the word ZECK written once in dark bold letters, minimal shapes, no watermark.",
+    annotation: "car road sky text ZECK",
+  },
+];
+
+const IMAGE_EDITS: readonly ImageEditFixture[] = [
+  {
+    key: "img-edit-001",
+    instruction:
+      "Recolor the body of the bus from yellow to a deep red. Keep the windows, wheels, road and the rest of the image exactly unchanged.",
+    source: "img-c-001",
+    targetRegion: [24, 46, 216, 120],
+    annotation: "bus body recolored",
+  },
+  {
+    key: "img-edit-002",
+    instruction:
+      "Replace the sky region at the top of the image with a dark night sky. Keep the building, the bus, the road and everything else exactly unchanged.",
+    source: "scene-001",
+    targetRegion: [0, 0, 256, 40],
+    annotation: "sky replaced",
+  },
+  {
+    key: "img-edit-003",
+    instruction:
+      "Remove the bicycle completely, filling the area it occupied with the plain white background. Keep everything else exactly unchanged.",
+    source: "img-c-002",
+    targetRegion: [26, 22, 224, 124],
+    annotation: "bicycle removed",
+  },
+  {
+    key: "img-edit-004",
+    instruction: "Recolor the body of the bus to a deep blue.",
+    source: "img-corrupt",
+    targetRegion: [0, 0, 256, 128],
+    annotation: "corrupt source rejected",
+  },
+];
+
+/**
+ * The seeded generation-prompt fixtures by key (deterministic). The
+ * corpus's own empty-prompt edge row materializes as the empty prompt
+ * (the platform rejects it BEFORE any paid dispatch — the honest
+ * expected-FAILED row); unknown keys throw.
+ */
+export function generationPromptFixture(key: string): GenerationPromptFixture {
+  if (key === "") {
+    // The corpus row `image-generation.from-prompt.v1` "edge: empty prompt"
+    // pins input { prompt: "" } — materialized here, never silently dropped.
+    return { key: "", prompt: "", annotation: "empty prompt" };
+  }
+  const fixture = GENERATION_PROMPTS.find((candidate) => candidate.key === key);
+  if (fixture === undefined) {
+    throw new Error(`generation prompt fixture not materialized: ${key}`);
+  }
+  return fixture;
+}
+
+/** The seeded image-edit fixtures by key (deterministic; unknown keys throw). */
+export function imageEditFixture(key: string): ImageEditFixture {
+  const fixture = IMAGE_EDITS.find((candidate) => candidate.key === key);
+  if (fixture === undefined) {
+    throw new Error(`image edit fixture not materialized: ${key}`);
+  }
+  return fixture;
+}

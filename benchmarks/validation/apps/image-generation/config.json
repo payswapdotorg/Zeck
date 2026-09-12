@@ -1,0 +1,16 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 300000,
+  "tasks": [
+    { "kind": "generate-image", "prompt": "img-prompt-001", "width": 1328, "height": 1328 },
+    { "kind": "generate-image", "prompt": "img-prompt-002", "width": 1328, "height": 1328 },
+    { "kind": "generate-image", "prompt": "img-prompt-003", "width": 1664, "height": 928 },
+    { "kind": "generate-image", "prompt": "" }
+  ]
+}
