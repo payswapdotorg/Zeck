@@ -1,0 +1,30 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "implement-function",
+      "spec": "fn-fizzmod",
+      "goal": "Implement fn-fizzmod and verify it with the runner: fizzmod(n) returns 'fizzbuzzmod' if n is divisible by 15, else 'fizzmod' if divisible by 3, else 'buzzmod' if divisible by 5, else n as a string. Submit the rule table; report the embedded test results in your answer.",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "implement-function",
+      "spec": "fn-wordmod",
+      "goal": "Implement fn-wordmod and verify it with the runner: wordmod(n) returns 'both' if n is divisible by 28, else 'four' if divisible by 4, else 'seven' if divisible by 7, else n as a string. Submit the rule table; report the embedded test results.",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "implement-function",
+      "spec": "fn-impossible",
+      "goal": "Implement fn-ambi and verify it with the runner: the spec demands that n=6 returns both 'alpha' and 'beta'. Submit your best rule table and report the embedded test results honestly.",
+      "expectedTerminal": "FAILED"
+    }
+  ]
+}
