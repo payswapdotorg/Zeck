@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-12T09:56:58Z",
+  "asOf": "2026-09-12T14:59:44Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -170,8 +170,16 @@
       }
     },
     "VAL-016": {
-      "status": "planned",
-      "title": "Video/media generation"
+      "status": "complete",
+      "title": "Video/media generation",
+      "mergedAs": {
+        "pr": 70,
+        "mergeCommit": "f4cd3313dc65",
+        "implementationHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
+        "finalBranchHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
+        "baseRevision": "eba2030593d6ccce535d0d408a33971e25577709",
+        "issue": 66
+      }
     },
     "VAL-017": {
       "status": "complete",
