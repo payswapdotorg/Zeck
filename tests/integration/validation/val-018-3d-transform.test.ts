@@ -240,7 +240,14 @@ definePgSuite("VAL-018 multimodal transformation + three-d over the real platfor
               selectedStrategyId: "val-018-pinned",
             },
           },
-          `val-018-${executionId}-decision`,
+          // 2026-09-12 Lead review fix: the chain driver records ONE
+          // planning decision PER STAGE ROUTE (vision + derived media) —
+          // the idempotency key must therefore be per-stage (keyed by the
+          // route's provider+model), or the ledger correctly rejects the
+          // second decision as IDEMPOTENCY_KEY_REUSED (same key, different
+          // fingerprint). Deterministic per stage: a replay of the same
+          // stage decision matches its own key + fingerprint.
+          `val-018-${executionId}-decision-${route.provider}-${route.model}`,
         );
       },
       async complete({ executionId, verdict, criteria, reason }) {

@@ -24,14 +24,16 @@ const TRANSFORMATION_INSTRUCTIONS: readonly TransformationInstructionFixture[] =
   {
     key: "mm-instruction-001",
     instruction:
-      'Describe the main subject of this image as a JSON object with exactly these fields: "subject" (the main object in one to three words), "colors" (an array of the subject\'s main color names, lowercase), "background" (one to three words describing the background), "composition" (one short phrase describing the spatial layout). Answer with ONLY the JSON object and no other text.',
-    annotation: "structured-description schema v1 (standard)",
+      'The main subject is one of these labels: "bicycle", "bus", "car". Describe the main subject of this image as a JSON object with exactly these fields: "subject" (the main object: the one matching label, lowercase), "colors" (an array of the subject\'s main color names, lowercase), "background" (one to three words describing the background), "composition" (one short phrase describing the spatial layout). Answer with ONLY the JSON object and no other text.',
+    annotation:
+      "structured-description schema v1 (standard; label-constrained subject per the VAL-017 classify contract — live-probe 2026-09-12: the unconstrained open-ended prompt let the vision model read the primitive bus drawing as a 'simple car', honestly failing the fixture's own ground-truth oracle)",
   },
   {
     key: "mm-instruction-002",
     instruction:
-      'Describe this chart as a JSON object with exactly these fields: "subject" (what the chart shows, one to three words), "colors" (an array of the main colors used, lowercase), "background" (one to three words), "composition" (one short phrase that states the direction of the trend). Answer with ONLY the JSON object and no other text.',
-    annotation: "structured-description schema v1 (chart trend focus)",
+      'Describe this chart as a JSON object with exactly these fields: "subject" (what the chart shows, one to three words), "colors" (an array of the main colors used, lowercase), "background" (one to three words), "composition" (one short phrase that states the direction of the trend using the word "rising" or "falling"). Answer with ONLY the JSON object and no other text.',
+    annotation:
+      "structured-description schema v1 (chart trend focus; trend-vocabulary pinned — live-probe 2026-09-12: the model honestly describes the same ground truth as 'upward trend', a synonym the fixture's own term oracle cannot see)",
   },
 ];
 
