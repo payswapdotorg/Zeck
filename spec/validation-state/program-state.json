@@ -143,8 +143,15 @@
       }
     },
     "VAL-013": {
-      "status": "planned",
-      "title": "Long-running/resumable agent"
+      "status": "complete",
+      "title": "Long-running / resumable agent application",
+      "mergedAs": {
+        "pr": 62,
+        "mergeCommit": "f46b1ee",
+        "implementationHead": "72afa58",
+        "finalBranchHead": "72afa58",
+        "baseRevision": "53daf03"
+      }
     },
     "VAL-014": {
       "status": "planned",
