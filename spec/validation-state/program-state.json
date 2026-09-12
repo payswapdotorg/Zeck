@@ -125,8 +125,15 @@
       "title": "RAG knowledge assistant"
     },
     "VAL-012": {
-      "status": "planned",
-      "title": "Tool agent and business workflow"
+      "status": "complete",
+      "title": "Tool-using agent and multi-step business workflow apps",
+      "mergedAs": {
+        "pr": 59,
+        "mergeCommit": "cc3034a",
+        "implementationHead": "d7ea208",
+        "finalBranchHead": "d7ea208",
+        "baseRevision": "34bfb9d"
+      }
     },
     "VAL-013": {
       "status": "planned",
