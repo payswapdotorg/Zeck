@@ -1,0 +1,59 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    { "kind": "dispatch-probe", "scenario": "transport-failure", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "quota-envelope", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "openrouter-credit-402", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "rate-limit", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "invalid-request", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "access-denied", "expectedTerminal": "FAILED" },
+    { "kind": "dispatch-probe", "scenario": "empty-completion", "expectedTerminal": "COMPLETED" },
+    {
+      "kind": "tool-probe",
+      "scenario": "tool-failure",
+      "tool": "inventory-lookup",
+      "arguments": { "key": "SKU-UNKNOWN" },
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "tool-probe",
+      "scenario": "tool-timeout",
+      "tool": "slow-archiver",
+      "arguments": { "bytes": 2048 },
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "dispatch-probe",
+      "scenario": "healthy-recovery-after-retry",
+      "expectedTerminal": "COMPLETED"
+    },
+    { "kind": "dispatch-probe", "scenario": "healthy-no-retry", "expectedTerminal": "COMPLETED" },
+    {
+      "kind": "dispatch-probe",
+      "scenario": "live-openrouter-healthy",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "dispatch-probe",
+      "scenario": "live-qwen-imagegen-quota",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "dispatch-probe",
+      "scenario": "live-qwen-video-access-denied",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "dispatch-probe",
+      "scenario": "live-openrouter-credit-402",
+      "expectedTerminal": "FAILED"
+    }
+  ]
+}
