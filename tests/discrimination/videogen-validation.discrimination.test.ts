@@ -138,7 +138,10 @@ function happyAsyncSequence(bytes = MP4): Response[] {
         task_status: "SUCCEEDED",
         video_url: "https://assets.local/clip.mp4",
         video_duration: 5,
-        resolution: "1280x720",
+        // 2026-09-12 size re-pin: a wan2.2-t2v-plus task requested at
+        // 1920*1080 reports 1920x1080 (the dimension-bound criterion is
+        // exact equality with the declared request size).
+        resolution: "1920x1080",
       },
       usage: { video_count: 1 },
     }),

@@ -121,10 +121,18 @@ export class VideogenFixtureNotMaterializedError extends Error {
 /** The default bounded duration the platform requests (5 seconds). */
 export const DEFAULT_VIDEO_DURATION_SECONDS = 5;
 
-/** The rail-supported size for each declared aspect (720p class). */
+/**
+ * The rail-supported size for each declared aspect.
+ *
+ * 2026-09-12 Lead live re-pin: wan2.2-t2v-plus accepts ONLY the explicit
+ * size whitelist (a submitted 1280*720 task fails with InvalidParameter
+ * "size must be in 1080*1920,1920*1080,1440*1440,1632*1248,1248*1632,
+ * 480*832,832*480,624*624" — live-observed on an ACCEPTED async task).
+ * The 16:9 rows use 1920*1080; the 9:16 rows use 1080*1920.
+ */
 const ASPECT_SIZES: Record<"16:9" | "9:16", { width: number; height: number }> = {
-  "16:9": { width: 1280, height: 720 },
-  "9:16": { width: 720, height: 1280 },
+  "16:9": { width: 1920, height: 1080 },
+  "9:16": { width: 1080, height: 1920 },
 };
 
 /** Materialize one task's dispatch inputs deterministically (no environment). */
