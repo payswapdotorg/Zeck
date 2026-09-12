@@ -1,0 +1,16 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 300000,
+  "tasks": [
+    { "kind": "transform-image", "source": "img-c-001", "edit": "img-edit-001" },
+    { "kind": "transform-image", "source": "scene-001", "edit": "img-edit-002" },
+    { "kind": "transform-image", "source": "img-c-002", "edit": "img-edit-003" },
+    { "kind": "transform-image", "source": "img-corrupt", "edit": "img-edit-004" }
+  ]
+}
