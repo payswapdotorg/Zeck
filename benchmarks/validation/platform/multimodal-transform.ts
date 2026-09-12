@@ -121,7 +121,7 @@ export function buildDescriptionInstruction(labels: readonly string[]): string {
     `Describe the attached image as one JSON object with exactly these fields: ` +
     `"main_object" (the single main object; use exactly one of: ${labels.join(", ")}), ` +
     `"setting" (one short phrase describing where the object is), ` +
-    `"palette" (the two or three main colors), ` +
+    `"palette" (the two or three main colors, as one comma-separated string), ` +
     `"style" (one short phrase describing the rendering style). ` +
     `Answer with the JSON object only, no other text. ${INJECTION_DEFENSE_INSTRUCTION}`
   );
