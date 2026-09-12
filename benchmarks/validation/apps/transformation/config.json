@@ -1,0 +1,16 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 120000,
+  "tasks": [
+    { "kind": "transform", "source": "snippet-01", "register": "formal" },
+    { "kind": "transform", "source": "snippet-04", "register": "plain" },
+    { "kind": "transform-records", "from": "csv", "to": "json", "set": "records-001" },
+    { "kind": "transform-records", "from": "duplicates", "to": "unique", "set": "records-005" }
+  ]
+}
