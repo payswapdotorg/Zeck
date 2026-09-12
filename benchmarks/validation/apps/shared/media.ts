@@ -788,3 +788,264 @@ export function materializeVoiceFixture(
   }
   return voiceFixture(key);
 }
+
+// ---------------------------------------------------------------------------
+// Chained-transformation fixtures (VAL-018 — additive, extending the
+// seeded-prompt recipe). A chained fixture couples the deterministic
+// synthetic source image (stage 1: structured description over the
+// proven vision rail), the closed main-object vocabulary the
+// structured description must come from, the fixture's OWN oracle
+// terms (the mechanical ground truth the stage-1 answer is judged
+// against), and the seeded derivation scaffold + declared raster size
+// for the derived media (stage 2: the proven image-generation rail).
+// Every chained dispatch is reproducible at the request level: the
+// same key always yields the same source bytes, the same stage-1
+// instruction and the same derivation scaffold.
+// ---------------------------------------------------------------------------
+
+/** A seeded image → structured-description → derived-media chain fixture. */
+export interface ChainedTransformationFixture {
+  readonly key: string;
+  /** The deterministic synthetic source-image fixture key. */
+  readonly source: string;
+  /** The closed main_object vocabulary for the structured description. */
+  readonly labels: readonly string[];
+  /**
+   * The fixture's own oracle terms for the stage-1 answer (ground
+   * truth; empty for the corrupted-source edge row — its honest
+   * expectation is a REAL stage-1 provider rejection).
+   */
+  readonly oracleTerms: readonly string[];
+  /** The stage-2 derived-media prompt scaffold; {description} binds the stage-1 answer. */
+  readonly derivationTemplate: string;
+  /** The declared raster width of the derived media (the request must honor it). */
+  readonly width: number;
+  /** The declared raster height of the derived media (the request must honor it). */
+  readonly height: number;
+  readonly annotation: string;
+}
+
+const CHAINED_TRANSFORMATIONS: readonly ChainedTransformationFixture[] = [
+  {
+    key: "chain-001",
+    source: "img-c-001",
+    labels: ["bicycle", "bus", "car"],
+    oracleTerms: ["bus"],
+    derivationTemplate:
+      "Create a flat, minimal vector-style illustration of the scene described by this structured image description: {description}. Clean simple shapes, plain background, no text, no watermark.",
+    width: 1328,
+    height: 1328,
+    annotation: "bus scene described then re-illustrated",
+  },
+  {
+    key: "chain-002",
+    source: "scene-004",
+    labels: ["chart", "photo", "portrait"],
+    oracleTerms: ["chart"],
+    derivationTemplate:
+      "Create a flat, minimal vector-style illustration inspired by this structured image description: {description}. Clean simple shapes, plain background, no text, no watermark.",
+    width: 1664,
+    height: 928,
+    annotation: "chart scene described then re-illustrated",
+  },
+  {
+    key: "chain-003",
+    // The corrupted-source edge row: the REAL vision rail rejects the
+    // genuinely corrupted image at stage 1 — the chain aborts honestly
+    // (stage 2 never dispatches) and the expected terminal is FAILED.
+    source: "img-corrupt",
+    labels: ["bicycle", "bus", "car"],
+    oracleTerms: [],
+    derivationTemplate:
+      "Create a flat, minimal vector-style illustration of the scene described by this structured image description: {description}. Clean simple shapes, plain background, no text, no watermark.",
+    width: 1328,
+    height: 1328,
+    annotation: "corrupt source rejected at stage 1",
+  },
+];
+
+/** The seeded chained-transformation fixtures by key (deterministic; unknown keys throw). */
+export function chainedTransformationFixture(key: string): ChainedTransformationFixture {
+  const fixture = CHAINED_TRANSFORMATIONS.find((candidate) => candidate.key === key);
+  if (fixture === undefined) {
+    throw new Error(`chained transformation fixture not materialized: ${key}`);
+  }
+  return fixture;
+}
+
+// ---------------------------------------------------------------------------
+// 3D scene and mesh-spec fixtures (VAL-018 — additive, the seeded-spec
+// recipe for the corpus families three-d.render-scene.v1 /
+// three-d.mesh-from-spec.v1). A 3D fixture pins the EXACT spec text
+// dispatched (deterministic per key — the same key always yields the
+// same spec bytes, so the same request digest) together with the
+// fixture's own mechanical ground truth (declared object count /
+// primitive). No external 3D media; genuinely corrupted specs are
+// deterministic edge rows (the platform rejects them BEFORE any paid
+// dispatch).
+// ---------------------------------------------------------------------------
+
+/** A seeded 3D scene-spec fixture (three-d.render-scene.v1 rows). */
+export interface ThreeDSceneFixture {
+  readonly key: string;
+  /** The exact scene spec text dispatched (deterministic per key). */
+  readonly spec: string;
+  /** The fixture's own ground truth: the declared object count. */
+  readonly objectCount: number;
+  readonly annotation: string;
+}
+
+/** A seeded parametric mesh-spec fixture (three-d.mesh-from-spec.v1 rows). */
+export interface MeshSpecFixture {
+  readonly key: string;
+  /** The exact mesh spec text dispatched (deterministic per key). */
+  readonly spec: string;
+  /** The fixture's own ground truth: the declared primitive. */
+  readonly primitive: string;
+  readonly annotation: string;
+}
+
+const THREE_D_SCENES: readonly ThreeDSceneFixture[] = [
+  {
+    key: "scene3d-001",
+    spec: '{"scene":"single primitive","objects":[{"primitive":"box","dimensions":[1,1,1],"position":[0,0,0],"color":"red"}]}',
+    objectCount: 1,
+    annotation: "one red unit box",
+  },
+  {
+    key: "scene3d-002",
+    spec: '{"scene":"two primitives with relation","objects":[{"primitive":"box","dimensions":[2,1,2],"position":[0,0,0],"color":"blue"},{"primitive":"sphere","dimensions":[1,1,1],"position":[0,1.5,0],"color":"white"}],"relation":"the sphere sits on top of the box"}',
+    objectCount: 2,
+    annotation: "blue box with white sphere on top",
+  },
+  {
+    // The corpus's own empty-scene edge row: an empty scene is a
+    // provably-invalid request — rejected BEFORE any paid dispatch.
+    key: "scene3d-empty",
+    spec: '{"scene":"empty","objects":[]}',
+    objectCount: 0,
+    annotation: "empty scene rejected before any paid dispatch",
+  },
+  {
+    // The corpus's own corrupted-spec edge row: genuinely malformed
+    // spec text (truncated JSON) — rejected BEFORE any paid dispatch.
+    key: "scene3d-corrupt",
+    spec: '{"scene":"corrupted","objects":[{"primitive":"box","dim',
+    objectCount: 0,
+    annotation: "corrupt spec rejected before any paid dispatch",
+  },
+];
+
+const MESH_SPECS: readonly MeshSpecFixture[] = [
+  {
+    key: "mesh-001",
+    spec: '{"primitive":"box","dimensions":[2,3,4],"resolution":16}',
+    primitive: "box",
+    annotation: "box mesh 2x3x4 at resolution 16",
+  },
+  {
+    // The corpus's own unknown-primitive edge row: the platform never
+    // silently substitutes a different primitive.
+    key: "mesh-008",
+    spec: '{"primitive":"octahedral-toroid","dimensions":[1,1,1],"resolution":8}',
+    primitive: "octahedral-toroid",
+    annotation: "unknown primitive rejected, never silently substituted",
+  },
+];
+
+/** The seeded 3D scene-spec fixtures by key (deterministic; unknown keys throw). */
+export function threeDSceneFixture(key: string): ThreeDSceneFixture {
+  const fixture = THREE_D_SCENES.find((candidate) => candidate.key === key);
+  if (fixture === undefined) {
+    throw new Error(`three-d scene fixture not materialized: ${key}`);
+  }
+  return fixture;
+}
+
+/** The seeded parametric mesh-spec fixtures by key (deterministic; unknown keys throw). */
+export function meshSpecFixture(key: string): MeshSpecFixture {
+  const fixture = MESH_SPECS.find((candidate) => candidate.key === key);
+  if (fixture === undefined) {
+    throw new Error(`mesh spec fixture not materialized: ${key}`);
+  }
+  return fixture;
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic synthetic 3D containers (VAL-018) — TEST-SUPPORT media
+// for the OFFLINE verification-machinery tests: minimal VALID
+// .glb/.OBJ/.STL bytes generated purely in-code, plus a
+// deterministically corrupted glTF (valid magic, invalid length — the
+// honest invalid-container edge). These are NEVER model outputs and
+// NEVER evidence of any provider run: no authorized 3D rail exists.
+// They exist so the container-validity criteria (the exact criteria a
+// REAL authorized rail's outputs will be judged by) are proven
+// mechanically offline.
+// ---------------------------------------------------------------------------
+
+/** A minimal VALID binary glTF (.glb) container, deterministically generated. */
+export function syntheticGltfBinary(): Buffer {
+  const json = Buffer.from(
+    '{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],"nodes":[{}]}',
+    "utf8",
+  );
+  const paddedLength = Math.ceil(json.length / 4) * 4;
+  const chunkHeader = Buffer.alloc(8);
+  chunkHeader.writeUInt32LE(paddedLength, 0);
+  chunkHeader.write("JSON", 4, "latin1");
+  const jsonChunk = Buffer.concat([
+    chunkHeader,
+    json,
+    Buffer.alloc(paddedLength - json.length, 0x20),
+  ]);
+  const total = 12 + jsonChunk.length;
+  const header = Buffer.alloc(12);
+  header.write("glTF", 0, "latin1");
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(total, 8);
+  return Buffer.concat([header, jsonChunk]);
+}
+
+/** A minimal VALID text OBJ container (a unit cube), deterministically generated. */
+export function syntheticObjText(): Buffer {
+  return Buffer.from(
+    [
+      "# deterministic synthetic OBJ (test support, never a model output)",
+      "o synthetic-box",
+      "v 0 0 0",
+      "v 1 0 0",
+      "v 1 1 0",
+      "v 0 1 0",
+      "v 0 0 1",
+      "v 1 0 1",
+      "v 1 1 1",
+      "v 0 1 1",
+      "f 1 4 3 2",
+      "f 5 6 7 8",
+      "f 1 2 6 5",
+      "f 2 3 7 6",
+      "f 3 4 8 7",
+      "f 4 1 5 8",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+}
+
+/** A minimal VALID binary STL container with the declared triangle count. */
+export function syntheticStlBinary(triangleCount: number): Buffer {
+  const header = Buffer.alloc(80, 0x20);
+  header.write("deterministic synthetic STL (test support, never a model output)", 0, "latin1");
+  const count = Buffer.alloc(4);
+  count.writeUInt32LE(triangleCount, 0);
+  return Buffer.concat([header, count, Buffer.alloc(50 * triangleCount, 0)]);
+}
+
+/** Deterministically corrupted glTF bytes (valid magic, impossible total length). */
+export function corruptGltf(): Buffer {
+  const header = Buffer.alloc(12);
+  header.write("glTF", 0, "latin1");
+  header.writeUInt32LE(2, 4);
+  header.writeUInt32LE(0xffff_ffff, 8);
+  return Buffer.concat([header, Buffer.alloc(64, 0x7f)]);
+}

@@ -1,0 +1,18 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 180000,
+  "tasks": [
+    { "kind": "render-3d", "scene": "scene3d-001" },
+    { "kind": "render-3d", "scene": "scene3d-002" },
+    { "kind": "mesh-from-spec", "spec": "mesh-001" },
+    { "kind": "render-3d", "scene": "scene3d-empty" },
+    { "kind": "mesh-from-spec", "spec": "mesh-008" },
+    { "kind": "render-3d", "scene": "scene3d-corrupt" }
+  ]
+}
