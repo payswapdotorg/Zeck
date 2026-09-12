@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-12T14:59:44Z",
+  "asOf": "2026-09-12T16:59:14Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -154,8 +154,16 @@
       }
     },
     "VAL-014": {
-      "status": "planned",
-      "title": "Voice and realtime voice"
+      "status": "complete",
+      "title": "Voice and realtime voice",
+      "mergedAs": {
+        "pr": 71,
+        "mergeCommit": "da7820fa7d46",
+        "implementationHead": "85ec80021ad13532fa35c780791b6e28d5932934",
+        "finalBranchHead": "85ec80021ad13532fa35c780791b6e28d5932934",
+        "baseRevision": "789716086832883096bf34f4e00698760ea1b02a",
+        "issue": 64
+      }
     },
     "VAL-015": {
       "status": "complete",
