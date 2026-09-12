@@ -1,0 +1,21 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 300000,
+  "tasks": [
+    { "kind": "transform-multimodal", "source": "img-c-001", "instruction": "mm-instruction-001" },
+    { "kind": "transform-multimodal", "source": "scene-001", "instruction": "mm-instruction-001" },
+    { "kind": "transform-multimodal", "source": "scene-004", "instruction": "mm-instruction-002" },
+    {
+      "kind": "transform-multimodal",
+      "source": "img-corrupt",
+      "instruction": "mm-instruction-001"
+    },
+    { "kind": "transform-image", "source": "img-c-001", "edit": "img-edit-001" }
+  ]
+}

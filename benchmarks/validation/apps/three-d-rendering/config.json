@@ -1,0 +1,57 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 50,
+  "completionTimeoutMs": 300000,
+  "tasks": [
+    {
+      "kind": "generate-3d",
+      "prompt": "prompt-3d-001",
+      "geometry": { "primitive": "box", "dimensions": [2, 1, 2], "resolution": 2, "format": "glb" }
+    },
+    {
+      "kind": "generate-3d",
+      "prompt": "prompt-3d-002",
+      "geometry": {
+        "primitive": "composite",
+        "dimensions": [4, 2, 4],
+        "resolution": 2,
+        "format": "glb"
+      }
+    },
+    {
+      "kind": "generate-3d",
+      "prompt": "prompt-3d-003",
+      "geometry": {
+        "primitive": "cylinder",
+        "dimensions": [1, 2, 1],
+        "resolution": 3,
+        "format": "obj"
+      }
+    },
+    {
+      "kind": "generate-3d",
+      "prompt": "",
+      "geometry": { "primitive": "box", "dimensions": [1, 1, 1], "resolution": 1, "format": "glb" }
+    },
+    {
+      "kind": "generate-3d",
+      "prompt": "prompt-3d-001",
+      "geometry": { "primitive": "box", "dimensions": [-1, 1, 1], "resolution": 2, "format": "glb" }
+    },
+    {
+      "kind": "generate-3d",
+      "prompt": "prompt-3d-001",
+      "geometry": {
+        "primitive": "sphere",
+        "dimensions": [1, 1, 1],
+        "resolution": 0,
+        "format": "glb"
+      }
+    }
+  ]
+}
