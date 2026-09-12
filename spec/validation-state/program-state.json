@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-12T00:05:00Z",
+  "asOf": "2026-09-12T08:05:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -166,8 +166,16 @@
       "title": "Video/media generation"
     },
     "VAL-017": {
-      "status": "planned",
-      "title": "Image recognition, VLM and audio understanding"
+      "status": "complete",
+      "title": "Image recognition, VLM and audio understanding",
+      "mergedAs": {
+        "pr": 63,
+        "mergeCommit": "a2e8900",
+        "implementationHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
+        "finalBranchHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
+        "baseRevision": "f7d5480fc092b7efe171f4b06ce8a266464064af",
+        "issue": 55
+      }
     },
     "VAL-018": {
       "status": "planned",
