@@ -231,8 +231,8 @@
       "mergedAs": {
         "pr": 78,
         "mergeCommit": "a51d34903389f5e60ca6ac28075113cd4235d305",
-        "implementationHead": "3574e0d2f99dbe30b0e93cba80efcd455dd505ea",
-        "finalBranchHead": "3574e0d2f99dbe30b0e93cba80efcd455dd505ea",
+        "implementationHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
+        "finalBranchHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
         "baseRevision": "1543276bd6062bdb5a2298ccc2a20dc317468fd5",
         "issue": 77
       }
