@@ -121,8 +121,15 @@
       }
     },
     "VAL-011": {
-      "status": "planned",
-      "title": "RAG knowledge assistant"
+      "status": "complete",
+      "title": "RAG / knowledge-assistant application",
+      "mergedAs": {
+        "pr": 61,
+        "mergeCommit": "1029854",
+        "implementationHead": "065b081",
+        "finalBranchHead": "065b081",
+        "baseRevision": "ea6c4bf"
+      }
     },
     "VAL-012": {
       "status": "complete",

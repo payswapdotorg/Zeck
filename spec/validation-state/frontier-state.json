@@ -4,7 +4,6 @@
   "status": "active",
   "eligible": [
     "VAL-017",
-    "VAL-011",
     "VAL-013"
   ],
   "inFlight": [],
