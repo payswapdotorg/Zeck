@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-12T08:05:00Z",
+  "asOf": "2026-09-12T09:56:58Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -158,8 +158,16 @@
       "title": "Voice and realtime voice"
     },
     "VAL-015": {
-      "status": "planned",
-      "title": "Image generation and transformation"
+      "status": "complete",
+      "title": "Image generation and transformation",
+      "mergedAs": {
+        "pr": 69,
+        "mergeCommit": "4dcdabc05602",
+        "implementationHead": "bdcbae15617277251a615675d9d7081508397479",
+        "finalBranchHead": "bdcbae15617277251a615675d9d7081508397479",
+        "baseRevision": "d3b76c384bbd716b6ebcdeed27974dcfbf6d273f",
+        "issue": 65
+      }
     },
     "VAL-016": {
       "status": "planned",
