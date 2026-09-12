@@ -1,0 +1,34 @@
+# Audio-Understanding Application (VAL-017)
+
+A customer-style audio-event classification application: submitted clips
+classified against a fixed event vocabulary, through Zeck's public SDK
+boundary.
+
+## What it does
+
+Submits pinned `audio-understanding.classify-event.v1` corpus tasks
+(`kind: "classify-audio"` with a fixture key and label set), awaits
+async completion, retrieves the result package and asserts the
+deterministic outcome contract. The corrupted-clip edge row asserts the
+honest failure contract: terminal `FAILED`, verification `FAIL` — the
+provider rejects genuinely undecodable audio and the platform never
+fabricates a label.
+
+## Boundaries
+
+- Integrates ONLY through the public SDK (the validation harness) —
+  never Zeck internals; never selects provider/model/rail.
+- Configuration is repository-reproducible and secret-free; the single
+  secret is the environment token (`ZECK_VALIDATION_TOKEN`).
+- The platform (Zeck's operators) plans the route, dispatches the real
+  multimodal model call (audio rail, environment-credential gated) and
+  records the mechanical verification criteria; evidence references
+  carry payload DIGESTS, never audio bytes.
+
+## Run
+
+The application is executed by the validation integration suite
+(`tests/integration/validation/val-017-multimodal.test.ts`), which binds
+the run-time configuration, the served API and the real platform
+dispatch. A clean checkout reproduces the same pinned tasks, the same
+fixtures and the same assertions.
