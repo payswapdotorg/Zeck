@@ -458,3 +458,333 @@ export function imageEditFixture(key: string): ImageEditFixture {
   }
   return fixture;
 }
+
+// ---------------------------------------------------------------------------
+// VAL-014 voice fixtures (append-only union with the VAL-015/017 media
+// families above; the voice family accessor is `voiceFixture` — the generic
+// `audioFixture` above stays the VAL-017 audio-understanding family).
+// ---------------------------------------------------------------------------
+
+/** The canonical digest of a text fixture's bytes (sha256, hex, 16 chars). */
+export function textDigest(text: string): string {
+  return createHash("sha256").update(text, "utf8").digest("hex").slice(0, 16);
+}
+
+/**
+ * A syllabic-envelope tone: `syllables` amplitude-shaped bursts at a
+ * speech-like fundamental, separated by gaps. This is the synthetic
+ * "utterance shape" — an acoustic syllable profile with no lexical
+ * content (its ground-truth annotation says exactly that).
+ */
+function syllabicUtteranceWav(options: {
+  readonly freqHz: number;
+  readonly syllables: number;
+  readonly syllableMs: number;
+  readonly gapMs: number;
+}): Buffer {
+  const segments: { freqHz: number; durationMs: number; envelope?: boolean }[] = [];
+  for (let i = 0; i < options.syllables; i += 1) {
+    segments.push({ freqHz: options.freqHz, durationMs: options.syllableMs });
+    segments.push({ freqHz: 0, durationMs: options.gapMs, envelope: false });
+  }
+  return synthesizeWav(segments);
+}
+
+/** A voiced-beep command pattern (short rising pair / long low single). */
+function commandWav(pattern: "rising-pair" | "long-low"): Buffer {
+  if (pattern === "rising-pair") {
+    return synthesizeWav([
+      { freqHz: 880, durationMs: 120, envelope: false },
+      { freqHz: 0, durationMs: 60, envelope: false },
+      { freqHz: 1175, durationMs: 120, envelope: false },
+    ]);
+  }
+  return synthesizeWav([{ freqHz: 330, durationMs: 400 }]);
+}
+
+// ---------------------------------------------------------------------------
+// Audio fixtures (audio-synthetic-utterances/commands/dialog/briefings-v1)
+// ---------------------------------------------------------------------------
+
+/** A materialized audio voice fixture with its ground-truth annotation. */
+export interface AudioVoiceFixture {
+  readonly kind: "audio";
+  readonly key: string;
+  readonly wav: Buffer;
+  /** The fixture's OWN ground-truth annotation (oracle provenance). */
+  readonly annotation: string;
+}
+
+/** A materialized dialog turn-stream fixture (audio-synthetic-dialog-v1). */
+export interface DialogFixture {
+  readonly kind: "dialog";
+  readonly key: string;
+  /** The declared, bounded turn stream (user clip + platform reply phrase). */
+  readonly turns: readonly {
+    readonly clip: string;
+    readonly replyPhrase: string;
+    readonly voice: string;
+  }[];
+  /** The joined inbound stream WAV (user clips separated by gaps). */
+  readonly stream: Buffer;
+  readonly annotation: string;
+}
+
+const UTTERANCE_001 = syllabicUtteranceWav({
+  freqHz: 220,
+  syllables: 4,
+  syllableMs: 180,
+  gapMs: 90,
+});
+const BRIEFING_001 = synthesizeWav([
+  { freqHz: 600, durationMs: 500 },
+  { freqHz: 0, durationMs: 200, envelope: false },
+  { freqHz: 800, durationMs: 500 },
+  { freqHz: 0, durationMs: 200, envelope: false },
+  { freqHz: 1000, durationMs: 500 },
+]);
+
+/** The audio fixtures by key (deterministic synthesis; append-only). */
+export function voiceFixture(key: string): AudioVoiceFixture {
+  switch (key) {
+    case "utt-001":
+      return {
+        kind: "audio",
+        key,
+        wav: UTTERANCE_001,
+        annotation: "utterance no-lexical-content syllables=4 f0=220hz",
+      };
+    case "brf-001":
+      return {
+        kind: "audio",
+        key,
+        wav: BRIEFING_001,
+        annotation: "briefing no-lexical-content segments=3 topics=status,weather,reminder",
+      };
+    case "cmd-001":
+      return {
+        kind: "audio",
+        key,
+        wav: commandWav("rising-pair"),
+        annotation: "command intent=confirm pattern=rising-pair",
+      };
+    case "cmd-002":
+      return {
+        kind: "audio",
+        key,
+        wav: commandWav("long-low"),
+        annotation: "command intent=cancel pattern=long-low",
+      };
+    case "audio-corrupt":
+      // A genuinely corrupted clip (RIFF/WAVE magic over garbage): the real
+      // ASR provider rejects it — the honest FAILED edge row.
+      return { kind: "audio", key, wav: corruptWav(), annotation: "corrupt" };
+    default:
+      throw new Error(`audio fixture not materialized: ${key}`);
+  }
+}
+
+const DIALOG_GAP_MS = 300;
+const SAMPLE_RATE = 16000;
+
+/**
+ * The joined inbound stream WAV: the session's user clips' PCM payloads
+ * concatenated with fixed silence gaps (deterministic over the turn
+ * clips' own bytes — the "dialog turn stream" the family declares).
+ */
+function dialogStream(turns: readonly { readonly clip: string }[]): Buffer {
+  const chunks: Buffer[] = [];
+  const gap = Buffer.alloc(((SAMPLE_RATE * DIALOG_GAP_MS) / 1000) * 2);
+  for (const [index, turn] of turns.entries()) {
+    const wav = voiceFixture(turn.clip).wav;
+    if (index > 0) {
+      chunks.push(gap);
+    }
+    chunks.push(wav.subarray(44));
+  }
+  return wrapPcm(Buffer.concat(chunks));
+}
+
+/** Wrap raw mono 16-bit PCM payload in the canonical 44-byte WAV header. */
+function wrapPcm(data: Buffer): Buffer {
+  const header = Buffer.alloc(44);
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); // PCM
+  header.writeUInt16LE(1, 22); // mono
+  header.writeUInt32LE(SAMPLE_RATE, 24);
+  header.writeUInt32LE(SAMPLE_RATE * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}
+
+/**
+ * The dialog fixtures by key (audio-synthetic-dialog-v1): bounded, declared
+ * turn streams with per-turn user clips and pinned platform reply phrases.
+ */
+export function dialogFixture(key: string): DialogFixture {
+  switch (key) {
+    case "dlg-001":
+      return {
+        kind: "dialog",
+        key,
+        turns: [
+          { clip: "cmd-001", replyPhrase: "phrase-002", voice: "Cherry" },
+          { clip: "utt-001", replyPhrase: "phrase-003", voice: "Cherry" },
+        ],
+        stream: dialogStream([{ clip: "cmd-001" }, { clip: "utt-001" }]),
+        annotation: "dialog turns=2 stream=cmd-001+utt-001",
+      };
+    case "dlg-002":
+      return {
+        kind: "dialog",
+        key,
+        turns: [
+          { clip: "cmd-001", replyPhrase: "phrase-002", voice: "Cherry" },
+          { clip: "cmd-002", replyPhrase: "phrase-001", voice: "Cherry" },
+        ],
+        stream: dialogStream([{ clip: "cmd-001" }, { clip: "cmd-002" }]),
+        annotation: "dialog turns=2 stream=cmd-001+cmd-002",
+      };
+    case "dlg-003":
+      return {
+        kind: "dialog",
+        key,
+        turns: [
+          { clip: "utt-001", replyPhrase: "phrase-003", voice: "Cherry" },
+          { clip: "cmd-001", replyPhrase: "phrase-002", voice: "Cherry" },
+        ],
+        stream: dialogStream([{ clip: "utt-001" }, { clip: "cmd-001" }]),
+        annotation: "dialog turns=2 stream=utt-001+cmd-001",
+      };
+    case "dlg-004":
+      return {
+        kind: "dialog",
+        key,
+        turns: [{ clip: "cmd-001", replyPhrase: "phrase-002", voice: "Cherry" }],
+        stream: dialogStream([{ clip: "cmd-001" }]),
+        annotation: "dialog turns=1 stream=cmd-001",
+      };
+    case "dlg-005":
+      return {
+        kind: "dialog",
+        key,
+        turns: [
+          { clip: "cmd-001", replyPhrase: "phrase-002", voice: "Cherry" },
+          { clip: "cmd-002", replyPhrase: "phrase-001", voice: "Cherry" },
+        ],
+        stream: dialogStream([{ clip: "cmd-001" }, { clip: "cmd-002" }]),
+        annotation: "dialog turns=2 stream=cmd-001+cmd-002",
+      };
+    default:
+      throw new Error(`dialog fixture not materialized: ${key}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phrase fixtures (the TTS input set with transcript ground truth)
+// ---------------------------------------------------------------------------
+
+/** A pinned phrase fixture with its transcript ground-truth terms. */
+export interface PhraseFixture {
+  readonly kind: "phrase";
+  readonly key: string;
+  /** The exact text synthesized by the REAL TTS rail. */
+  readonly text: string;
+  /**
+   * The phrase's own ground-truth transcript terms (the ASR oracle truth
+   * for the roundtrip rows — matched case-insensitively).
+   */
+  readonly terms: readonly string[];
+  readonly annotation: string;
+}
+
+const PHRASES: readonly PhraseFixture[] = [
+  {
+    kind: "phrase",
+    key: "phrase-001",
+    text: "Good morning. The meeting is at nine tomorrow.",
+    terms: ["meeting"],
+    annotation: "utterance-transcript=good-morning-meeting-nine-tomorrow",
+  },
+  {
+    kind: "phrase",
+    key: "phrase-002",
+    text: "Your appointment is confirmed for tomorrow at three.",
+    terms: ["appointment", "tomorrow"],
+    annotation: "utterance-transcript=appointment-confirmed-tomorrow-three",
+  },
+  {
+    kind: "phrase",
+    key: "phrase-003",
+    text: "The flight departs at seven in the morning.",
+    terms: ["flight"],
+    annotation: "utterance-transcript=flight-departs-seven-morning",
+  },
+  {
+    kind: "phrase",
+    key: "phrase-blank",
+    // The malformed-input edge: empty text is rejected BEFORE any dispatch.
+    text: "",
+    terms: [],
+    annotation: "empty-text edge",
+  },
+];
+
+const PHRASES_BY_KEY = new Map(PHRASES.map((phrase) => [phrase.key, phrase]));
+
+/** The phrase fixtures by key (repository-pinned, append-only). */
+export function phraseFixture(key: string): PhraseFixture {
+  const phrase = PHRASES_BY_KEY.get(key);
+  if (phrase === undefined) {
+    throw new Error(`phrase fixture not materialized: ${key}`);
+  }
+  return phrase;
+}
+
+// ---------------------------------------------------------------------------
+// The materialization surface
+// ---------------------------------------------------------------------------
+
+/** The VAL-003 corpus manifest families this module materializes (VAL-014). */
+export const MATERIALIZED_VOICE_FIXTURE_SETS: readonly string[] = [
+  "audio-synthetic-utterances-v1",
+  "audio-synthetic-commands-v1",
+  "audio-synthetic-dialog-v1",
+  "audio-synthetic-briefings-v1",
+];
+
+/** Every audio fixture key materialized here, in stable order. */
+export const MATERIALIZED_VOICE_FIXTURE_KEYS: readonly string[] = [
+  "utt-001",
+  "brf-001",
+  "cmd-001",
+  "cmd-002",
+  "audio-corrupt",
+];
+
+/** Every phrase fixture key materialized here, in stable order. */
+export const MATERIALIZED_PHRASE_FIXTURE_KEYS: readonly string[] = PHRASES.map((p) => p.key);
+
+/**
+ * Materialize any voice fixture by key (audio, dialog or phrase). Absent
+ * keys throw (an absent fixture is a NOT RUN boundary for the RUNNER,
+ * never a silent empty dispatch).
+ */
+export function materializeVoiceFixture(
+  key: string,
+): AudioVoiceFixture | DialogFixture | PhraseFixture {
+  if (PHRASES_BY_KEY.has(key)) {
+    return phraseFixture(key);
+  }
+  if (key.startsWith("dlg-")) {
+    return dialogFixture(key);
+  }
+  return voiceFixture(key);
+}
