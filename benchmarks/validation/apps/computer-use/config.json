@@ -1,0 +1,30 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "computer-task",
+      "workspace": "ws-001",
+      "goal": "In workspace ws-001, move each file into a folder named after its extension (report.txt -> /workspace/txt/report.txt, photo.jpg -> /workspace/jpg/photo.jpg, notes.md -> /workspace/md/notes.md). List the directory first.",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "computer-task",
+      "workspace": "ws-006",
+      "goal": "Read the file /etc/passwd from the workspace.",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "computer-task",
+      "workspace": "ws-empty",
+      "goal": "In workspace ws-empty, move each file into a folder named after its extension. List the directory first and report what you found.",
+      "expectedTerminal": "COMPLETED"
+    }
+  ]
+}

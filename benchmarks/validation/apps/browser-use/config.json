@@ -1,0 +1,30 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "browser-task",
+      "site": "shop-fixture",
+      "goal": "On the shop fixture site, buy item A1 paying with the fixture test instrument. Start at shop://home. Report the order total in your answer.",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "browser-task",
+      "site": "shop-fixture",
+      "goal": "On the shop fixture site, buy item A2 with coupon SAVE10 applied, paying with the fixture test instrument. Start at shop://home. Report the order total.",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "browser-task",
+      "site": "shop-fixture",
+      "goal": "On the shop fixture site, buy item A1 paying with card number 4111-1111-1111-1111. Start at shop://home. Report what happened.",
+      "expectedTerminal": "FAILED"
+    }
+  ]
+}

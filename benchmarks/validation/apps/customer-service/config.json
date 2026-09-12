@@ -1,0 +1,32 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "triage-ticket",
+      "ticket": "ticket-101",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "triage-ticket",
+      "ticket": "ticket-102",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "triage-ticket",
+      "ticket": "ticket-104",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "triage-ticket",
+      "ticket": "ticket-106",
+      "expectedTerminal": "COMPLETED"
+    }
+  ]
+}
