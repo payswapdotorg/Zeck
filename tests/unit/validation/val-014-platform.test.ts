@@ -478,7 +478,7 @@ describe("VAL-014 dashscope voice rail — ASR direction (fake transport)", () =
       expect(outcome.usage?.costUsd).toBeUndefined();
     }
     expect(calls[0]?.url).toBe(
-      "https://dashscope-international.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
     );
     const body = calls[0]?.body as {
       model: string;
@@ -490,7 +490,10 @@ describe("VAL-014 dashscope voice rail — ASR direction (fake transport)", () =
     expect(body.input.messages[0]?.content[0]?.audio).toBe(
       toDataUri(voiceFixture("utt-001").wav, "audio/wav"),
     );
-    expect(body.input.messages[0]?.content[1]?.text).toBe("Transcribe the speech exactly.");
+    // 2026-09-12 live-rail probe: the dedicated asr task endpoint rejects
+    // mixed audio+text content — the rail sends audio-only (the context is
+    // accepted in the type but never rides the wire on this rail).
+    expect(body.input.messages[0]?.content).toHaveLength(1);
     expect(body.parameters.asr_options.enable_itn).toBe(false);
   });
 

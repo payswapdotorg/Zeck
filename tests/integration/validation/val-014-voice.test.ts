@@ -297,6 +297,12 @@ definePgSuite("VAL-014 voice applications over the real platform path (REAL prov
         // Re-issue the EXACT completion transition (same key, same
         // fingerprint): the platform's idempotency ledger must REPLAY
         // it — zero state change.
+        // 2026-09-12 Lead review fix: the ledger key MUST be derived with
+        // the SAME `val-014-<exec>-complete-<callKey>` shape complete()
+        // uses — the raw completeCallKey is the driver-side call key, not
+        // the ledger key; using it raw made the ledger arbitrate a NEW
+        // transition (state machine correctly rejecting a transition out
+        // of terminal COMPLETED) instead of replaying.
         const replayed = await world.executions.transition(
           {
             actorId: world.actorId,
@@ -307,7 +313,7 @@ definePgSuite("VAL-014 voice applications over the real platform path (REAL prov
             reason: input.reason,
             verificationResults: toVerificationResults(input.criteria),
           },
-          input.completeCallKey,
+          `val-014-${input.executionId}-complete-${input.completeCallKey}`,
         );
         return { replayed: replayed.replayed };
       },
@@ -481,8 +487,19 @@ definePgSuite("VAL-014 voice applications over the real platform path (REAL prov
               (platformResult.usage.audioSeconds ?? 0),
           ).toBeGreaterThan(0);
         }
-        if (platformResult.dispatchLatencyMs !== null) {
+        // 2026-09-12 Lead review fix: the pre-dispatch edge row (the
+        // empty-text phrase, rejected BEFORE any network effect by the
+        // platform's own discrimination) legitimately reports a ~0ms
+        // "dispatch" wall time — the >0 latency floor applies only to rows
+        // that actually dispatched (every other row, including the
+        // corrupted-clip provider rejection, which makes a REAL call).
+        const isPreDispatchEdgeRow =
+          task.kind === "synthesize-speech" && task.phrase === "phrase-blank";
+        if (!isPreDispatchEdgeRow && platformResult.dispatchLatencyMs !== null) {
           expect(platformResult.dispatchLatencyMs).toBeGreaterThan(0);
+        }
+        if (isPreDispatchEdgeRow) {
+          expect(platformResult.dispatchLatencyMs).toBe(0);
         }
         void task;
       }
@@ -578,9 +595,18 @@ definePgSuite("VAL-014 voice applications over the real platform path (REAL prov
         expect(platformResult.noOpResumeReplayed).toBe(
           definition.resumeAfterTerminal === true ? true : null,
         );
-        // Every committed turn dispatched EXACTLY once per leg.
+        // Every committed turn dispatched EXACTLY once per leg. For a
+        // COMPLETED session that is turns*2; for the designed
+        // corrupted-checkpoint failure the honest partial count is
+        // committedCheckpoints*2 (the legs of every turn that committed
+        // BEFORE the corruption boundary — progress never trusted past
+        // it). 2026-09-12 Lead review fix: the old `undefined` branch was
+        // unreachable (the driver always reports the factual count) — the
+        // live crown's first run exposed it.
         expect(platformResult.legDispatches).toBe(
-          platformResult.terminal === "COMPLETED" ? platformResult.turns * 2 : undefined,
+          platformResult.terminal === "COMPLETED"
+            ? platformResult.turns * 2
+            : platformResult.turnCheckpoints.length * 2,
         );
         if (platformResult.terminal === "COMPLETED" && platformResult.usage !== null) {
           expect(platformResult.usage.inputTokens).toBeGreaterThan(0);
