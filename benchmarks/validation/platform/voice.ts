@@ -721,7 +721,7 @@ function normalizeVoiceUsage(usage: unknown): VoiceUsage | undefined {
   };
 }
 
-const DASHSCOPE_INTL_BASE = "https://dashscope-international.aliyuncs.com/api/v1";
+const DASHSCOPE_INTL_BASE = "https://dashscope-intl.aliyuncs.com/api/v1";
 const MULTIMODAL_GENERATION_PATH = "/services/aigc/multimodal-generation/generation";
 
 /**
@@ -791,10 +791,14 @@ export function createDashscopeVoiceRail(options: {
   return {
     railId: "dashscope-voice",
     async transcribe(input) {
+      // 2026-09-12 live-rail probe (Lead review of PR #71): the DEDICATED
+      // asr task endpoint REJECTS mixed audio+text content with
+      // 400 InternalError.Algo.InvalidParameter ("The dedicated task `asr`
+      // corresponding to the current service does not support this
+      // input") — audio-only content is the supported contract. The
+      // optional recognition context therefore never rides the wire on
+      // this rail (retained in the type for future provider support).
       const content: Record<string, string>[] = [{ audio: input.audioDataUri }];
-      if (input.context !== undefined && input.context.length > 0) {
-        content.push({ text: input.context });
-      }
       const response = await post(
         JSON.stringify({
           model: input.model,
