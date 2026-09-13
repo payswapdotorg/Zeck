@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T18:42:21Z",
+  "asOf": "2026-09-13T18:42:53Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -314,7 +314,7 @@
       "title": "Learned reuse/cache/competence/deterministicization discovery"
     },
     "VAL-033": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Equivalence testing and deterministic replacement"
     },
     "VAL-034": {
