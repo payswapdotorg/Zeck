@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T14:21:27Z",
+  "asOf": "2026-09-13T14:56:57Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -330,7 +330,7 @@
       "title": "Determinization maturity benchmark"
     },
     "VAL-040": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Economic baseline normalization"
     },
     "VAL-041": {
