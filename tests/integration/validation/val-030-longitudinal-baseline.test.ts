@@ -370,7 +370,9 @@ function createRealLongitudinalLedger(ctx: PgContext, world: ApiPgWorld): Longit
           throw new Error(`the longitudinal ledger arbitration lost the run key ${runKey}`);
         }
         const identityId =
-          typeof row.durable_outcome?.identityId === "string" ? row.durable_outcome.identityId : null;
+          typeof row.durable_outcome?.identityId === "string"
+            ? row.durable_outcome.identityId
+            : null;
         if (row.request_fingerprint === contentDigest) {
           // The re-run re-observed the SAME identity (same content).
           return { contentDigest, identityId, replayed: true, refused: false };
@@ -447,7 +449,10 @@ function createRealControlRecorder(): RealControlRecorder {
 }
 
 /** Flush the buffered trajectory steps through the REAL recorder path. */
-async function flushControlRecorder(world: ApiPgWorld, recorder: RealControlRecorder): Promise<void> {
+async function flushControlRecorder(
+  world: ApiPgWorld,
+  recorder: RealControlRecorder,
+): Promise<void> {
   for (const [executionId, captures] of recorder.buffers) {
     for (const steps of captures) {
       for (const step of steps) {
@@ -686,7 +691,9 @@ async function buildLiveDispatch(
     auth.store,
     generateId,
   );
-  const registry = createRailRegistry([createOpenRouterAdapter({ transport: createFetchTransport() })]);
+  const registry = createRailRegistry([
+    createOpenRouterAdapter({ transport: createFetchTransport() }),
+  ]);
   const gateway = createModelGateway({
     resolver: createScopeResolver(auth.store),
     catalog: connections,
@@ -841,12 +848,7 @@ async function driveCrownRow(options: {
   }).then((outcome) => ({ ok: true as const, outcome }));
 
   // The landed execution (the app's submission through the public wire).
-  const executionId = await awaitLandedExecution(
-    options.ctx,
-    world,
-    options.driven,
-    row.rowId,
-  );
+  const executionId = await awaitLandedExecution(options.ctx, world, options.driven, row.rowId);
 
   // The canonical prologue (authorize → plan → the planning decision →
   // queue → start) — the control run drives over the REAL state machine.
@@ -1033,7 +1035,10 @@ definePgSuite(
 
           // ---- the app's honest observations over the public wire ----
           expect(validateHarnessEvidence(appSettled.outcome.evidence)).toEqual([]);
-          expect(appSettled.outcome.submission?.rejection, `${row.rowId} app submission`).toBeNull();
+          expect(
+            appSettled.outcome.submission?.rejection,
+            `${row.rowId} app submission`,
+          ).toBeNull();
           expect(appSettled.outcome.submission?.replayed, `${row.rowId} app created`).toBe(false);
           expect(appSettled.outcome.observedTerminal, `${row.rowId} app terminal`).toBe(
             row.expected.terminal,
@@ -1168,7 +1173,9 @@ definePgSuite(
                 WHERE application_id = $1 AND operation_name = $2`,
           parameters: [world.applicationId, LEDGER_OPERATION],
         });
-        expect(Number(ledgerCount.rows[0]?.c ?? 0), "one identity per control run").toBe(drivenRows);
+        expect(Number(ledgerCount.rows[0]?.c ?? 0), "one identity per control run").toBe(
+          drivenRows,
+        );
 
         // The append-only registry history over REAL SQL: the superseded
         // RAG revision 1 stays intact and verifiable after the
@@ -1292,16 +1299,14 @@ definePgSuite(
             kind: string;
             detail: string;
             digest: string;
-          }>(
-            {
-              sql: `SELECT (reference->>'ordinal')::int AS ordinal, reference->>'kind' AS kind,
+          }>({
+            sql: `SELECT (reference->>'ordinal')::int AS ordinal, reference->>'kind' AS kind,
                            reference->>'detail' AS detail, reference->>'digest' AS digest
                     FROM executions.execution_events
                     WHERE execution_id = $1 AND type = 'execution.agent-action-recorded'
                     ORDER BY sequence ASC`,
-              parameters: [executionId],
-            },
-          );
+            parameters: [executionId],
+          });
           const projection: TrajectoryStepRecord[] = stepRows.rows.map((step) => ({
             ordinal: step.ordinal,
             kind: trajectoryStepKindOf(step.kind),

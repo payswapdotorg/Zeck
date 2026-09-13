@@ -36,9 +36,7 @@
  */
 
 import { describe, expect, test } from "vitest";
-import {
-  runLongitudinalApp,
-} from "../../benchmarks/validation/apps/longitudinal-baseline/application";
+import { runLongitudinalApp } from "../../benchmarks/validation/apps/longitudinal-baseline/application";
 import {
   LONGITUDINAL_CORPUS,
   OFFLINE_CORPUS_ROWS,
@@ -212,8 +210,10 @@ describe("VAL-030 discrimination: the mutated baseline artifact (freeze integrit
         ?.status,
     ).toBe("FAIL");
     expect(
-      (verdict.criteria.find((criterion) => criterion.criterionId === "app-artifact-agreement")
-        ?.evidence ?? []).join(" "),
+      (
+        verdict.criteria.find((criterion) => criterion.criterionId === "app-artifact-agreement")
+          ?.evidence ?? []
+      ).join(" "),
     ).toContain("mutated after the registry commit");
   });
 
@@ -234,8 +234,11 @@ describe("VAL-030 discrimination: the mutated baseline artifact (freeze integrit
         ?.status,
     ).toBe("FAIL");
     expect(
-      (verdict.criteria.find((criterion) => criterion.criterionId === "workload-revision-agreement")
-        ?.evidence ?? []).join(" "),
+      (
+        verdict.criteria.find(
+          (criterion) => criterion.criterionId === "workload-revision-agreement",
+        )?.evidence ?? []
+      ).join(" "),
     ).toContain("must be a NEW revision");
   });
 
@@ -251,8 +254,11 @@ describe("VAL-030 discrimination: the mutated baseline artifact (freeze integrit
         ?.status,
     ).toBe("FAIL");
     expect(
-      (result.criteria.find((criterion) => criterion.criterionId === "recorded-trajectory-agreement")
-        ?.evidence ?? []).join(" "),
+      (
+        result.criteria.find(
+          (criterion) => criterion.criterionId === "recorded-trajectory-agreement",
+        )?.evidence ?? []
+      ).join(" "),
     ).toContain("DISAGREED");
   });
 
@@ -270,8 +276,11 @@ describe("VAL-030 discrimination: the mutated baseline artifact (freeze integrit
     expect(verdict.recordedTrajectoryAgreement).toBe(false);
     expect(verdict.agreed).toBe(false);
     expect(
-      (verdict.criteria.find((criterion) => criterion.criterionId === "recorded-trajectory-agreement")
-        ?.evidence ?? []).join(" "),
+      (
+        verdict.criteria.find(
+          (criterion) => criterion.criterionId === "recorded-trajectory-agreement",
+        )?.evidence ?? []
+      ).join(" "),
     ).toContain("classMembership:false");
   });
 
@@ -305,8 +314,10 @@ describe("VAL-030 discrimination: the mutated baseline artifact (freeze integrit
       result.criteria.find((criterion) => criterion.criterionId === "registry-agreement")?.status,
     ).toBe("FAIL");
     expect(
-      (result.criteria.find((criterion) => criterion.criterionId === "registry-agreement")
-        ?.evidence ?? []).join(" "),
+      (
+        result.criteria.find((criterion) => criterion.criterionId === "registry-agreement")
+          ?.evidence ?? []
+      ).join(" "),
     ).toContain("the registry is append-only");
   });
 
@@ -441,8 +452,10 @@ describe("VAL-030 discrimination: the duplicated ledger identity", () => {
       result.criteria.find((criterion) => criterion.criterionId === "ledger-exactly-once")?.status,
     ).toBe("FAIL");
     expect(
-      (result.criteria.find((criterion) => criterion.criterionId === "ledger-exactly-once")
-        ?.evidence ?? []).join(" "),
+      (
+        result.criteria.find((criterion) => criterion.criterionId === "ledger-exactly-once")
+          ?.evidence ?? []
+      ).join(" "),
     ).toContain("DUPLICATED");
   });
 
@@ -471,8 +484,10 @@ describe("VAL-030 discrimination: the duplicated ledger identity", () => {
         ?.status,
     ).toBe("FAIL");
     expect(
-      (verdict.criteria.find((criterion) => criterion.criterionId === "ledger-rerun-reobservation")
-        ?.evidence ?? []).join(" "),
+      (
+        verdict.criteria.find((criterion) => criterion.criterionId === "ledger-rerun-reobservation")
+          ?.evidence ?? []
+      ).join(" "),
     ).toContain("RE-ARBITRATED");
   });
 
@@ -541,9 +556,11 @@ describe("VAL-030 discrimination: the trajectory drift between re-runs", () => {
       )?.status,
     ).toBe("FAIL");
     expect(
-      (result.criteria.find(
-        (criterion) => criterion.criterionId === "rerun-trajectory-class-membership",
-      )?.evidence ?? []).join(" "),
+      (
+        result.criteria.find(
+          (criterion) => criterion.criterionId === "rerun-trajectory-class-membership",
+        )?.evidence ?? []
+      ).join(" "),
     ).toContain("DRIFTED");
   });
 
@@ -570,8 +587,9 @@ describe("VAL-030 discrimination: the trajectory drift between re-runs", () => {
     });
     expect(verdict.reproduced).toBe(false);
     expect(
-      verdict.criteria.find((criterion) => criterion.criterionId === "rerun-trajectory-class-membership")
-        ?.status,
+      verdict.criteria.find(
+        (criterion) => criterion.criterionId === "rerun-trajectory-class-membership",
+      )?.status,
     ).toBe("FAIL");
   });
 
@@ -586,8 +604,9 @@ describe("VAL-030 discrimination: the trajectory drift between re-runs", () => {
     expect(row.expectedTrajectoryClass).toContain(outcome.trajectoryDigest ?? "");
     expect(row.expectedTrajectoryClass).not.toContain(outcome.rerunTrajectoryDigest ?? "");
     expect(
-      outcome.appCriteria.find((criterion) => criterion.criterionId === "app-rerun-trajectory-class")
-        ?.status,
+      outcome.appCriteria.find(
+        (criterion) => criterion.criterionId === "app-rerun-trajectory-class",
+      )?.status,
     ).toBe("FAIL");
   });
 
