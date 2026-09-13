@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T14:18:39Z",
+  "asOf": "2026-09-13T14:21:27Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -302,7 +302,7 @@
       "title": "Outcome-state and side-effect verification"
     },
     "VAL-030": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Freeze baselines and pre-learning controls"
     },
     "VAL-031": {
