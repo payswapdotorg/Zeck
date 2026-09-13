@@ -1,0 +1,82 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-read",
+      "family": "cross-tenant-read",
+      "targetRole": "foreign-execution",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-transition",
+      "family": "cross-tenant-transition",
+      "targetRole": "foreign-execution",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-planning",
+      "family": "cross-tenant-planning",
+      "targetRole": "foreign-execution",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-artifact-fetch",
+      "family": "cross-tenant-artifact-fetch",
+      "targetRole": "foreign-artifact-digest",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-artifact-adoption",
+      "family": "cross-tenant-artifact-adoption",
+      "targetRole": "foreign-artifact-digest",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-application-state",
+      "family": "cross-application-state",
+      "targetRole": "foreign-execution",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-create",
+      "family": "cross-tenant-create",
+      "targetRole": "foreign-application",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-environment",
+      "family": "cross-tenant-environment",
+      "targetRole": "foreign-environment",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "forged-scope-header",
+      "family": "forged-scope-header",
+      "targetRole": "foreign-application",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "own-tenant-control",
+      "family": "own-tenant-control",
+      "targetRole": "own-execution",
+      "expectedTerminal": "COMPLETED"
+    }
+  ]
+}
