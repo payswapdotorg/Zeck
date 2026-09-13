@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T04:30:00Z",
+  "asOf": "2026-09-13T05:23:04Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -290,7 +290,7 @@
       "title": "Concurrency/load/endurance/soak"
     },
     "VAL-026": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Outcome-state and side-effect verification"
     },
     "VAL-030": {
