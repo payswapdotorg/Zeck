@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T23:12:45Z",
+  "asOf": "2026-09-13T23:22:21Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -356,7 +356,7 @@
       }
     },
     "VAL-043": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Competing gateway/router/agent benchmark"
     },
     "VAL-044": {
