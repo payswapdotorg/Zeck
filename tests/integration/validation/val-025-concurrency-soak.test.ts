@@ -918,6 +918,17 @@ definePgSuite(
       const runFacts: RunFacts[] = [];
 
       try {
+        // ONE live dispatch binding for ALL live rows (review fix): the
+        // connection and its sealed credential envelope are registered ONCE.
+        // A per-row buildLiveDispatch would mint a fresh random master key
+        // per row while the label uniqueness (`val-025-openrouter` on the
+        // same application) converges the second registration on the FIRST
+        // row's connection — the cross-cipher materialize then fails the
+        // envelope integrity verification (PROVIDER_ERROR: credential
+        // material failed integrity verification), a live-only defect the
+        // Lead's credentialed re-run caught (the worker's env-gated NOT RUN
+        // boundary never exercises this path).
+        let liveDispatch: ConcurrencyDispatch | undefined;
         for (const [corpusIndex, row] of CONCURRENCY_CORPUS.entries()) {
           if (row.liveGate === undefined) {
             continue;
@@ -932,7 +943,10 @@ definePgSuite(
           // Provider-side pacing between the live rows.
           await new Promise((resolve) => setTimeout(resolve, 2_000));
           const runSuffix = `live-${generateId().slice(-8)}`;
-          const { dispatch } = await buildLiveDispatch(ctx, world);
+          if (liveDispatch === undefined) {
+            liveDispatch = (await buildLiveDispatch(ctx, world)).dispatch;
+          }
+          const dispatch: ConcurrencyDispatch = liveDispatch;
           const { result, appSettled, appPassed } = await driveCrownRow({
             ctx,
             world,
