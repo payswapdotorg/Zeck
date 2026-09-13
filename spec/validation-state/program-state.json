@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T03:09:56Z",
+  "asOf": "2026-09-13T03:51:44Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -250,8 +250,16 @@
       }
     },
     "VAL-022": {
-      "status": "in-flight",
-      "title": "Sandbox/compute/substrate failure and readiness"
+      "status": "complete",
+      "title": "Sandbox/compute/substrate failure and readiness",
+      "mergedAs": {
+        "pr": 86,
+        "mergeCommit": "02b0b8d03c63",
+        "implementationHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
+        "finalBranchHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
+        "baseRevision": "aac5a52",
+        "issue": 80
+      }
     },
     "VAL-023": {
       "status": "complete",
