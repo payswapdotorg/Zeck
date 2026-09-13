@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T23:22:21Z",
+  "asOf": "2026-09-13T23:25:41Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -322,7 +322,7 @@
       "title": "Shadow deterministic execution"
     },
     "VAL-035": {
-      "status": "in-flight",
+      "status": "complete",
       "title": "Canary promotion and rollback"
     },
     "VAL-036": {
