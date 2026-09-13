@@ -516,17 +516,22 @@ async function driveRow(
   });
   const commands = events.rows.map((rowEvent) => rowEvent.command);
   const sequences = events.rows.map((rowEvent) => rowEvent.sequence);
+  // 2026-09-12 Lead review fix: REAL PostgreSQL event rows can carry a
+  // NULL cause (the platform's own cause-less transitions) — the fake
+  // world never produced one, so the unguarded startsWith crashed on the
+  // first live run. Null-safe filtering.
+  const causeOf = (rowEvent: { cause: string | null }): string => rowEvent.cause ?? "";
   const journaledAttempts = events.rows.filter((rowEvent) =>
-    rowEvent.cause.startsWith("val-021-dispatch-attempt-"),
+    causeOf(rowEvent).startsWith("val-021-dispatch-attempt-"),
   ).length;
   const journaledEffects = events.rows.filter((rowEvent) =>
-    rowEvent.cause.startsWith("val-021-effect-"),
+    causeOf(rowEvent).startsWith("val-021-effect-"),
   ).length;
   const waitUserCycles = commands.filter((command) => command === "wait-user").length;
   const resumeCommands = commands.filter((command) => command === "resume").length;
   const resumeDenials = commands.filter((command) => command === "resume-denied").length;
   const escalationEvents = events.rows.filter((rowEvent) =>
-    rowEvent.cause.startsWith("val-021-escalation-"),
+    causeOf(rowEvent).startsWith("val-021-escalation-"),
   ).length;
 
   // The honest outcome contract for every run.
