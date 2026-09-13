@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T21:41:31Z",
+  "asOf": "2026-09-13T23:12:45Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -345,8 +345,15 @@
       "title": "Direct-provider controls"
     },
     "VAL-042": {
-      "status": "in-flight",
-      "title": "Strong optimized non-Zeck baseline"
+      "status": "complete",
+      "title": "Strong optimized non-Zeck baseline",
+      "mergedAs": {
+        "pr": 105,
+        "mergeCommit": "83e7b149da",
+        "implementationHead": "729d0e4",
+        "baseRevision": "b29864c",
+        "issue": 102
+      }
     },
     "VAL-043": {
       "status": "planned",
