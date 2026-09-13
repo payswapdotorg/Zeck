@@ -350,12 +350,23 @@ async function driveExecution(
 
   // The durable ledger evidence for THIS execution — the external
   // cross-check of the per-attempt journal and the sandbox vocabulary.
-  const events = await ctx.port.execute<{ command: string }>({
-    sql: `SELECT command FROM executions.execution_events WHERE execution_id = $1 ORDER BY sequence ASC`,
+  const events = await ctx.port.execute<{
+    command: string;
+    reference: Record<string, unknown> | null;
+  }>({
+    sql: `SELECT command, reference FROM executions.execution_events WHERE execution_id = $1 ORDER BY sequence ASC`,
     parameters: [options.executionId],
   });
   const commands = events.rows.map((rowEvent) => rowEvent.command);
-  const journaled = commands.filter((command) => command === "agent-action-recorded").length;
+  // Review fix: the per-attempt journal counts ATTEMPT-bearing records only.
+  // The quarantine-engaged policy event ALSO journals under the same command
+  // (its reference carries strikes/threshold, not attempt) and must not
+  // inflate the per-attempt count the oracle asserts.
+  const journaled = events.rows.filter(
+    (rowEvent) =>
+      rowEvent.command === "agent-action-recorded" &&
+      typeof rowEvent.reference?.attempt === "number",
+  ).length;
   const admitted = commands.filter((command) => command === "sandbox-admitted").length;
   const denied = commands.filter((command) => command === "sandbox-denied").length;
   const completed = commands.filter((command) => command === "sandbox-completed").length;
@@ -373,7 +384,7 @@ async function driveExecution(
     `${row.rowId}#${submissionIndex + 1} criteria: ${JSON.stringify(failedCriteria)}`,
   ).toEqual([]);
   // Journal exactly once per attempt — ledger-verified.
-  expect(journaled).toBe(oracle.attempts);
+  expect(journaled, `${row.rowId}#${submissionIndex + 1} journaled attempts`).toBe(oracle.attempts);
   // The sandbox vocabulary ledger-verifies the substrate contact facts.
   expect(admitted).toBe(result.executesPerformed);
   expect(completed).toBe(result.executesPerformed);
@@ -406,10 +417,19 @@ async function driveRowOverRealPath(
     readonly taskIndex: number;
     readonly plane: SubstratePlane;
     readonly clock?: { advance(ms: number): void };
+    /**
+     * The TEST-scoped set of already-driven execution ids — SHARED across
+     * every row of the test (review fix): a per-row set let the poller
+     * re-drive a PREVIOUS row's execution whenever the current row's
+     * app submission lagged the first poll, which double-recorded the
+     * planning decision under one idempotency key with a fresh
+     * decisionId/planId (IDEMPOTENCY_KEY_REUSED) and failed the crown.
+     */
+    readonly driven: Set<string>;
   },
 ): Promise<RunFacts[]> {
   const { row } = options;
-  const driven = new Set<string>();
+  const driven = options.driven;
   const facts: RunFacts[] = [];
   const appPromise = submitRow(world, address, {
     generateId: options.generateId,
@@ -461,6 +481,8 @@ definePgSuite("VAL-022 substrate failure over the real platform path", (ctx) => 
     timeout: 300_000,
   }, async () => {
     const generateId = createUuidv7Generator();
+    // review fix: TEST-scoped driven set (see driveRowOverRealPath)
+    const driven = new Set<string>();
     const world = await seedApiPgWorld(ctx.port);
     const address = await world.server.app.listen({ port: 0, host: "127.0.0.1" });
     const allFacts: RunFacts[] = [];
@@ -477,6 +499,7 @@ definePgSuite("VAL-022 substrate failure over the real platform path", (ctx) => 
           taskIndex,
           plane: substrate.plane,
           clock: substrate.clock,
+          driven,
         });
         allFacts.push(...facts);
         for (const fact of facts) {
@@ -511,6 +534,8 @@ definePgSuite("VAL-022 substrate failure over the real platform path", (ctx) => 
     timeout: 240_000,
   }, async () => {
     const generateId = createUuidv7Generator();
+    // review fix: TEST-scoped driven set (see driveRowOverRealPath)
+    const driven = new Set<string>();
     const world = await seedApiPgWorld(ctx.port);
     const address = await world.server.app.listen({ port: 0, host: "127.0.0.1" });
     const allFacts: RunFacts[] = [];
@@ -524,6 +549,7 @@ definePgSuite("VAL-022 substrate failure over the real platform path", (ctx) => 
           row,
           taskIndex,
           plane,
+          driven,
         });
         allFacts.push(...facts);
         for (const fact of facts) {
