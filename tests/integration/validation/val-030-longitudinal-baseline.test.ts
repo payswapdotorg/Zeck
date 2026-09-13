@@ -78,9 +78,9 @@ import { runLongitudinalApp } from "../../../benchmarks/validation/apps/longitud
 import {
   controlSubmissionKey,
   controlTaskBodyFor,
-  liveGateOpen,
   LONGITUDINAL_CORPUS,
   LONGITUDINAL_TASK_KIND,
+  liveGateOpen,
 } from "../../../benchmarks/validation/apps/longitudinal-baseline/corpus";
 import { SUPERSEDED_RAG_MANIFEST } from "../../../benchmarks/validation/apps/longitudinal-baseline/fixtures";
 import { validateHarnessEvidence } from "../../../benchmarks/validation/harness";
@@ -88,12 +88,12 @@ import type { LabUsage } from "../../../benchmarks/validation/platform/derive";
 import {
   type BaselineManifestEntry,
   type BaselineRegistryEntry,
-  controlIdentityIdOf,
-  controlRunKeyOf,
-  controlTrajectoryStepsOf,
   type ControlDispatch,
   type ControlLearningPort,
   type ControlRecorderPort,
+  controlIdentityIdOf,
+  controlRunKeyOf,
+  controlTrajectoryStepsOf,
   deriveWorkloadAdmission,
   driveControlRun,
   type FrozenBaselineRegistryPort,
