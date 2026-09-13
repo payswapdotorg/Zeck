@@ -486,11 +486,16 @@ describe("multimodal-transformation + 3D validation discrimination (VAL-018 AC6)
     );
     // Stage 2: the derived prompt only — no image payload.
     const imagegenBody = imagegenCalls[0]?.body as {
-      input: { prompt: string; image?: unknown };
+      input: { messages: { role: string; content: Record<string, string>[] }[] };
       parameters: { size: string };
     };
-    expect(imagegenBody.input.image).toBeUndefined();
-    expect(imagegenBody.input.prompt).toContain("flat, minimal vector-style illustration");
+    // 2026-09-12 shape re-pin: the derived prompt rides the messages text
+    // part — no image payload part exists on the generation-only request.
+    const parts = imagegenBody.input.messages[0]?.content ?? [];
+    expect(parts.find((part) => part.image !== undefined)).toBeUndefined();
+    expect(parts.find((part) => part.text !== undefined)?.text).toContain(
+      "flat, minimal vector-style illustration",
+    );
     expect(imagegenBody.parameters.size).toBe("1328*1328");
   });
 

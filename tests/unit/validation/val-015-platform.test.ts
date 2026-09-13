@@ -278,11 +278,17 @@ describe("VAL-015 dispatch-plan derivation", () => {
       sourceDataUri: toImageDataUri(sourcePng),
       size: { width: 1328, height: 1328 },
     });
+    // 2026-09-12 shape re-pin: the input.messages content grammar (the
+    // endpoint's current contract — the input.prompt shape returns 400).
     expect(body).toEqual({
       model: "qwen-image-2.0",
       input: {
-        prompt: "Recolor the bus.",
-        image: toImageDataUri(sourcePng),
+        messages: [
+          {
+            role: "user",
+            content: [{ image: toImageDataUri(sourcePng) }, { text: "Recolor the bus." }],
+          },
+        ],
       },
       parameters: { n: 1, size: "1328*1328" },
     });
@@ -508,11 +514,16 @@ describe("VAL-015 dashscope multimodal-generation rail (fake transport)", () => 
     );
     const body = calls[0]?.body as {
       model: string;
-      input: { prompt: string };
+      input: { messages: { role: string; content: { text: string }[] }[] };
       parameters: { n: number; size: string };
     };
     expect(body.model).toBe("qwen-image-2.0");
     expect(body.parameters.size).toBe("1328*1328");
+    // 2026-09-12 shape re-pin: the prompt rides the messages text part.
+    expect(body.input.messages).toHaveLength(1);
+    expect(body.input.messages[0]?.role).toBe("user");
+    expect(body.input.messages[0]?.content).toHaveLength(1);
+    expect(typeof body.input.messages[0]?.content[0]?.text).toBe("string");
   });
 
   test("a task-based response polls the REAL task API within the bounded window", async () => {
@@ -619,11 +630,16 @@ describe("VAL-015 dashscope multimodal-generation rail (fake transport)", () => 
     });
     expect(outcome.kind).toBe("success");
     const body = calls[0]?.body as {
-      input: { prompt: string; image: string };
+      input: { messages: { role: string; content: Record<string, string>[] }[] };
       parameters: { n: number };
     };
-    expect(body.input.image).toBe(toImageDataUri(source));
-    expect(body.input.prompt).toContain("Recolor the body of the bus");
+    // 2026-09-12 shape re-pin: the edit's source image rides an image
+    // content part and the prompt a text part.
+    const parts = body.input.messages[0]?.content ?? [];
+    expect(parts.find((part) => part.image !== undefined)?.image).toBe(toImageDataUri(source));
+    expect(parts.find((part) => part.text !== undefined)?.text).toContain(
+      "Recolor the body of the bus",
+    );
     expect(body.parameters).toEqual({ n: 1 });
   });
 

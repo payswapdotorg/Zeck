@@ -226,7 +226,7 @@ function healthyOutcome(overrides?: {
     submissionToTerminalMs: 6_000,
     reported: overrides?.reported ?? {
       durationSeconds: 5,
-      resolution: { width: 1280, height: 720 },
+      resolution: { width: 1920, height: 1080 },
     },
     usage: { inputTokens: 0, outputTokens: 1 },
   };
@@ -277,8 +277,8 @@ describe("VAL-016 videogen materialization", () => {
       aspect: "16:9",
     });
     expect(landscape.duration).toBe(5);
-    expect(landscape.sizeString).toBe("1280*720");
-    expect(landscape.size).toEqual({ width: 1280, height: 720 });
+    expect(landscape.sizeString).toBe("1920*1080");
+    expect(landscape.size).toEqual({ width: 1920, height: 1080 });
 
     const vertical = materializeVideogenInput({
       kind: "generate-video",
@@ -286,13 +286,13 @@ describe("VAL-016 videogen materialization", () => {
       seconds: 5,
       aspect: "9:16",
     });
-    expect(vertical.sizeString).toBe("720*1280");
-    expect(vertical.size).toEqual({ width: 720, height: 1280 });
+    expect(vertical.sizeString).toBe("1080*1920");
+    expect(vertical.size).toEqual({ width: 1080, height: 1920 });
 
     // Defaults: 5 seconds, landscape, when the task declares neither.
     const defaults = materializeVideogenInput({ kind: "generate-video", prompt: "vid-prompt-001" });
     expect(defaults.duration).toBe(5);
-    expect(defaults.sizeString).toBe("1280*720");
+    expect(defaults.sizeString).toBe("1920*1080");
   });
 
   test("the empty prompt materializes as the corpus's own edge row (never a drop)", () => {
@@ -333,13 +333,13 @@ describe("VAL-016 canonical rail request and plan derivation", () => {
     const body = buildVideogenRequestBody({
       model: "wan2.2-t2v-plus",
       prompt: "storyboard text",
-      sizeString: "1280*720",
+      sizeString: "1920*1080",
       duration: 5,
     });
     expect(body).toEqual({
       model: "wan2.2-t2v-plus",
       input: { prompt: "storyboard text" },
-      parameters: { size: "1280*720", duration: 5 },
+      parameters: { size: "1920*1080", duration: 5 },
     });
   });
 
@@ -366,7 +366,7 @@ describe("VAL-016 canonical rail request and plan derivation", () => {
     });
     expect(first.mode).toBe("text-to-video");
     expect(first.duration).toBe(5);
-    expect(first.sizeString).toBe("1280*720");
+    expect(first.sizeString).toBe("1920*1080");
   });
 });
 
@@ -599,7 +599,7 @@ describe("VAL-016 mechanical verification derivation", () => {
   test("a rail-reported duration outside the declared tolerance FAILS", () => {
     const criteria = deriveVideogenVerification(TASK, {
       ...healthyOutcome(),
-      reported: { durationSeconds: 8, resolution: { width: 1280, height: 720 } },
+      reported: { durationSeconds: 8, resolution: { width: 1920, height: 1080 } },
     });
     const duration = criteria.find((c) => c.criterionId === "duration-reported-honored");
     expect(duration?.status).toBe("FAIL");
@@ -610,7 +610,7 @@ describe("VAL-016 mechanical verification derivation", () => {
   test("a rail-reported resolution that disagrees with the request FAILS", () => {
     const criteria = deriveVideogenVerification(TASK, {
       ...healthyOutcome(),
-      reported: { durationSeconds: 5, resolution: { width: 720, height: 1280 } },
+      reported: { durationSeconds: 5, resolution: { width: 1080, height: 1920 } },
     });
     const dimensions = criteria.find((c) => c.criterionId === "dimensions-reported-honored");
     expect(dimensions?.status).toBe("FAIL");
@@ -652,7 +652,7 @@ describe("VAL-016 mechanical verification derivation", () => {
     expect(sniffMp4Container(syntheticPng()).container).toBe("unknown");
     expect(sniffMp4Container(Buffer.alloc(8)).container).toBe("unknown");
     expect(parseRailResolution("1280x720")).toEqual({ width: 1280, height: 720 });
-    expect(parseRailResolution("1280*720")).toEqual({ width: 1280, height: 720 });
+    expect(parseRailResolution("1920*1080")).toEqual({ width: 1920, height: 1080 });
     expect(parseRailResolution("720p")).toBeNull();
     expect(parseRailResolution("0x0")).toBeNull();
   });
@@ -693,7 +693,7 @@ describe("VAL-016 dashscope videogen rail (async task API over a fake transport)
     const outcome = await rail.dispatch({
       model: "wan2.2-t2v-plus",
       prompt: "storyboard text",
-      sizeString: "1280*720",
+      sizeString: "1920*1080",
       duration: 5,
     });
 
@@ -712,6 +712,9 @@ describe("VAL-016 dashscope videogen rail (async task API over a fake transport)
     expect(outcome.usage).toEqual({ inputTokens: 0, outputTokens: 1 });
     expect(outcome.reported).toEqual({
       durationSeconds: 5,
+      // the rail-REPORTED resolution parses the TASK's response string
+      // (the fake answers "1280x720") — the reported fact, not the
+      // fixture's declared size.
       resolution: { width: 1280, height: 720 },
     });
 
@@ -727,7 +730,7 @@ describe("VAL-016 dashscope videogen rail (async task API over a fake transport)
     expect(submit?.body).toEqual({
       model: "wan2.2-t2v-plus",
       input: { prompt: "storyboard text" },
-      parameters: { size: "1280*720", duration: 5 },
+      parameters: { size: "1920*1080", duration: 5 },
     });
     expect(calls[1]?.url).toBe("https://dashscope-intl.aliyuncs.com/api/v1/tasks/task-77");
     expect(calls[1]?.method).toBe("GET");

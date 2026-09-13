@@ -497,11 +497,13 @@ describe("VAL-018 chained dispatch binding (proven rails, fake transports)", () 
     );
     // Stage 2 dispatched the scaffold bound to the extracted description.
     const imagegenBody = imagegen.calls[0]?.body as {
-      input: { prompt: string };
+      input: { messages: { role: string; content: { text: string }[] }[] };
       parameters: { size: string; n: number };
     };
-    expect(imagegenBody.input.prompt).toContain(structuredAnswer("bus"));
-    expect(imagegenBody.input.prompt).not.toContain("{description}");
+    // 2026-09-12 shape re-pin: the derived prompt rides the messages text part.
+    const derivedPrompt = imagegenBody.input.messages[0]?.content[0]?.text ?? "";
+    expect(derivedPrompt).toContain(structuredAnswer("bus"));
+    expect(derivedPrompt).not.toContain("{description}");
     expect(imagegenBody.parameters.size).toBe("1328*1328");
     // Per-stage facts captured (measured usage, request + output digests).
     expect(outcome.stages).toHaveLength(2);

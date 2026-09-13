@@ -267,8 +267,14 @@ describe("imagegen validation discrimination (VAL-015 AC6)", () => {
     expect(result.criteria[0]?.evidence).toContain("retryable:false");
     // The dispatched payload WAS the genuine corrupt fixture bytes.
     expect(calls).toHaveLength(1);
-    const body = calls[0]?.body as { input: { image: string } };
-    expect(body.input.image).toBe(toImageDataUri(imageFixture("img-corrupt").png));
+    const body = calls[0]?.body as {
+      input: { messages: { role: string; content: Record<string, string>[] }[] };
+    };
+    // 2026-09-12 shape re-pin: the corrupted source rides an image content part.
+    const parts = body.input.messages[0]?.content ?? [];
+    expect(parts.find((part) => part.image !== undefined)?.image).toBe(
+      toImageDataUri(imageFixture("img-corrupt").png),
+    );
   });
 
   test("a malformed raster payload (valid base64 of garbage) fails mechanically", async () => {
@@ -481,12 +487,15 @@ describe("imagegen validation discrimination (VAL-015 AC6)", () => {
     await binding({ executionId: "e", task: TRANSFORM_TASK, provider: "p", model: "m" });
     const body = calls[0]?.body as {
       model: string;
-      input: { prompt: string; image: string };
+      input: { messages: { role: string; content: Record<string, string>[] }[] };
       parameters: { n: number };
     };
-    expect(body.input.prompt).toBe(materializeImagegenInput(TRANSFORM_TASK).prompt);
-    expect(body.input.prompt).not.toContain("base64"); // prompt stays textual
-    expect(body.input.image).toBe(toImageDataUri(sourcePng));
+    // 2026-09-12 shape re-pin: the messages content grammar.
+    const parts = body.input.messages[0]?.content ?? [];
+    const textPart = parts.find((part) => part.text !== undefined)?.text ?? "";
+    expect(textPart).toBe(materializeImagegenInput(TRANSFORM_TASK).prompt);
+    expect(textPart).not.toContain("base64"); // prompt stays textual
+    expect(parts.find((part) => part.image !== undefined)?.image).toBe(toImageDataUri(sourcePng));
     expect(body.parameters).toEqual({ n: 1 });
     // Evidence references never carry payloads — digest references only.
     const criteria = deriveImagegenVerification(TRANSFORM_TASK, {

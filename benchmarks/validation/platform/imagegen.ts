@@ -195,15 +195,26 @@ export function buildImagegenRequestBody(input: {
   readonly sourceDataUri?: string;
   readonly size?: { readonly width: number; readonly height: number };
 }): Readonly<Record<string, unknown>> {
-  const inputField: Record<string, unknown> = { prompt: input.prompt };
+  // 2026-09-12 Lead live re-pin: the multimodal-generation endpoint now
+  // requires the input.messages content shape (the earlier input.prompt
+  // shape returns 400 InvalidParameter "Field required: input.messages" —
+  // observed when the operator lifted the image-generation quota). The
+  // prompt rides as a text part; an edit's source image rides as an image
+  // content part (the same part grammar the ASR rail uses for audio).
+  const content: Record<string, string>[] = [];
   if (input.sourceDataUri !== undefined) {
-    inputField.image = input.sourceDataUri;
+    content.push({ image: input.sourceDataUri });
   }
+  content.push({ text: input.prompt });
   const parameters: Record<string, unknown> = { n: 1 };
   if (input.size !== undefined) {
     parameters.size = `${input.size.width}*${input.size.height}`;
   }
-  return { model: input.model, input: inputField, parameters };
+  return {
+    model: input.model,
+    input: { messages: [{ role: "user", content }] },
+    parameters,
+  };
 }
 
 /** Encode image bytes as the provider data URI (never in evidence). */
