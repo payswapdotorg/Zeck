@@ -1,0 +1,112 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "same-key-race-pair",
+      "pattern": "same-key-race",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "appCreated": 1,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "same-key-race-storm",
+      "pattern": "same-key-race",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 5,
+      "appCreated": 1,
+      "replayedSubmissions": 4,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "same-key-race-conflict",
+      "pattern": "same-key-race",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 1
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "distinct-key-fanout-parallel",
+      "pattern": "distinct-key-fanout",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 4,
+      "appCreated": 4,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "over-ceiling-burst-shaped",
+      "pattern": "over-ceiling-burst",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 5,
+      "appCreated": 5,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0,
+      "ceiling": 2,
+      "admitted": 2,
+      "denied": 3
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "over-ceiling-burst-slot-release",
+      "pattern": "over-ceiling-burst",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 4,
+      "appCreated": 4,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0,
+      "ceiling": 2,
+      "admitted": 3,
+      "denied": 1
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "soak-rounds-invariants",
+      "pattern": "soak-rounds",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 24,
+      "appCreated": 18,
+      "replayedSubmissions": 6,
+      "rejectedSubmissions": 0,
+      "rounds": 6,
+      "interRoundSpacingMs": 25
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "live-fanout-real-dispatch",
+      "pattern": "distinct-key-fanout",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 3,
+      "appCreated": 3,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0,
+      "liveGate": ["OPENROUTER_API_KEY"]
+    },
+    {
+      "kind": "concurrency-soak.settlement.v1",
+      "rowId": "live-race-after-real-dispatch",
+      "pattern": "same-key-race",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "appCreated": 1,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0,
+      "liveGate": ["OPENROUTER_API_KEY"]
+    }
+  ]
+}
