@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T01:45:00Z",
+  "asOf": "2026-09-13T03:09:56Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -250,7 +250,7 @@
       }
     },
     "VAL-022": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Sandbox/compute/substrate failure and readiness"
     },
     "VAL-023": {
