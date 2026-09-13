@@ -1,0 +1,117 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "healthy-clean-run",
+      "execution": 1,
+      "substrate": "substrate-proc-1",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "readiness-refused-terminal",
+      "execution": 1,
+      "substrate": "substrate-proc-2",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "readiness-refused-recovery",
+      "execution": 1,
+      "substrate": "substrate-proc-3",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "sandbox-lost-retry-fresh-recovery",
+      "execution": 1,
+      "substrate": "substrate-proc-4",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "sandbox-lost-exhausted",
+      "execution": 1,
+      "substrate": "substrate-proc-5",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "substrate-timeout-classified",
+      "execution": 1,
+      "substrate": "substrate-proc-6",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "resource-exhausted-oom",
+      "execution": 1,
+      "substrate": "substrate-proc-7",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "payload-exit-nonzero",
+      "execution": 1,
+      "substrate": "substrate-proc-8",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "sandbox-lost-then-unready",
+      "execution": 1,
+      "substrate": "substrate-proc-9",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "quarantine-on-repeat-failure",
+      "execution": 1,
+      "substrate": "substrate-quarantine-1",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "quarantine-on-repeat-failure",
+      "execution": 2,
+      "substrate": "substrate-quarantine-1",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "quarantine-on-repeat-failure",
+      "execution": 3,
+      "substrate": "substrate-quarantine-1",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "live-process-healthy",
+      "execution": 1,
+      "substrate": "substrate-live-process-healthy",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "live-process-timeout",
+      "execution": 1,
+      "substrate": "substrate-live-process-timeout",
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-readiness.probe.v1",
+      "scenario": "live-process-exit-nonzero",
+      "execution": 1,
+      "substrate": "substrate-live-process-exit",
+      "expectedTerminal": "FAILED"
+    }
+  ]
+}
