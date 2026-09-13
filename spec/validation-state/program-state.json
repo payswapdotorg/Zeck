@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T20:51:18Z",
+  "asOf": "2026-09-13T20:57:23Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -341,11 +341,11 @@
       }
     },
     "VAL-041": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Direct-provider controls"
     },
     "VAL-042": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Strong optimized non-Zeck baseline"
     },
     "VAL-043": {
