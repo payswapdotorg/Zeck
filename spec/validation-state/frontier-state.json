@@ -2,10 +2,9 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "eligible": [
-    "VAL-034"
-  ],
+  "eligible": [],
   "inFlight": [
+    "VAL-034",
     "VAL-040"
   ],
   "blocked": [],
