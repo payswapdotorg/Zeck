@@ -1,0 +1,108 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "substrate-probe",
+      "scenario": "healthy-substrate",
+      "submission": 1,
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "readiness-refused-transient",
+      "submission": 1,
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "readiness-refused-persistent",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "sandbox-lost-recovery",
+      "submission": 1,
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "sandbox-lost-persistent",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "substrate-timeout",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "resource-exhausted-oom",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "task-failure-in-sandbox",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "unwired-substrate",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "quarantine-propagation-and-recovery",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "quarantine-propagation-and-recovery",
+      "submission": 2,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "quarantine-propagation-and-recovery",
+      "submission": 3,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "quarantine-propagation-and-recovery",
+      "submission": 4,
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "real-process-echo-healthy",
+      "submission": 1,
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "real-process-exit-task-failure",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    },
+    {
+      "kind": "substrate-probe",
+      "scenario": "real-process-sleep-timeout",
+      "submission": 1,
+      "expectedTerminal": "FAILED"
+    }
+  ]
+}
