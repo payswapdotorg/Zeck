@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T03:55:03Z",
+  "asOf": "2026-09-13T04:20:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -274,8 +274,16 @@
       }
     },
     "VAL-024": {
-      "status": "in-flight",
-      "title": "Tenant and application isolation"
+      "status": "complete",
+      "title": "Tenant and application isolation",
+      "mergedAs": {
+        "pr": 88,
+        "mergeCommit": "3933f66b85df66d71cade476f6ca51fbd9b11a8e",
+        "implementationHead": "68e4379",
+        "finalBranchHead": "413a95e",
+        "baseRevision": "fefb52f736b20e852b040c8cedc025fbc693171a",
+        "issue": 82
+      }
     },
     "VAL-025": {
       "status": "planned",
