@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T23:25:41Z",
+  "asOf": "2026-09-13T23:26:43Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -326,7 +326,7 @@
       "title": "Canary promotion and rollback"
     },
     "VAL-036": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Determinization maturity benchmark"
     },
     "VAL-040": {
