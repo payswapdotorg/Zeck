@@ -1661,7 +1661,16 @@ definePgSuite("VAL-032 learning discovery over the real platform path", (ctx) =>
       // review lesson): the connection and its sealed credential
       // envelope are registered ONCE and shared.
       let liveDispatch: ControlDispatch | undefined;
-      for (const [taskIndex, row] of liveRows.entries()) {
+      // Lead review fix (2026-09-13): the app selects its corpus row by
+      // ABSOLUTE corpus index (LEARNING_DISCOVERY_CORPUS[taskIndex] —
+      // offline rows first), so a live row's index must be offset by the
+      // offline corpus size. The relative live-rows index submitted the
+      // WRONG row's task body (corpus[0], an offline row) — the live
+      // execution never landed and the crown timed out. The offline test
+      // aligns by construction (offline rows ARE the corpus prefix).
+      const liveIndexOffset = LEARNING_DISCOVERY_CORPUS.length - liveRows.length;
+      for (const [liveIndex, row] of liveRows.entries()) {
+        const taskIndex = liveIndexOffset + liveIndex;
         if (!liveGateOpen(row, process.env)) {
           notRun.push(
             `${row.rowId} — gate closed (${row.liveGate?.envVars.join("+")} absent); ` +
