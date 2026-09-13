@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T20:26:25Z",
+  "asOf": "2026-09-13T20:51:18Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -330,8 +330,15 @@
       "title": "Determinization maturity benchmark"
     },
     "VAL-040": {
-      "status": "in-flight",
-      "title": "Economic baseline normalization"
+      "status": "complete",
+      "title": "Economic baseline normalization",
+      "mergedAs": {
+        "pr": 100,
+        "mergeCommit": "5d6f533690",
+        "implementationHead": "e94a949",
+        "baseRevision": "49d15d3",
+        "issue": 94
+      }
     },
     "VAL-041": {
       "status": "planned",
