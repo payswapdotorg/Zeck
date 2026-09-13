@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-12T23:25:00Z",
+  "asOf": "2026-09-13T00:55:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -238,8 +238,16 @@
       }
     },
     "VAL-021": {
-      "status": "planned",
-      "title": "Duplicate/replay/retry/escalation/continuation"
+      "status": "complete",
+      "title": "Duplicate, replay, retry, escalation and continuation validation",
+      "mergedAs": {
+        "pr": 84,
+        "mergeCommit": "e49397a098094808e70a7b013e180642b72fec00",
+        "implementationHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
+        "finalBranchHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
+        "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
+        "issue": 79
+      }
     },
     "VAL-022": {
       "status": "planned",
