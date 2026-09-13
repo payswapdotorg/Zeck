@@ -3,7 +3,7 @@
   "program": "zeck-validation",
   "status": "active",
   "eligible": [
-    "VAL-043"
+    "VAL-035"
   ],
   "inFlight": [
     "VAL-041",
@@ -12,5 +12,5 @@
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means every declared validation dependency is complete, the item is not already in flight, its declared validation surfaces can be reconciled safely, and the dispatch base is the current governed validation head",
-  "asOf": "2026-09-13T21:40:57Z"
+  "asOf": "2026-09-13T21:41:31Z"
 }
