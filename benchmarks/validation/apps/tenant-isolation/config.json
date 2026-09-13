@@ -1,0 +1,72 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 120000,
+  "tasks": [
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-application-create",
+      "probe": "cross-tenant:create-application",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-environment-create",
+      "probe": "cross-tenant:create-environment",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-read",
+      "probe": "cross-tenant:read",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-transition",
+      "probe": "cross-tenant:transition",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-artifact-fetch",
+      "probe": "cross-tenant:artifact-fetch",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-step-event",
+      "probe": "cross-tenant:step-event",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-tenant-planning-decision",
+      "probe": "cross-tenant:planning-decision",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "cross-application-state-probe",
+      "probe": "cross-application:state-probe",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "forged-application-scope",
+      "probe": "cross-tenant:forged-scope",
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "isolation-probe",
+      "scenario": "control-tenant-healthy",
+      "probe": "control:healthy",
+      "expectedTerminal": "COMPLETED"
+    }
+  ]
+}
