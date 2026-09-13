@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T00:55:00Z",
+  "asOf": "2026-09-13T01:45:00Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -254,8 +254,16 @@
       "title": "Sandbox/compute/substrate failure and readiness"
     },
     "VAL-023": {
-      "status": "planned",
-      "title": "Security and prompt-injection validation"
+      "status": "complete",
+      "title": "Security and prompt-injection validation",
+      "mergedAs": {
+        "pr": 85,
+        "mergeCommit": "1563057b1f91e0f190fc9a75690bff640ebf9548",
+        "implementationHead": "78102e2",
+        "finalBranchHead": "d2c5d70",
+        "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
+        "issue": 81
+      }
     },
     "VAL-024": {
       "status": "planned",
