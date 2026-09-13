@@ -1,0 +1,119 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "workspace-tree-completed",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 3,
+      "quotaMicro": 10000,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "order-placement-completed",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 3,
+      "quotaMicro": 30000,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "ticket-routing-completed",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 2,
+      "quotaMicro": 10000,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "citation-attachment-completed",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 2,
+      "quotaMicro": 5000,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "guard-rejected-zero-effects",
+      "expectedTerminal": "FAILED",
+      "declaredEffects": 3,
+      "quotaMicro": 4400,
+      "failureKind": "pre-effect-guard",
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "mid-work-rollback-zero-effects",
+      "expectedTerminal": "FAILED",
+      "declaredEffects": 3,
+      "quotaMicro": 30000,
+      "failureKind": "mid-work-effect-rejection",
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "criterion-fail-any-fail-failed",
+      "expectedTerminal": "FAILED",
+      "declaredEffects": 2,
+      "quotaMicro": 5000,
+      "failureKind": "verification-criterion-fail",
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "replay-idempotent-zero-new-effects",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 2,
+      "quotaMicro": 10000,
+      "replay": "after-completion",
+      "appCreated": 1,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "replay-after-failure-zero-new-effects",
+      "expectedTerminal": "FAILED",
+      "declaredEffects": 2,
+      "quotaMicro": 4000,
+      "failureKind": "pre-effect-guard",
+      "replay": "after-failure",
+      "appCreated": 1,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "outcome-correctness.effect.v1",
+      "rowId": "live-confirmation-then-effects",
+      "expectedTerminal": "COMPLETED",
+      "declaredEffects": 2,
+      "quotaMicro": 50000,
+      "appCreated": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0,
+      "liveGate": ["OPENROUTER_API_KEY"]
+    }
+  ]
+}
