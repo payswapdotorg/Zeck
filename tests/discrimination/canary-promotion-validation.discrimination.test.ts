@@ -105,6 +105,7 @@ import {
   rollbackPlanDigestOf,
   sliceCaseIdsOf,
 } from "../../benchmarks/validation/platform/canary-promotion";
+import type { LabVerificationCriterion } from "../../benchmarks/validation/platform/derive";
 import type { ReplacementIsolationVerdict } from "../../benchmarks/validation/platform/equivalence-testing";
 import {
   deriveReplacementIsolation,
@@ -131,7 +132,7 @@ const taskIndexOf = (rowId: string): number => {
   return index;
 };
 
-const criterionOf = (criteria: readonly { criterionId: string; status: string }[], id: string) =>
+const criterionOf = (criteria: readonly LabVerificationCriterion[], id: string) =>
   criteria.find((criterion) => criterion.criterionId === id);
 
 /** The honest policy legs for one row (the stated-and-checked basis). */

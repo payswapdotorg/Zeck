@@ -928,9 +928,16 @@ describe("VAL-035 deriveSliceIsolation", () => {
 
   test("an UNDER-SERVE breaks the ramp's pinned adherence and FAILs", () => {
     const steps = withinSliceSteps([0.5]);
+    const underServeStep = steps[0];
+    if (underServeStep === undefined) {
+      throw new Error("the under-serve step is missing");
+    }
     const verdict = deriveSliceIsolation({
       steps: [
-        { ...steps[0], servedReplacementCaseIds: steps[0].servedReplacementCaseIds.slice(0, 1) },
+        {
+          ...underServeStep,
+          servedReplacementCaseIds: underServeStep.servedReplacementCaseIds.slice(0, 1),
+        },
       ],
       promoted: false,
       postPromotionServedReplacementCaseIds: null,
@@ -1556,6 +1563,7 @@ describe("VAL-035 driver over the honest fake world", () => {
     const dispatch: ControlDispatch = async () => ({
       kind: "success" as const,
       usage: { inputTokens: 30, outputTokens: 6, costUsd: 0.000022 },
+      latencyMs: 12,
     });
     const result = await driveRowOverStack({ row: liveRow, dispatch });
     expect(result.verdict).toBe("clean-promotion");
@@ -1571,6 +1579,7 @@ describe("VAL-035 driver over the honest fake world", () => {
       kind: "failure" as const,
       category: "provider-unavailable",
       message: "the model gateway is unreachable",
+      latencyMs: 3,
     });
     const result = await driveRowOverStack({ row: liveRow, dispatch });
     expect(result.terminal).toBe("FAILED");

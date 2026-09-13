@@ -65,11 +65,15 @@ import { recordedObservationsOf } from "../../../benchmarks/validation/apps/lear
 import { validateHarnessEvidence } from "../../../benchmarks/validation/harness";
 import type {
   CanaryCorpusRow,
+  CanaryCostLedgerEntry,
   CanaryDecisionKind,
+  CanaryDecisionRecord,
+  CanaryDivergenceRecord,
   CanaryLedgerPort,
   CanaryLifecycleLedgerPort,
   CanaryRunResult,
   CanaryTrafficSourcePort,
+  RollbackEventRecord,
 } from "../../../benchmarks/validation/platform/canary-promotion";
 import {
   CANARY_COST_MARKER,
@@ -1220,47 +1224,10 @@ async function createRealCanaryLedger(
 ): Promise<CanaryLedgerPort> {
   const generateId = createUuidv7Generator();
 
-  const decisionMirror: {
-    readonly proposalId: string;
-    readonly stepIndex: number;
-    readonly kind: string;
-    readonly sliceFraction: number;
-    readonly observedDivergenceCount: number;
-    readonly budgetLimit: number;
-    readonly policyCitations: {
-      readonly rampScheduleDigest: string;
-      readonly failureBudgetStated: boolean;
-      readonly toleranceStated: boolean;
-    };
-    readonly policyChecks: {
-      readonly rampChecked: boolean;
-      readonly budgetChecked: boolean;
-      readonly toleranceChecked: boolean;
-    };
-    readonly ordinal: number;
-  }[] = [];
-  const divergenceMirror: {
-    readonly proposalId: string;
-    readonly stepIndex: number;
-    readonly caseId: string;
-    readonly incumbentDigest: string;
-    readonly replacementDigest: string;
-    readonly ordinal: number;
-  }[] = [];
-  const rollbackMirror: {
-    readonly proposalId: string;
-    readonly stepIndex: number;
-    readonly planDigest: string;
-    readonly residualReplacementCaseIds: readonly string[];
-    readonly ordinal: number;
-  }[] = [];
-  const costMirror: {
-    readonly proposalId: string;
-    readonly marker: string;
-    readonly microUsd: number;
-    readonly latencyMs: number;
-    readonly ordinal: number;
-  }[] = [];
+  const decisionMirror: CanaryDecisionRecord[] = [];
+  const divergenceMirror: CanaryDivergenceRecord[] = [];
+  const rollbackMirror: RollbackEventRecord[] = [];
+  const costMirror: CanaryCostLedgerEntry[] = [];
 
   // The arbitration helper: insert-or-replay over the REAL unique index.
   const arbitrate = async (

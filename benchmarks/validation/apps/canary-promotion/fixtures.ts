@@ -77,7 +77,6 @@ import type {
   CanaryStepOutcome,
   CanaryTrafficSourcePort,
   CanaryVerdictKind,
-  DifferentialCase,
   RollbackEventRecord,
   ServedAccountingSnapshot,
 } from "../../platform/canary-promotion";
@@ -94,6 +93,7 @@ import {
   sliceCaseIdsOf,
 } from "../../platform/canary-promotion";
 import type {
+  DifferentialCase,
   EquivalenceRegistryFacts,
   IncumbentExecutorPort,
   LifecycleTransitionRecord,
@@ -425,14 +425,14 @@ export function createCanaryLedger(options?: {
         variant === "smoothing-decisions" && record.kind === "breach-rollback"
           ? ("advance" as const)
           : record.kind;
-      const stored: CanaryDecisionRecord = { ...record, kind };
+      const stored: Omit<CanaryDecisionRecord, "ordinal"> = { ...record, kind };
       const existing = decisions.find(
         (decision) =>
           decision.proposalId === record.proposalId && decision.stepIndex === record.stepIndex,
       );
       if (existing !== undefined) {
         const { ordinal: _existingOrdinal, ...existingContent } = existing;
-        const { ordinal: _storedOrdinal, ...storedContent } = stored;
+        const storedContent = stored;
         if (canaryDecisionDigestOf(existingContent) === canaryDecisionDigestOf(storedContent)) {
           return { accepted: true, replayed: true, refused: false };
         }
@@ -752,7 +752,7 @@ export function createCanaryRuntime(options?: {
               : outcome,
           ),
           aggregateClaim: {
-            assertedDivergenceCount: honest.aggregateClaim?.assertedDivergenceCount + 1 ?? 1,
+            assertedDivergenceCount: (honest.aggregateClaim?.assertedDivergenceCount ?? 0) + 1,
             assertedWithinBudget: false,
           },
         };
