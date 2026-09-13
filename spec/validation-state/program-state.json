@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-13T17:21:02Z",
+  "asOf": "2026-09-13T18:42:21Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -310,7 +310,7 @@
       "title": "Repeated workload replay and trajectory analysis"
     },
     "VAL-032": {
-      "status": "in-flight",
+      "status": "complete",
       "title": "Learned reuse/cache/competence/deterministicization discovery"
     },
     "VAL-033": {
