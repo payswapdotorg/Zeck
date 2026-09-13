@@ -49,6 +49,7 @@ import {
   type FakeShadowRuntimeVariant,
   type FakeTrafficSourceVariant,
 } from "../../../benchmarks/validation/apps/shadow-execution/fixtures";
+import type { LifecycleTransitionRecord } from "../../../benchmarks/validation/platform/equivalence-testing";
 import {
   deriveReplacementIsolation,
   ISOLATION_ESCAPE_DIRECTIONS,
@@ -59,7 +60,6 @@ import {
   trajectoryDigestOf,
 } from "../../../benchmarks/validation/platform/longitudinal-baseline";
 import type {
-  LifecycleTransitionRecord,
   ShadowCaseOutcome,
   ShadowCorpusRow,
   ShadowRunResult,
@@ -936,7 +936,14 @@ describe("VAL-034 digest + identity determinism", () => {
     expect(shadowPopulationDigestOf(syntheticPopulation)).toBe(
       shadowPopulationDigestOf([...syntheticPopulation].reverse()),
     );
-    expect(shadowComparisonDigestOf(tcase)).toMatch(/^[0-9a-f]{8}$/);
+    expect(
+      shadowComparisonDigestOf({
+        caseId: tcase.caseId,
+        incumbentDigest: tcase.incumbentDigest,
+        shadowDigest: tcase.inputDigest,
+        agrees: true,
+      }),
+    ).toMatch(/^[0-9a-f]{8}$/);
     expect(
       shadowDivergenceDigestOf({
         proposalId: "cand-1",

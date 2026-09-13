@@ -73,6 +73,7 @@ import type {
   CandidateLifecycleLedgerPort,
   ContainmentVerdict,
   DifferentialCase,
+  EquivalenceRegistryFacts,
   IncumbentExecutorPort,
   LifecycleTransitionRecord,
   ReplacementIsolationVerdict,
@@ -88,11 +89,7 @@ import {
   OFFLINE_REPLAY_STAGE,
   referenceReplacementOutcomeDigestOf,
 } from "./equivalence-testing";
-import type {
-  CandidateLifecycleStage,
-  DiscoveryProposalRecord,
-  EquivalenceRegistryFacts,
-} from "./learning-discovery";
+import type { CandidateLifecycleStage, DiscoveryProposalRecord } from "./learning-discovery";
 import { CANDIDATE_LIFECYCLE_STAGES } from "./learning-discovery";
 import type { ControlDispatch, TrajectoryStepRecord } from "./longitudinal-baseline";
 import { isRetryableDispatchCategory, longitudinalDigestOf } from "./longitudinal-baseline";

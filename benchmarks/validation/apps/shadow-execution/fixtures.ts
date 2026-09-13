@@ -65,13 +65,13 @@
 
 import type { TransportImplementation } from "../../harness/harness";
 import type {
-  DiscoveryProposalRecord,
   EquivalenceRegistryFacts,
-} from "../../platform/learning-discovery";
-import { longitudinalDigestOf, trajectoryEventsOf } from "../../platform/longitudinal-baseline";
-import type {
   IncumbentExecutorPort,
   LifecycleTransitionRecord,
+} from "../../platform/equivalence-testing";
+import type { DiscoveryProposalRecord } from "../../platform/learning-discovery";
+import { longitudinalDigestOf, trajectoryEventsOf } from "../../platform/longitudinal-baseline";
+import type {
   ServingPathPort,
   ShadowCostLedgerEntry,
   ShadowDivergenceRecord,
@@ -92,12 +92,12 @@ import {
   shadowRegistryDigestOf,
   shadowTrajectoryStepsOf,
 } from "../../platform/shadow-execution";
+import type { SourceProposalPin } from "../equivalence-testing/corpus";
 import {
   PINNED_REGISTRY_ENTRIES,
   pinnedShadowRunOf,
   priorWalkOf,
   SHADOW_EXECUTION_CORPUS,
-  type SourceProposalPin,
 } from "./corpus";
 
 // ---------------------------------------------------------------------------

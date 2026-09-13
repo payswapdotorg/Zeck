@@ -33,11 +33,10 @@
  * residual-AI model round through the REAL platform model gateway.
  */
 
-import type { ReplacementShape } from "../../platform/equivalence-testing";
+import type { AcceptanceCriterion, ReplacementShape } from "../../platform/equivalence-testing";
 import type { CandidateKind } from "../../platform/learning-discovery";
 import { longitudinalDigestOf, trajectoryDigestOf } from "../../platform/longitudinal-baseline";
 import type {
-  AcceptanceCriterion,
   ShadowCorpusRow,
   ShadowProbeKind,
   ShadowRefusalReason,
