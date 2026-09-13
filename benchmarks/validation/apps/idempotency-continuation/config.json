@@ -1,0 +1,111 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "sdk",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "tasks": [
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "duplicate-submission-replay",
+      "pattern": "duplicate",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "conflicting-replay-rejected",
+      "pattern": "conflict",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 1
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "retry-storm-converged",
+      "pattern": "retry",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 5,
+      "replayedSubmissions": 4,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "retry-storm-bounded-dispatch",
+      "pattern": "retry",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "retry-storm-exhausted",
+      "pattern": "retry",
+      "expectedTerminal": "FAILED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "escalation-routed-once",
+      "pattern": "escalate",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "continuation-resume-once",
+      "pattern": "continue",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "continuation-stale-worker-denied",
+      "pattern": "continue",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "continuation-noop-resume-replay",
+      "pattern": "continue",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "live-continuation-supervised",
+      "pattern": "continue",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 1,
+      "replayedSubmissions": 0,
+      "rejectedSubmissions": 0
+    },
+    {
+      "kind": "idempotency-continuation.settlement.v1",
+      "rowId": "live-duplicate-after-real-dispatch",
+      "pattern": "duplicate",
+      "expectedTerminal": "COMPLETED",
+      "submissions": 2,
+      "replayedSubmissions": 1,
+      "rejectedSubmissions": 0
+    }
+  ]
+}
