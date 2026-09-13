@@ -215,6 +215,8 @@ function canaryRow(input: {
   readonly grantedIsolationSurface: readonly string[];
   readonly replayPopulationRefs: readonly string[];
   readonly injectedProbeCount: number;
+  /** The 1-based injected-probe ordinal whose pinned class is two-member (0 = none). */
+  readonly injectedTwoMemberOn?: number;
   /** The comparison tolerance's kind (the EXPLICIT tolerance). */
   readonly criterionKind: AcceptanceCriterion["kind"];
   /** Whether the tolerance's tolerated set is the row's injected probes. */
@@ -241,6 +243,7 @@ function canaryRow(input: {
   const injected = adversarialCasesOf({
     rowId: input.rowId,
     count: input.injectedProbeCount,
+    ...(input.injectedTwoMemberOn === undefined ? {} : { twoMemberOn: input.injectedTwoMemberOn }),
   });
   const population = [...historicalCasesOf(input.replayPopulationRefs), ...injected];
   const acceptanceCriterion: AcceptanceCriterion = {
@@ -530,6 +533,7 @@ export const OFFLINE_CORPUS_ROWS: readonly CanaryCorpusRow[] = [
     grantedIsolationSurface: ["pure-computation", "granted-fixture-read"],
     replayPopulationRefs: ["tool-agent-loop-replay-population"],
     injectedProbeCount: 2,
+    injectedTwoMemberOn: 1,
     criterionKind: "per-case-tolerance",
     maxDivergencesPerStep: 1,
   }),

@@ -873,16 +873,21 @@ describe("VAL-035 deriveSliceIsolation", () => {
 
   test("an OVER-SLICE serve (a case beyond the pinned slice) FAILs with the case named", () => {
     const steps = withinSliceSteps([0.25]);
-    const overServed = [...steps[0]?.servedReplacementCaseIds, RAG_CASE_IDS[5]!];
+    const baseStep = steps[0];
+    if (baseStep === undefined) {
+      throw new Error("the slice-serve step is missing");
+    }
+    const overServeCaseId = RAG_CASE_IDS[5] ?? "rag-case-5-fallback";
+    const overServed = [...baseStep.servedReplacementCaseIds, overServeCaseId];
     const verdict = deriveSliceIsolation({
-      steps: [{ ...steps[0]!, servedReplacementCaseIds: overServed }],
+      steps: [{ ...baseStep, servedReplacementCaseIds: overServed }],
       promoted: false,
       postPromotionServedReplacementCaseIds: null,
       populationCaseIds: RAG_CASE_IDS,
     });
     expect(verdict.isolated).toBe(false);
     expect(verdict.overSliceCaseIds.length).toBe(1);
-    expect(verdict.overSliceCaseIds[0]).toContain(RAG_CASE_IDS[5]!);
+    expect(verdict.overSliceCaseIds[0]).toContain(overServeCaseId);
     const overSlice = verdict.criteria.find(
       (criterion) => criterion.criterionId === "slice-no-over-slice-serve",
     );
@@ -894,13 +899,17 @@ describe("VAL-035 deriveSliceIsolation", () => {
     // Serve a foreign case whose tenant is derived outside the granted slice.
     const foreignCaseId = "foreign-tenant-case";
     const steps = withinSliceSteps([0.25]);
+    const baseStep = steps[0];
+    if (baseStep === undefined) {
+      throw new Error("the slice-serve step is missing");
+    }
     const verdict = deriveSliceIsolation({
       steps: [
         {
-          ...steps[0]!,
-          servedReplacementCaseIds: [...steps[0]?.servedReplacementCaseIds, foreignCaseId],
+          ...baseStep,
+          servedReplacementCaseIds: [...baseStep.servedReplacementCaseIds, foreignCaseId],
           servedReplacementTenantIds: [
-            ...steps[0]?.servedReplacementTenantIds,
+            ...baseStep.servedReplacementTenantIds,
             canaryTenantIdOf(foreignCaseId),
           ],
         },
@@ -921,7 +930,7 @@ describe("VAL-035 deriveSliceIsolation", () => {
     const steps = withinSliceSteps([0.5]);
     const verdict = deriveSliceIsolation({
       steps: [
-        { ...steps[0]!, servedReplacementCaseIds: steps[0]?.servedReplacementCaseIds.slice(0, 1) },
+        { ...steps[0], servedReplacementCaseIds: steps[0].servedReplacementCaseIds.slice(0, 1) },
       ],
       promoted: false,
       postPromotionServedReplacementCaseIds: null,
@@ -1040,14 +1049,14 @@ describe("VAL-035 containment carry-over (mid-canary isolation)", () => {
 
   test("the canary verdict kind ranks a mid-canary escape as a containment violation", () => {
     const row = rowById("rag-deterministic-function-clean-promotion");
-    const escape = deriveReplacementIsolation({
+    const escapeVerdict = deriveReplacementIsolation({
       declaredCapabilities: row.declaredCapabilities,
       grantedSurface: row.grantedIsolationSurface,
       exercisedCapabilities: [...row.declaredCapabilities, "network-access"],
     });
     const verdict = deriveCanaryVerdictKind({
       refusal: null,
-      isolation: escape,
+      isolation: escapeVerdict,
       policyExplicitness: null,
       lifecycleCompleteness: null,
       breachHonesty: null,
@@ -1305,7 +1314,9 @@ describe("VAL-035 digest + identity determinism", () => {
 
   test("the slice membership + the tenant identity are deterministic pure functions", () => {
     expect(sliceCaseIdsOf(RAG_CASE_IDS, 1)).toEqual([...RAG_CASE_IDS].sort());
-    expect(sliceCaseIdsOf(RAG_CASE_IDS, 0.05)).toEqual([[...RAG_CASE_IDS].sort()[0]!]);
+    expect(sliceCaseIdsOf(RAG_CASE_IDS, 0.05)).toEqual([
+      [...RAG_CASE_IDS].sort()[0] ?? "rag-case-0-fallback",
+    ]);
     expect(sliceCaseIdsOf(RAG_CASE_IDS, 0.05)).toEqual(sliceCaseIdsOf(RAG_CASE_IDS, 0.05));
     expect(canaryTenantIdOf("case-a")).toBe(canaryTenantIdOf("case-a"));
     expect(canaryTenantIdOf("case-a")).toMatch(/^tenant-\d+$/);

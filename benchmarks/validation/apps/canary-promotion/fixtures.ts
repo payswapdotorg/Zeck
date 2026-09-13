@@ -88,6 +88,8 @@ import {
   canarySliceDigestOf,
   canaryTrajectoryStepsOf,
   deriveHonestCanaryStep,
+  rampScheduleDigestOf,
+  referenceCanaryMeasurementOf,
   rollbackPlanDigestOf,
   sliceCaseIdsOf,
 } from "../../platform/canary-promotion";
@@ -781,6 +783,28 @@ export interface FakeCanaryExecutionRow {
 }
 
 /**
+ * The executed steps' aggregate reference canary measurement (the
+ * honest cost basis: the ramp STOPS at the breach — only the executed
+ * steps' slices ever measure their canary cost).
+ */
+function executedCanaryCostOf(
+  ramp: ReturnType<typeof pinnedCanaryRampOf>,
+  executedSteps: readonly { readonly stepIndex: number }[],
+): { readonly microUsd: number; readonly latencyMs: number } {
+  return executedSteps.reduce(
+    (total, step) => {
+      const honest = ramp.steps.find((entry) => entry.stepIndex === step.stepIndex);
+      const measurement = referenceCanaryMeasurementOf(honest?.sliceCaseIds ?? []);
+      return {
+        microUsd: total.microUsd + measurement.microUsd,
+        latencyMs: total.latencyMs + measurement.latencyMs,
+      };
+    },
+    { microUsd: 0, latencyMs: 0 },
+  );
+}
+
+/**
  * The transport-level fake public API implementing the platform's OWN
  * canary semantics at the customer boundary:
  *
@@ -873,11 +897,13 @@ export function createCanaryFakeApiWorld(options: {
       row.expected.refusalReason === null ? null : { reason: row.expected.refusalReason };
     const ramp = pinnedCanaryRampOf(row);
     const executedSteps =
-      row.expected.breachingStepIndex === null
-        ? row.rampSchedule
-        : row.rampSchedule.filter(
-            (step) => step.stepIndex <= (row.expected.breachingStepIndex ?? 0),
-          );
+      refusal !== null
+        ? []
+        : row.expected.breachingStepIndex === null
+          ? row.rampSchedule
+          : row.rampSchedule.filter(
+              (step) => step.stepIndex <= (row.expected.breachingStepIndex ?? 0),
+            );
 
     const decisions = executedSteps.map((step) => {
       const divergences =
@@ -898,7 +924,8 @@ export function createCanaryFakeApiWorld(options: {
         observedDivergenceCount: smoothedDecision.observedDivergenceCount,
         budgetLimit: row.failureBudget.maxDivergencesPerStep,
         policyCitations: {
-          rampScheduleDigest: options.unchecked === true ? "" : "pinned-ramp-schedule",
+          rampScheduleDigest:
+            options.unchecked === true ? "" : rampScheduleDigestOf(row.rampSchedule),
           failureBudgetStated: options.unchecked !== true,
           toleranceStated: options.unchecked !== true,
         },
@@ -1005,7 +1032,10 @@ export function createCanaryFakeApiWorld(options: {
           ? [...row.declaredCapabilities, "network-access"]
           : [...row.declaredCapabilities];
 
-    const canaryCost = refusal === null && options.unmeasured !== true ? ramp.canaryCost : null;
+    const canaryCost =
+      refusal === null && options.unmeasured !== true
+        ? executedCanaryCostOf(ramp, executedSteps)
+        : null;
     const servedIncumbentMicroUsd =
       refusal === null ? 3 * row.trafficPopulation.length * executedSteps.length + 1 : 0;
     const servedCostMicroUsd =
@@ -1045,11 +1075,13 @@ export function createCanaryFakeApiWorld(options: {
     }
     const ramp = pinnedCanaryRampOf(corpusRow);
     const executedSteps =
-      corpusRow.expected.breachingStepIndex === null
-        ? corpusRow.rampSchedule
-        : corpusRow.rampSchedule.filter(
-            (step) => step.stepIndex <= (corpusRow.expected.breachingStepIndex ?? 0),
-          );
+      corpusRow.expected.refusalReason !== null
+        ? []
+        : corpusRow.expected.breachingStepIndex === null
+          ? corpusRow.rampSchedule
+          : corpusRow.rampSchedule.filter(
+              (step) => step.stepIndex <= (corpusRow.expected.breachingStepIndex ?? 0),
+            );
     const steps = canaryTrajectoryStepsOf({
       proposalId: corpusRow.sourceProposalId,
       populationDigest: differentialPopulationDigestOf(corpusRow.trafficPopulation),
@@ -1077,8 +1109,8 @@ export function createCanaryFakeApiWorld(options: {
           ? canaryCostDigestOf({
               proposalId: corpusRow.sourceProposalId,
               marker: CANARY_COST_MARKER,
-              microUsd: ramp.canaryCost.microUsd,
-              latencyMs: ramp.canaryCost.latencyMs,
+              microUsd: executedCanaryCostOf(ramp, executedSteps).microUsd,
+              latencyMs: executedCanaryCostOf(ramp, executedSteps).latencyMs,
             })
           : null,
       landedStages:
