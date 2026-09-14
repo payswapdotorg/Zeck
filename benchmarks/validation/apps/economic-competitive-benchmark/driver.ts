@@ -1390,7 +1390,11 @@ export function analyzePairwiseComparison(input: {
  * the recorded portfolio. On the portfolio-aggregate rows the declared
  * classes must cover EVERY recorded cohort class (an omitted class is
  * a cherry-picked subset — FAILs named); on the ranking rows the
- * declared class must be a recorded class.
+ * declared class must be a recorded class. The LIVE row is the one
+ * carve-out (the sibling oracles' live semantics): a row whose arm
+ * set holds LIVE declarations drives the corpus registry's own
+ * PRE-REGISTERED live workload class, so that declared class counts
+ * as a registered portfolio class — never an unknown cherry-pick.
  */
 export function derivePortfolioHonesty(input: {
   readonly row: CompetitiveCorpusRow;
@@ -1401,12 +1405,26 @@ export function derivePortfolioHonesty(input: {
   readonly unknownClasses: readonly string[];
   readonly evidence: readonly string[];
 } {
+  // The LIVE carve-out (mirroring the sibling oracles' live semantics —
+  // deriveUnitComparability + deriveCompetitiveInputIntegrity skip the
+  // arms whose reference.live === true): the live row's declared
+  // workload class is the corpus registry's own pre-registered live
+  // class, so the recorded-portfolio membership check counts it as
+  // registered. ONLY that declared live class is registered — every
+  // other unknown declared class still FAILs named (the
+  // cherry-picking catch is not weakened).
+  const isLiveRow =
+    input.row.armSet.some((reference) => reference.live === true) ||
+    input.row.workloadClass === LIVE_COMPETITIVE_WORKLOAD_CLASS;
+  const registeredClasses = isLiveRow
+    ? [...input.recordedClasses, LIVE_COMPETITIVE_WORKLOAD_CLASS]
+    : input.recordedClasses;
   const declared =
     input.row.declaredWeights === undefined
       ? [input.row.workloadClass]
       : input.row.declaredWeights.map((entry) => entry.workloadClass);
   const omitted = input.recordedClasses.filter((candidate) => !declared.includes(candidate));
-  const unknown = declared.filter((candidate) => !input.recordedClasses.includes(candidate));
+  const unknown = declared.filter((candidate) => !registeredClasses.includes(candidate));
   const isAggregate = input.row.declaredWeights !== undefined;
   const conformant = isAggregate
     ? omitted.length === 0 && unknown.length === 0
@@ -1419,6 +1437,9 @@ export function derivePortfolioHonesty(input: {
       `rowClass:${input.row.workloadClass}`,
       `declaredClasses:${declared.join(",")}`,
       `recordedClasses:${input.recordedClasses.join(",")}`,
+      ...(isLiveRow
+        ? [`liveClass:${LIVE_COMPETITIVE_WORKLOAD_CLASS} (pre-registered live carve-out)`]
+        : []),
       `omitted:${omitted.join(",") || "none"}`,
       `unknown:${unknown.join(",") || "none"}`,
       conformant

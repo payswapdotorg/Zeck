@@ -461,6 +461,31 @@ describe("VAL-048 portfolio honesty (the cherry-picking catch)", () => {
     expect(verdict.conformant).toBe(false);
     expect(verdict.unknownClasses).toContain("fabricated-class");
   });
+
+  test("the LIVE row's declared class passes (the pre-registered live carve-out)", () => {
+    const row = rowById("live-competitive-real-dispatch-slice");
+    // The live row's arms are LIVE declarations — the same
+    // reference.live flag the sibling oracles key on.
+    expect(row.armSet.every((reference) => reference.live === true)).toBe(true);
+    expect(row.workloadClass).toBe("live-real-dispatch");
+    const verdict = derivePortfolioHonesty({
+      row,
+      recordedClasses: RECORDED_COMPETITIVE_CLASSES,
+    });
+    expect(verdict.conformant).toBe(true);
+    expect(verdict.unknownClasses).toEqual([]);
+    expect(verdict.evidence.join(" ")).toContain("live-real-dispatch");
+  });
+
+  test("the live carve-out registers ONLY the declared live class (a fabricated live-row class still FAILs)", () => {
+    const row = rowById("live-competitive-real-dispatch-slice");
+    const verdict = derivePortfolioHonesty({
+      row: { ...row, workloadClass: "fabricated-live-class" },
+      recordedClasses: RECORDED_COMPETITIVE_CLASSES,
+    });
+    expect(verdict.conformant).toBe(false);
+    expect(verdict.unknownClasses).toContain("fabricated-live-class");
+  });
 });
 
 describe("VAL-048 unit comparability (the pooling catch)", () => {
