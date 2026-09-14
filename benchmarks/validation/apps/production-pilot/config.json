@@ -1,0 +1,338 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "production-pilot:observation",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "corpusVersion": "val-051-production-pilot-v1",
+  "corpusInputDigest": "5ec279f2",
+  "tasks": [
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "full-window-recorded-basis",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [],
+      "driftShifts": []
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "window-incident-resume",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [4],
+      "driftShifts": []
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "window-drift-within-bounds",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [],
+      "driftShifts": [2]
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "window-drift-declared",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [],
+      "driftShifts": [4]
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "window-regression-declared",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [],
+      "driftShifts": [5]
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-window-cherry-picking",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["window-honesty", "end-of-window-accounting"],
+      "expectedTerminal": "FAILED",
+      "incidents": [],
+      "driftShifts": [],
+      "probe": "window-cherry-picking"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-dropped-shift",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["schedule-completeness", "end-of-window-accounting"],
+      "expectedTerminal": "FAILED",
+      "incidents": [],
+      "driftShifts": [],
+      "probe": "dropped-shift"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-double-driven-resume",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": [
+        "continuation-exactly-once",
+        "end-of-window-accounting",
+        "budget-policy-envelope"
+      ],
+      "expectedTerminal": "FAILED",
+      "incidents": [4],
+      "driftShifts": [],
+      "probe": "double-driven-resume"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-drift-normalizing",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["drift-classification-honesty", "end-of-window-accounting"],
+      "expectedTerminal": "FAILED",
+      "incidents": [],
+      "driftShifts": [4],
+      "probe": "drift-normalizing"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-incident-hiding",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["incident-honesty"],
+      "expectedTerminal": "FAILED",
+      "incidents": [4],
+      "driftShifts": [],
+      "probe": "incident-hiding"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-residual-hiding",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["end-of-window-accounting"],
+      "expectedTerminal": "FAILED",
+      "incidents": [],
+      "driftShifts": [],
+      "probe": "residual-hiding"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "probe-boundary-leak",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["customer-boundary"],
+      "expectedTerminal": "FAILED",
+      "incidents": [],
+      "driftShifts": [],
+      "probe": "boundary-leak"
+    },
+    {
+      "kind": "production-pilot.observation.v1",
+      "rowId": "live-pilot-window",
+      "window": {
+        "startShift": 1,
+        "endShift": 5
+      },
+      "shifts": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-accounting",
+        "customer-boundary"
+      ],
+      "expectedVerdict": "NOT-RUN",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "incidents": [],
+      "driftShifts": [],
+      "liveGate": ["OPENROUTER_API_KEY"]
+    }
+  ]
+}
