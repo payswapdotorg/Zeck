@@ -1252,3 +1252,50 @@ export function releaseGateAdjudicationOf(criteria: readonly LabVerificationCrit
 export function verificationFamilyOrder(): readonly string[] {
   return [...FINAL_REPORT_VERIFICATION_FAMILIES];
 }
+
+// ---------------------------------------------------------------------------
+// The live lane (env-gated — one REAL live gate-confirmation dispatch)
+// ---------------------------------------------------------------------------
+
+/**
+ * The pinned live gate-confirmation plan (the measured lane's
+ * declaration): ONE REAL dispatch on the ONE pinned OpenRouter rail
+ * (the VAL-047/048/049/050/051 live plans' own rail) through the REAL
+ * platform path — the public create boundary, the REAL state machine,
+ * the REAL recorder — with the dispatch usage MEASURED and priced at
+ * the pinned model manifest list prices, the measured facts
+ * bounds-checked against the recorded live-window bounds (the final
+ * report's own live confirmation lane; the recorded basis is never
+ * re-priced).
+ */
+export const LIVE_REPORT_PLAN = Object.freeze({
+  /** The workload class the live confirmation slice drives. */
+  workloadClass: "live-report-real-confirmation",
+  /** The REAL dispatches the live confirmation slice drives (ONE dispatch — the live row's own declaration). */
+  dispatches: 1,
+  /** The pinned rail the live confirmation dispatches on (ONE binding — the live-run lesson). */
+  rail: Object.freeze({
+    provider: "openrouter",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    model: "meta-llama/llama-3.3-70b-instruct",
+    priceRevision: "rev-001",
+    maxTokens: 32,
+    temperature: "unset (the provider's documented default — nothing rides the request)",
+  }),
+  /** The economics basis the live confirmation slice carries. */
+  economicsBasis:
+    "the live slice's own dispatch usage measured and priced at the pinned rev-001 list prices; the measured facts bounds-checked against the recorded live-window bounds (the F-01 verification method — the recorded basis is never re-priced)",
+});
+
+/** The live slice's identity (the measured lane's declaration reference). */
+export const LIVE_REPORT_WORKLOAD_CLASS = "live-report-real-confirmation";
+
+/** The declaration digest of the live gate-confirmation plan (the reference's recorded digest). */
+export function liveReportPlanDigestOf(): string {
+  return economicDigestOf({
+    liveWorkloadClass: LIVE_REPORT_WORKLOAD_CLASS,
+    dispatches: LIVE_REPORT_PLAN.dispatches,
+    rail: LIVE_REPORT_PLAN.rail,
+    economicsBasis: LIVE_REPORT_PLAN.economicsBasis,
+  });
+}
