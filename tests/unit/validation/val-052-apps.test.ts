@@ -13,8 +13,11 @@
  *     lands ONE durable execution and settles COMPLETED with all
  *     boundary criteria and all thirteen mechanical criteria PASSing
  *     — the boundary-re-derived inventory reconciling against the
- *     REAL governed state (46 work orders, 45 complete + VAL-052
- *     honestly in flight); the usage is honestly none offline;
+ *     REAL governed state (46 work orders — the FIXED invariant; the
+ *     complete/in-flight split, the acceptance-carrier counts and the
+ *     asOf-derived deadline window DERIVED at run time over the same
+ *     governed-state file the app reads, so the suite stays green
+ *     across the VAL-052 finalize); the usage is honestly none offline;
  *   * the live boundary: exactly ONE env-gated live row; NOT RUN
  *     without OPENROUTER_API_KEY (the env var NAMED, zero
  *     submissions); the offline fake world refuses the live rail
@@ -43,13 +46,18 @@ import {
   FINAL_REPORT_TASK_KIND,
   FINAL_REPORT_VERIFICATION_FAMILIES,
   finalReportRowById,
+  GOVERNED_PROGRAM_STATE_PATH,
   LIVE_CORPUS_ROWS,
   liveGateOpen,
   OFFLINE_CORPUS_ROWS,
+  OPERATOR_DEADLINE_UTC,
   PROBE_FAILED_CRITERIA_OF,
   pinnedReportInputDigest,
 } from "../../../benchmarks/validation/apps/final-report/corpus";
-import { loadRealReportWorld } from "../../../benchmarks/validation/apps/final-report/driver";
+import {
+  isoDurationOfMs,
+  loadRealReportWorld,
+} from "../../../benchmarks/validation/apps/final-report/driver";
 import {
   createFinalReportFakeApiWorld,
   createTickClock,
@@ -68,6 +76,45 @@ const baseConfig = {
 };
 
 const WORLD = loadRealReportWorld();
+
+// ---------------------------------------------------------------------------
+// The state-agnostic derivation basis — the SAME governed-state file
+// the app reads (READ-ONLY), re-read here so every EXPECTED count below
+// derives at run time: TRUE at the claim head (45 complete + VAL-052
+// planned, 34 pr-merge + 11 finalize-carried) AND after the Lead's
+// VAL-052 finalize lands (46 complete + 0 in-flight) — only the TOTAL
+// registered count 46 stays a FIXED invariant. The silent-omission
+// probe row is VACUOUS once nothing is incomplete (its pinned FAILED
+// verdict honestly contradicts the derived COMPLETED at the boundary).
+// ---------------------------------------------------------------------------
+
+const stateFile = JSON.parse(
+  readFileSync(join(process.cwd(), GOVERNED_PROGRAM_STATE_PATH), "utf8"),
+) as {
+  readonly asOf: string;
+  readonly workOrders: Readonly<
+    Record<
+      string,
+      {
+        readonly status: string;
+        readonly title: string;
+        readonly mergedAs?: { readonly pr: number; readonly mergeCommit: string };
+      }
+    >
+  >;
+};
+const registeredIds = Object.keys(stateFile.workOrders);
+const completeIds = registeredIds.filter((id) => stateFile.workOrders[id]?.status === "complete");
+const incompleteOfWorkOrder = registeredIds
+  .filter((id) => stateFile.workOrders[id]?.status !== "complete")
+  .map((id) => ({ workOrderId: id, status: stateFile.workOrders[id]?.status ?? "unknown" }));
+const prMergeIds = registeredIds.filter((id) => stateFile.workOrders[id]?.mergedAs !== undefined);
+const finalizeIds = completeIds.filter((id) => stateFile.workOrders[id]?.mergedAs === undefined);
+const asOf = stateFile.asOf;
+const derivedRemainingWindow = isoDurationOfMs(
+  Math.max(Date.parse(OPERATOR_DEADLINE_UTC) - Date.parse(asOf), 0),
+);
+const silentOmissionVacuous = incompleteOfWorkOrder.length === 0;
 
 async function runAppOverFakeWorld(options: {
   readonly taskIndex: number;
@@ -272,7 +319,7 @@ describe("VAL-052 the app over the honest fake world", () => {
     }
   });
 
-  test("the boundary-re-derived inventory reconciles against the REAL governed state (46/45/1)", async () => {
+  test("the boundary-re-derived inventory reconciles against the REAL governed state (46 registered — the FIXED invariant; the split DERIVED at run time)", async () => {
     const taskIndex = FINAL_REPORT_ROW_IDS.indexOf("inventory-consolidated-governed-state");
     const { outcome } = await runAppOverFakeWorld({ taskIndex });
     // The boundary re-derivation re-adjudicated the returned package
@@ -288,23 +335,37 @@ describe("VAL-052 the app over the honest fake world", () => {
     const registration = outcome.reportCriteria.find(
       (criterion) => criterion.criterionId === "inventory-registration",
     );
-    expect(registration?.evidence).toContain("complete:45");
-    expect(
-      registration?.evidence.some((line) =>
-        line.startsWith("in-flight-work-order:VAL-052:planned"),
-      ),
-    ).toBe(true);
+    expect(registration?.evidence).toContain(`complete:${completeIds.length}`);
+    const inFlightLines = (registration?.evidence ?? []).filter((line) =>
+      line.startsWith("in-flight-work-order:"),
+    );
+    expect(inFlightLines).toHaveLength(incompleteOfWorkOrder.length);
+    for (const item of incompleteOfWorkOrder) {
+      expect(
+        (registration?.evidence ?? []).some((line) =>
+          line.startsWith(`in-flight-work-order:${item.workOrderId}:${item.status}`),
+        ),
+        item.workOrderId,
+      ).toBe(true);
+    }
     const acceptance = outcome.reportCriteria.find(
       (criterion) => criterion.criterionId === "acceptance-chain-honesty",
     );
-    expect(acceptance?.evidence).toContain("carried-by-pr-merge:34");
-    expect(acceptance?.evidence).toContain("carried-by-program-state-finalize:11");
+    expect(acceptance?.evidence).toContain(`carried-by-pr-merge:${prMergeIds.length}`);
+    expect(acceptance?.evidence).toContain(
+      `carried-by-program-state-finalize:${finalizeIds.length}`,
+    );
     const deadline = outcome.reportCriteria.find(
       (criterion) => criterion.criterionId === "deadline-remainder-honesty",
     );
-    expect(deadline?.evidence).toContain("completion-timestamp:2026-09-14T21:10:45Z");
-    expect(deadline?.evidence).toContain("remaining-window:PT2H49M15S");
-    expect(deadline?.evidence).toContain("incomplete-at-report-time:VAL-052:planned");
+    expect(deadline?.evidence).toContain(`completion-timestamp:${asOf}`);
+    expect(deadline?.evidence).toContain(`remaining-window:${derivedRemainingWindow}`);
+    expect(deadline?.evidence).toContain(
+      `incomplete-at-report-time:${
+        incompleteOfWorkOrder.map((item) => `${item.workOrderId}:${item.status}`).join(",") ||
+        "none"
+      }`,
+    );
   });
 
   test("the nine-gate adjudication is re-derived AT THE BOUNDARY with the evidence NAMED", async () => {
@@ -333,24 +394,36 @@ describe("VAL-052 the app over the honest fake world", () => {
 // ---------------------------------------------------------------------------
 
 describe("VAL-052 the adversarial report-probe rows settle FAILED with the NAMED criteria", () => {
-  test("each probe row settles FAILED and the app confirms the expected verdict + NAMED criteria", async () => {
+  test("each probe row settles FAILED and the app confirms the expected verdict + NAMED criteria (state-aware: the silent-omission shape is vacuous once nothing is incomplete)", async () => {
     for (const rowId of PROBE_ROW_IDS) {
       const taskIndex = FINAL_REPORT_ROW_IDS.indexOf(rowId);
       const { outcome, world } = await runAppOverFakeWorld({ taskIndex });
       expect(world.createdExecutions, rowId).toBe(1);
       expect(outcome.observedTerminal, rowId).toBe("FAILED");
-      expect(outcome.passed, rowId).toBe(true);
-      expect(outcome.verdict, rowId).toBe("FAILED");
       expect(outcome.notRunReason, rowId).toBeNull();
       const row = finalReportRowById(rowId);
-      const expectedNamed = [...(row?.expected.failedCriteria ?? [])].sort();
+      const vacuous = rowId === "probe-silent-omission" && silentOmissionVacuous;
+      const expectedNamed = vacuous ? [] : [...(row?.expected.failedCriteria ?? [])].sort();
       const observedNamed = outcome.reportCriteria
         .filter((criterion) => criterion.status === "FAIL")
         .map((criterion) => criterion.criterionId)
         .sort();
       expect(observedNamed, rowId).toEqual(expectedNamed);
+      expect(outcome.verdict, rowId).toBe(vacuous ? "COMPLETED" : "FAILED");
       const failedApp = outcome.appCriteria.filter((criterion) => criterion.status === "FAIL");
-      expect(failedApp, `${rowId}: ${JSON.stringify(failedApp)}`).toEqual([]);
+      if (vacuous) {
+        // The corpus pin (FAILED + deadline-remainder-honesty) is
+        // honestly contradicted by the derived COMPLETED — the app
+        // FAILs its own verdict pin rather than fabricating a failure.
+        expect(failedApp.map((criterion) => criterion.criterionId).sort(), rowId).toEqual([
+          "app-failed-criteria-named",
+          "app-report-verdict",
+        ]);
+        expect(outcome.passed, rowId).toBe(false);
+      } else {
+        expect(failedApp, `${rowId}: ${JSON.stringify(failedApp)}`).toEqual([]);
+        expect(outcome.passed, rowId).toBe(true);
+      }
       expect(validateHarnessEvidence(outcome.evidence), rowId).toEqual([]);
     }
   });
@@ -439,7 +512,7 @@ describe("VAL-052 the live boundary is honest", () => {
 describe("VAL-052 the controlled fakes forced onto the honest rows FAIL the named criteria", () => {
   const HONEST_INDEX = FINAL_REPORT_ROW_IDS.indexOf("inventory-consolidated-governed-state");
 
-  test("forcing each of the seven probe shapes onto the honest row FAILs the named criteria", async () => {
+  test("forcing each of the seven probe shapes onto the honest row FAILs the named criteria (state-aware: the silent-omission fake is vacuous once nothing is incomplete)", async () => {
     for (const probe of [
       "missing-work-order",
       "deleted-evidence-document",
@@ -450,13 +523,21 @@ describe("VAL-052 the controlled fakes forced onto the honest rows FAIL the name
       "self-declared-acceptance",
     ] as const) {
       const { outcome } = await runAppOverFakeWorld({ taskIndex: HONEST_INDEX, probe });
-      expect(outcome.verdict, probe).toBe("FAILED");
-      const expectedNamed = [...PROBE_FAILED_CRITERIA_OF[probe]].sort();
+      const vacuous = probe === "silent-omission" && silentOmissionVacuous;
+      const expectedNamed = vacuous ? [] : [...PROBE_FAILED_CRITERIA_OF[probe]].sort();
       const observedNamed = outcome.reportCriteria
         .filter((criterion) => criterion.status === "FAIL")
         .map((criterion) => criterion.criterionId)
         .sort();
       expect(observedNamed, probe).toEqual(expectedNamed);
+      expect(outcome.verdict, probe).toBe(vacuous ? "COMPLETED" : "FAILED");
+      if (vacuous) {
+        // VACUOUS post-finalize: the empty incomplete list IS the honest
+        // derivation — the forced fake coincides with it, so the honest
+        // row's contract PASSes (nothing to omit).
+        expect(outcome.passed, probe).toBe(true);
+        continue;
+      }
       // The boundary contract itself still pins the HONEST row's
       // expectation — the forced fake contradicts it.
       const verdictPin = outcome.appCriteria.find(
@@ -500,7 +581,7 @@ describe("VAL-052 the controlled fakes forced onto the honest rows FAIL the name
     expect(outcome.passed).toBe(false);
   });
 
-  test("the boundary re-derivation never trusts the platform's own claim (a forced probe is caught even when the platform reports PASS)", async () => {
+  test("the boundary re-derivation never trusts the platform's own claim (a forced probe is caught even when the platform reports PASS; state-aware for the vacuous silent-omission shape)", async () => {
     // The probe row's platform terminal is overridden to COMPLETED —
     // the boundary-re-derived oracles still FAIL the dishonest shape.
     const probeIndex = FINAL_REPORT_ROW_IDS.indexOf("probe-silent-omission");
@@ -509,12 +590,13 @@ describe("VAL-052 the controlled fakes forced onto the honest rows FAIL the name
       terminal: "COMPLETED",
       verificationStatuses: ["PASS", "PASS"],
     });
-    expect(outcome.verdict).toBe("FAILED");
+    expect(outcome.verdict).toBe(silentOmissionVacuous ? "COMPLETED" : "FAILED");
     expect(
       outcome.reportCriteria
         .filter((criterion) => criterion.status === "FAIL")
         .map((criterion) => criterion.criterionId),
-    ).toEqual(["deadline-remainder-honesty"]);
+    ).toEqual(silentOmissionVacuous ? [] : ["deadline-remainder-honesty"]);
+    // The terminal override still contradicts the corpus pin either way.
     expect(outcome.passed).toBe(false);
   });
 });

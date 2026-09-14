@@ -8,8 +8,13 @@
  *     consolidated-evidence-inventory reconciliation (every work
  *     order of the program present with its registered title,
  *     completion status and resolved evidence document — 46
- *     registered, 45 complete, VAL-052 itself honestly recorded as
- *     the IN-FLIGHT work order), the NINE release-gate conditions
+ *     registered (the ONE FIXED invariant); the complete/in-flight
+ *     split, the pr-merge/finalize-carried counts, the asOf-derived
+ *     remaining window and every count pinned below DERIVE at run
+ *     time over the SAME governed-state file the app reads, so the
+ *     suite stays green across the VAL-052 finalize: 45 complete +
+ *     VAL-052 in flight at the claim head, 46 complete + 0 in flight
+ *     once the Lead's finalize lands), the NINE release-gate conditions
  *     adjudicated with the evidence NAMED, the deadline-remainder
  *     honesty (the completion timestamp, the remaining window against
  *     the pinned operator deadline) and the acceptance-chain honesty
@@ -25,7 +30,7 @@
  *     re-derivation).
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { economicDigestOf } from "../../../benchmarks/validation/apps/economic-baseline/driver";
@@ -37,6 +42,7 @@ import {
   FINAL_REPORT_ROW_IDS,
   FINAL_REPORT_VERIFICATION_FAMILIES,
   finalReportRowById,
+  GOVERNED_PROGRAM_STATE_PATH,
   INTEGRATION_PATHS,
   liveGateOpen,
   MATERIAL_FINDINGS,
@@ -80,6 +86,53 @@ const PROBE_ROW_IDS = [
 ];
 
 const WORLD = loadRealReportWorld();
+
+// ---------------------------------------------------------------------------
+// The state-agnostic derivation basis — the SAME governed-state file
+// the app reads (READ-ONLY), re-read here so every EXPECTED value below
+// derives at run time: the counts are TRUE at the claim head (45 complete
+// + VAL-052 planned, 34 pr-merge + 11 finalize-carried) AND after the
+// Lead's VAL-052 finalize lands (46 complete + 0 in-flight) — only the
+// TOTAL registered count 46 stays a FIXED invariant. The assertions
+// pin the APP's derivation against THIS derived expectation.
+// ---------------------------------------------------------------------------
+
+const stateFile = JSON.parse(
+  readFileSync(join(process.cwd(), GOVERNED_PROGRAM_STATE_PATH), "utf8"),
+) as {
+  readonly asOf: string;
+  readonly workOrders: Readonly<
+    Record<
+      string,
+      {
+        readonly status: string;
+        readonly title: string;
+        readonly mergedAs?: { readonly pr: number; readonly mergeCommit: string };
+      }
+    >
+  >;
+};
+const registeredIds = Object.keys(stateFile.workOrders);
+const completeIds = registeredIds.filter((id) => stateFile.workOrders[id]?.status === "complete");
+const incompleteOfWorkOrder = registeredIds
+  .filter((id) => stateFile.workOrders[id]?.status !== "complete")
+  .map((id) => ({ workOrderId: id, status: stateFile.workOrders[id]?.status ?? "unknown" }));
+const prMergeIds = registeredIds.filter((id) => stateFile.workOrders[id]?.mergedAs !== undefined);
+const finalizeIds = completeIds.filter((id) => stateFile.workOrders[id]?.mergedAs === undefined);
+const resolvedCompleteCount = completeIds.filter((id) =>
+  existsSync(join(process.cwd(), registeredEvidencePathOf(id))),
+).length;
+const asOf = stateFile.asOf;
+const derivedRemainingMs = Date.parse(OPERATOR_DEADLINE_UTC) - Date.parse(asOf);
+const derivedRemainingWindow = isoDurationOfMs(Math.max(derivedRemainingMs, 0));
+const val052Registered = stateFile.workOrders["VAL-052"];
+const val052Status = val052Registered?.status ?? "unregistered";
+const derivedVal052Carrier =
+  val052Registered?.mergedAs !== undefined
+    ? "pr-merge"
+    : val052Registered?.status === "complete"
+      ? "program-state-finalize"
+      : "pending-authority-chain";
 
 function rowOf(rowId: string) {
   const row = finalReportRowById(rowId);
@@ -146,33 +199,24 @@ describe("VAL-052 the honest report rows verify all thirteen mechanical criteria
 
 describe("VAL-052 the consolidated inventory reconciles exactly against the REAL governed state", () => {
   const inventory = consolidatedInventoryOf(WORLD);
-  const stateFile = JSON.parse(
-    readFileSync(join(process.cwd(), "spec/validation-state/program-state.json"), "utf8"),
-  ) as {
-    readonly asOf: string;
-    readonly workOrders: Readonly<
-      Record<
-        string,
-        {
-          readonly status: string;
-          readonly title: string;
-          readonly mergedAs?: { readonly pr: number; readonly mergeCommit: string };
-        }
-      >
-    >;
-  };
-  const registeredIds = Object.keys(stateFile.workOrders);
 
-  test("the governed program state registers 46 work orders — 45 complete + VAL-052 planned", () => {
+  test("the governed program state registers 46 work orders (the FIXED invariant) and the app's inventory split equals the RUN-TIME-DERIVED expectation", () => {
     expect(registeredIds).toHaveLength(46);
+    expect(inventory.filter((entry) => entry.status === "complete")).toHaveLength(
+      completeIds.length,
+    );
     expect(
-      registeredIds.filter((id) => stateFile.workOrders[id]?.status === "complete"),
-    ).toHaveLength(45);
-    expect(stateFile.workOrders["VAL-052"]).toEqual({
-      status: "planned",
-      title: "Final validation report, findings, solutions and release gate",
-    });
-    expect(stateFile.asOf).toBe("2026-09-14T21:10:45Z");
+      inventory.filter((entry) => entry.status !== "complete").map((entry) => entry.workOrderId),
+    ).toEqual(incompleteOfWorkOrder.map((item) => item.workOrderId));
+    expect(registeredIds).toContain("VAL-052");
+    expect(val052Registered?.title).toBe(
+      "Final validation report, findings, solutions and release gate",
+    );
+    // The app's world IS the governed state of record (the same file,
+    // READ-ONLY) — the asOf of record flows into every deadline
+    // derivation below (never a hardcoded timestamp).
+    expect(WORLD.programState.asOf).toBe(asOf);
+    expect(WORLD.reportTimestamp).toBe(asOf);
   });
 
   test("the inventory holds EXACTLY the registered work orders — no omission, no phantom", () => {
@@ -181,8 +225,8 @@ describe("VAL-052 the consolidated inventory reconciles exactly against the REAL
       "inventory-consolidated-governed-state",
       "inventory-completeness",
     );
-    expect(completeness).toContain("registered-work-orders:46");
-    expect(completeness).toContain("inventoried-work-orders:46");
+    expect(completeness).toContain(`registered-work-orders:${registeredIds.length}`);
+    expect(completeness).toContain(`inventoried-work-orders:${registeredIds.length}`);
   });
 
   test("every entry's title and completion status match the registered record exactly", () => {
@@ -194,12 +238,22 @@ describe("VAL-052 the consolidated inventory reconciles exactly against the REAL
       "inventory-consolidated-governed-state",
       "inventory-registration",
     );
-    expect(registration).toContain("titles-verified:46");
-    expect(registration).toContain("complete:45");
-    expect(registration).toContain("not-complete:1");
-    expect(
-      registration.some((line) => line.startsWith("in-flight-work-order:VAL-052:planned")),
-    ).toBe(true);
+    expect(registration).toContain(`titles-verified:${registeredIds.length}`);
+    expect(registration).toContain(`complete:${completeIds.length}`);
+    expect(registration).toContain(`not-complete:${incompleteOfWorkOrder.length}`);
+    // Every work order not complete at report time is NAMED in-flight
+    // with its DERIVED status (VAL-052:planned at the claim head; none
+    // at all once the finalize lands — never a hardcoded list).
+    const inFlightLines = registration.filter((line) => line.startsWith("in-flight-work-order:"));
+    expect(inFlightLines).toHaveLength(incompleteOfWorkOrder.length);
+    for (const item of incompleteOfWorkOrder) {
+      expect(
+        registration.some((line) =>
+          line.startsWith(`in-flight-work-order:${item.workOrderId}:${item.status}`),
+        ),
+        item.workOrderId,
+      ).toBe(true);
+    }
   });
 
   test("every COMPLETE work order's evidence document resolves at its registered location with a re-derivable digest", () => {
@@ -224,34 +278,22 @@ describe("VAL-052 the consolidated inventory reconciles exactly against the REAL
       "inventory-consolidated-governed-state",
       "inventory-evidence-resolution",
     );
-    expect(resolution).toContain("evidence-documents-resolved:45");
+    expect(resolution).toContain(`evidence-documents-resolved:${resolvedCompleteCount}`);
     expect(resolution).toContain(
       "val-001-evidence-location:benchmarks/validation/evidence/VAL-001.md",
     );
     expect(resolution.some((line) => line.startsWith("in-flight-evidence:VAL-052:"))).toBe(true);
   });
 
-  test("the merge/finalize records are cited where recorded (34 pr-merge + 11 finalize-carried + VAL-052 pending)", () => {
+  test("the merge/finalize records are cited where recorded (pr-merge + finalize-carried counts DERIVED from the governed state)", () => {
     const withMerge = inventory.filter((entry) => entry.mergeRecord !== null);
     const finalizeCarried = inventory.filter(
       (entry) => entry.mergeRecord === null && entry.acceptanceCarrier === "program-state-finalize",
     );
-    expect(withMerge).toHaveLength(34);
-    expect(finalizeCarried).toHaveLength(11);
+    expect(withMerge).toHaveLength(prMergeIds.length);
+    expect(finalizeCarried).toHaveLength(finalizeIds.length);
     expect(finalizeCarried.map((entry) => entry.workOrderId).sort()).toEqual(
-      [
-        "VAL-026",
-        "VAL-030",
-        "VAL-031",
-        "VAL-032",
-        "VAL-033",
-        "VAL-034",
-        "VAL-035",
-        "VAL-036",
-        "VAL-041",
-        "VAL-044",
-        "VAL-045",
-      ].sort(),
+      [...finalizeIds].sort(),
     );
     // The citations match the recorded mergedAs blocks exactly.
     for (const entry of withMerge) {
@@ -264,17 +306,26 @@ describe("VAL-052 the consolidated inventory reconciles exactly against the REAL
       pr: 117,
       mergeCommit: "c679690d4065",
     });
-    // VAL-052 — the in-flight work order — honestly pending the authority chain.
+    // VAL-052 — the recorded status of record (planned at the claim
+    // head; complete once the Lead's finalize lands) with its
+    // acceptance carrier DERIVED from the same governed state.
     const val052 = inventory.find((entry) => entry.workOrderId === "VAL-052");
-    expect(val052?.status).toBe("planned");
-    expect(val052?.mergeRecord).toBeNull();
-    expect(val052?.acceptanceCarrier).toBe("pending-authority-chain");
+    expect(val052?.status).toBe(val052Status);
+    expect(val052?.mergeRecord).toEqual(
+      val052Registered?.mergedAs === undefined
+        ? null
+        : {
+            pr: val052Registered.mergedAs.pr,
+            mergeCommit: val052Registered.mergedAs.mergeCommit,
+          },
+    );
+    expect(val052?.acceptanceCarrier).toBe(derivedVal052Carrier);
     const acceptance = evidenceOf(
       "inventory-consolidated-governed-state",
       "acceptance-chain-honesty",
     );
-    expect(acceptance).toContain("carried-by-pr-merge:34");
-    expect(acceptance).toContain("carried-by-program-state-finalize:11");
+    expect(acceptance).toContain(`carried-by-pr-merge:${prMergeIds.length}`);
+    expect(acceptance).toContain(`carried-by-program-state-finalize:${finalizeIds.length}`);
     expect(acceptance).toContain("self-declared:none");
     expect(acceptance.some((line) => line.startsWith("pending-authority-chain:VAL-052"))).toBe(
       true,
@@ -382,31 +433,36 @@ describe("VAL-052 the nine release-gate conditions are adjudicated with the evid
   test("gate 9 — the acceptance is carried by the authority chain, never self-declared", () => {
     const acceptance = evidenceOf("acceptance-chain-carried", "acceptance-chain-honesty");
     expect(acceptance).toContain("self-declared:none");
-    expect(acceptance).toContain("carried-by-pr-merge:34");
-    expect(acceptance).toContain("carried-by-program-state-finalize:11");
+    expect(acceptance).toContain(`carried-by-pr-merge:${prMergeIds.length}`);
+    expect(acceptance).toContain(`carried-by-program-state-finalize:${finalizeIds.length}`);
   });
 });
 
 describe("VAL-052 deadline-remainder honesty over the pinned operator deadline", () => {
-  test("the completion timestamp, the remaining window and the incomplete work order NAMED", () => {
+  test("the completion timestamp, the remaining window and the incomplete work orders NAMED (every value DERIVED from the governed state)", () => {
     const deadline = packageOf("deadline-remainder-honest").deadline;
-    expect(deadline.reportTimestamp).toBe("2026-09-14T21:10:45Z");
+    expect(deadline.reportTimestamp).toBe(asOf);
     expect(deadline.operatorDeadline).toBe(OPERATOR_DEADLINE_UTC);
     expect(OPERATOR_DEADLINE_UTC).toBe("2026-09-15T00:00:00Z");
-    expect(deadline.remainingMs).toBe(10_155_000);
-    expect(deadline.remainingWindow).toBe("PT2H49M15S");
-    expect(deadline.incomplete).toEqual([{ workOrderId: "VAL-052", status: "planned" }]);
+    expect(deadline.remainingMs).toBe(derivedRemainingMs);
+    expect(deadline.remainingWindow).toBe(derivedRemainingWindow);
+    expect(deadline.incomplete).toEqual(incompleteOfWorkOrder);
     const evidence = evidenceOf("deadline-remainder-honest", "deadline-remainder-honesty");
-    expect(evidence).toContain("completion-timestamp:2026-09-14T21:10:45Z");
-    expect(evidence).toContain("operator-deadline:2026-09-15T00:00:00Z");
-    expect(evidence).toContain("remaining-window-ms:10155000");
-    expect(evidence).toContain("remaining-window:PT2H49M15S");
-    expect(evidence).toContain("incomplete-at-report-time:VAL-052:planned");
+    expect(evidence).toContain(`completion-timestamp:${asOf}`);
+    expect(evidence).toContain(`operator-deadline:${OPERATOR_DEADLINE_UTC}`);
+    expect(evidence).toContain(`remaining-window-ms:${derivedRemainingMs}`);
+    expect(evidence).toContain(`remaining-window:${derivedRemainingWindow}`);
+    expect(evidence).toContain(
+      `incomplete-at-report-time:${
+        incompleteOfWorkOrder.map((item) => `${item.workOrderId}:${item.status}`).join(",") ||
+        "none"
+      }`,
+    );
   });
 
   test("the ISO-8601 duration helper names the window mechanically", () => {
     expect(isoDurationOfMs(0)).toBe("PT0H0M0S");
-    expect(isoDurationOfMs(10_155_000)).toBe("PT2H49M15S");
+    expect(isoDurationOfMs(derivedRemainingMs)).toBe(derivedRemainingWindow);
     expect(isoDurationOfMs(3_600_000)).toBe("PT1H0M0S");
   });
 });
@@ -441,7 +497,9 @@ describe("VAL-052 the seven adversarial probe rows each FAIL their pinned NAMED 
     });
     expect(verdict.verdict).toBe("FAILED");
     expect(verdict.failedCriteria).toEqual(["inventory-completeness"]);
-    expect(packageOf("probe-missing-work-order").inventory).toHaveLength(45);
+    // The omitted inventory is one entry short of the DERIVED registered
+    // count (45 at the claim head; 46 once the finalize lands).
+    expect(packageOf("probe-missing-work-order").inventory).toHaveLength(registeredIds.length - 1);
     expect(evidenceOf("probe-missing-work-order", "inventory-completeness")).toContain(
       "omitted-work-order:VAL-031 (registered complete, never inventoried)",
     );
@@ -456,7 +514,7 @@ describe("VAL-052 the seven adversarial probe rows each FAIL their pinned NAMED 
     expect(verdict.verdict).toBe("FAILED");
     expect(verdict.failedCriteria).toEqual(["inventory-evidence-resolution"]);
     const evidence = evidenceOf("probe-deleted-evidence-document", "inventory-evidence-resolution");
-    expect(evidence).toContain("evidence-documents-resolved:44");
+    expect(evidence).toContain(`evidence-documents-resolved:${resolvedCompleteCount - 1}`);
     expect(evidence).toContain(
       "unresolved-evidence-document:VAL-033 (docs/work-items/VAL-033.md does not resolve)",
     );
@@ -515,18 +573,29 @@ describe("VAL-052 the seven adversarial probe rows each FAIL their pinned NAMED 
     );
   });
 
-  test("probe-silent-omission FAILs deadline-remainder-honesty with the dropped work order NAMED", () => {
+  test("probe-silent-omission FAILs deadline-remainder-honesty with the dropped work order NAMED (state-aware: the shape is dishonest exactly while work orders remain incomplete)", () => {
     const verdict = deriveReleaseGateVerdict({
       row: rowOf("probe-silent-omission"),
       world: WORLD,
       report: packageOf("probe-silent-omission"),
     });
-    expect(verdict.verdict).toBe("FAILED");
-    expect(verdict.failedCriteria).toEqual(["deadline-remainder-honesty"]);
     expect(packageOf("probe-silent-omission").deadline.incomplete).toEqual([]);
-    expect(evidenceOf("probe-silent-omission", "deadline-remainder-honesty")).toContain(
-      "silently-dropped-incomplete:VAL-052 (status planned at report time, never named)",
-    );
+    if (incompleteOfWorkOrder.length > 0) {
+      expect(verdict.verdict).toBe("FAILED");
+      expect(verdict.failedCriteria).toEqual(["deadline-remainder-honesty"]);
+      const evidence = evidenceOf("probe-silent-omission", "deadline-remainder-honesty");
+      for (const item of incompleteOfWorkOrder) {
+        expect(evidence).toContain(
+          `silently-dropped-incomplete:${item.workOrderId} (status ${item.status} at report time, never named)`,
+        );
+      }
+    } else {
+      // The probe is VACUOUS once nothing is incomplete (post-finalize):
+      // the empty incomplete list IS the honest derivation — the verdict
+      // flips to COMPLETED and the corpus pin contradicts it honestly.
+      expect(verdict.verdict).toBe("COMPLETED");
+      expect(verdict.failedCriteria).toEqual([]);
+    }
   });
 
   test("probe-self-declared-acceptance FAILs acceptance-chain-honesty with the forgery NAMED", () => {
@@ -545,9 +614,16 @@ describe("VAL-052 the seven adversarial probe rows each FAIL their pinned NAMED 
         ),
       ),
     ).toBe(true);
-    expect(evidence).toContain(
-      "dishonest-in-flight-acceptance:VAL-052 (status planned; the acceptance must honestly remain pending the authority chain)",
-    );
+    // The second offender DERIVES from the recorded status: a
+    // dishonest in-flight acceptance while VAL-052 is planned; an
+    // uncarried acceptance once the finalize completes it.
+    if (val052Registered?.status !== "complete") {
+      expect(evidence).toContain(
+        `dishonest-in-flight-acceptance:VAL-052 (status ${val052Status}; the acceptance must honestly remain pending the authority chain)`,
+      );
+    } else {
+      expect(evidence.some((line) => line.startsWith("uncarried-acceptance:VAL-052"))).toBe(true);
+    }
   });
 });
 
@@ -579,11 +655,15 @@ describe("VAL-052 the controlled fakes each FAIL the NAMED oracle", () => {
     );
   });
 
-  test("a misstated completion status FAILs inventory-registration NAMED", () => {
+  test("a misstated completion status FAILs inventory-registration NAMED (the forged status DERIVED against the recorded one)", () => {
+    // The forged status is whatever the governed state does NOT record
+    // for VAL-052 (planned at the claim head; complete post-finalize —
+    // the misstatement is state-agnostic).
+    const forgedStatus = val052Status === "complete" ? "planned" : "complete";
     const forged: ReportPackage = {
       ...HONEST,
       inventory: HONEST.inventory.map((entry) =>
-        entry.workOrderId === "VAL-052" ? { ...entry, status: "complete" } : entry,
+        entry.workOrderId === "VAL-052" ? { ...entry, status: forgedStatus } : entry,
       ),
     };
     const criterion = verifyFinalReportIntegrity({
@@ -593,7 +673,7 @@ describe("VAL-052 the controlled fakes each FAIL the NAMED oracle", () => {
     }).find((candidate) => candidate.criterionId === "inventory-registration");
     expect(criterion?.status).toBe("FAIL");
     expect(criterion?.evidence.join(" ")).toContain(
-      "misstated-status:VAL-052 (inventoried complete, registered planned)",
+      `misstated-status:VAL-052 (inventoried ${forgedStatus}, registered ${val052Status})`,
     );
   });
 
