@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-14T05:30:47Z",
+  "asOf": "2026-09-14T07:14:59Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -385,8 +385,14 @@
       }
     },
     "VAL-047": {
-      "status": "in-flight",
-      "title": "Longitudinal cost curve"
+      "status": "complete",
+      "title": "Longitudinal cost curve",
+      "mergedAs": {
+        "pr": 113,
+        "mergeCommit": "49ecec54ad27",
+        "implementationHead": "c64950fa822139c414a6d73021e2ab428a45939e",
+        "baseRevision": "67707c35cc109756a592e37860deabe8323c1648"
+      }
     },
     "VAL-048": {
       "status": "planned",
