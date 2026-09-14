@@ -2,7 +2,7 @@
  "schemaVersion": 1,
  "program": "zeck-validation",
  "status": "active",
- "asOf": "2026-09-14T13:31:22Z",
+ "asOf": "2026-09-14T17:16:45Z",
  "authority": "Architect / LLM Tech Lead",
  "maxConcurrentWorkers": 3,
  "workOrders": {
@@ -415,8 +415,15 @@
    }
   },
   "VAL-050": {
-   "status": "in-flight",
-   "title": "End-to-end customer journey"
+   "status": "complete",
+   "title": "End-to-end customer journey",
+   "mergedAs": {
+    "pr": 116,
+    "mergeCommit": "6bf5c79a31bb",
+    "implementationHead": "bb00d7a31baa684acb99242bc1c73dab5fd30cd7",
+    "baseRevision": "6d784cb66508c7077deeaefead30518a56830ad8"
+   },
+   "notes": "A-lane takeover delivery: session B's claim aa13b7f (2026-09-14T13:31:42Z) stalled 2h31m52s with zero remote-visible artifacts (13 unchanged watch readings); Lead session A took the lane per takeover 6d784cb under the e7e1ad8 first-PR arbitration and delivered via PR #116. Live journey slice honest NOT RUN — the live-review lane's (OPENROUTER_API_KEY-gated)."
   },
   "VAL-051": {
    "status": "planned",
