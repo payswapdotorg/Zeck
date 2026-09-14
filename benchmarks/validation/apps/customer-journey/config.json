@@ -1,0 +1,158 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "customer-journey:lifecycle",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "corpusVersion": "val-050-customer-journey-v1",
+  "corpusInputDigest": "1e992443",
+  "tasks": [
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "full-journey-recorded-portfolio",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "journey-continuation-resume",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "midJourneyFailureStage": "daily-usage"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "journey-idempotent-reissue",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "expectsResubmissionReplay": true
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "probe-dropped-stage",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-FAILED",
+      "expectedFailedCriteria": ["stage-completeness", "accounting-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "dropped-stage"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "probe-orphaned-state",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-FAILED",
+      "expectedFailedCriteria": ["cross-stage-idempotency", "accounting-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "orphaned-state"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "probe-double-driven-resume",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-FAILED",
+      "expectedFailedCriteria": ["continuation-exactly-once", "accounting-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "midJourneyFailureStage": "daily-usage",
+      "probe": "double-driven-resume"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "probe-boundary-leak",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-FAILED",
+      "expectedFailedCriteria": ["customer-boundary"],
+      "expectedTerminal": "FAILED",
+      "probe": "boundary-leak"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "probe-residual-hiding",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "JOURNEY-FAILED",
+      "expectedFailedCriteria": ["accounting-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "residual-hiding"
+    },
+    {
+      "kind": "customer-journey.lifecycle.v1",
+      "rowId": "live-journey-slice",
+      "stages": ["onboarding", "intent", "plan", "daily-usage", "outcome"],
+      "integrityFamilies": [
+        "stage-completeness",
+        "cross-stage-idempotency",
+        "continuation-exactly-once",
+        "customer-boundary",
+        "accounting-reconciliation"
+      ],
+      "expectedVerdict": "NOT-RUN",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "liveGate": ["OPENROUTER_API_KEY"]
+    }
+  ]
+}
