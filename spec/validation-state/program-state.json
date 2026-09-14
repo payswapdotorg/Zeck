@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-14T03:56:59Z",
+  "asOf": "2026-09-14T03:59:43Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -375,7 +375,7 @@
       "title": "Cache/reuse/deterministicization savings attribution"
     },
     "VAL-046": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Substrate/runtime economics"
     },
     "VAL-047": {
