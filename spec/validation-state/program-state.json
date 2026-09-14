@@ -1,424 +1,430 @@
 {
-  "schemaVersion": 1,
-  "program": "zeck-validation",
-  "status": "active",
-  "asOf": "2026-09-14T11:26:06Z",
-  "authority": "Architect / LLM Tech Lead",
-  "maxConcurrentWorkers": 3,
-  "workOrders": {
-    "VAL-001": {
-      "status": "complete",
-      "title": "Validation lab bootstrap and governance",
-      "mergedAs": {
-        "pr": 42,
-        "mergeCommit": "d90d0dab",
-        "implementationHead": "ac22b4494d122abbc42f5ae8df0f539347b44aae",
-        "finalBranchHead": "ac22b4494d122abbc42f5ae8df0f539347b44aae",
-        "baseRevision": "90ceeddd1c6e5553254eaaade3155be391670787",
-        "issue": 41
-      }
-    },
-    "VAL-002": {
-      "status": "complete",
-      "title": "Customer-style SDK/API integration harness",
-      "mergedAs": {
-        "pr": 44,
-        "mergeCommit": "e503895",
-        "implementationHead": "29a806c81547b7dbe14611268c300f5991d4979f",
-        "finalBranchHead": "29a806c81547b7dbe14611268c300f5991d4979f",
-        "baseRevision": "e2c280f",
-        "issue": 43
-      }
-    },
-    "VAL-003": {
-      "status": "complete",
-      "title": "Golden task, environment-state, outcome and safety corpus",
-      "mergedAs": {
-        "pr": 46,
-        "mergeCommit": "ea3ac03",
-        "implementationHead": "56b4cb3176e4359f5492137184760981407ab79f",
-        "finalBranchHead": "56b4cb3176e4359f5492137184760981407ab79f",
-        "baseRevision": "a51e95c",
-        "issue": 45
-      }
-    },
-    "VAL-004": {
-      "status": "complete",
-      "title": "Universal trace, trajectory, environment-state and evidence recorder",
-      "mergedAs": {
-        "pr": 48,
-        "mergeCommit": "36d9045",
-        "implementationHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
-        "finalBranchHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
-        "baseRevision": "7b12a3c",
-        "issue": 47
-      }
-    },
-    "VAL-005": {
-      "status": "complete",
-      "title": "Baseline/comparator harness for direct, optimized and competing stacks",
-      "mergedAs": {
-        "pr": 52,
-        "mergeCommit": "802f2ae",
-        "implementationHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
-        "finalBranchHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
-        "baseRevision": "9c9c0b6"
-      }
-    },
-    "VAL-006": {
-      "status": "complete",
-      "title": "Cost, latency, quality, reliability and successful-outcome accounting",
-      "mergedAs": {
-        "pr": 53,
-        "mergeCommit": "f41f360",
-        "implementationHead": "b3a600e65fb19183c19298c25127aaed5d74f2c6",
-        "finalBranchHead": "b3a600e65fb19183c19298c25127aaed5d74f2c6",
-        "baseRevision": "6cbff9b"
-      }
-    },
-    "VAL-007": {
-      "status": "complete",
-      "title": "Longitudinal experiment ledger and immutable run identity",
-      "mergedAs": {
-        "pr": 51,
-        "mergeCommit": "9ca54fa",
-        "implementationHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
-        "finalBranchHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
-        "baseRevision": "8f2932a"
-      }
-    },
-    "VAL-008": {
-      "status": "complete",
-      "title": "Evaluation/scoring engine and error taxonomy",
-      "mergedAs": {
-        "pr": 50,
-        "mergeCommit": "23742a0",
-        "implementationHead": "a6b855ce4e278788229efee0e9521d99d7679053",
-        "finalBranchHead": "a6b855ce4e278788229efee0e9521d99d7679053",
-        "baseRevision": "15cd725"
-      }
-    },
-    "VAL-009": {
-      "status": "complete",
-      "title": "Model/provider capability matrix and access/readiness probe",
-      "mergedAs": {
-        "pr": 49,
-        "mergeCommit": "9941fda",
-        "implementationHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
-        "finalBranchHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
-        "baseRevision": "80b6079"
-      }
-    },
-    "VAL-010": {
-      "status": "complete",
-      "title": "Text generation, extraction and transformation apps",
-      "mergedAs": {
-        "pr": 56,
-        "mergeCommit": "35b0e38",
-        "implementationHead": "8a4bf79",
-        "finalBranchHead": "8a4bf79",
-        "baseRevision": "441e49e"
-      }
-    },
-    "VAL-011": {
-      "status": "complete",
-      "title": "RAG / knowledge-assistant application",
-      "mergedAs": {
-        "pr": 61,
-        "mergeCommit": "1029854",
-        "implementationHead": "065b081",
-        "finalBranchHead": "065b081",
-        "baseRevision": "ea6c4bf"
-      }
-    },
-    "VAL-012": {
-      "status": "complete",
-      "title": "Tool-using agent and multi-step business workflow apps",
-      "mergedAs": {
-        "pr": 59,
-        "mergeCommit": "cc3034a",
-        "implementationHead": "d7ea208",
-        "finalBranchHead": "d7ea208",
-        "baseRevision": "34bfb9d"
-      }
-    },
-    "VAL-013": {
-      "status": "complete",
-      "title": "Long-running / resumable agent application",
-      "mergedAs": {
-        "pr": 62,
-        "mergeCommit": "f46b1ee",
-        "implementationHead": "72afa58",
-        "finalBranchHead": "72afa58",
-        "baseRevision": "53daf03"
-      }
-    },
-    "VAL-014": {
-      "status": "complete",
-      "title": "Voice and realtime voice",
-      "mergedAs": {
-        "pr": 71,
-        "mergeCommit": "da7820fa7d46",
-        "implementationHead": "85ec80021ad13532fa35c780791b6e28d5932934",
-        "finalBranchHead": "85ec80021ad13532fa35c780791b6e28d5932934",
-        "baseRevision": "789716086832883096bf34f4e00698760ea1b02a",
-        "issue": 64
-      }
-    },
-    "VAL-015": {
-      "status": "complete",
-      "title": "Image generation and transformation",
-      "mergedAs": {
-        "pr": 69,
-        "mergeCommit": "4dcdabc05602",
-        "implementationHead": "bdcbae15617277251a615675d9d7081508397479",
-        "finalBranchHead": "bdcbae15617277251a615675d9d7081508397479",
-        "baseRevision": "d3b76c384bbd716b6ebcdeed27974dcfbf6d273f",
-        "issue": 65
-      }
-    },
-    "VAL-016": {
-      "status": "complete",
-      "title": "Video/media generation",
-      "mergedAs": {
-        "pr": 70,
-        "mergeCommit": "f4cd3313dc65",
-        "implementationHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
-        "finalBranchHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
-        "baseRevision": "eba2030593d6ccce535d0d408a33971e25577709",
-        "issue": 66
-      }
-    },
-    "VAL-017": {
-      "status": "complete",
-      "title": "Image recognition, VLM and audio understanding",
-      "mergedAs": {
-        "pr": 63,
-        "mergeCommit": "a2e8900",
-        "implementationHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
-        "finalBranchHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
-        "baseRevision": "f7d5480fc092b7efe171f4b06ce8a266464064af",
-        "issue": 55
-      }
-    },
-    "VAL-018": {
-      "status": "complete",
-      "title": "Multimodal transformation and 3D rendering",
-      "mergedAs": {
-        "pr": 73,
-        "mergeCommit": "613015e8ffa5",
-        "implementationHead": "2ed7884fe6d8e0c79c6dbc74dad335bfc3419ea6",
-        "finalBranchHead": "2ed7884fe6d8e0c79c6dbc74dad335bfc3419ea6",
-        "baseRevision": "373b392",
-        "issue": 67
-      }
-    },
-    "VAL-019": {
-      "status": "complete",
-      "title": "Customer-service, browser-use, computer-use, research, coding, operations and HITL application suite",
-      "mergedAs": {
-        "pr": 76,
-        "mergeCommit": "7df668271627bd064c0568bede7377c2f09e0cfa",
-        "implementationHead": "e00c63a20aff24b5dc2e6d53dd91857b30dbc4e1",
-        "finalBranchHead": "e00c63a20aff24b5dc2e6d53dd91857b30dbc4e1",
-        "baseRevision": "c8ec68350d89e54db66f90ec075967ab52daef12",
-        "issue": 68
-      }
-    },
-    "VAL-020": {
-      "status": "complete",
-      "title": "Provider/model/tool failure attribution and recovery",
-      "mergedAs": {
-        "pr": 78,
-        "mergeCommit": "a51d34903389f5e60ca6ac28075113cd4235d305",
-        "implementationHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
-        "finalBranchHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
-        "baseRevision": "1543276bd6062bdb5a2298ccc2a20dc317468fd5",
-        "issue": 77
-      }
-    },
-    "VAL-021": {
-      "status": "complete",
-      "title": "Duplicate, replay, retry, escalation and continuation validation",
-      "mergedAs": {
-        "pr": 84,
-        "mergeCommit": "e49397a098094808e70a7b013e180642b72fec00",
-        "implementationHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
-        "finalBranchHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
-        "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
-        "issue": 79
-      }
-    },
-    "VAL-022": {
-      "status": "complete",
-      "title": "Sandbox/compute/substrate failure and readiness",
-      "mergedAs": {
-        "pr": 86,
-        "mergeCommit": "02b0b8d03c63",
-        "implementationHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
-        "finalBranchHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
-        "baseRevision": "aac5a52",
-        "issue": 80
-      }
-    },
-    "VAL-023": {
-      "status": "complete",
-      "title": "Security and prompt-injection validation",
-      "mergedAs": {
-        "pr": 85,
-        "mergeCommit": "1563057b1f91e0f190fc9a75690bff640ebf9548",
-        "implementationHead": "78102e2",
-        "finalBranchHead": "d2c5d70",
-        "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
-        "issue": 81
-      }
-    },
-    "VAL-024": {
-      "status": "complete",
-      "title": "Tenant and application isolation",
-      "mergedAs": {
-        "pr": 88,
-        "mergeCommit": "3933f66b85df66d71cade476f6ca51fbd9b11a8e",
-        "implementationHead": "68e4379",
-        "finalBranchHead": "413a95e",
-        "baseRevision": "fefb52f736b20e852b040c8cedc025fbc693171a",
-        "issue": 82
-      }
-    },
-    "VAL-025": {
-      "status": "complete",
-      "title": "Concurrency/load/endurance/soak",
-      "mergedAs": {
-        "pr": 91,
-        "mergeCommit": "8a4cb979301b6b0e2d8b7b983f1a07d49860b56a",
-        "implementationHead": "376901d",
-        "finalBranchHead": "af23429",
-        "baseRevision": "060972617c256889dbae5c51a65017edf5cb54b1",
-        "issue": 89
-      }
-    },
-    "VAL-026": {
-      "status": "complete",
-      "title": "Outcome-state and side-effect verification"
-    },
-    "VAL-030": {
-      "status": "complete",
-      "title": "Freeze baselines and pre-learning controls"
-    },
-    "VAL-031": {
-      "status": "complete",
-      "title": "Repeated workload replay and trajectory analysis"
-    },
-    "VAL-032": {
-      "status": "complete",
-      "title": "Learned reuse/cache/competence/deterministicization discovery"
-    },
-    "VAL-033": {
-      "status": "complete",
-      "title": "Equivalence testing and deterministic replacement"
-    },
-    "VAL-034": {
-      "status": "complete",
-      "title": "Shadow deterministic execution"
-    },
-    "VAL-035": {
-      "status": "complete",
-      "title": "Canary promotion and rollback"
-    },
-    "VAL-036": {
-      "status": "complete",
-      "title": "Determinization maturity benchmark"
-    },
-    "VAL-040": {
-      "status": "complete",
-      "title": "Economic baseline normalization",
-      "mergedAs": {
-        "pr": 100,
-        "mergeCommit": "5d6f533690",
-        "implementationHead": "e94a949",
-        "baseRevision": "49d15d3",
-        "issue": 94
-      }
-    },
-    "VAL-041": {
-      "status": "complete",
-      "title": "Direct-provider controls"
-    },
-    "VAL-042": {
-      "status": "complete",
-      "title": "Strong optimized non-Zeck baseline",
-      "mergedAs": {
-        "pr": 105,
-        "mergeCommit": "83e7b149da",
-        "implementationHead": "729d0e4",
-        "baseRevision": "b29864c",
-        "issue": 102
-      }
-    },
-    "VAL-043": {
-      "status": "complete",
-      "title": "Competing gateway/router/agent benchmark",
-      "mergedAs": {
-        "pr": 108,
-        "mergeCommit": "6ec617022b",
-        "implementationHead": "b8c7bea",
-        "baseRevision": "054a041",
-        "issue": 106
-      }
-    },
-    "VAL-044": {
-      "status": "complete",
-      "title": "Quality/latency/failure-adjusted cost"
-    },
-    "VAL-045": {
-      "status": "complete",
-      "title": "Cache/reuse/deterministicization savings attribution"
-    },
-    "VAL-046": {
-      "status": "complete",
-      "title": "Substrate/runtime economics",
-      "mergedAs": {
-        "pr": 112,
-        "mergeCommit": "d33fcc76e6a4",
-        "implementationHead": "d33fcc76e6a45d96fd0a84f9f91259b764be3352",
-        "baseRevision": "6a997b5bdcc1922a124f788b782c1e6edef526aa"
-      }
-    },
-    "VAL-047": {
-      "status": "complete",
-      "title": "Longitudinal cost curve",
-      "mergedAs": {
-        "pr": 113,
-        "mergeCommit": "49ecec54ad27",
-        "implementationHead": "c64950fa822139c414a6d73021e2ab428a45939e",
-        "baseRevision": "67707c35cc109756a592e37860deabe8323c1648"
-      }
-    },
-    "VAL-048": {
-      "status": "complete",
-      "title": "Cross-workload competitive benchmark",
-      "mergedAs": {
-        "pr": 114,
-        "mergeCommit": "227475cab5ce",
-        "implementationHead": "57ac69b1b8ed236744b3e831393132e104b85aac",
-        "baseRevision": "52d9db10101f7b7c6bd4417c18df640e2975d09b"
-      }
-    },
-    "VAL-049": {
-      "status": "in-flight",
-      "title": "Reproducibility and anti-gaming audit"
-    },
-    "VAL-050": {
-      "status": "planned",
-      "title": "End-to-end customer journey"
-    },
-    "VAL-051": {
-      "status": "planned",
-      "title": "Production-style pilot"
-    },
-    "VAL-052": {
-      "status": "planned",
-      "title": "Final validation report, findings, solutions and release gate"
-    }
+ "schemaVersion": 1,
+ "program": "zeck-validation",
+ "status": "active",
+ "asOf": "2026-09-14T13:20:00Z",
+ "authority": "Architect / LLM Tech Lead",
+ "maxConcurrentWorkers": 3,
+ "workOrders": {
+  "VAL-001": {
+   "status": "complete",
+   "title": "Validation lab bootstrap and governance",
+   "mergedAs": {
+    "pr": 42,
+    "mergeCommit": "d90d0dab",
+    "implementationHead": "ac22b4494d122abbc42f5ae8df0f539347b44aae",
+    "finalBranchHead": "ac22b4494d122abbc42f5ae8df0f539347b44aae",
+    "baseRevision": "90ceeddd1c6e5553254eaaade3155be391670787",
+    "issue": 41
+   }
+  },
+  "VAL-002": {
+   "status": "complete",
+   "title": "Customer-style SDK/API integration harness",
+   "mergedAs": {
+    "pr": 44,
+    "mergeCommit": "e503895",
+    "implementationHead": "29a806c81547b7dbe14611268c300f5991d4979f",
+    "finalBranchHead": "29a806c81547b7dbe14611268c300f5991d4979f",
+    "baseRevision": "e2c280f",
+    "issue": 43
+   }
+  },
+  "VAL-003": {
+   "status": "complete",
+   "title": "Golden task, environment-state, outcome and safety corpus",
+   "mergedAs": {
+    "pr": 46,
+    "mergeCommit": "ea3ac03",
+    "implementationHead": "56b4cb3176e4359f5492137184760981407ab79f",
+    "finalBranchHead": "56b4cb3176e4359f5492137184760981407ab79f",
+    "baseRevision": "a51e95c",
+    "issue": 45
+   }
+  },
+  "VAL-004": {
+   "status": "complete",
+   "title": "Universal trace, trajectory, environment-state and evidence recorder",
+   "mergedAs": {
+    "pr": 48,
+    "mergeCommit": "36d9045",
+    "implementationHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
+    "finalBranchHead": "39fbf0f58ca5f23ba0c8da5d12ab0e8604de469d",
+    "baseRevision": "7b12a3c",
+    "issue": 47
+   }
+  },
+  "VAL-005": {
+   "status": "complete",
+   "title": "Baseline/comparator harness for direct, optimized and competing stacks",
+   "mergedAs": {
+    "pr": 52,
+    "mergeCommit": "802f2ae",
+    "implementationHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
+    "finalBranchHead": "f9e17af67c9af0cddde2d8501961839a13d23ffd",
+    "baseRevision": "9c9c0b6"
+   }
+  },
+  "VAL-006": {
+   "status": "complete",
+   "title": "Cost, latency, quality, reliability and successful-outcome accounting",
+   "mergedAs": {
+    "pr": 53,
+    "mergeCommit": "f41f360",
+    "implementationHead": "b3a600e65fb19183c19298c25127aaed5d74f2c6",
+    "finalBranchHead": "b3a600e65fb19183c19298c25127aaed5d74f2c6",
+    "baseRevision": "6cbff9b"
+   }
+  },
+  "VAL-007": {
+   "status": "complete",
+   "title": "Longitudinal experiment ledger and immutable run identity",
+   "mergedAs": {
+    "pr": 51,
+    "mergeCommit": "9ca54fa",
+    "implementationHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
+    "finalBranchHead": "63f92660b5bd948fa05e6ec8e774040ec56a0c16",
+    "baseRevision": "8f2932a"
+   }
+  },
+  "VAL-008": {
+   "status": "complete",
+   "title": "Evaluation/scoring engine and error taxonomy",
+   "mergedAs": {
+    "pr": 50,
+    "mergeCommit": "23742a0",
+    "implementationHead": "a6b855ce4e278788229efee0e9521d99d7679053",
+    "finalBranchHead": "a6b855ce4e278788229efee0e9521d99d7679053",
+    "baseRevision": "15cd725"
+   }
+  },
+  "VAL-009": {
+   "status": "complete",
+   "title": "Model/provider capability matrix and access/readiness probe",
+   "mergedAs": {
+    "pr": 49,
+    "mergeCommit": "9941fda",
+    "implementationHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
+    "finalBranchHead": "4e664555a5f6f7ba236d0246c5f33175fe732d5d",
+    "baseRevision": "80b6079"
+   }
+  },
+  "VAL-010": {
+   "status": "complete",
+   "title": "Text generation, extraction and transformation apps",
+   "mergedAs": {
+    "pr": 56,
+    "mergeCommit": "35b0e38",
+    "implementationHead": "8a4bf79",
+    "finalBranchHead": "8a4bf79",
+    "baseRevision": "441e49e"
+   }
+  },
+  "VAL-011": {
+   "status": "complete",
+   "title": "RAG / knowledge-assistant application",
+   "mergedAs": {
+    "pr": 61,
+    "mergeCommit": "1029854",
+    "implementationHead": "065b081",
+    "finalBranchHead": "065b081",
+    "baseRevision": "ea6c4bf"
+   }
+  },
+  "VAL-012": {
+   "status": "complete",
+   "title": "Tool-using agent and multi-step business workflow apps",
+   "mergedAs": {
+    "pr": 59,
+    "mergeCommit": "cc3034a",
+    "implementationHead": "d7ea208",
+    "finalBranchHead": "d7ea208",
+    "baseRevision": "34bfb9d"
+   }
+  },
+  "VAL-013": {
+   "status": "complete",
+   "title": "Long-running / resumable agent application",
+   "mergedAs": {
+    "pr": 62,
+    "mergeCommit": "f46b1ee",
+    "implementationHead": "72afa58",
+    "finalBranchHead": "72afa58",
+    "baseRevision": "53daf03"
+   }
+  },
+  "VAL-014": {
+   "status": "complete",
+   "title": "Voice and realtime voice",
+   "mergedAs": {
+    "pr": 71,
+    "mergeCommit": "da7820fa7d46",
+    "implementationHead": "85ec80021ad13532fa35c780791b6e28d5932934",
+    "finalBranchHead": "85ec80021ad13532fa35c780791b6e28d5932934",
+    "baseRevision": "789716086832883096bf34f4e00698760ea1b02a",
+    "issue": 64
+   }
+  },
+  "VAL-015": {
+   "status": "complete",
+   "title": "Image generation and transformation",
+   "mergedAs": {
+    "pr": 69,
+    "mergeCommit": "4dcdabc05602",
+    "implementationHead": "bdcbae15617277251a615675d9d7081508397479",
+    "finalBranchHead": "bdcbae15617277251a615675d9d7081508397479",
+    "baseRevision": "d3b76c384bbd716b6ebcdeed27974dcfbf6d273f",
+    "issue": 65
+   }
+  },
+  "VAL-016": {
+   "status": "complete",
+   "title": "Video/media generation",
+   "mergedAs": {
+    "pr": 70,
+    "mergeCommit": "f4cd3313dc65",
+    "implementationHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
+    "finalBranchHead": "7a7f9246daa58e5a0b8568b445189683eee48150",
+    "baseRevision": "eba2030593d6ccce535d0d408a33971e25577709",
+    "issue": 66
+   }
+  },
+  "VAL-017": {
+   "status": "complete",
+   "title": "Image recognition, VLM and audio understanding",
+   "mergedAs": {
+    "pr": 63,
+    "mergeCommit": "a2e8900",
+    "implementationHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
+    "finalBranchHead": "678c9a0430f95c448569d3b9dd58e4d7bda914f7",
+    "baseRevision": "f7d5480fc092b7efe171f4b06ce8a266464064af",
+    "issue": 55
+   }
+  },
+  "VAL-018": {
+   "status": "complete",
+   "title": "Multimodal transformation and 3D rendering",
+   "mergedAs": {
+    "pr": 73,
+    "mergeCommit": "613015e8ffa5",
+    "implementationHead": "2ed7884fe6d8e0c79c6dbc74dad335bfc3419ea6",
+    "finalBranchHead": "2ed7884fe6d8e0c79c6dbc74dad335bfc3419ea6",
+    "baseRevision": "373b392",
+    "issue": 67
+   }
+  },
+  "VAL-019": {
+   "status": "complete",
+   "title": "Customer-service, browser-use, computer-use, research, coding, operations and HITL application suite",
+   "mergedAs": {
+    "pr": 76,
+    "mergeCommit": "7df668271627bd064c0568bede7377c2f09e0cfa",
+    "implementationHead": "e00c63a20aff24b5dc2e6d53dd91857b30dbc4e1",
+    "finalBranchHead": "e00c63a20aff24b5dc2e6d53dd91857b30dbc4e1",
+    "baseRevision": "c8ec68350d89e54db66f90ec075967ab52daef12",
+    "issue": 68
+   }
+  },
+  "VAL-020": {
+   "status": "complete",
+   "title": "Provider/model/tool failure attribution and recovery",
+   "mergedAs": {
+    "pr": 78,
+    "mergeCommit": "a51d34903389f5e60ca6ac28075113cd4235d305",
+    "implementationHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
+    "finalBranchHead": "3574e0d3a52a741b60d7ccabd73e2a6e78baf924",
+    "baseRevision": "1543276bd6062bdb5a2298ccc2a20dc317468fd5",
+    "issue": 77
+   }
+  },
+  "VAL-021": {
+   "status": "complete",
+   "title": "Duplicate, replay, retry, escalation and continuation validation",
+   "mergedAs": {
+    "pr": 84,
+    "mergeCommit": "e49397a098094808e70a7b013e180642b72fec00",
+    "implementationHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
+    "finalBranchHead": "13c6717918c93e83b8f06abe5ace574a3a1dea35",
+    "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
+    "issue": 79
+   }
+  },
+  "VAL-022": {
+   "status": "complete",
+   "title": "Sandbox/compute/substrate failure and readiness",
+   "mergedAs": {
+    "pr": 86,
+    "mergeCommit": "02b0b8d03c63",
+    "implementationHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
+    "finalBranchHead": "ad5b9e00a4678e52a5256cfba26191eb0ee820a5",
+    "baseRevision": "aac5a52",
+    "issue": 80
+   }
+  },
+  "VAL-023": {
+   "status": "complete",
+   "title": "Security and prompt-injection validation",
+   "mergedAs": {
+    "pr": 85,
+    "mergeCommit": "1563057b1f91e0f190fc9a75690bff640ebf9548",
+    "implementationHead": "78102e2",
+    "finalBranchHead": "d2c5d70",
+    "baseRevision": "ae373e6c863a0c8adf558ccf5618b7353ee0a557",
+    "issue": 81
+   }
+  },
+  "VAL-024": {
+   "status": "complete",
+   "title": "Tenant and application isolation",
+   "mergedAs": {
+    "pr": 88,
+    "mergeCommit": "3933f66b85df66d71cade476f6ca51fbd9b11a8e",
+    "implementationHead": "68e4379",
+    "finalBranchHead": "413a95e",
+    "baseRevision": "fefb52f736b20e852b040c8cedc025fbc693171a",
+    "issue": 82
+   }
+  },
+  "VAL-025": {
+   "status": "complete",
+   "title": "Concurrency/load/endurance/soak",
+   "mergedAs": {
+    "pr": 91,
+    "mergeCommit": "8a4cb979301b6b0e2d8b7b983f1a07d49860b56a",
+    "implementationHead": "376901d",
+    "finalBranchHead": "af23429",
+    "baseRevision": "060972617c256889dbae5c51a65017edf5cb54b1",
+    "issue": 89
+   }
+  },
+  "VAL-026": {
+   "status": "complete",
+   "title": "Outcome-state and side-effect verification"
+  },
+  "VAL-030": {
+   "status": "complete",
+   "title": "Freeze baselines and pre-learning controls"
+  },
+  "VAL-031": {
+   "status": "complete",
+   "title": "Repeated workload replay and trajectory analysis"
+  },
+  "VAL-032": {
+   "status": "complete",
+   "title": "Learned reuse/cache/competence/deterministicization discovery"
+  },
+  "VAL-033": {
+   "status": "complete",
+   "title": "Equivalence testing and deterministic replacement"
+  },
+  "VAL-034": {
+   "status": "complete",
+   "title": "Shadow deterministic execution"
+  },
+  "VAL-035": {
+   "status": "complete",
+   "title": "Canary promotion and rollback"
+  },
+  "VAL-036": {
+   "status": "complete",
+   "title": "Determinization maturity benchmark"
+  },
+  "VAL-040": {
+   "status": "complete",
+   "title": "Economic baseline normalization",
+   "mergedAs": {
+    "pr": 100,
+    "mergeCommit": "5d6f533690",
+    "implementationHead": "e94a949",
+    "baseRevision": "49d15d3",
+    "issue": 94
+   }
+  },
+  "VAL-041": {
+   "status": "complete",
+   "title": "Direct-provider controls"
+  },
+  "VAL-042": {
+   "status": "complete",
+   "title": "Strong optimized non-Zeck baseline",
+   "mergedAs": {
+    "pr": 105,
+    "mergeCommit": "83e7b149da",
+    "implementationHead": "729d0e4",
+    "baseRevision": "b29864c",
+    "issue": 102
+   }
+  },
+  "VAL-043": {
+   "status": "complete",
+   "title": "Competing gateway/router/agent benchmark",
+   "mergedAs": {
+    "pr": 108,
+    "mergeCommit": "6ec617022b",
+    "implementationHead": "b8c7bea",
+    "baseRevision": "054a041",
+    "issue": 106
+   }
+  },
+  "VAL-044": {
+   "status": "complete",
+   "title": "Quality/latency/failure-adjusted cost"
+  },
+  "VAL-045": {
+   "status": "complete",
+   "title": "Cache/reuse/deterministicization savings attribution"
+  },
+  "VAL-046": {
+   "status": "complete",
+   "title": "Substrate/runtime economics",
+   "mergedAs": {
+    "pr": 112,
+    "mergeCommit": "d33fcc76e6a4",
+    "implementationHead": "d33fcc76e6a45d96fd0a84f9f91259b764be3352",
+    "baseRevision": "6a997b5bdcc1922a124f788b782c1e6edef526aa"
+   }
+  },
+  "VAL-047": {
+   "status": "complete",
+   "title": "Longitudinal cost curve",
+   "mergedAs": {
+    "pr": 113,
+    "mergeCommit": "49ecec54ad27",
+    "implementationHead": "c64950fa822139c414a6d73021e2ab428a45939e",
+    "baseRevision": "67707c35cc109756a592e37860deabe8323c1648"
+   }
+  },
+  "VAL-048": {
+   "status": "complete",
+   "title": "Cross-workload competitive benchmark",
+   "mergedAs": {
+    "pr": 114,
+    "mergeCommit": "227475cab5ce",
+    "implementationHead": "57ac69b1b8ed236744b3e831393132e104b85aac",
+    "baseRevision": "52d9db10101f7b7c6bd4417c18df640e2975d09b"
+   }
+  },
+  "VAL-049": {
+   "status": "complete",
+   "title": "Reproducibility and anti-gaming audit",
+   "mergedAs": {
+    "pr": 115,
+    "mergeCommit": "b5423d22946e",
+    "implementationHead": "5074b57fb362743f9fc2b1d0d0a902eefe5a93df",
+    "baseRevision": "51a099cdb2a1fa5913cce015d9355b0b78cc3839"
+   }
+  },
+  "VAL-050": {
+   "status": "planned",
+   "title": "End-to-end customer journey"
+  },
+  "VAL-051": {
+   "status": "planned",
+   "title": "Production-style pilot"
+  },
+  "VAL-052": {
+   "status": "planned",
+   "title": "Final validation report, findings, solutions and release gate"
   }
+ }
 }
