@@ -1,0 +1,515 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "repository revision at run time",
+  "corpusRevision": "repository revision at run time",
+  "integrationSurface": "production-pilot:window",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "corpusVersion": "val-051-production-pilot-v1",
+  "corpusInputDigest": "1c2f44b7",
+  "tasks": [
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-window-full-recorded-portfolio",
+      "workloadClass": "recorded-portfolio-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-reconciliation",
+        "customer-boundary-integrity"
+      ],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-shift-resume-exactly-once",
+      "workloadClass": "journey-continuation-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "journey-continuation-resume",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "failureShifts": [
+        {
+          "shift": 3,
+          "stage": "daily-usage"
+        }
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "181200",
+        "latencyBudgetMsPerShift": 1280,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["continuation-exactly-once", "incident-honesty"],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-drift-drifting-named",
+      "workloadClass": "declared-drift-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": [
+          {
+            "shift": 4,
+            "stage": "daily-usage",
+            "cause": "load-shaping cohort mix"
+          }
+        ]
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["drift-classification-honesty"],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-drift-regressing-reported",
+      "workloadClass": "declared-drift-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["drift-classification-honesty", "incident-honesty"],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-incident-recorded-attributed",
+      "workloadClass": "incident-injection-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "journey-continuation-resume",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "failureShifts": [
+        {
+          "shift": 2,
+          "stage": "daily-usage"
+        }
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "181200",
+        "latencyBudgetMsPerShift": 1280,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["incident-honesty", "budget-policy-envelope"],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "pilot-budget-reservations-settled",
+      "workloadClass": "tight-budget-envelope-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "81000",
+        "latencyBudgetMsPerShift": 400,
+        "admissionPolicy": "admit-within-budget"
+      },
+      "observationFamilies": ["budget-policy-envelope"],
+      "expectedVerdict": "PILOT-COMPLETED",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-cherry-picked-window",
+      "workloadClass": "declared-drift-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": [
+          {
+            "shift": 4,
+            "stage": "daily-usage",
+            "cause": "load-shaping cohort mix"
+          }
+        ]
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["window-honesty", "end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": [
+        "window-honesty",
+        "schedule-completeness",
+        "end-of-window-reconciliation"
+      ],
+      "expectedTerminal": "FAILED",
+      "probe": "cherry-picked-window"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-dropped-shift",
+      "workloadClass": "recorded-portfolio-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["schedule-completeness", "end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": [
+        "window-honesty",
+        "schedule-completeness",
+        "end-of-window-reconciliation"
+      ],
+      "expectedTerminal": "FAILED",
+      "probe": "dropped-shift"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-double-driven-resume",
+      "workloadClass": "journey-continuation-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "journey-continuation-resume",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "failureShifts": [
+        {
+          "shift": 3,
+          "stage": "daily-usage"
+        }
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "181200",
+        "latencyBudgetMsPerShift": 1280,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["continuation-exactly-once", "end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["continuation-exactly-once", "end-of-window-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "double-driven-resume"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-drift-normalizing",
+      "workloadClass": "declared-drift-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["drift-classification-honesty", "end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["drift-classification-honesty", "end-of-window-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "drift-normalizing"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-incident-hiding",
+      "workloadClass": "incident-injection-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "journey-continuation-resume",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "failureShifts": [
+        {
+          "shift": 2,
+          "stage": "daily-usage"
+        }
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "181200",
+        "latencyBudgetMsPerShift": 1280,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["incident-honesty", "end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["incident-honesty", "end-of-window-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "incident-hiding"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-residual-hiding",
+      "workloadClass": "recorded-portfolio-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["end-of-window-reconciliation"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["end-of-window-reconciliation"],
+      "expectedTerminal": "FAILED",
+      "probe": "residual-hiding"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "probe-pilot-boundary-leak",
+      "workloadClass": "recorded-portfolio-replay-window",
+      "window": {
+        "declaredShifts": 6,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 5
+        },
+        "driftTolerancePct": 10,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "162000",
+        "latencyBudgetMsPerShift": 800,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": ["customer-boundary-integrity"],
+      "expectedVerdict": "PILOT-FAILED",
+      "expectedFailedCriteria": ["customer-boundary-integrity"],
+      "expectedTerminal": "FAILED",
+      "probe": "boundary-leak"
+    },
+    {
+      "kind": "production-pilot.window.v1",
+      "rowId": "live-pilot-real-window-slice",
+      "workloadClass": "live-pilot-sustained-window",
+      "window": {
+        "declaredShifts": 3,
+        "declaredSpan": {
+          "firstShift": 0,
+          "lastShift": 2
+        },
+        "driftTolerancePct": 50,
+        "declaredDivergences": []
+      },
+      "shifts": [
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio",
+        "full-journey-recorded-portfolio"
+      ],
+      "operatingProfile": {
+        "costBudgetMicroUsd": "81000",
+        "latencyBudgetMsPerShift": 30000,
+        "admissionPolicy": "admit-all-scheduled"
+      },
+      "observationFamilies": [
+        "window-honesty",
+        "schedule-completeness",
+        "continuation-exactly-once",
+        "drift-classification-honesty",
+        "incident-honesty",
+        "budget-policy-envelope",
+        "end-of-window-reconciliation",
+        "customer-boundary-integrity"
+      ],
+      "expectedVerdict": "NOT-RUN",
+      "expectedFailedCriteria": [],
+      "expectedTerminal": "COMPLETED",
+      "liveGate": ["OPENROUTER_API_KEY"]
+    }
+  ]
+}
