@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-14T00:41:53Z",
+  "asOf": "2026-09-14T01:31:51Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -356,8 +356,15 @@
       }
     },
     "VAL-043": {
-      "status": "in-flight",
-      "title": "Competing gateway/router/agent benchmark"
+      "status": "complete",
+      "title": "Competing gateway/router/agent benchmark",
+      "mergedAs": {
+        "pr": 108,
+        "mergeCommit": "6ec617022b",
+        "implementationHead": "b8c7bea",
+        "baseRevision": "054a041",
+        "issue": 106
+      }
     },
     "VAL-044": {
       "status": "planned",
