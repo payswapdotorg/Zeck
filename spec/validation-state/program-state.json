@@ -371,7 +371,7 @@
       "title": "Quality/latency/failure-adjusted cost"
     },
     "VAL-045": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Cache/reuse/deterministicization savings attribution"
     },
     "VAL-046": {
