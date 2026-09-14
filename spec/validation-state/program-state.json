@@ -2,7 +2,7 @@
  "schemaVersion": 1,
  "program": "zeck-validation",
  "status": "active",
- "asOf": "2026-09-14T17:16:45Z",
+ "asOf": "2026-09-14T17:22:35Z",
  "authority": "Architect / LLM Tech Lead",
  "maxConcurrentWorkers": 3,
  "workOrders": {
@@ -426,7 +426,7 @@
    "notes": "A-lane takeover delivery: session B's claim aa13b7f (2026-09-14T13:31:42Z) stalled 2h31m52s with zero remote-visible artifacts (13 unchanged watch readings); Lead session A took the lane per takeover 6d784cb under the e7e1ad8 first-PR arbitration and delivered via PR #116. Live journey slice honest NOT RUN — the live-review lane's (OPENROUTER_API_KEY-gated)."
   },
   "VAL-051": {
-   "status": "planned",
+   "status": "in-flight",
    "title": "Production-style pilot"
   },
   "VAL-052": {
