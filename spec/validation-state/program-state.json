@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-14T07:14:59Z",
+  "asOf": "2026-09-14T07:28:37Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -395,7 +395,7 @@
       }
     },
     "VAL-048": {
-      "status": "planned",
+      "status": "in-flight",
       "title": "Cross-workload competitive benchmark"
     },
     "VAL-049": {
