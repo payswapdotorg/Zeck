@@ -607,7 +607,15 @@ definePgSuite("VAL-046 substrate/runtime economics over the real platform path",
         expect(verdict?.evidence.join(" ")).toContain(`expectedVerdict:${row.expected.verdict}`);
 
         // ---- every verified window's digest is journaled in its pinned class ----
-        expect(result.windows).toHaveLength(row.windowSet.length);
+        // The post-hoc-exclusion probe intentionally DROPS one pre-registered
+        // window from the executed set (3 declared, 2 executed); the driver
+        // names the exclusion (post-hoc-excluded:<windowId>) in the failure
+        // verdict and never journals a phantom window for the dropped one —
+        // so the executed-window count is one fewer than the declared set.
+        const expectedWindows = row.rowId.includes("post-hoc-exclusion")
+          ? row.windowSet.length - 1
+          : row.windowSet.length;
+        expect(result.windows).toHaveLength(expectedWindows);
         for (const window of result.windows) {
           expect(window.reference.recordedDigest).toMatch(/^[0-9a-f]{8}$/);
           if (row.adversarial === undefined) {
