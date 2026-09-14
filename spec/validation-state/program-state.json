@@ -2,7 +2,7 @@
  "schemaVersion": 1,
  "program": "zeck-validation",
  "status": "active",
- "asOf": "2026-09-14T17:22:35Z",
+ "asOf": "2026-09-14T21:10:45Z",
  "authority": "Architect / LLM Tech Lead",
  "maxConcurrentWorkers": 3,
  "workOrders": {
@@ -426,8 +426,15 @@
    "notes": "A-lane takeover delivery: session B's claim aa13b7f (2026-09-14T13:31:42Z) stalled 2h31m52s with zero remote-visible artifacts (13 unchanged watch readings); Lead session A took the lane per takeover 6d784cb under the e7e1ad8 first-PR arbitration and delivered via PR #116. Live journey slice honest NOT RUN — the live-review lane's (OPENROUTER_API_KEY-gated)."
   },
   "VAL-051": {
-   "status": "in-flight",
-   "title": "Production-style pilot"
+   "status": "complete",
+   "title": "Production-style pilot",
+   "mergedAs": {
+    "pr": 117,
+    "mergeCommit": "c679690d4065",
+    "implementationHead": "a56b846a96cd42fd301869339318eefc4c931667",
+    "baseRevision": "3d963eb6aa8f5d10a003da3ab568a7936e1e0c05"
+   },
+   "notes": "A-lane takeover delivery: session B's claim a42cbf6 (2026-09-14T17:22:55Z) stalled 2h47m06s with zero remote-visible artifacts (B's second consecutive stall after 050's 2h31m52s); Lead session A took the lane per takeover 3d963eb under the e7e1ad8 first-PR arbitration and delivered via PR #117. Branch-name collision resolved honestly: session B resurfaced mid-finalize with an INCOMPLETE branch push onto the prescribed name work/VAL-051-production-pilot (4 app files, zero PR) — force-overwrite refused; A delivered under work/VAL-051-production-pilot-a and B's incomplete branch closes as review intel per e7e1ad8. Live pilot slice honest NOT RUN — the live-review lane's (OPENROUTER_API_KEY-gated)."
   },
   "VAL-052": {
    "status": "planned",
