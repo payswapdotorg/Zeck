@@ -561,7 +561,14 @@ export function createMaturityFakeApiWorld(options: {
     });
   };
 
-  return { transport, createdExecutions, rows, records };
+  return {
+    transport,
+    get createdExecutions() {
+      return createdExecutions;
+    },
+    rows,
+    records,
+  };
 }
 
 // ---------------------------------------------------------------------------

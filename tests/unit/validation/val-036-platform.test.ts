@@ -343,7 +343,7 @@ describe("VAL-036 curve-series integrity matrix", () => {
   test("an EXTRAPOLATED point FAILs and is named", () => {
     const points = canonicalCurveSeriesOf("text-summarization", trendingHistory.generations).map(
       (point) =>
-      point.generation === 4 ? { ...point, pointSource: "extrapolated" as const } : point,
+        point.generation === 4 ? { ...point, pointSource: "extrapolated" as const } : point,
     );
     const verdict = deriveCurveSeriesIntegrity({
       recordedGenerations: trendingHistory.generations,

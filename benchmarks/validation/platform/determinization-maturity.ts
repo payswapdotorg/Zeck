@@ -434,22 +434,30 @@ export function maturityCitationDigestOf(citation: MaturityEvidenceCitation): st
 
 /**
  * ONE learning-curve point — the analysis's per-generation fact: the
- * generation ordinal, the family, the MEASURED facts (the displaced
- * model calls, the measured cost/latency) and the point's citations
- * (the generation digest + the lifecycle/accounting evidence it cites).
- * A point's `source` must be `recorded` — an extrapolated or
- * fabricated point FAILs the curve-series integrity and is named.
+ * generation ordinal, the family, the MEASURED facts (the baseline and
+ * displaced model calls, the measured cost/latency, the per-mechanism
+ * displacement counts) and the point's citations (the generation digest
+ * + the lifecycle/accounting evidence it cites). The point carries the
+ * generation's FULL digest-relevant fact set so the boundary
+ * re-derivation can reconstruct the recorded generation EXACTLY (the
+ * point's own facts hash back to its `generationDigest`). A point's
+ * `source` must be `recorded` — an extrapolated or fabricated point
+ * FAILs the curve-series integrity and is named.
  */
 export interface CurvePointShape {
   readonly familyId: string;
   /** 1-based generation ordinal. */
   readonly generation: number;
+  /** The baseline incumbent model calls the generation started from. */
+  readonly baselineModelCalls: number;
   /** The displaced model calls (the measured reduction). */
   readonly displacedModelCalls: number;
   /** The measured cost at this generation (micro-USD). */
   readonly measuredCostMicroUsd: number;
   /** The measured latency at this generation (ms). */
   readonly measuredLatencyMs: number;
+  /** The per-mechanism displacement counts attributed at this generation. */
+  readonly perMechanismDisplacements: Readonly<Record<CandidateKind, number>>;
   /** Whether the point's measurements are present (a generation with absent measurements FAILs). */
   readonly measured: boolean;
   /** The point's provenance: recorded / extrapolated / fabricated. */
@@ -466,9 +474,16 @@ export function curvePointDigestOf(point: CurvePointShape): string {
     "curve-point",
     point.familyId,
     point.generation,
+    point.baselineModelCalls,
     point.displacedModelCalls,
     point.measuredCostMicroUsd,
     point.measuredLatencyMs,
+    [
+      point.perMechanismDisplacements.reuse,
+      point.perMechanismDisplacements.cache,
+      point.perMechanismDisplacements.competence,
+      point.perMechanismDisplacements.deterministicization,
+    ],
     point.measured,
     point.pointSource,
     point.generationDigest,
@@ -492,9 +507,11 @@ export function canonicalCurveSeriesOf(
     .map((generation) => ({
       familyId,
       generation: generation.generation,
+      baselineModelCalls: generation.baselineModelCalls,
       displacedModelCalls: generation.displacedModelCalls,
       measuredCostMicroUsd: generation.measuredCostMicroUsd,
       measuredLatencyMs: generation.measuredLatencyMs,
+      perMechanismDisplacements: { ...generation.perMechanismDisplacements },
       measured: generation.measured,
       pointSource: "recorded" as const,
       generationDigest: generationRecordDigestOf(generation),
@@ -2080,14 +2097,36 @@ export function verifyDeterminizationMaturityAppContract(input: {
   });
 
   // 3. The boundary re-derivation of the curve integrity (over the
-  //    read-back points).
-  const boundaryCurve = deriveCurveSeriesIntegrity({
-    recordedGenerations: row.curveSeries
-      .filter((point) => point.pointSource === "recorded")
-      .map((point) => ({
+  //    read-back points) — ONLY for a row whose analysis EXECUTES: an
+  //    honest immaturity surfaces NO curve (nothing was analyzed), so
+  //    there is no series to re-derive at the boundary (the refusal
+  //    read-back + the report-landing legs cover it instead). The
+  //    recorded basis is the row's own claimed series — every claimed
+  //    point carries its generation's FULL digest-relevant fact set, so
+  //    the reconstructed record hashes back to the point's own
+  //    `generationDigest` exactly.
+  if (row.expected.verdict === "maturity-established") {
+    const boundaryCurve = deriveCurveSeriesIntegrity({
+      recordedGenerations: row.curveSeries
+        .filter((point) => point.pointSource === "recorded")
+        .map((point) => ({
+          familyId: row.familyId,
+          generation: point.generation,
+          baselineModelCalls: point.baselineModelCalls,
+          displacedModelCalls: point.displacedModelCalls,
+          measuredCostMicroUsd: point.measuredCostMicroUsd,
+          measuredLatencyMs: point.measuredLatencyMs,
+          perMechanismDisplacements: { ...point.perMechanismDisplacements },
+          measured: point.measured,
+          lifecycleProposalIds: [...point.lifecycleProposalIds],
+        })),
+      points: observation.curveSeries.map((point) => ({
         familyId: row.familyId,
         generation: point.generation,
-        baselineModelCalls: point.displacedModelCalls,
+        // The read-back point's own baseline / per-mechanism facts never
+        // enter the integrity check (only its cited generation digest
+        // does) — the defaults keep the shape complete.
+        baselineModelCalls: 0,
         displacedModelCalls: point.displacedModelCalls,
         measuredCostMicroUsd: point.measuredCostMicroUsd,
         measuredLatencyMs: point.measuredLatencyMs,
@@ -2098,28 +2137,20 @@ export function verifyDeterminizationMaturityAppContract(input: {
           deterministicization: 0,
         },
         measured: point.measured,
+        pointSource: (isCurvePointSource(point.pointSource)
+          ? point.pointSource
+          : "fabricated") as CurvePointSource,
+        generationDigest: point.generationDigest,
         lifecycleProposalIds: [...point.lifecycleProposalIds],
       })),
-    points: observation.curveSeries.map((point) => ({
-      familyId: row.familyId,
-      generation: point.generation,
-      displacedModelCalls: point.displacedModelCalls,
-      measuredCostMicroUsd: point.measuredCostMicroUsd,
-      measuredLatencyMs: point.measuredLatencyMs,
-      measured: point.measured,
-      pointSource: (isCurvePointSource(point.pointSource)
-        ? point.pointSource
-        : "fabricated") as CurvePointSource,
-      generationDigest: point.generationDigest,
-      lifecycleProposalIds: [...point.lifecycleProposalIds],
-    })),
-  });
-  criteria.push(
-    ...boundaryCurve.criteria.map((criterion) => ({
-      ...criterion,
-      criterionId: `app-${criterion.criterionId}`,
-    })),
-  );
+    });
+    criteria.push(
+      ...boundaryCurve.criteria.map((criterion) => ({
+        ...criterion,
+        criterionId: `app-${criterion.criterionId}`,
+      })),
+    );
+  }
 
   // 4. The boundary re-derivation of the savings reconciliation (over
   //    the read-back attribution; the recorded basis is the row's own
