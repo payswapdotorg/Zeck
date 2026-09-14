@@ -828,3 +828,49 @@ export function derivePilotVerdict(input: {
     failedCriteria,
   };
 }
+
+// ---------------------------------------------------------------------------
+// The live lane (env-gated — one REAL live pilot window)
+// ---------------------------------------------------------------------------
+
+/**
+ * The pinned live-pilot plan (the measured lane's declaration): one
+ * REAL sustained-observation slice — REAL dispatches on the ONE
+ * pinned OpenRouter rail (the VAL-047/048/049 live plans' own rail),
+ * one dispatch per scheduled shift held across the declared live
+ * window, the audited cost basis carried per shift (the recorded
+ * basis, never re-priced) and the live slice's own dispatch usage
+ * MEASURED and priced at the pinned model manifest list prices,
+ * recorded through the REAL recorder with honest economics.
+ */
+export const LIVE_PILOT_PLAN = Object.freeze({
+  /** The workload class the live pilot window drives. */
+  workloadClass: "live-pilot-real-window",
+  /** The REAL dispatches per scheduled shift (the five-shift schedule). */
+  dispatchesPerShift: 1,
+  /** The pinned rail the live window dispatches on (ONE binding — the live-run lesson). */
+  rail: Object.freeze({
+    provider: "openrouter",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    model: "meta-llama/llama-3.3-70b-instruct",
+    priceRevision: "rev-001",
+    maxTokens: 32,
+    temperature: "unset (the provider's documented default — nothing rides the request)",
+  }),
+  /** The economics basis the live slice carries per shift. */
+  economicsBasis:
+    "the carried VAL-049/050 audited shift economics (the recorded basis, never re-priced); the live slice's own dispatch usage measured and priced at the pinned rev-001 list prices",
+});
+
+/** The live slice's identity (the measured lane's declaration reference). */
+export const LIVE_PILOT_WORKLOAD_CLASS = "live-pilot-real-window";
+
+/** The declaration digest of the live pilot plan (the reference's recorded digest). */
+export function livePilotPlanDigestOf(): string {
+  return economicDigestOf({
+    liveWorkloadClass: LIVE_PILOT_WORKLOAD_CLASS,
+    dispatchesPerShift: LIVE_PILOT_PLAN.dispatchesPerShift,
+    rail: LIVE_PILOT_PLAN.rail,
+    economicsBasis: LIVE_PILOT_PLAN.economicsBasis,
+  });
+}

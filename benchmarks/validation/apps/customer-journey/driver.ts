@@ -415,3 +415,49 @@ export function deriveJourneyVerdict(input: {
     failedCriteria,
   };
 }
+
+// ---------------------------------------------------------------------------
+// The live lane (env-gated — one REAL live journey slice)
+// ---------------------------------------------------------------------------
+
+/**
+ * The pinned live-journey plan (the measured lane's declaration): one
+ * REAL journey slice — REAL dispatches on the ONE pinned OpenRouter
+ * rail (the VAL-047/048/049 live plans' own rail), one dispatch per
+ * declared journey stage, the audited cost basis carried per stage
+ * (the recorded basis, never re-priced) and the live slice's own
+ * dispatch usage MEASURED and priced at the pinned model manifest
+ * list prices, recorded through the REAL recorder with honest
+ * economics.
+ */
+export const LIVE_JOURNEY_PLAN = Object.freeze({
+  /** The workload class the live journey slice drives. */
+  workloadClass: "live-journey-real-slice",
+  /** The REAL dispatches per declared journey stage (the five-stage lifecycle). */
+  dispatchesPerStage: 1,
+  /** The pinned rail the live journey dispatches on (ONE binding — the live-run lesson). */
+  rail: Object.freeze({
+    provider: "openrouter",
+    endpoint: "https://openrouter.ai/api/v1/chat/completions",
+    model: "meta-llama/llama-3.3-70b-instruct",
+    priceRevision: "rev-001",
+    maxTokens: 32,
+    temperature: "unset (the provider's documented default — nothing rides the request)",
+  }),
+  /** The economics basis the live slice carries per stage. */
+  economicsBasis:
+    "the carried VAL-049 audited stage economics (the recorded basis, never re-priced); the live slice's own dispatch usage measured and priced at the pinned rev-001 list prices",
+});
+
+/** The live slice's identity (the measured lane's declaration reference). */
+export const LIVE_JOURNEY_WORKLOAD_CLASS = "live-journey-real-slice";
+
+/** The declaration digest of the live journey plan (the reference's recorded digest). */
+export function liveJourneyPlanDigestOf(): string {
+  return economicDigestOf({
+    liveWorkloadClass: LIVE_JOURNEY_WORKLOAD_CLASS,
+    dispatchesPerStage: LIVE_JOURNEY_PLAN.dispatchesPerStage,
+    rail: LIVE_JOURNEY_PLAN.rail,
+    economicsBasis: LIVE_JOURNEY_PLAN.economicsBasis,
+  });
+}
