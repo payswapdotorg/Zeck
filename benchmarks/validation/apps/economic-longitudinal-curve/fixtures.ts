@@ -62,8 +62,8 @@ import { recordedCurvePointDigestOf } from "./driver";
 
 /** The REAL accounting rails re-export (the driver's sealing binding). */
 export { createRealAccountingRails } from "../economic-baseline/driver";
-export { honestCurveInputsOf } from "./corpus";
 export type { HonestCurveInputs } from "./corpus";
+export { honestCurveInputsOf } from "./corpus";
 export type { TickClock };
 export { createFakeLedger, createFakeLifecycle, createFakeSubmissionSeam, createTickClock };
 
