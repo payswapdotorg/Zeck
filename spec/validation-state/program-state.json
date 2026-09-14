@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "asOf": "2026-09-14T05:08:38Z",
+  "asOf": "2026-09-14T05:29:32Z",
   "authority": "Architect / LLM Tech Lead",
   "maxConcurrentWorkers": 3,
   "workOrders": {
@@ -375,8 +375,14 @@
       "title": "Cache/reuse/deterministicization savings attribution"
     },
     "VAL-046": {
-      "status": "in-flight",
-      "title": "Substrate/runtime economics"
+      "status": "complete",
+      "title": "Substrate/runtime economics",
+      "mergedAs": {
+        "pr": 112,
+        "mergeCommit": "d33fcc76e6a4",
+        "implementationHead": "d33fcc76e6a45d96fd0a84f9f91259b764be3352",
+        "baseRevision": "6a997b5bdcc1922a124f788b782c1e6edef526aa"
+      }
     },
     "VAL-047": {
       "status": "planned",
