@@ -2,7 +2,10 @@
   "schemaVersion": 1,
   "program": "zeck-validation",
   "status": "active",
-  "eligible": [],
+  "eligible": [
+    "VAL-045",
+    "VAL-046"
+  ],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
