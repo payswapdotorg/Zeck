@@ -262,7 +262,7 @@ export function createDashboard(options: DashboardOptions): {
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
   const port = options.port ?? 4545;
-  const routes = createDashboardRoutes(client);
+  const routes = createDashboardRoutes(client, { applicationId: options.applicationId });
   const server = createServer((request, response) => {
     void dispatch(routes, request, response).catch(() => {
       try {

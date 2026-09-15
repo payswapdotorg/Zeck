@@ -160,6 +160,7 @@ describe("modes change visibility ONLY — never semantics (IR4, D2)", () => {
     expect(professional.map((group) => group.label)).toEqual([
       "Work",
       "Build",
+      "Develop",
       "Library",
       "Trust",
       "Control",

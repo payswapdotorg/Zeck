@@ -22,6 +22,7 @@ import {
   type ArtifactReference,
   type Execution,
   type ExecutionEvent,
+  type ExecutionRequest,
   type ExecutionResult,
   type VerificationResult,
   ZeckApiError,
@@ -33,6 +34,7 @@ import {
   distinctionList,
   esc,
   executionHeader,
+  formatMicroUsd,
   glanceGrid,
   keyValueTable,
   longRunningWorkloadSection,
@@ -43,6 +45,30 @@ import {
   verificationSummary,
   whyPanel,
 } from "./components";
+import {
+  buildPlaygroundExecutionRequest,
+  type ConsoleFamily,
+  capabilityKinds,
+  classificationChip,
+  consoleApplicationsOf,
+  consoleFamilies,
+  developerDocsIndex,
+  evidenceKinds,
+  familiesByClassification,
+  familyAvailabilitySection,
+  familyOf,
+  inFlightCount,
+  PLAYGROUND_BUDGET_LIMIT_DOLLARS,
+  PLAYGROUND_FORM_KEYS,
+  PLAYGROUND_LATENCY_LIMIT_MS,
+  PLAYGROUND_MAX_CONCURRENT_RUNS,
+  PLAYGROUND_ORIGIN,
+  playgroundTaskTable,
+  readDeveloperDoc,
+  sandboxLimitsSection,
+  seedCapabilities,
+  validatePlaygroundForm,
+} from "./console";
 import {
   type AuditLedgerRow,
   accountingDetailDisclosure,
@@ -72,7 +98,7 @@ import {
   serializeCookie,
 } from "./http";
 import { deploymentSessionExecutionSection, inspectionPanel, modalitySections } from "./inspection";
-import { type ExperienceMode, modeCookieHeader, modeOf } from "./modes";
+import { type ExperienceMode, modeCookieHeader, modeOf, modeSelectionForm } from "./modes";
 import {
   type AgentSelectionFact,
   APPEARANCE_COOKIE,
@@ -126,7 +152,14 @@ import {
   validateWorkloadForm,
   WORKLOAD_FORM_KEYS,
 } from "./projection";
-import { type Appearance, type AppShellInput, appShell, navIndex, pageHead } from "./shell";
+import {
+  type Appearance,
+  type AppShellInput,
+  appShell,
+  navIndex,
+  pageHead,
+  renderAppearanceForm,
+} from "./shell";
 import { confirmationCard, emptyState, errorState, unavailableState } from "./states";
 import {
   artifactMetadataTable,
@@ -3092,11 +3125,949 @@ async function modePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerRe
 }
 
 // ---------------------------------------------------------------------------
+// Developer console (DEP-010 — the roadmap-governed console surfaces)
+// ---------------------------------------------------------------------------
+
+/**
+ * The applications-section tab nav (Overview / API keys / Environments /
+ * Usage). Static routes are registered before the parameterized
+ * application detail route, so these paths always win.
+ */
+function applicationsTabNav(active: string): string {
+  const tab = (name: string, label: string, href: string): string =>
+    `<a href="${esc(href)}"${active === name ? ' aria-current="page"' : ""}>${label}</a>`;
+  return `<nav class="tabs" aria-label="Application views">
+  ${tab("", "Overview", "/console/applications")}
+  ${tab("keys", "API keys", "/console/applications/keys")}
+  ${tab("environments", "Environments", "/console/applications/environments")}
+  ${tab("usage", "Usage", "/console/applications/usage")}
+</nav>`;
+}
+
+async function consoleHomePage(scope: string, ctx: HttpContext): Promise<HandlerResult> {
+  const scopeLine =
+    scope.length > 0
+      ? `This console is bound to the application scope <span class="mono">${esc(
+          scope,
+        )}</span> — every scoped read and governed command it sends carries that selector, and the effective scope is still derived server-side.`
+      : "This console has no bound application scope in its deployment configuration — set ZECK_APPLICATION_ID where the console runs.";
+  const content = `${pageHead({
+    title: "Developer console",
+    path: "/console",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/playground">Open the playground</a>',
+  })}
+<p>${scopeLine}</p>
+<div class="tiles">
+  <section class="tile">
+    <h3><a href="/console/quickstart">Quickstart</a></h3>
+    <p>The five-step guided path to a first sandbox execution and its evidence.</p>
+    <p class="muted">Live — the guided console path.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/applications">Applications</a></h3>
+    <p>Application scope, safe credentials, environments and usage.</p>
+    <p class="muted">Scope is live; inventory and issuance are honest not-exposed states (no public API yet).</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/playground">Playground</a></h3>
+    <p>Guided sandbox runs for every workload family — synthetic data, hard limits, honest availability.</p>
+    <p class="muted">Live — every run goes through the governed public API; live completion depends on the deployment's authorized rails.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/runs">Executions</a></h3>
+    <p>The execution explorer: result, verification, activity, route and cost.</p>
+    <p class="muted">Live — the run surface this console already projects.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/trust/evidence">Evidence</a></h3>
+    <p>Verification evidence behind every run.</p>
+    <p class="muted">Live per run; cross-work evidence search is not public yet.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/assets/artifacts">Artifacts</a></h3>
+    <p>Output artifacts of executions you open, with digest and lineage.</p>
+    <p class="muted">Live — per-execution facts.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/admin/budgets">Costs</a></h3>
+    <p>Per-run spend, limits and categories.</p>
+    <p class="muted">Live — browser-scoped per-run facts; no aggregate economics API yet.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/providers">Providers &amp; capabilities</a></h3>
+    <p>The capability catalog and honest provider availability.</p>
+    <p class="muted">Live — projected from the machine capability manifest.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/docs">Docs</a></h3>
+    <p>The developer documentation, served from the repository.</p>
+    <p class="muted">Live — the public integration kit, verbatim.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/settings">Settings</a></h3>
+    <p>Console presentation preferences and the disclosed recents list.</p>
+    <p class="muted">Live — presentation state only.</p>
+  </section>
+</div>`;
+  return page(
+    { title: "Zeck — Developer console", activePath: "/console", mainContent: content },
+    ctx,
+  );
+}
+
+async function quickstartPage(scope: string, ctx: HttpContext): Promise<HandlerResult> {
+  const content = `${pageHead({
+    title: "Quickstart",
+    path: "/console/quickstart",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/playground/text">Run the first sandbox execution</a>',
+  })}
+<p>Five steps from zero to an inspectable sandbox execution — every step is a link into a live console surface, and every step states honestly what the platform exposes.</p>
+<ol class="timeline">
+  <li>
+    <p><strong>Your application scope.</strong> ${
+      scope.length > 0
+        ? `This console is already bound to <span class="mono">${esc(scope)}</span> — the governed scope every run here belongs to.`
+        : "This console has no bound scope in its deployment configuration; the create surfaces ask for the application id per request."
+    } <a href="/console/applications">Applications</a> shows what the console derives and what only the platform authority owns.</p>
+  </li>
+  <li>
+    <p><strong>A safe credential.</strong> The console's transport credential is bound from the environment at startup and is never displayed, logged or stored in a cookie. Provider keys are bring-your-own, secret-mediated server-side — the SDK surface has no field where a plaintext secret could appear. <a href="/console/applications/keys">API keys &amp; credentials</a> states the full policy and the guided path.</p>
+  </li>
+  <li>
+    <p><strong>Run your first sandbox execution.</strong> The <a href="/console/playground/text">playground's text family</a> submits the canonical synthetic summarization task through the governed public API with a hard budget, latency ceiling and disposable-sandbox identity — no provider, model or connection is ever selected.</p>
+  </li>
+  <li>
+    <p><strong>Inspect the full path.</strong> The <a href="/runs">execution explorer</a> shows the result, verification evidence, the activity timeline, the recorded route and the settled cost — every field a public-contract fact. <a href="/trust/evidence">Evidence</a> and <a href="/assets/artifacts">artifacts</a> drill deeper.</p>
+  </li>
+  <li>
+    <p><strong>Go deeper.</strong> The <a href="/console/docs">docs</a> cover every workload family, the SDK, the sandbox limits, webhooks and the production promotion path — readable by humans and coding agents alike.</p>
+  </li>
+</ol>
+${sandboxLimitsSection()}`;
+  return page(
+    { title: "Zeck — Quickstart", activePath: "/console/quickstart", mainContent: content },
+    ctx,
+  );
+}
+
+async function applicationsPage(
+  client: ZeckClient,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const applications = consoleApplicationsOf(recents.executions);
+  const rows =
+    applications.length === 0
+      ? emptyState(
+          "No applications seen yet",
+          "The public API exposes no application listing route. Applications appear here as their executions are opened in this browser — the console holds no application registry of its own.",
+        )
+      : `<table class="data">
+  <thead><tr><th scope="col">Application</th><th scope="col">Runs opened</th><th scope="col">Last seen</th></tr></thead>
+  <tbody>${applications
+    .map(
+      (application) => `<tr>
+      <td class="mono"><a href="/console/applications/${encodeURIComponent(
+        application.applicationId,
+      )}">${esc(application.applicationId)}</a></td>
+      <td>${esc(application.runCount)}</td>
+      <td class="mono">${esc(application.lastSeenAt)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const content = `${pageHead({
+    title: "Applications",
+    path: "/console/applications",
+    primaryActionHtml:
+      '<a class="button-link" href="/build/execution">Start an execution for an application</a>',
+  })}
+${applicationsTabNav("")}
+<h2>This console's scope</h2>
+${keyValueTable([
+  [
+    "Console application scope",
+    scope.length > 0 ? scope : "(not bound — set ZECK_APPLICATION_ID where the console runs)",
+  ],
+  [
+    "Where it comes from",
+    "deployment configuration (ZECK_APPLICATION_ID); the SDK client sends it as the X-Zeck-Application header on every scoped read and governed command",
+  ],
+  [
+    "Who derives the effective scope",
+    "the platform, server-side, from durable membership rows — the header names, it never authorizes",
+  ],
+])}
+<h2>Applications on recent executions</h2>
+<p class="muted">${esc(RECENTS_NOTE)}.</p>
+${rows}
+${unavailableState(
+  "Application inventory and creation",
+  "There is no application inventory or creation route in the public API — the application authority owns application lifecycle, and the console must not become a second one. Executions are created per request with an explicit applicationId (the create contract's split selector), and the applications above are derived live from executions this browser opened.",
+  "the application authority through the public API",
+)}
+<p>Guided path: <a href="/console/docs/AUTH.md">authentication and application setup</a> in the docs.</p>`;
+  return page(
+    { title: "Zeck — Applications", activePath: "/console/applications", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function applicationDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const applicationId = ctx.params.applicationId ?? "";
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const mine = recents.executions.filter((execution) => execution.applicationId === applicationId);
+  const facts = consoleApplicationsOf(mine)[0] ?? null;
+  const content = `${pageHead({
+    title: "Application",
+    path: "/console/applications",
+    currentLabel: applicationId,
+  })}
+${applicationsTabNav("")}
+<h2>Application facts</h2>
+${
+  facts === null
+    ? emptyState(
+        "No executions of this application were opened in this browser",
+        "The public API exposes no application record route — application facts here are derived live from executions this browser opened.",
+      )
+    : keyValueTable([
+        ["Application", facts.applicationId],
+        ["Runs opened in this browser", String(facts.runCount)],
+        ["Last seen", facts.lastSeenAt],
+      ])
+}
+<h2>Runs</h2>
+${runsList(mine, "No executions of this application were opened in this browser yet.")}
+<p class="muted">These are browser-scoped facts (${esc(RECENTS_NOTE)}) — the application authority owns the durable record, and no application read API is public yet.</p>`;
+  return page(
+    {
+      title: `Zeck — Application ${applicationId}`,
+      activePath: "/console/applications",
+      mainContent: content,
+    },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function credentialsPage(scope: string, ctx: HttpContext): Promise<HandlerResult> {
+  const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
+${applicationsTabNav("keys")}
+<h2>The console's transport credential</h2>
+<p>The console authenticates to the governed API with a transport credential bound from the environment at startup${scope.length > 0 ? `, inside application scope <span class="mono">${esc(scope)}</span>` : ""}. It crosses the wire only as the Authorization bearer header, and it is never rendered on any page, never logged, and never stored in a cookie — no wire shape the console renders even has a field where it could appear. The SDK surface is secret-safe by construction: credentials are references, never values.</p>
+<h2>Safe credential rules</h2>
+${distinctionList([
+  {
+    label: "Bring-your-own keys stay server-side",
+    fact: "Provider credentials are BYOK references handled by the platform; the public SDK types carry no secret material.",
+    backed: true,
+  },
+  {
+    label: "Shown at most once, where policy requires",
+    fact: "Where the platform's issuance policy displays a secret, it is shown exactly once at creation — never retrievable afterwards.",
+    backed: true,
+  },
+  {
+    label: "Never logged, never echoed",
+    fact: "Secret-shaped values are redacted defensively before any console rendering ([not displayed]) — the hostile-value probes pin it.",
+    backed: true,
+  },
+  {
+    label: "Credential issuance in this console",
+    fact: "Not exposed: the public API has no credential issuance route yet, and the console must not become a second credential authority.",
+    backed: false,
+  },
+])}
+<h2>The environment contract (names only — never values)</h2>
+${keyValueTable([
+  ["ZECK_API_URL", "the governed API base URL the console and SDK talk to"],
+  ["ZECK_TOKEN", "the Zeck transport credential (never a provider key)"],
+  ["ZECK_APPLICATION_ID", "the application scope this console is bound to"],
+  ["ZECK_ENVIRONMENT_ID", "optional — a disposable sandbox environment for executions"],
+])}
+<h2>Issue a credential</h2>
+${unavailableState(
+  "Credential issuance",
+  "There is no credential issuance route in the public API yet. When the credential surface ships, secrets that policy requires showing will appear exactly once at creation and never again — this console states that policy now and will render those facts from the credential authority through the public API, never from a console-local store.",
+  "the credential authority through the public API",
+)}
+<p>Guided path: <a href="/console/docs/AUTH.md">authentication</a> and <a href="/console/docs/CONFIGURATION.md">provider/model configuration</a> in the docs. Routing facts from real runs (BYOK, secret-mediated): <a href="/assets/connections">Connections</a>.</p>`;
+  return page(
+    {
+      title: "Zeck — API keys & credentials",
+      activePath: "/console/applications/keys",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function environmentsConsolePage(
+  client: ZeckClient,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const content = `${pageHead({ title: "Environments", path: "/console/applications/environments" })}
+${applicationsTabNav("environments")}
+<p>Environments recorded on executions this browser opened — the developer view of where sandbox runs execute. A disposable sandbox environment id (ZECK_ENVIRONMENT_ID, optional) can be attached per run; the playground's run form carries the same field.</p>
+${environmentsSection(environmentFacts(recents.executions))}
+${unavailableState(
+  "Environment inventory and provisioning",
+  "There is no environment inventory or provisioning route in the public API — environment facts here are derived live from real runs, and the compute authority owns environment lifecycle.",
+  "the compute authority through the public API",
+)}
+<p>The operator's environment surface: <a href="/admin/environments">Environments (Control)</a>.</p>`;
+  return page(
+    {
+      title: "Zeck — Environments",
+      activePath: "/console/applications/environments",
+      mainContent: content,
+    },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function usagePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const results = await Promise.all(
+    recents.executions.map(async (execution) => {
+      try {
+        return await client.getResult(execution.id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    }),
+  );
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const rows =
+    recents.executions.length === 0
+      ? emptyState(
+          "No usage yet",
+          "No executions have been opened in this browser — per-run usage appears here as runs are opened. The public API exposes no aggregate usage route.",
+        )
+      : `<table class="data">
+  <thead><tr><th scope="col">Run</th><th scope="col">Status</th><th scope="col">Input tokens</th><th scope="col">Output tokens</th><th scope="col">Settled cost</th></tr></thead>
+  <tbody>${recents.executions
+    .map((execution, index) => {
+      const result = results[index] ?? null;
+      const usage = result?.usage ?? null;
+      const cost = result?.cost ?? null;
+      return `<tr>
+      <td><a href="/runs/${encodeURIComponent(execution.id)}">${esc(
+        executionTitle(execution.task, execution.id),
+      )}</a></td>
+      <td>${statusBadge(execution.status)}</td>
+      <td>${usage === null ? '<span class="muted">not recorded</span>' : esc(usage.inputTokens)}</td>
+      <td>${usage === null ? '<span class="muted">not recorded</span>' : esc(usage.outputTokens)}</td>
+      <td>${
+        cost === null
+          ? '<span class="muted">not settled yet</span>'
+          : esc(formatMicroUsd(cost.totalMicroUsd))
+      }</td>
+    </tr>`;
+    })
+    .join("")}</tbody>
+</table>`;
+  const content = `${pageHead({ title: "Usage", path: "/console/applications/usage" })}
+${applicationsTabNav("usage")}
+<p>Per-run usage for executions opened in this browser — provider-reported token usage and settled cost as the public result package records them (${esc(RECENTS_NOTE)}).</p>
+${rows}
+${unavailableState(
+  "Aggregate usage and billing",
+  "There is no aggregate usage or billing route in the public API — usage facts are per execution, projected live from the runs this browser opened. When an aggregate surface ships, its facts will come from the economics authorities through the public API.",
+  "the economics authorities through the public API",
+)}
+<p>Per-run spend, limits and categories: <a href="/admin/budgets">Spend (Control)</a>.</p>`;
+  return page(
+    { title: "Zeck — Usage", activePath: "/console/applications/usage", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Playground (DEP-010 — every workload family, honest availability)
+// ---------------------------------------------------------------------------
+
+function playgroundFamilyRows(): string {
+  return `<table class="data">
+  <thead><tr><th scope="col">Family</th><th scope="col">Classification</th><th scope="col">Recorded availability</th><th scope="col">Example</th></tr></thead>
+  <tbody>${consoleFamilies()
+    .map(
+      (family) => `<tr>
+      <td><a href="/console/playground/${encodeURIComponent(family.family)}">${esc(
+        family.family,
+      )}</a></td>
+      <td>${classificationChip(family.classification)}</td>
+      <td>${esc(family.availability)}</td>
+      <td class="mono">${esc(family.example)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+}
+
+async function playgroundPage(ctx: HttpContext): Promise<HandlerResult> {
+  const split = familiesByClassification();
+  const content = `${pageHead({
+    title: "Playground",
+    path: "/console/playground",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/playground/text">Run the text family</a>',
+  })}
+<p>Guided sandbox runs for every workload family the platform supports — the catalog below is projected live from the machine capability manifest (the same source the validation program validates), so the console can never drift from it. Each family page states the recorded availability honestly, shows the synthetic task a guided run submits, and runs it through the governed public API inside the sandbox envelope.</p>
+<h2>Families</h2>
+${playgroundFamilyRows()}
+<p class="muted">${split.runnable.length} families classify runnable (the integration path is live for any deployment exposing the public API); ${split.providerGated.length} classify provider-gated (completion requires provider capabilities that may be gated or absent — the gate is about the deployment's rails, never about your code).</p>
+${sandboxLimitsSection()}`;
+  return page(
+    { title: "Zeck — Playground", activePath: "/console/playground", mainContent: content },
+    ctx,
+  );
+}
+
+function playgroundEditLink(
+  family: ConsoleFamily,
+  values: Record<string, string>,
+  idempotencyKey: string,
+): string {
+  const params = new URLSearchParams();
+  for (const key of PLAYGROUND_FORM_KEYS) {
+    params.set(key, values[key] ?? "");
+  }
+  params.set("edit", "1");
+  params.set("idempotencyKey", idempotencyKey);
+  return `/console/playground/${encodeURIComponent(family.family)}?${params.toString()}`;
+}
+
+/** The sandbox run form (the guided composer; constraints only — the task is the manifest's synthetic shape). */
+function playgroundRunForm(
+  family: ConsoleFamily,
+  values: Record<string, string>,
+  errors: Record<string, string | undefined>,
+  idempotencyKey: string,
+): string {
+  return `<form class="flow card" method="get" action="/console/playground/${encodeURIComponent(
+    family.family,
+  )}">
+  <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
+  ${executionFormField(
+    "pf-application",
+    "Application id",
+    `<input id="pf-application" name="applicationId" value="${esc(
+      values.applicationId ?? "",
+    )}" required>`,
+    "The governed application scope the sandbox execution (and any spend) belongs to.",
+    errors.applicationId,
+  )}
+  ${executionFormField(
+    "pf-environment",
+    "Compute environment (optional)",
+    `<input id="pf-environment" name="environmentId" value="${esc(values.environmentId ?? "")}">`,
+    "Leave empty for the default environment; a disposable sandbox environment id goes here.",
+    errors.environmentId,
+  )}
+  ${executionFormField(
+    "pf-spend",
+    `Spend limit (dollars, optional — sandbox ceiling $${PLAYGROUND_BUDGET_LIMIT_DOLLARS})`,
+    `<input id="pf-spend" name="spendLimitDollars" value="${esc(
+      values.spendLimitDollars ?? "",
+    )}" inputmode="decimal" placeholder="1.50">`,
+    `Sent as the per-run cost constraint. The $${PLAYGROUND_BUDGET_LIMIT_DOLLARS} ceiling is enforced either way; a higher entry is refused before any wire call.`,
+    errors.spendLimitDollars,
+  )}
+  <div class="form-actions"><button type="submit" class="primary">Review the sandbox run</button></div>
+</form>`;
+}
+
+/** The consequence/commitment card for a sandbox run (the WORK-035 confirmation primitive). */
+function playgroundCommitmentCard(
+  family: ConsoleFamily,
+  values: Record<string, string>,
+  request: ExecutionRequest,
+  idempotencyKey: string,
+  confirmLabel: string,
+): string {
+  const constraints = request.constraints ?? {};
+  const budget =
+    constraints.maxCostMicroUsd === undefined
+      ? PLAYGROUND_BUDGET_LIMIT_DOLLARS
+      : formatMicroUsd(constraints.maxCostMicroUsd);
+  const latencySeconds = Math.round(
+    (constraints.maxLatencyMs ?? PLAYGROUND_LATENCY_LIMIT_MS) / 1000,
+  );
+  return confirmationCard({
+    title: "Run this sandbox execution?",
+    consequence: `Run submits the governed create request for the ${family.family} family's recorded synthetic task: exactly one execution is created, Zeck plans the route and executes under policy, and the events, verification results, output artifacts and settled cost are recorded platform-side — you follow the run on its execution page. The sandbox identity (${PLAYGROUND_ORIGIN}, disposable) rides the request's metadata.`,
+    affected: `A governed execution record in application ${values.applicationId ?? ""}${
+      (values.environmentId ?? "").length > 0
+        ? `, environment ${values.environmentId ?? ""}`
+        : " (default environment)"
+    }.`,
+    cost: `Spend ceiling ${budget} and latency ceiling ${latencySeconds} seconds — the request's own constraints. No pre-run estimate exists; the settled cost is recorded per execution on the run's header facts.`,
+    whyAllowed:
+      "The create request is valid against the frozen create contract — it selects no provider, model, rail, connection or agent (selection is forbidden; the platform plans the route), and policy admission is decided platform-side at dispatch: a denial is surfaced on the execution, never silently retried.",
+    reversible: false,
+    reversibleDetail:
+      "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel (its own consequence preview); work already performed and its evidence stay recorded and inspectable.",
+    approvalNote:
+      "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary.",
+    idempotencyNote: `The idempotency key ${idempotencyKey} is carried: resubmitting the same request converges on ONE execution rather than creating duplicates.`,
+    hiddenFields: PLAYGROUND_FORM_KEYS.filter(
+      (key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0,
+    ).map((key) => [key, values[key] ?? ""] as const),
+    confirmAction: `/console/playground/${encodeURIComponent(family.family)}`,
+    confirmLabel,
+    cancelHref: playgroundEditLink(family, values, idempotencyKey),
+  });
+}
+
+/** The proposed-sandbox-run envelope: exactly what the create request will carry. */
+function playgroundEnvelope(family: ConsoleFamily, request: ExecutionRequest): string {
+  const constraints = request.constraints ?? {};
+  const budget =
+    constraints.maxCostMicroUsd === undefined
+      ? `$${PLAYGROUND_BUDGET_LIMIT_DOLLARS}`
+      : formatMicroUsd(constraints.maxCostMicroUsd);
+  const latencySeconds = Math.round(
+    (constraints.maxLatencyMs ?? PLAYGROUND_LATENCY_LIMIT_MS) / 1000,
+  );
+  return `<div class="card review-envelope">
+  <h2>Proposed sandbox run</h2>
+  <h3>The synthetic task (verbatim from the capability manifest)</h3>
+  ${playgroundTaskTable(family)}
+  <h3>Capability requirements</h3>
+  <ul>${family.capabilityRequirements
+    .map((requirement) => `<li class="mono">${esc(requirement)}</li>`)
+    .join("")}</ul>
+  <h3>Sandbox constraints</h3>
+  ${keyValueTable([
+    ["Cost ceiling", budget],
+    ["Latency ceiling", `${latencySeconds} seconds`],
+    ["Sandbox identity", `${PLAYGROUND_ORIGIN} (disposable)`],
+    ["Example", family.example],
+  ])}
+  <p class="muted">No provider, model, rail, connection or agent is selected — the frozen create contract forbids provider selection, and Zeck owns the route. Policy admission is decided platform-side at dispatch.</p>
+</div>`;
+}
+
+function playgroundFamilyNotFoundView(familyId: string, ctx: HttpContext): HandlerResult {
+  const content = `${pageHead({ title: "Workload family not found", path: "/console/playground" })}
+${errorState(
+  "No such workload family",
+  `The machine capability manifest records no family "${familyId}" — the console projects the manifest and invents nothing.`,
+  "docs/developer/machine/capability-manifest.json (the validated machine contract)",
+)}
+<p><a href="/console/playground">Back to the playground catalog</a></p>`;
+  return htmlStatusResult(
+    404,
+    appShell({
+      title: "Zeck — Workload family not found",
+      activePath: "/console/playground",
+      mainContent: content,
+      appearance: appearanceOf(ctx.cookies),
+      mode: modeOf(ctx.cookies),
+      returnTo: ctx.path,
+    }),
+  );
+}
+
+function playgroundConcurrencyGate(inFlight: number): string {
+  return `<div class="state state-blocked">
+  <p class="state-title">Sandbox concurrency limit reached</p>
+  <p class="state-body">${inFlight} sandbox runs opened in this browser are still in flight (the limit is ${PLAYGROUND_MAX_CONCURRENT_RUNS}). The console refuses to submit another until one finishes or is cancelled — uncontrolled spend and side effects are prevented by default, and this gate holds no server-side state: it is derived live from the runs this browser opened.</p>
+  <p class="state-source">Open the active runs to wait or cancel: <a href="/runs/active">Active runs</a>.</p>
+</div>`;
+}
+
+async function playgroundFamilyPage(
+  client: ZeckClient,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const familyId = ctx.params.family ?? "";
+  const family = familyOf(familyId);
+  if (family === null) {
+    return playgroundFamilyNotFoundView(familyId, ctx);
+  }
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const inFlight = inFlightCount(recents.executions);
+  const gated = inFlight >= PLAYGROUND_MAX_CONCURRENT_RUNS;
+  const query: Record<string, string> = {};
+  for (const key of [...PLAYGROUND_FORM_KEYS, "edit"]) {
+    const value = ctx.query.get(key);
+    if (value !== null) {
+      query[key] = value;
+    }
+  }
+  const idempotencyKey =
+    (query.idempotencyKey ?? "").length > 0
+      ? (query.idempotencyKey ?? "")
+      : `dash-${crypto.randomUUID()}`;
+  const submitted = (query.applicationId ?? "").trim().length > 0;
+  const applicationId = query.applicationId ?? scope;
+  const values: Record<string, string> = {
+    applicationId,
+    environmentId: query.environmentId ?? "",
+    spendLimitDollars: query.spendLimitDollars ?? "",
+    idempotencyKey,
+  };
+  const reviewable = submitted && query.edit !== "1";
+  let runSurface: string;
+  if (gated) {
+    runSurface = playgroundConcurrencyGate(inFlight);
+  } else if (!reviewable) {
+    runSurface = playgroundRunForm(family, values, {}, idempotencyKey);
+  } else {
+    const validation = validatePlaygroundForm(query);
+    if (validation.values === null) {
+      runSurface = playgroundRunForm(family, values, validation.errors, idempotencyKey);
+    } else {
+      const request = buildPlaygroundExecutionRequest(family, validation.values);
+      runSurface = `${playgroundEnvelope(family, request)}
+${playgroundCommitmentCard(family, values, request, idempotencyKey, "Run sandbox execution")}`;
+    }
+  }
+  const content = `${pageHead({
+    title: `Playground — ${family.family}`,
+    path: "/console/playground",
+    currentLabel: family.family,
+    primaryActionHtml: '<a class="button-link" href="/console/playground">All families</a>',
+  })}
+${familyAvailabilitySection(family)}
+<h2>The synthetic task</h2>
+<p class="muted">The guided run submits this recorded task shape verbatim — synthetic data by construction, never a live document.</p>
+${playgroundTaskTable(family)}
+<h2>Run it in the sandbox</h2>
+${runSurface}
+${sandboxLimitsSection()}
+<h2>The example behind this family</h2>
+${keyValueTable([
+  ["Example", family.example],
+  ["Classification", family.classification],
+  ["Capability requirements", family.capabilityRequirements.join(", ")],
+])}
+<p class="muted">The example file in the repository is the copy/paste-runnable form of the same integration; the guided run here is the console form of it — same wire contract, same synthetic task.</p>`;
+  return page(
+    {
+      title: `Zeck — Playground ${family.family}`,
+      activePath: "/console/playground",
+      mainContent: content,
+    },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function createPlaygroundRunHandler(
+  client: ZeckClient,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const familyId = ctx.params.family ?? "";
+  const family = familyOf(familyId);
+  if (family === null) {
+    return playgroundFamilyNotFoundView(familyId, ctx);
+  }
+  const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
+  const validation = validatePlaygroundForm(ctx.form);
+  if (validation.values === null || idempotencyKey.length === 0) {
+    const errors: Record<string, string | undefined> = {
+      ...(validation.errors as Record<string, string | undefined>),
+    };
+    if (idempotencyKey.length === 0) {
+      errors.applicationId =
+        (errors.applicationId ?? "") +
+        (errors.applicationId === undefined ? "" : " ") +
+        "The form state was lost — fill the application id again and resubmit.";
+    }
+    const content = `${pageHead({
+      title: `Playground — ${family.family}`,
+      path: "/console/playground",
+      currentLabel: family.family,
+    })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The sandbox run could not be submitted — fix the highlighted fields.</div>
+${playgroundRunForm(family, { ...ctx.form, applicationId: ctx.form.applicationId ?? scope }, errors, idempotencyKey.length > 0 ? idempotencyKey : `dash-${crypto.randomUUID()}`)}
+${sandboxLimitsSection()}`;
+    return htmlStatusResult(
+      422,
+      appShell({
+        title: `Zeck — Playground ${family.family}`,
+        activePath: "/console/playground",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const values = validation.values;
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const inFlight = inFlightCount(recents.executions);
+  if (inFlight >= PLAYGROUND_MAX_CONCURRENT_RUNS) {
+    const content = `${pageHead({
+      title: `Playground — ${family.family}`,
+      path: "/console/playground",
+      currentLabel: family.family,
+    })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The sandbox concurrency limit refused this submission.</div>
+${playgroundConcurrencyGate(inFlight)}
+${sandboxLimitsSection()}`;
+    return htmlStatusResult(
+      422,
+      appShell({
+        title: `Zeck — Playground ${family.family}`,
+        activePath: "/console/playground",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  try {
+    const request = buildPlaygroundExecutionRequest(family, values);
+    const { receipt } = await client.createExecution(request, idempotencyKey);
+    return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const policyBoundary =
+        error.body.code === "POLICY_DENIED" || error.body.code === "BUDGET_EXCEEDED"
+          ? `\n${createBlockedExplanation(error.body.code, error.body.message)}`
+          : "";
+      const request = buildPlaygroundExecutionRequest(family, values);
+      const content = `${pageHead({
+        title: `Playground — ${family.family}`,
+        path: "/console/playground",
+        currentLabel: family.family,
+      })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this sandbox request: ${esc(
+        error.body.message,
+      )} (${esc(error.body.code)})</div>
+${policyBoundary}
+${playgroundEnvelope(family, request)}
+${playgroundCommitmentCard(
+  family,
+  {
+    applicationId: values.applicationId,
+    environmentId: values.environmentId,
+    spendLimitDollars: values.spendLimitDollars,
+    idempotencyKey,
+  },
+  request,
+  idempotencyKey,
+  "Try again",
+)}`;
+      return htmlStatusResult(
+        422,
+        appShell({
+          title: `Zeck — Playground ${family.family}`,
+          activePath: "/console/playground",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Providers & capabilities, docs, settings
+// ---------------------------------------------------------------------------
+
+async function providersPage(ctx: HttpContext): Promise<HandlerResult> {
+  const split = familiesByClassification();
+  const capabilityRows = `<table class="data">
+  <thead><tr><th scope="col">Capability</th><th scope="col">Kind</th><th scope="col">Version</th></tr></thead>
+  <tbody>${seedCapabilities()
+    .map(
+      (capability) => `<tr>
+      <td class="mono">${esc(capability.id)}</td>
+      <td>${esc(capability.kind)}</td>
+      <td class="mono">${esc(capability.version)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const content = `${pageHead({ title: "Providers & capabilities", path: "/console/providers" })}
+<p>Zeck is provider-neutral: a task and its constraints cross the public API, the platform plans the route, and provider identifiers cross back only as opaque neutral strings inside run route facts. This page projects the seeded capability catalog and the recorded availability — the machine capability manifest is the single source, validated against the validation corpus.</p>
+<h2>Seeded capabilities</h2>
+${capabilityRows}
+<h2>The vocabularies</h2>
+${keyValueTable([
+  ["Capability kinds", capabilityKinds().join(", ")],
+  ["Evidence kinds", evidenceKinds().join(", ")],
+])}
+<h2>Workload family availability</h2>
+${distinctionList([
+  {
+    label: `${split.runnable.length} runnable families`,
+    fact: "The full integration path (submit → lifecycle → result/evidence/cost) runs against any deployment exposing the public API, and the family is exercised by the executed validation program.",
+    backed: true,
+  },
+  {
+    label: `${split.providerGated.length} provider-gated families`,
+    fact: "The code path is identical, but completion requires provider capabilities whose access is gated (credential, region, quota) or absent from the authorized set — the recorded boundary states exactly which, and a NOT RUN boundary is never converted into a pass.",
+    backed: true,
+  },
+])}
+<p>Browse every family on the <a href="/console/playground">playground</a>; the per-family boundaries live on each family page. The provider-level table and its disclosure rules: <a href="/console/docs/AVAILABILITY.md">AVAILABILITY.md</a> and <a href="/console/docs/CONFIGURATION.md">CONFIGURATION.md</a> in the docs.</p>
+${unavailableState(
+  "Provider inventory",
+  "There is no provider inventory route in the public API — providers cross as opaque neutral strings in run route facts, connections are BYOK and secret-mediated, and the platform's provider federation owns provider lifecycle. Routing facts from real runs: the Connections surface.",
+  "the provider federation authority through the public API",
+)}
+<p>Routing facts from real runs (BYOK, secret-mediated): <a href="/assets/connections">Connections</a>.</p>`;
+  return page(
+    {
+      title: "Zeck — Providers & capabilities",
+      activePath: "/console/providers",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function docsPage(ctx: HttpContext): Promise<HandlerResult> {
+  const entries = developerDocsIndex();
+  const content = `${pageHead({ title: "Docs", path: "/console/docs" })}
+<p>The developer documentation — served verbatim from the repository's public integration kit (no copied or paraphrased duplicate; the directory is the index). Readable by humans and coding agents, every claim links to the artifact that backs it.</p>
+<ul class="runs-list">
+  ${entries
+    .map(
+      (entry) => `<li>
+  <div class="run-line">
+    <a class="run-title" href="/console/docs/${encodeURIComponent(entry.id)}">${esc(entry.title)}</a>
+  </div>
+  <p class="muted mono">${esc(entry.id)}</p>
+</li>`,
+    )
+    .join("\n  ")}
+</ul>`;
+  return page({ title: "Zeck — Docs", activePath: "/console/docs", mainContent: content }, ctx);
+}
+
+async function docFilePage(ctx: HttpContext): Promise<HandlerResult> {
+  const docId = ctx.params.docId ?? "";
+  const doc = readDeveloperDoc(docId);
+  if (doc === null) {
+    const content = `${pageHead({ title: "Document not found", path: "/console/docs" })}
+${errorState(
+  "No such developer document",
+  `No document "${docId}" exists in the projected docs directory — the console serves the repository's developer docs verbatim and invents nothing.`,
+  "docs/developer/ (the public integration kit)",
+)}
+<p><a href="/console/docs">Back to the docs index</a></p>`;
+    return htmlStatusResult(
+      404,
+      appShell({
+        title: "Zeck — Document not found",
+        activePath: "/console/docs",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const content = `${pageHead({
+    title: doc.entry.title,
+    path: "/console/docs",
+    currentLabel: doc.entry.id,
+    primaryActionHtml: '<a class="button-link" href="/console/docs">All docs</a>',
+  })}
+<p class="muted mono">${esc(doc.entry.id)} — served verbatim from the repository.</p>
+<pre class="raw">${esc(doc.content)}</pre>`;
+  return page(
+    {
+      title: `Zeck — ${doc.entry.title}`,
+      activePath: "/console/docs",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function settingsPage(ctx: HttpContext): Promise<HandlerResult> {
+  const content = `${pageHead({ title: "Settings", path: "/console/settings" })}
+<p>Console preferences are presentation state only — they live in disclosed cookies and never touch platform facts. Platform-level control surfaces stay under Control.</p>
+<h2>Appearance</h2>
+${renderAppearanceForm(appearanceOf(ctx.cookies), "/console/settings")}
+<h2>Experience mode</h2>
+${modeSelectionForm(modeOf(ctx.cookies), "/console/settings")}
+<h2>Recent executions (this browser)</h2>
+<p>The recents list is navigation-only and disclosed: it stores execution ids opened in this browser (at most 8, most recent first) so Active/History/Usage can re-read them live. Every view still reads through the governed API — the list holds no facts.</p>
+<p><a class="button-link danger" href="/console/settings/reset-recents">Clear the recents list</a></p>
+<h2>Team and governance</h2>
+<p>Who decides what, roles and the live approval queue live in the Control area: <a href="/admin/team">Team</a> and <a href="/admin/policies">Policies</a>.</p>
+${unavailableState(
+  "Account-level console settings",
+  "There is no account settings route in the public API — the console holds only the presentation preferences above. When an account surface ships, its facts will come from the identity authority through the public API.",
+  "the identity authority through the public API",
+)}`;
+  return page(
+    { title: "Zeck — Settings", activePath: "/console/settings", mainContent: content },
+    ctx,
+  );
+}
+
+async function resetRecentsPage(ctx: HttpContext): Promise<HandlerResult> {
+  void ctx;
+  return redirectResult("/console/settings", {
+    setCookies: [
+      serializeCookie(RECENTS_COOKIE, "", {
+        path: "/",
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: "Lax",
+      }),
+    ],
+  });
+}
+
+// ---------------------------------------------------------------------------
 // The route table
 // ---------------------------------------------------------------------------
 
+/** Options for the dashboard route table (DEP-010 console surfaces). */
+export interface DashboardRoutesOptions {
+  /**
+   * The deployment's application scope — pre-fills the console's
+   * application-sensitive surfaces. The SDK client carries the
+   * authoritative binding (X-Zeck-Application on every scoped call);
+   * this value is presentation prefill only.
+   */
+  readonly applicationId?: string;
+}
+
 /** Create the dashboard route table bound to one SDK client. */
-export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinition[] {
+export function createDashboardRoutes(
+  client: ZeckClient,
+  options: DashboardRoutesOptions = {},
+): readonly RouteDefinition[] {
+  const scope = options.applicationId ?? "";
   const wrap = (
     method: "GET" | "POST",
     pattern: string,
@@ -3141,6 +4112,29 @@ export function createDashboardRoutes(client: ZeckClient): readonly RouteDefinit
     wrap("GET", "/attention", (ctx) => attentionPage(client, ctx)),
     wrap("GET", "/mode", (ctx) => modePage(client, ctx)),
     wrap("GET", "/appearance", (ctx) => appearancePage(client, ctx)),
+    // Developer console (DEP-010). Static routes precede parameterized
+    // ones: keys/environments/usage must win over :applicationId.
+    wrap("GET", "/console", (ctx) => consoleHomePage(scope, ctx)),
+    wrap("GET", "/console/quickstart", (ctx) => quickstartPage(scope, ctx)),
+    wrap("GET", "/console/applications", (ctx) => applicationsPage(client, scope, ctx)),
+    wrap("GET", "/console/applications/keys", (ctx) => credentialsPage(scope, ctx)),
+    wrap("GET", "/console/applications/environments", (ctx) =>
+      environmentsConsolePage(client, ctx),
+    ),
+    wrap("GET", "/console/applications/usage", (ctx) => usagePage(client, ctx)),
+    wrap("GET", "/console/applications/:applicationId", (ctx) =>
+      applicationDetailPage(client, ctx),
+    ),
+    wrap("GET", "/console/playground", (ctx) => playgroundPage(ctx)),
+    wrap("GET", "/console/playground/:family", (ctx) => playgroundFamilyPage(client, scope, ctx)),
+    wrap("POST", "/console/playground/:family", (ctx) =>
+      createPlaygroundRunHandler(client, scope, ctx),
+    ),
+    wrap("GET", "/console/providers", (ctx) => providersPage(ctx)),
+    wrap("GET", "/console/docs", (ctx) => docsPage(ctx)),
+    wrap("GET", "/console/docs/:docId", (ctx) => docFilePage(ctx)),
+    wrap("GET", "/console/settings", (ctx) => settingsPage(ctx)),
+    wrap("GET", "/console/settings/reset-recents", (ctx) => resetRecentsPage(ctx)),
     wrap("GET", "/assets/client.js", (ctx) => {
       void ctx;
       return Promise.resolve(assetResult(CLIENT_SCRIPT, "application/javascript"));
