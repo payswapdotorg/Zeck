@@ -6,6 +6,6 @@
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
-  "currentBase": "3c290fd668ce4acb873f3df5fb99f09d6b1d7216",
+  "currentBase": "2f7e8a73afbc927ec71f7438d9407b85f66d6bd9",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
