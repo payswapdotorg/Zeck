@@ -614,3 +614,105 @@ Deadline-remainder honesty (restated): completed 2026-09-14 ~21:25 UTC, ~2h35m b
 records 45/46 complete with VAL-052 (this work order) in flight per the frontier claim
 `08dcd9c` — no incomplete work order is silently dropped; VAL-052's completion is carried
 by the Lead's phase-3 authority chain.
+
+## Post-close live-review addendum (R-1 actioned, 2026-09-15)
+
+This section is the durable record of the post-close live-review lane — appended after
+the report's completion; no existing section, table row or the status line above is
+altered by it. It is evidence plus one repair; no governed state is touched.
+
+**(a) R-1's awaited operator action — actioned post-deadline, honestly timestamped.**
+The program met its deadline: the release gate CLOSED and the governed state finalized
+at `28adb03` on 2026-09-14T22:26:00Z (~1h34m before the 2026-09-15 00:00 UTC operator
+deadline), with the live-review lane recorded as the one open boundary. The operator
+provisioned the operator-authorized credential (`OPENROUTER_API_KEY` — referenced by
+env-var name only, per the report's standing discipline) on 2026-09-15 ~02:39 UTC —
+after the deadline, actioned late but honestly — and the lane executed 02:48–03:45 UTC
+the same day over the program's PostgreSQL (`127.0.0.1:5433`).
+
+**(b) Capability probes and route health (VAL-009 discipline).** The text probe
+(`qwen/qwen-2.5-7b-instruct`) and the VLM probe (`qwen/qwen3-vl-8b-instruct` + a 1×1
+white PNG) both returned ready HTTP 200 (02:48:57/58Z, 1548 ms and 1085 ms). The VLM
+route degraded mid-session (02:58:01Z probe: HTTP 400 provider-error) and RECOVERED by
+03:15:53Z (probe ready again @1005 ms; a direct probe-identical VLM dispatch returned
+HTTP 200 via Parasail, content "white", $0.00002225). The 4 honest NOT RUN probe
+records (openai, qwen, byteplus-ark, seedance — each env-var named) are unchanged. One
+disclosed execution adaptation: the sandbox kills background processes, so the battery
+ran as 4 foreground chunks over the same 40 integration files, same env, one log.
+
+**(c) The battery outcome (first pass, 02:56–03:09 UTC).** Over
+`tests/integration/validation`: **91 tests — 88 passed / 3 failed / 0 skipped** (Test
+Files 37/3 of 40). Every `OPENROUTER_API_KEY`-gated live row fired REAL dispatches; the
+text rail `meta-llama/llama-3.3-70b-instruct` stayed healthy ALL session; the
+VAL-050/051/052 crowns pin zero live submissions BY DESIGN (not forced). The three
+first-pass failures, each re-run once (disclosed), were adjudicated honestly:
+
+- **VAL-017 and VAL-023 — transient vision-route degradation → GREEN on single
+  re-runs** after the route's recovery (03:15–03:27 UTC). val-017 `img-c-001` COMPLETED
+  (contains:bus PASS, content-present PASS; usage 108+2 tokens / $0.000088; latency
+  7426 ms; suite 5 COMPLETED + 1 designed-corruption FAILED of 6, measured $0.000400) —
+  the latency arithmetic of the first-pass failure (13908 ms − 2×6 s retry waits ≈ 3
+  fast attempts) attributes it to the retryable 429/5xx class on
+  `qwen/qwen2.5-vl-72b-instruct`, not the probe's HTTP 400. val-023
+  `live-openrouter-injection-media` COMPLETED defended (attempts=1, latency 685 ms,
+  usage 314+2 / $0.0002532; 3/3 live rows defended, 10/10 offline COMPLETED).
+- **VAL-044 — a GENUINE delivery defect, repaired and live-verified.** The live row
+  `live-adjusted-synthesis-real-comparison` declared `needsDispatch: true` but NO
+  dispatch seam existed (the VAL-041/042/043 precedent not followed): the integrity
+  oracle re-derived digests over empty/placeholder traces → DIGEST-DISAGREED ×3
+  (direct `3af163c7` ≠ `6a447122`; optimized `f5a3fd21` ≠ `631383f4`; competing
+  `f462552c` ≠ `6a9bfd48`) → criterion `input-integrity-digest-verified` FAIL, driver
+  category `input-integrity-failed`, verdict `adversarial-failed` — deterministic ×3,
+  ZERO dispatches (~300 ms fast-fail; the route hypothesis exonerated). Repaired at
+  `bcc49a1` on `work/live-review-val-044-repair` (the live-rail seam binding); live
+  re-run: **11 REAL dispatches, 111 µ$ measured**, arm digests `38ef7c3a` /
+  `bcadcded` / `9a1360d2` oracle-verified → **COMPLETED** (quality-adjusted),
+  inputs=3 verified=3, pooled 12r/12x, attainment 1.000000, Wilson 95% [0.757,
+  1.000] — mechanically derived, never fabricated. The scoped battery at the repair
+  head is all green (unit 72/72 counts unchanged; honest-skip preserved; neighbors
+  VAL-041/042/043 6/6; discrimination 35/35; tsc EXIT 0; biome clean) — after the
+  repair 91/91 live-lane integration tests are green. Full record:
+  `docs/work-items/VAL-044.md` (live-review addendum).
+
+**(d) VAL-049's live re-run audit slice — bounds-held PASS ×2.** The live re-run row
+(recorded NOT RUN at close) executed twice (pilot 02:53 UTC + battery): 4 REAL
+dispatches each on the pinned rail `meta-llama/llama-3.3-70b-instruct` (max_tokens
+32), **measuredRate 1.000000 both runs**, measured 22 µ$ and 16 µ$, **bounds=PASS**
+against the RECORDED direct-arm Wilson bounds through the bounds-held oracle, terminal
+COMPLETED, the audit record sealed through the REAL recorder over REAL PostgreSQL. The
+offline audit corpus is untouched. Full record: `docs/work-items/VAL-049.md` (live
+re-run of record).
+
+**(e) The economic arms' live re-measurements** (rail-reported BYOK facts, each inside
+its recorded bounds; 25+ suites' live rows carry measured economics from this lane):
+VAL-010 8/10 COMPLETED $0.000478; VAL-012 12/14 COMPLETED $0.001233; VAL-040
+fixed-quality 50 µ$/cpr 13 µ$ + fixed-cost 48 µ$/12 µ$; VAL-041 direct 36 µ$/9 µ$ ×2;
+VAL-042 optimized 29 µ$/7 µ$ (incl. 1 REAL cache hit) + 42 µ$/11 µ$; VAL-043 competing
+35 µ$/9 µ$ + 40 µ$/10 µ$; VAL-046 substrate 46 µ$, effective 19 µ$/resolved; VAL-047
+trajectory 26 → 34 → 28, measured 264 µ$; VAL-048 ranking zeck < direct, 41 µ$.
+
+**(f) Total measured live cost of the whole lane: well under $0.01** (against the
+disclosed ~$2 battery bound) — including the two disclosed live runs of the repaired
+VAL-044 row (105 µ$ confirmation + 111 µ$ final = $0.000216).
+
+**(g) The REMAINING NOT RUN boundaries are UNCHANGED** — none converted, none will be
+without further operator credentials (each env-var named): the `QWEN_API_KEY`
+boundaries (streaming realtime voice, image/video generation quota, the audio legs,
+the qwen probe); 3D generation (`ZECK_3D_API_KEY` — no authorized 3D-capable
+provider); the OpenAI region block; the BytePlus/Seedance ARK DNS failures; the
+external substrate fleets (E2B/Daytona/Modal); the live web/desktop browser rails.
+
+**(h) Program state unchanged.** The governed state remains roadmap-complete /
+frontier-empty at `28adb03` (46/46, release gate CLOSED). This addendum is evidence
+plus one repair carried on the branch `work/live-review-val-044-repair`; the repair's
+merge belongs to the Lead's authority chain (PR → CI → merge), never self-declared
+here.
+
+**(i) Closing honesty statement.** A NOT RUN boundary was converted to a measured
+record only through REAL dispatches with mechanically derived verdicts — never a
+fabricated pass. The one defect the lane found (VAL-044's missing dispatch seam) was
+repaired and live-verified per the F-2 house pattern (the credential-bearing live
+review as the merge authority — Recommendation R-7). The lane's transient vision-route
+degradation (02:58Z) and recovery (03:15Z) are recorded with their measured evidence;
+the honest timeline — deadline met 2026-09-14T22:26:00Z, the operator action arriving
+2026-09-15 ~02:39 UTC, the lane executing 02:48–03:45 UTC — stands as recorded.
