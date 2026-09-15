@@ -34,6 +34,8 @@ Every requirement is traced to an owning Work Order in `spec/requirement-traceab
 
 Read `AGENTS.md`, `AI_CONTINUATION.md`, `docs/LLM-ARCHITECT-HANDOFF.md`, `docs/LLM-TECH-LEAD-BOOTSTRAP.md`, `docs/LLM-TECH-LEAD-CONTRACT.md` and `docs/E1.1-IMPLEMENTATION-PROGRAM.md`.
 
+For post-implementation developer-platform delivery, then read `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md` and `docs/LLM-DEVELOPER-PLATFORM-TECH-LEAD-CONTRACT.md`. This program is separate from the completed core and validation programs and is the authority for public deployment, console, sandbox and developer/agent onboarding work.
+
 The Tech Lead may dispatch **at most three concurrent implementation workers**, and only after dependency, source-surface, migration, public-contract, test and evidence conflict analysis proves that reconciliation can be mechanical.
 
 ## Architecture and roadmap evolution
@@ -47,14 +49,37 @@ The Tech Lead may dispatch **at most three concurrent implementation workers**, 
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md` — exact post-D-07 implementation sequence and zero-drift boundaries.
 - `docs/E1.1-RESEARCH-BASELINE.md` — external evidence and adopted/non-adopted lessons.
 - `docs/ROADMAP.md` — authoritative forward roadmap.
+- `docs/VALIDATION-ROADMAP.md` — completed customer-style validation program.
+- `docs/VALIDATION-REPORT.md` — cumulative validation evidence and findings.
+- `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md` — public deployment + developer console + sandbox program.
+- `docs/LLM-DEVELOPER-PLATFORM-TECH-LEAD-CONTRACT.md` — zero-context Tech Lead execution contract for that program.
 
-## Current implementation target
+## Current delivery program
 
-The current executable work is `WORK-048 / D-07` — resilience, disaster recovery and provider exit. E1.1 implementation begins only after D-07 completion and explicit Work Order issuance.
+The core implementation and validation programs are complete. The current product-delivery program is the **Developer Platform Deployment Program**. It turns `apps/dashboard` and the existing deployment/runtime foundation into a complete public developer console and real sandbox experience.
 
-## Initial implementation foundations
+Current first wave:
 
-The control plane includes provider and connection federation, BYOK, budgets and usage ledger, capability registry, execution planning/routing, context compilation, governed tools, container/microVM/VM execution, verification, learning/evaluation telemetry, SDK/API foundations and WorkflowOS interoperability.
+```text
+DEP-001  public deployment/bootstrap + free-tier-first provider topology
+DEP-010  end-to-end developer console + sandbox playground
+DEP-020  developer + agent documentation/integration kit
+```
+
+These are independent at the repository-surface level and may be executed concurrently up to the three-worker limit. Later work covers usage/economics, compare mode, reproducibility/export, hardening, public E2E acceptance, fresh developer/agent trials, production/provider-exit drills and the final release gate.
+
+## Provider strategy
+
+Prefer providers in this order during development and sandbox operation:
+
+```text
+free tier
+  → usage-based / no-minimum
+  → low fixed cost
+  → paid / enterprise only when justified
+```
+
+The provider map remains provider-neutral. Current candidate infrastructure includes Cloudflare Workers/Pages where compatible, Neon for early PostgreSQL environments, Cloudflare R2 for artifact bytes, and existing Vercel delivery where the plan and commercial terms permit it. Disposable free-tier resources must never become authoritative or operationally critical. Exact current limits and terms are verified by the Tech Lead at dispatch time.
 
 ## Strategic execution principle
 
