@@ -716,3 +716,50 @@ review as the merge authority — Recommendation R-7). The lane's transient visi
 degradation (02:58Z) and recovery (03:15Z) are recorded with their measured evidence;
 the honest timeline — deadline met 2026-09-14T22:26:00Z, the operator action arriving
 2026-09-15 ~02:39 UTC, the lane executing 02:48–03:45 UTC — stands as recorded.
+
+**(j) Coexistence and rebase note (PR #119 — appended after the lane's branch was
+rebased onto `4341726`).** Stale-main disclosure: this lane's battery (02:56–03:09 UTC)
+ran at `28adb03` without a preceding fetch — `origin/main` had already moved to
+`4341726` (PR #119, the session-B review-fix "live-rail drivers for VAL-050/051/052",
+merged 2026-09-14T23:36:06Z, parent `28adb03`); the lane's own fetch guard caught the
+divergence at the Lead closeout (before any push, nothing merged over it). PR #119 had
+ALREADY repaired, before this lane's window, the VAL-050/051/052 crowns' welded-shut
+env-gates — those crowns never read `OPENROUTER_API_KEY` (live rows undriveable even
+with a credential; the same defect CLASS this lane independently found in VAL-044's
+no-dispatch-seam live row — both F-2 pattern, disjoint apps, found by the two parallel
+post-close live-review sessions) — shipping `LIVE_*_PLAN` driver exports plus ONE
+env-gated live test per crown (off-key honest NOT RUN; on-key REAL dispatches) and
+correcting the three evidence documents' "fully wired" claims. Item (c)'s sentence
+"the VAL-050/051/052 crowns pin zero live submissions BY DESIGN (not forced)" was TRUE
+at `28adb03` (the battery's head) and is superseded at the rebased head, where those
+three crowns carry REAL live drivers. This lane then rebased onto `4341726`
+(conflict-free; merge-tree pre-proof tree `ca23b92`) and drove session B's deferred
+on-key rows ("the session-B live-review lane (to follow post-merge)") at the rebased
+head, 2026-09-15 04:05:36–04:06:43 UTC, under the operator's standing live-review
+authorization — every row COMPLETED first-run, no retries:
+
+- **VAL-050 `live-journey-slice` -> JOURNEY-COMPLETED** — 5 REAL dispatches (one per
+  declared stage of the five-stage lifecycle), measured usage 119+10 tokens, **20 µ$**,
+  successful=5; the five oracles re-derived ALL-PASS at the boundary over the durable
+  ledger (cost-residual:0); 5 terminal COMPLETED stage executions over REAL SQL, the
+  dispatches recorded through the REAL recorder digest-only.
+- **VAL-051 `live-pilot-window` -> PILOT-COMPLETED** — 5 REAL dispatches (one per
+  scheduled shift), measured usage 158+10 tokens, **23 µ$** — inside the window's
+  budget-policy envelope; the EIGHT oracles re-derived ALL-PASS (cost-residual:0); 5
+  terminal COMPLETED shift executions, digest-only recorder events.
+- **VAL-052 `live-gate-confirmation-slice` -> COMPLETED** — ONE REAL dispatch,
+  measured usage 26+2 tokens, **4 µ$**, the completion inside the pinned max_tokens 32
+  request bound; the THIRTEEN oracles re-derived over the durable basis with offline
+  digest parity (the recorded verdicts untouched — the live lane measures fresh facts,
+  it never re-adjudicates them); ONE terminal COMPLETED report execution.
+
+The three on-key rows total **11 REAL dispatches, 47 µ$ measured** ($0.000047) on the
+pinned rail `meta-llama/llama-3.3-70b-instruct` (max_tokens 32, rev-001 list prices);
+each suite 4/4 GREEN. The off-key honest NOT-RUN regression at the rebased head is
+green 12/12 across the three suites (env var named in every boundary line); the
+VAL-044 repair re-verified at the rebased head on-key (live row COMPLETED over 11 REAL
+dispatches, 111 µ$) and the neighbors VAL-041/042/043 green on-key (6/6, live rows
+COMPLETED, 233 µ$) and off-key (8/8 with VAL-044). Full per-WO records:
+`docs/work-items/VAL-050.md`, `docs/work-items/VAL-051.md`,
+`docs/work-items/VAL-052.md` (live-review addenda) and the coexistence note in
+`docs/work-items/VAL-044.md`.
