@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "description": "The public capability manifest: the platform's seeded provider-neutral capabilities, the 22 workload families, and the honest availability classification of each family's example. Provider identifiers are neutral strings; credentials appear ONLY as env var NAMES; availability facts mirror docs/VALIDATION-REPORT.md (the executed validation program) — a gap is recorded as a gap, never a silent pass. Validated against SEED_CAPABILITY_FACTS and WORKLOAD_FAMILIES by tests/unit/developer-docs/machine-schemas.test.ts.",
+  "capabilityKinds": ["model", "tool", "algorithm", "data", "runtime", "human"],
+  "evidenceKinds": ["adapter-declared", "catalog-seeded", "verified-observation"],
+  "seedCapabilities": [
+    {
+      "id": "text-generation",
+      "kind": "model",
+      "version": "1.0.0",
+      "attributes": { "input": "text", "output": "text" }
+    },
+    {
+      "id": "document-retrieval",
+      "kind": "tool",
+      "version": "1.0.0",
+      "attributes": { "deterministic": true }
+    },
+    {
+      "id": "json-schema-validation",
+      "kind": "algorithm",
+      "version": "1.0.0",
+      "attributes": { "deterministic": true }
+    },
+    {
+      "id": "structured-dataset-read",
+      "kind": "data",
+      "version": "1.0.0",
+      "attributes": { "access": "read-only" }
+    },
+    {
+      "id": "process-sandbox",
+      "kind": "runtime",
+      "version": "1.0.0",
+      "attributes": { "isolation": "process", "networkEgress": false }
+    },
+    {
+      "id": "human-review",
+      "kind": "human",
+      "version": "1.0.0",
+      "attributes": { "escalation": true }
+    }
+  ],
+  "workloadFamilies": [
+    {
+      "family": "text",
+      "example": "examples/text-summarization.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "summarize", "doc": "quarterly-report-01", "maxWords": 60 },
+      "capabilityRequirements": ["model:text"],
+      "availability": "live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY)."
+    },
+    {
+      "family": "structured",
+      "example": "examples/structured-invoice-extraction.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "extract", "format": "invoice", "doc": "invoice-001" },
+      "capabilityRequirements": ["model:text", "algorithm:json-schema-validation"],
+      "availability": "deterministic rows proven with byte-exact comparison oracles."
+    },
+    {
+      "family": "rag",
+      "example": "examples/rag-grounded-answers.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "kb-qa", "kb": "kb-synthetic-products-v1", "question": "Is it good?" },
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
+      "availability": "retrieval is a seeded deterministic tool capability; family proven in the validation program."
+    },
+    {
+      "family": "tools",
+      "example": "examples/tool-augmented-lookup.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "use-tool", "goal": "compute 17 * 23", "tools": ["calculator"] },
+      "capabilityRequirements": ["model:text"],
+      "availability": "tool-agent family live-proven over the openrouter rail."
+    },
+    {
+      "family": "workflow",
+      "example": "examples/workflow-orchestration.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "run-workflow", "workflow": "invoice-approval", "invoice": "invoice-011" },
+      "capabilityRequirements": ["model:text"],
+      "availability": "durable orchestration proven over the transport (Cloudflare Workflows protocol suite)."
+    },
+    {
+      "family": "long-running",
+      "example": "examples/long-running-batch.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "long-run", "job": "job-001" },
+      "capabilityRequirements": ["runtime:process-sandbox"],
+      "availability": "checkpoint/resume semantics proven over REAL PostgreSQL (integration suites)."
+    },
+    {
+      "family": "voice",
+      "example": "examples/voice-transcription.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "transcribe", "clip": "utterance-001" },
+      "capabilityRequirements": ["model:asr"],
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "ASR/TTS live-proven over the qwen dashscope-international rail (qwen3-asr-flash/qwen3-tts-flash); the openai candidate is region-blocked (HTTP 403)."
+    },
+    {
+      "family": "realtime-voice",
+      "example": "examples/realtime-voice-session.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "rt-dialog", "session": "rt-001", "turn": 1 },
+      "capabilityRequirements": ["model:realtime-voice"],
+      "availability": "NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only)."
+    },
+    {
+      "family": "image-generation",
+      "example": "examples/image-generation.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "generate-image", "prompt": "img-prompt-001", "width": 512, "height": 512 },
+      "capabilityRequirements": ["model:image-generation"],
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "live-proven over the qwen rail (qwen-image-2.0); the openai candidate is region-blocked (403)."
+    },
+    {
+      "family": "video-media",
+      "example": "examples/video-generation.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "generate-video", "prompt": "vid-prompt-001", "seconds": 5 },
+      "capabilityRequirements": ["model:video-generation"],
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "three live generations proven (wan2.2-t2v-plus, ~88 s each); further live rows NOT RUN — free-tier quota exhausted (AllocationQuota.FreeTierOnly); ark/seedance candidates DNS-failed."
+    },
+    {
+      "family": "image-recognition",
+      "example": "examples/image-recognition.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "classify-image", "image": "img-c-001", "labels": ["bicycle", "bus", "car"] },
+      "capabilityRequirements": ["model:vision"],
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "vision candidates: openrouter (live-proven) and openai (region-blocked 403)."
+    },
+    {
+      "family": "vlm",
+      "example": "examples/vlm-image-qa.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "describe-image", "image": "scene-001" },
+      "capabilityRequirements": ["model:vlm"],
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "VLM candidates: openrouter (live-proven) and openai (region-blocked 403)."
+    },
+    {
+      "family": "audio-understanding",
+      "example": "examples/audio-understanding.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "classify-audio", "clip": "event-005", "onset": true },
+      "capabilityRequirements": ["model:audio-understanding"],
+      "gatedBy": "OPENAI_API_KEY",
+      "availability": "NOT RUN — the only authorized audio-input candidate (openai) is region-blocked (HTTP 403 unsupported_country_region_territory)."
+    },
+    {
+      "family": "multimodal",
+      "example": "examples/multimodal-transformation.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "multimodal-summary", "doc": "mm-doc-001", "audio": "mm-audio-001" },
+      "capabilityRequirements": ["model:vlm", "model:image-generation"],
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "chained rows live-proven (vision over openrouter, derived raster over qwen-image-2.0); one honest FAILED row (corrupted source, chain-abort)."
+    },
+    {
+      "family": "three-d",
+      "example": "examples/three-d-generation.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "render-3d", "scene": "scene3d-001" },
+      "capabilityRequirements": ["model:three-d"],
+      "gatedBy": "ZECK_3D_API_KEY",
+      "availability": "NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: [])."
+    },
+    {
+      "family": "customer-service",
+      "example": "examples/customer-service-triage.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "cs-ticket", "ticket": "ticket-001" },
+      "capabilityRequirements": ["model:text"],
+      "availability": "triage is deterministic over pinned ticket fixtures; reply generation follows the text rail."
+    },
+    {
+      "family": "browser-use",
+      "example": "examples/browser-use-agent.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "browser-task", "site": "shop-fixture", "goal": "buy A1 and B2" },
+      "capabilityRequirements": ["agent:browser"],
+      "availability": "fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail."
+    },
+    {
+      "family": "computer-use",
+      "example": "examples/computer-use-agent.ts",
+      "classification": "provider-gated",
+      "taskShape": { "kind": "computer-task", "workspace": "ws-002", "goal": "remove exact duplicates" },
+      "capabilityRequirements": ["agent:computer-use"],
+      "availability": "fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail."
+    },
+    {
+      "family": "research",
+      "example": "examples/research-synthesis.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "research", "topic": "topic-agree-3" },
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
+      "availability": "retrieval is deterministic; synthesis follows the live-proven text rail."
+    },
+    {
+      "family": "coding",
+      "example": "examples/coding-assistant.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "implement", "spec": "fn-fizzmod" },
+      "capabilityRequirements": ["model:text"],
+      "availability": "family exercised by the validation program over pinned function specs."
+    },
+    {
+      "family": "operations",
+      "example": "examples/operations-runbook.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "run-runbook", "runbook": "rb-restart", "target": "svc-a" },
+      "capabilityRequirements": ["tool:document-retrieval"],
+      "availability": "runbook steps are deterministic tool invocations over pinned operational fixtures."
+    },
+    {
+      "family": "hitl",
+      "example": "examples/human-review-gate.ts",
+      "classification": "runnable",
+      "taskShape": { "kind": "hitl-gate", "gate": "gate-001", "decision": "approve" },
+      "capabilityRequirements": ["human:human-review"],
+      "availability": "gate discipline is deterministic (approval-before-action event ordering is the oracle)."
+    }
+  ],
+  "providerAccess": [
+    {
+      "provider": "openrouter",
+      "credentialEnvVar": "OPENROUTER_API_KEY",
+      "recordedAvailability": "live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)"
+    },
+    {
+      "provider": "qwen",
+      "credentialEnvVar": "QWEN_API_KEY",
+      "recordedAvailability": "live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)"
+    },
+    {
+      "provider": "openai",
+      "credentialEnvVar": "OPENAI_API_KEY",
+      "recordedAvailability": "NOT RUN — HTTP 403 region block (unsupported_country_region_territory) from the recorded egress"
+    },
+    {
+      "provider": "byteplus-ark",
+      "credentialEnvVar": "BYTEPLUS_ARK_API_KEY",
+      "recordedAvailability": "NOT RUN — DNS failure (ark.ap-southeast-1.bytepluses.com does not resolve)"
+    },
+    {
+      "provider": "seedance",
+      "credentialEnvVar": "SEEDANCE_API_KEY",
+      "recordedAvailability": "NOT RUN — same DNS boundary as byteplus-ark"
+    }
+  ],
+  "disclosureRules": "See docs/developer/AVAILABILITY.md — a provider-gated example prints its recorded boundary; a NOT RUN boundary is never converted into a pass; credential NAMES only, never values.",
+  "crossReferences": {
+    "capabilityMatrix": "benchmarks/validation/capabilities/matrix.ts",
+    "validationReport": "docs/VALIDATION-REPORT.md",
+    "availabilityGuide": "docs/developer/AVAILABILITY.md"
+  }
+}

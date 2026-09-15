@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "description": "The canonical public error taxonomy of the Zeck API — one entry per ERROR_CODES entry of src/shared/wire.ts, with the deterministic HTTP status mapping of src/api/error-mapper.ts. Every error body is {code, message, retryable, details?, requestId?}: never a stack trace, never a SQL error, never a host path, never provider internals. The body's retryable field is the authoritative retry signal; retryGuidance is integrator guidance. This file is validated against the wire contract by tests/unit/developer-docs/machine-schemas.test.ts.",
+  "moneyConvention": "Integer micro-USD strings (1e-6 USD) — floats are never accepted.",
+  "idempotencyDiscipline": "Every POST requires an Idempotency-Key header (1..256 chars). Same key + same request fingerprint replays the durable outcome (replayed=true); same key + different fingerprint returns 409 IDEMPOTENCY_KEY_REUSED; concurrent identical requests converge on one durable row.",
+  "usageAndRateSemantics": "The public wire contract exposes no HTTP rate-limit headers. Usage is bounded by the governed economic model: per-run constraints (maxCostMicroUsd/maxLatencyMs/minQuality) checked at admission (BUDGET_EXCEEDED/NO_ELIGIBLE_ROUTE before spend), platform-side application/environment budgets and sandbox concurrency limits (honest admission denials), and provider quotas surfaced as PROVIDER_ERROR with recorded availability facts. Provider-reported usage (inputTokens/outputTokens) appears in ExecutionResult.usage when the rail reports it — null otherwise, never fabricated. See docs/developer/CONFIGURATION.md (Rate and usage semantics).",
+  "errorCodes": [
+    {
+      "code": "AUTHENTICATION_FAILED",
+      "httpStatus": 401,
+      "retryGuidance": "never-retry",
+      "meaning": "Missing or invalid bearer credential.",
+      "typicalCause": "No Authorization header, malformed Bearer scheme, or an unknown/expired Zeck transport credential.",
+      "remedy": "Fix the credential (ZECK_TOKEN) — it is a Zeck transport credential, never a provider API key. See docs/developer/AUTH.md."
+    },
+    {
+      "code": "AUTHORIZATION_DENIED",
+      "httpStatus": 403,
+      "retryGuidance": "never-retry",
+      "meaning": "The authenticated actor is not permitted this operation.",
+      "typicalCause": "The actor lacks the durable membership/role the operation requires.",
+      "remedy": "Fix membership/roles through the owning authority (the platform operator/console) — the API never accepts client-asserted scope."
+    },
+    {
+      "code": "TENANT_SCOPE_VIOLATION",
+      "httpStatus": 403,
+      "retryGuidance": "never-retry",
+      "meaning": "Cross-tenant access denied.",
+      "typicalCause": "The X-Zeck-Application header names an application whose tenant differs from the resource's tenant.",
+      "remedy": "Use the correct application scope for the resource; the scope is derived server-side from durable membership rows."
+    },
+    {
+      "code": "POLICY_DENIED",
+      "httpStatus": 403,
+      "retryGuidance": "never-retry",
+      "meaning": "The policy authority denied the operation (policy-before-dispatch).",
+      "typicalCause": "The request violates a published policy restriction (scope, selector or restriction vocabulary).",
+      "remedy": "Inspect the policy documents that govern the application; adjust the request or request a policy amendment. See docs/developer/CONCEPTS.md."
+    },
+    {
+      "code": "BUDGET_EXCEEDED",
+      "httpStatus": 402,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "A budget bound was exceeded (request constraints or the application/environment budget).",
+      "typicalCause": "maxCostMicroUsd constraint below the eligible route cost, or the governing budget authority refused the reservation.",
+      "remedy": "Raise the constraint (integer micro-USD string) or resolve the application's budget through the owning surface. See docs/developer/CONCEPTS.md."
+    },
+    {
+      "code": "IDEMPOTENCY_KEY_REUSED",
+      "httpStatus": 409,
+      "retryGuidance": "never-retry",
+      "meaning": "The same idempotency key was presented with a DIFFERENT request fingerprint.",
+      "typicalCause": "A client bug: key collision across semantically different requests, or a mutable request body under a stable key.",
+      "remedy": "Surface it as a client defect; generate a fresh key for the new request. Never retry the same call unchanged. See docs/developer/TROUBLESHOOTING.md."
+    },
+    {
+      "code": "CAPABILITY_UNAVAILABLE",
+      "httpStatus": 422,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "A required capability is unavailable, or the request is malformed/closed-contract-violating (this is also the 404-mapped code for scope-checked misses).",
+      "typicalCause": "Unknown request keys (the create contracts are closed), a missing required capability in the registry, or a nonexistent scope-checked target (404 status).",
+      "remedy": "Fix the request shape (see docs/developer/machine/openapi.json) or resolve the capability gap (see docs/developer/AVAILABILITY.md)."
+    },
+    {
+      "code": "NO_ELIGIBLE_ROUTE",
+      "httpStatus": 422,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "No eligible execution route satisfied the task profile and constraints.",
+      "typicalCause": "Constraints no route can satisfy (latency/cost/quality), or the capability profile is unmet in this deployment.",
+      "remedy": "Relax constraints or resolve the provider/capability availability gap. See docs/developer/CONFIGURATION.md and docs/developer/AVAILABILITY.md."
+    },
+    {
+      "code": "PROVIDER_ERROR",
+      "httpStatus": 502,
+      "retryGuidance": "follow-body-retryable",
+      "meaning": "A provider-side failure surfaced through the execution plane.",
+      "typicalCause": "Provider 5xx, auth rejection at the rail, region block, quota exhaustion or transport failure.",
+      "remedy": "Retry only when the body's retryable field is true, with the SAME idempotency key. Region/quota boundaries are recorded honestly — see docs/developer/AVAILABILITY.md."
+    },
+    {
+      "code": "TOOL_ERROR",
+      "httpStatus": 502,
+      "retryGuidance": "follow-body-retryable",
+      "meaning": "A tool invocation failed inside the executed plan.",
+      "typicalCause": "Tool runtime failure, timeout or invalid tool result.",
+      "remedy": "Inspect the execution's event ledger (GET /executions/:id/events) for the tool step envelope; retry with the same idempotency key when retryable."
+    },
+    {
+      "code": "AGENT_ERROR",
+      "httpStatus": 502,
+      "retryGuidance": "follow-body-retryable",
+      "meaning": "An agent-session participant failed inside the executed plan.",
+      "typicalCause": "Agent runtime failure or invalid agent behavior.",
+      "remedy": "Inspect the agent inventory (GET /agents) and the execution events; retry when retryable."
+    },
+    {
+      "code": "SANDBOX_ERROR",
+      "httpStatus": 502,
+      "retryGuidance": "follow-body-retryable",
+      "meaning": "A sandbox-axis failure (sandbox execution, timeout, adapter or runtime-unavailable).",
+      "typicalCause": "Sandbox admission succeeded but the runtime failed, or the adapter could not reach the compute environment.",
+      "remedy": "Inspect sandbox limits (docs/developer/SANDBOX.md); retry when retryable."
+    },
+    {
+      "code": "VERIFICATION_FAILED",
+      "httpStatus": 422,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "A verification criterion evaluated FAIL (the evidence axis spoke).",
+      "typicalCause": "The output did not satisfy a recorded criterion.",
+      "remedy": "Inspect GET /executions/:id/verification (criterion, strategy, evidence refs) and the events; fix the task or constraints — a retry of the identical request replays the same durable outcome."
+    },
+    {
+      "code": "VERIFICATION_INCONCLUSIVE",
+      "httpStatus": 422,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "A verification criterion could not decide (INCONCLUSIVE).",
+      "typicalCause": "Insufficient evidence, evaluator limits or genuinely ambiguous output.",
+      "remedy": "Inspect the verification result's strategy/confidence; consider strengthened task constraints or additional evidence."
+    },
+    {
+      "code": "NON_CONVERGENT_EXTERNAL_EFFECT",
+      "httpStatus": 502,
+      "retryGuidance": "follow-body-retryable",
+      "meaning": "An external effect did not converge (retry/escalation did not converge to a decided outcome).",
+      "typicalCause": "A side-effecting external call remained unresolved across retries.",
+      "remedy": "Inspect the events for the external-effect envelope; reconcile out-of-band if the external system holds state, then resubmit with a fresh key."
+    },
+    {
+      "code": "INVALID_STATE_TRANSITION",
+      "httpStatus": 409,
+      "retryGuidance": "never-retry-unchanged",
+      "meaning": "The lifecycle command is illegal for the execution's current status.",
+      "typicalCause": "Cancelling a terminal execution (COMPLETED/FAILED/CANCELLED/EXPIRED), or a command the state machine forbids.",
+      "remedy": "Read the current status first (GET /executions/:id); only non-terminal executions accept cancel."
+    },
+    {
+      "code": "EXPIRED",
+      "httpStatus": 410,
+      "retryGuidance": "never-retry",
+      "meaning": "The referenced resource expired (e.g. an economic action past its expiresAt).",
+      "typicalCause": "The resource's TTL elapsed before the governed chain completed.",
+      "remedy": "Create a new resource with a suitable expiry; never attempt to resurrect an expired one."
+    }
+  ]
+}

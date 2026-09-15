@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "description": "The deterministic agent integration recipe: the exact step sequence a coding agent follows to integrate Zeck from files alone — no maintainer chat, no prose-only critical instructions. Every step names the artifact that satisfies it. Validated (file existence + step coverage) by tests/unit/developer-docs/machine-schemas.test.ts.",
+  "prerequisites": {
+    "runtime": "Bun (the repository's package manager and runtime)",
+    "repository": "https://github.com/payswapdotorg/Zeck",
+    "credentials": "Three environment values from the target deployment's operator/console: ZECK_API_URL, ZECK_TOKEN (a Zeck transport credential), ZECK_APPLICATION_ID. No provider API key is ever needed client-side."
+  },
+  "steps": [
+    {
+      "step": 1,
+      "id": "discover-contract",
+      "action": "Read the ONE canonical wire contract and the SDK (the public developer contract).",
+      "artifacts": ["src/shared/wire.ts", "sdk/index.ts"],
+      "machineArtifacts": ["docs/developer/machine/openapi.json", "docs/developer/machine/error-codes.json"]
+    },
+    {
+      "step": 2,
+      "id": "understand-model",
+      "action": "Understand the execution-centric conceptual model: Execution is THE primitive; policy precedes dispatch; capabilities are resolved before any route; budgets bound spend; sandbox isolates; verification produces evidence.",
+      "artifacts": ["docs/developer/CONCEPTS.md"]
+    },
+    {
+      "step": 3,
+      "id": "obtain-credentials",
+      "action": "Obtain the three connection values and export them (environment only — never flags, never files).",
+      "artifacts": ["docs/developer/AUTH.md", "docs/developer/machine/env-vars.json"],
+      "verify": "All three variables set; ZECK_TOKEN is a Zeck credential, not a provider key."
+    },
+    {
+      "step": 4,
+      "id": "first-execution",
+      "action": "Run the quickstart end-to-end: create the SDK client, submit an idempotent execution, poll to terminal, retrieve result/evidence/cost.",
+      "artifacts": ["docs/developer/QUICKSTART.md", "examples/quickstart.ts"],
+      "verify": "The receipt, terminal status, result package, events and verification are printed; the replay shows replayed=true."
+    },
+    {
+      "step": 5,
+      "id": "select-workload-example",
+      "action": "Pick the workload family example matching your task; copy it. Provider-gated families print their recorded availability boundary.",
+      "artifacts": ["docs/developer/WORKLOADS.md", "examples/README.md", "docs/developer/machine/capability-manifest.json", "docs/developer/machine/examples-manifest.json"]
+    },
+    {
+      "step": 6,
+      "id": "apply-error-discipline",
+      "action": "Adopt the error taxonomy + idempotency discipline: retry only retryable failures, same idempotency key, fail fast on 4xx.",
+      "artifacts": ["docs/developer/TROUBLESHOOTING.md", "examples/error-handling.ts", "docs/developer/machine/error-codes.json"]
+    },
+    {
+      "step": 7,
+      "id": "receive-webhooks-optional",
+      "action": "If you need push delivery: deploy the signature-verifying, idempotent receiver pattern.",
+      "artifacts": ["docs/developer/WEBHOOKS.md", "examples/webhook-receiver.ts"]
+    },
+    {
+      "step": 8,
+      "id": "verify-examples",
+      "action": "Run the documentation battery (link checks, schema-vs-wire reconciliation, end-to-end example runs, secret scans).",
+      "artifacts": ["tests/unit/developer-docs/"],
+      "verify": "bun run typecheck && bun run test:unit -- tests/unit/developer-docs"
+    },
+    {
+      "step": 9,
+      "id": "production-path",
+      "action": "When moving beyond sandbox: follow the promotion ladder, secret management and quota guidance (cross-linked to the deployment surfaces).",
+      "artifacts": ["docs/developer/PRODUCTION.md", "docs/developer/SANDBOX.md", "deploy/README.md", "deploy/manifests/environments.json"]
+    }
+  ],
+  "invariants": [
+    "Execution is the only public primitive — there is no model-call or provider-call route.",
+    "Provider selection is forbidden in create requests (closed contracts; unknown keys rejected fail-closed).",
+    "Money is integer micro-USD strings; floats never cross.",
+    "Every POST carries an Idempotency-Key; every scoped read/command carries X-Zeck-Application.",
+    "No secret value appears in any example, doc or machine artifact (names only).",
+    "Availability is disclosed honestly: runnable vs provider-gated, with NOT RUN boundaries recorded."
+  ]
+}
