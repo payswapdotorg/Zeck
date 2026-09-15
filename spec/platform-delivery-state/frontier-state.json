@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "program": "zeck-developer-platform",
   "status": "active",
-  "eligible": ["DEP-001", "DEP-010", "DEP-020", "DEP-025"],
+  "eligible": ["DEP-001", "DEP-010", "DEP-020"],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
-  "currentBase": "8d76409ed0a8b157641df0338a332e48e4439a34",
+  "currentBase": "99d1fd18a682ca7b8dcd17d16229e52230a2fb5c",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
