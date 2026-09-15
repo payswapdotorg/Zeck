@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "description": "The DEVELOPER-side environment variable contract (what YOUR integration reads). Credential VALUES never appear in any file — only variable NAMES. ZECK_TOKEN is always a Zeck transport credential, never a provider API key: provider connections are BYOK references held server-side by the platform. The platform-side (operator) variable contract is owned by deploy/manifests/variables.json (DEP-001/D-01) — cross-referenced, never duplicated. This file is validated against examples/lib/env.ts by tests/unit/developer-docs/machine-schemas.test.ts.",
+  "variables": [
+    {
+      "name": "ZECK_API_URL",
+      "required": true,
+      "credentialShaped": false,
+      "readBy": ["examples/lib/env.ts", "cli/index.ts (as ZECK_API_URL, default http://127.0.0.1:3000)"],
+      "description": "The base URL of the Zeck public API of the environment you integrate against (e.g. a sandbox deployment)."
+    },
+    {
+      "name": "ZECK_TOKEN",
+      "required": true,
+      "credentialShaped": true,
+      "storage": "environment-only",
+      "readBy": ["examples/lib/env.ts", "cli/index.ts (as ZECK_TOKEN)"],
+      "description": "The bearer credential for the Zeck TRANSPORT. Never a provider API key; never passed on a command line (shell history is a leak surface); never committed."
+    },
+    {
+      "name": "ZECK_APPLICATION_ID",
+      "required": true,
+      "credentialShaped": false,
+      "readBy": ["examples/lib/env.ts"],
+      "description": "The application whose scope authorizes scoped reads and governed commands (sent as the X-Zeck-Application header by the SDK client's applicationId option)."
+    },
+    {
+      "name": "ZECK_ENVIRONMENT_ID",
+      "required": false,
+      "credentialShaped": false,
+      "readBy": ["examples/lib/env.ts"],
+      "description": "Optional environment selector (e.g. a disposable sandbox environment) passed as environmentId on execution creation."
+    },
+    {
+      "name": "ZECK_WEBHOOK_SECRET",
+      "required": false,
+      "credentialShaped": true,
+      "storage": "environment-only",
+      "readBy": ["examples/webhook-receiver.ts"],
+      "description": "The webhook endpoint's signing secret for RECEIVER-side signature verification (arrives out-of-band; never in a URL, never logged)."
+    },
+    {
+      "name": "ZECK_WEBHOOK_PORT",
+      "required": false,
+      "credentialShaped": false,
+      "readBy": ["examples/webhook-receiver.ts"],
+      "description": "Local listen port of the webhook receiver example (default 9090)."
+    }
+  ],
+  "providerCredentialNames": {
+    "description": "Credential env var NAMES the platform's authorized provider set reads SERVER-SIDE (never in your integration code; recorded availability lives in docs/developer/AVAILABILITY.md and docs/VALIDATION-REPORT.md). Listing a NAME here never implies the credential is present in any environment.",
+    "names": [
+      "OPENROUTER_API_KEY",
+      "QWEN_API_KEY",
+      "OPENAI_API_KEY",
+      "BYTEPLUS_ARK_API_KEY",
+      "SEEDANCE_API_KEY",
+      "ZECK_3D_API_KEY"
+    ]
+  },
+  "crossReferences": {
+    "operatorSideContract": "deploy/manifests/variables.json",
+    "secretReferenceModel": "deploy/manifests/secret-references.json",
+    "authGuide": "docs/developer/AUTH.md"
+  }
+}

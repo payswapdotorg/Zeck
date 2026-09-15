@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "description": "The machine-readable example inventory: every example under examples/ with its workload family, honest classification and env-var names. Validated against each example's imported EXAMPLE metadata by tests/unit/developer-docs/machine-schemas.test.ts (classification, family, env vars and file existence are reconciled — drift is a test failure).",
+  "examples": [
+    {
+      "path": "examples/quickstart.ts",
+      "name": "quickstart",
+      "family": "text",
+      "title": "Quickstart — first execution, result, evidence and cost",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/text-summarization.ts",
+      "name": "text-summarization",
+      "family": "text",
+      "title": "Text — bounded-length document summarization",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/structured-invoice-extraction.ts",
+      "name": "structured-invoice-extraction",
+      "family": "structured",
+      "title": "Structured — typed invoice extraction (exact JSON shape)",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/rag-grounded-answers.ts",
+      "name": "rag-grounded-answers",
+      "family": "rag",
+      "title": "RAG — knowledge-base grounded question answering",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/tool-augmented-lookup.ts",
+      "name": "tool-augmented-lookup",
+      "family": "tools",
+      "title": "Tools — goal execution with named neutral tools",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/workflow-orchestration.ts",
+      "name": "workflow-orchestration",
+      "family": "workflow",
+      "title": "Workflow — governed multi-step orchestration (invoice approval)",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/long-running-batch.ts",
+      "name": "long-running-batch",
+      "family": "long-running",
+      "title": "Long-running — checkpointed batch job with patient polling",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/human-review-gate.ts",
+      "name": "human-review-gate",
+      "family": "hitl",
+      "title": "Human review — approval-gated action execution",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/customer-service-triage.ts",
+      "name": "customer-service-triage",
+      "family": "customer-service",
+      "title": "Customer service — governed ticket triage",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/research-synthesis.ts",
+      "name": "research-synthesis",
+      "family": "research",
+      "title": "Research — multi-source synthesis with source binding",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/coding-assistant.ts",
+      "name": "coding-assistant",
+      "family": "coding",
+      "title": "Coding — pinned function-spec implementation",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/operations-runbook.ts",
+      "name": "operations-runbook",
+      "family": "operations",
+      "title": "Operations — governed runbook execution",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/voice-transcription.ts",
+      "name": "voice-transcription",
+      "family": "voice",
+      "title": "Voice — audio transcription round trip",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/realtime-voice-session.ts",
+      "name": "realtime-voice-session",
+      "family": "realtime-voice",
+      "title": "Realtime voice — streamed dialog turn (NOT RUN rail boundary)",
+      "classification": "provider-gated",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/image-generation.ts",
+      "name": "image-generation",
+      "family": "image-generation",
+      "title": "Image — raster generation with explicit dimensions",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/video-generation.ts",
+      "name": "video-generation",
+      "family": "video-media",
+      "title": "Video — asynchronous short-clip generation",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/image-recognition.ts",
+      "name": "image-recognition",
+      "family": "image-recognition",
+      "title": "Vision — image classification over a closed label set",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/vlm-image-qa.ts",
+      "name": "vlm-image-qa",
+      "family": "vlm",
+      "title": "VLM — open-ended image question answering",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/audio-understanding.ts",
+      "name": "audio-understanding",
+      "family": "audio-understanding",
+      "title": "Audio — clip event classification (NOT RUN rail boundary)",
+      "classification": "provider-gated",
+      "gatedBy": "OPENAI_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/multimodal-transformation.ts",
+      "name": "multimodal-transformation",
+      "family": "multimodal",
+      "title": "Multimodal — document + audio chained summary",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/three-d-generation.ts",
+      "name": "three-d-generation",
+      "family": "three-d",
+      "title": "3D — scene rendering (NO provider in the authorized set)",
+      "classification": "provider-gated",
+      "gatedBy": "ZECK_3D_API_KEY",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/browser-use-agent.ts",
+      "name": "browser-use-agent",
+      "family": "browser-use",
+      "title": "Browser use — goal-directed shopping task (fixture-proven; live rail NOT RUN)",
+      "classification": "provider-gated",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/computer-use-agent.ts",
+      "name": "computer-use-agent",
+      "family": "computer-use",
+      "title": "Computer use — workspace file task (fixture-proven; live rail NOT RUN)",
+      "classification": "provider-gated",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/agent-inventory.ts",
+      "name": "agent-inventory",
+      "family": "workflow",
+      "title": "Agents — governed inventory and status projection",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/webhook-receiver.ts",
+      "name": "webhook-receiver",
+      "family": "workflow",
+      "title": "Webhooks — signature-verifying, idempotent receiver",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID", "ZECK_WEBHOOK_SECRET", "ZECK_WEBHOOK_PORT"]
+    },
+    {
+      "path": "examples/economic-actions.ts",
+      "name": "economic-actions",
+      "family": "workflow",
+      "title": "Economic actions — bounded, execution-bound payment intent",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    },
+    {
+      "path": "examples/error-handling.ts",
+      "name": "error-handling",
+      "family": "text",
+      "title": "Errors — taxonomy, retryability and idempotent replay discipline",
+      "classification": "runnable",
+      "envVars": ["ZECK_API_URL", "ZECK_TOKEN", "ZECK_APPLICATION_ID"]
+    }
+  ]
+}
