@@ -196,6 +196,21 @@ describe("the v2 route map: every route renders", () => {
     ["/command", 200],
     ["/command?q=agents", 200],
     ["/command?q=000000000000000000000000000000deadbeef", 200],
+    // Developer console (DEP-010).
+    ["/console", 200],
+    ["/console/quickstart", 200],
+    ["/console/applications", 200],
+    ["/console/applications/keys", 200],
+    ["/console/applications/environments", 200],
+    ["/console/applications/usage", 200],
+    ["/console/applications/00000000-0000-7000-8000-0000000000a1", 200],
+    ["/console/playground", 200],
+    ["/console/playground/text", 200],
+    ["/console/providers", 200],
+    ["/console/docs", 200],
+    ["/console/docs/AUTH.md", 200],
+    ["/console/settings", 200],
+    ["/console/settings/reset-recents", 303],
   ];
 
   test("every route renders with the correct status", async () => {
@@ -289,6 +304,19 @@ describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)
     "/attention",
     "/command",
     "/command?q=agents",
+    // Developer console (DEP-010).
+    "/console",
+    "/console/quickstart",
+    "/console/applications",
+    "/console/applications/keys",
+    "/console/applications/environments",
+    "/console/applications/usage",
+    "/console/playground",
+    "/console/playground/text",
+    "/console/providers",
+    "/console/docs",
+    "/console/docs/AUTH.md",
+    "/console/settings",
   ];
 
   test("each page has the full frame", async () => {
@@ -315,11 +343,12 @@ describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)
   });
 });
 
-describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5", () => {
-  test("the IA tree is exactly Home + the six groups with their items", () => {
+describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP-010 Develop group)", () => {
+  test("the IA tree is exactly Home + the seven groups with their items", () => {
     expect(NAV_GROUPS.map((group) => group.label)).toEqual([
       "Work",
       "Build",
+      "Develop",
       "Library",
       "Trust",
       "Control",
@@ -337,26 +366,34 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5", () => {
       "Workloads",
       "Competences",
     ]);
-    expect(NAV_GROUPS[2]?.items.map((item) => item.label)).toEqual(["Artifacts", "Connections"]);
-    expect(NAV_GROUPS[3]?.items.map((item) => item.label)).toEqual([
+    expect(NAV_GROUPS[2]?.items.map((item) => item.label)).toEqual([
+      "Quickstart",
+      "Applications",
+      "Playground",
+      "Providers",
+      "Docs",
+      "Settings",
+    ]);
+    expect(NAV_GROUPS[3]?.items.map((item) => item.label)).toEqual(["Artifacts", "Connections"]);
+    expect(NAV_GROUPS[4]?.items.map((item) => item.label)).toEqual([
       "Evidence",
       "Evaluations",
       "Lineage",
     ]);
-    expect(NAV_GROUPS[4]?.items.map((item) => item.label)).toEqual([
+    expect(NAV_GROUPS[5]?.items.map((item) => item.label)).toEqual([
       "Policies",
       "Spend",
       "Team",
       "Environments",
       "Audit",
     ]);
-    expect(NAV_GROUPS[5]?.items.map((item) => item.label)).toEqual(["Insights", "Learning"]);
+    expect(NAV_GROUPS[6]?.items.map((item) => item.label)).toEqual(["Insights", "Learning"]);
   });
 
   test("the rendered nav carries the tree with real links (professional: full IA minus expert-only entries)", async () => {
     const html = await getHtml("/build");
     // Group labels are native summaries; item labels are real links.
-    for (const group of ["Work", "Build", "Library", "Trust", "Control", "Improve"]) {
+    for (const group of ["Work", "Build", "Develop", "Library", "Trust", "Control", "Improve"]) {
       expect(html).toContain(`<summary>${group}</summary>`);
     }
     for (const label of [
@@ -369,6 +406,12 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5", () => {
       "Deployments",
       "Workloads",
       "Competences",
+      "Quickstart",
+      "Applications",
+      "Playground",
+      "Providers",
+      "Docs",
+      "Settings",
       "Artifacts",
       "Connections",
       "Evidence",

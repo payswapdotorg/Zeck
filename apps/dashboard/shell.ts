@@ -54,6 +54,62 @@ const PROFESSIONAL: readonly ExperienceMode[] = ["professional", "expert"];
 const EXPERT_ONLY: readonly ExperienceMode[] = ["expert"];
 
 /**
+ * The DEP-010 developer-console destinations (roadmap-governed IA:
+ * Quickstart, Applications, Playground, Providers/Capabilities, Docs,
+ * Settings). The shared destinations of the developer-platform IA —
+ * Executions, Evidence, Artifacts, Costs — are the EXISTING routes
+ * (/runs, /trust/evidence, /assets/artifacts, /admin/budgets): the
+ * console never duplicates a surface it already has.
+ */
+const DEVELOPER_CONSOLE: readonly NavItem[] = [
+  {
+    label: "Quickstart",
+    path: "/console/quickstart",
+    description: "The five-step guided path to a first sandbox execution.",
+    keywords: ["quickstart", "getting started", "first run", "onboarding", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Applications",
+    path: "/console/applications",
+    description:
+      "Application scope, safe credentials, environments and usage — the developer view.",
+    keywords: ["application", "scope", "credential", "key", "environment", "usage", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Playground",
+    path: "/console/playground",
+    description:
+      "Guided sandbox runs for every workload family — synthetic data, hard limits, honest availability.",
+    keywords: ["playground", "sandbox", "workload", "family", "experiment", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Providers",
+    path: "/console/providers",
+    description:
+      "Capabilities and honest provider availability, projected from the machine manifest.",
+    keywords: ["provider", "capability", "availability", "catalog", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Docs",
+    path: "/console/docs",
+    description: "The developer documentation entry points, served from the repository.",
+    keywords: ["docs", "documentation", "guide", "reference", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Settings",
+    path: "/console/settings",
+    description: "Console presentation preferences and the disclosed recents list.",
+    keywords: ["settings", "preferences", "appearance", "mode", "recents", "develop"],
+    modes: PROFESSIONAL,
+  },
+];
+
+/**
  * The v2 §5 information architecture. Every entry points at a REAL route
  * (the WORK-033 route map, preserved); entries whose facts the public API
  * does not expose yet lead to honest unavailable states — never
@@ -133,6 +189,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         modes: PROFESSIONAL,
       },
     ],
+  },
+  {
+    label: "Develop",
+    path: "/console",
+    keywords: ["develop", "console", "developer", "playground", "quickstart", "docs"],
+    modes: PROFESSIONAL,
+    items: DEVELOPER_CONSOLE,
   },
   {
     label: "Library",
@@ -569,7 +632,7 @@ export interface AppShellInput {
   readonly returnTo?: string;
 }
 
-function renderAppearanceForm(appearance: Appearance, returnTo: string): string {
+export function renderAppearanceForm(appearance: Appearance, returnTo: string): string {
   const option = (value: Appearance, label: string): string =>
     `<option value="${value}"${appearance === value ? " selected" : ""}>${label}</option>`;
   return `<form class="appearance-form" method="get" action="/appearance">

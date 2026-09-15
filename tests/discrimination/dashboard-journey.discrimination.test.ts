@@ -510,6 +510,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     expect(postRoutes.sort()).toEqual([
       "/build/execution",
       "/build/workload",
+      "/console/playground/:family",
       "/executions/:executionId/cancel",
       "/runs/:executionId/cancel",
     ]);
@@ -566,10 +567,18 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
       redirect: "manual",
     });
     expect(workloadCreate.status).toBe(303);
+    const playgroundCreate = await fetch(`${base}/console/playground/text`, {
+      method: "POST",
+      body: `applicationId=${APP_ID}&environmentId=&spendLimitDollars=&idempotencyKey=dash-d11-playground`,
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      redirect: "manual",
+    });
+    expect(playgroundCreate.status).toBe(303);
     const posts = wireCalls.filter((call) => call.method === "POST");
-    // Both creates converge on the ONE governed wire command
+    // All three creates converge on the ONE governed wire command
     // (POST /executions); cancel is the governed stop.
     expect(posts.map((call) => call.path).sort()).toEqual([
+      "/executions",
       "/executions",
       "/executions",
       `/executions/${EXECUTION_ID}/cancel`,
@@ -607,6 +616,23 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
       "/attention",
       `/command?q=${encodeURIComponent("agents")}`,
       `/command?q=${encodeURIComponent("deployments")}`,
+      // Developer console (DEP-010): every console read journey issues
+      // zero mutations — the playground run only mutates through its
+      // governed POST.
+      "/console",
+      "/console/quickstart",
+      "/console/applications",
+      "/console/applications/keys",
+      "/console/applications/environments",
+      "/console/applications/usage",
+      "/console/playground",
+      "/console/playground/text",
+      "/console/playground/three-d",
+      `/console/playground/text?applicationId=${APP_ID}&spendLimitDollars=1.50`,
+      "/console/providers",
+      "/console/docs",
+      "/console/docs/AUTH.md",
+      "/console/settings",
     ]) {
       const response = await get(path);
       expect(response.status, path).toBe(200);
@@ -630,11 +656,12 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
       (name) => name === "createExecution" || name === "cancelExecution",
     );
     // The governed call sites: the execution create, the workload create
-    // (the SAME governed create command through the same wire route) and
-    // the cancel — but the VOCABULARY is exactly the two governed
-    // commands (a foreign mutating call site fails every pin).
-    expect(mutating.length).toBe(3);
-    expect(mutating.filter((name) => name === "createExecution").length).toBe(2);
+    // and the playground sandbox create (the SAME governed create command
+    // through the same wire route) and the cancel — but the VOCABULARY is
+    // exactly the two governed commands (a foreign mutating call site
+    // fails every pin).
+    expect(mutating.length).toBe(4);
+    expect(mutating.filter((name) => name === "createExecution").length).toBe(3);
     expect(mutating.filter((name) => name === "cancelExecution").length).toBe(1);
     expect(mutating.every((name) => ["createExecution", "cancelExecution"].includes(name))).toBe(
       true,
