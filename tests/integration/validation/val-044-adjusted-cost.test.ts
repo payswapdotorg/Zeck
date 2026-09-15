@@ -43,10 +43,18 @@
  * OPENROUTER_API_KEY) demands one REAL adjusted comparison over a
  * REAL representative slice with every arm priced at its pinned
  * manifest revision — REAL dispatches on the pinned OpenRouter rail
- * with BYOK credentials and MEASURED usage. Absent credentials are a
- * recorded NOT RUN boundary — never a fake success.
+ * with BYOK credentials and MEASURED usage. The repair binds the
+ * REAL dispatch seam the row was declared against: the three arms'
+ * live corpus rows are driven over the rail FIRST (the live-rail
+ * module's `driveLiveArmsAndRecord` — the 041/042/043 precedent
+ * seams' arm characters), the measured traces are RECORDED into the
+ * arm corpora, and the synthesis then derives over the RECORDED
+ * measured facts with the input-integrity oracle re-deriving them.
+ * Absent credentials are a recorded NOT RUN boundary — never a fake
+ * success.
  */
 
+import { createHash } from "node:crypto";
 import { expect, test } from "vitest";
 import { runAdjustedApp } from "../../../benchmarks/validation/apps/economic-adjusted-cost/application";
 import {
@@ -56,18 +64,44 @@ import {
   liveGateOpen,
   OFFLINE_CORPUS_ROWS,
 } from "../../../benchmarks/validation/apps/economic-adjusted-cost/corpus";
-import type { AdjustedCorpusRow } from "../../../benchmarks/validation/apps/economic-adjusted-cost/driver";
+import type {
+  AdjustedCorpusRow,
+  RecordedArmInput,
+} from "../../../benchmarks/validation/apps/economic-adjusted-cost/driver";
 import { driveAdjustedRow } from "../../../benchmarks/validation/apps/economic-adjusted-cost/driver";
 import {
   createRealAccountingRails,
   inputsForRow,
 } from "../../../benchmarks/validation/apps/economic-adjusted-cost/fixtures";
+import {
+  driveLiveArmsAndRecord,
+  type LiveRailCompletionRequest,
+  type LiveRailCompletionResult,
+  type LiveRailDispatch,
+} from "../../../benchmarks/validation/apps/economic-adjusted-cost/live-rail";
 import type {
   EconomicLifecyclePort,
   EconomicWorldFacts,
 } from "../../../benchmarks/validation/apps/economic-baseline/driver";
 import { validateHarnessEvidence } from "../../../benchmarks/validation/harness";
+import { createSqlAuthModule } from "../../../src/modules/auth/adapters/sql-identity-store";
+import { createScopeResolver } from "../../../src/modules/auth/public";
+import {
+  SqlConnectionStore,
+  SqlConnectionsIdempotency,
+} from "../../../src/modules/connections/adapters/sql-connection-store";
+import {
+  createTxCredentialVault,
+  SqlCredentialVault,
+} from "../../../src/modules/connections/adapters/sql-credential-vault";
+import { createConnectionService } from "../../../src/modules/connections/application/connection-service";
 import type { ExecutionService } from "../../../src/modules/executions/application/execution-service";
+import { createFetchTransport } from "../../../src/modules/models/adapters/fetch-transport";
+import { createOpenRouterAdapter } from "../../../src/modules/models/adapters/openrouter";
+import { createSqlDispatchJournal } from "../../../src/modules/models/adapters/sql-dispatch-journal";
+import { createModelGateway } from "../../../src/modules/models/application/model-gateway";
+import { createRailRegistry } from "../../../src/modules/models/application/rail-registry";
+import type { Transaction } from "../../../src/platform/db/port";
 import { createUuidv7Generator } from "../../../src/shared/ids";
 import { type ApiPgWorld, seedApiPgWorld } from "../postgres/api-world";
 import { definePgSuite, type PgContext } from "../postgres/harness";
@@ -273,6 +307,124 @@ function createLandedProvider(
 }
 
 // ---------------------------------------------------------------------------
+// The REAL live dispatch binding (the raw OpenRouter rail completion)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the REAL live dispatch binding (the live rows' raw rail
+ * seam — the 041/042/043 precedent bindings' own gateway stack): the
+ * REAL model gateway over the REAL OpenRouter rail with the REAL
+ * fetch transport, the REAL dispatch journal and BYOK credential
+ * registration. ONE binding (ONE registered connection) serves the
+ * whole live run — the VAL-025 live-run lesson. The binding carries
+ * NO synthesis semantics: it issues exactly the completion request
+ * the live-rail driver builds (the arm's pinned model, the pinned
+ * max_tokens, the arm's own temperature posture) and maps the
+ * provider's own report (the measured usage + the charge
+ * cross-check observation) onto the raw result — the arm characters,
+ * the bounded retry and the trace recording live in the live-rail
+ * module.
+ */
+async function buildLiveDispatch(
+  ctx: PgContext,
+  world: ApiPgWorld,
+): Promise<{ readonly dispatch: LiveRailDispatch }> {
+  const generateId = createUuidv7Generator();
+  const { createEnvelopeCipher, generateMasterKey } = await import(
+    "../../../src/platform/crypto/envelope-cipher"
+  );
+  const cipher = createEnvelopeCipher(generateMasterKey());
+  const auth = createSqlAuthModule(ctx.port, generateId);
+  const vault = new SqlCredentialVault(ctx.port, cipher, generateId);
+  const connections = createConnectionService(
+    new SqlConnectionStore(ctx.port),
+    new SqlConnectionsIdempotency(
+      ctx.port,
+      (tx: Transaction) => createTxCredentialVault(tx, cipher, generateId),
+      generateId,
+    ),
+    createScopeResolver(auth.store),
+    auth.store,
+    generateId,
+  );
+  const registry = createRailRegistry([
+    createOpenRouterAdapter({ transport: createFetchTransport() }),
+  ]);
+  const gateway = createModelGateway({
+    resolver: createScopeResolver(auth.store),
+    catalog: connections,
+    credentials: vault,
+    admission: {
+      async admit() {
+        return { allowed: true };
+      },
+    },
+    capabilities: {
+      async resolve() {
+        return { satisfied: true, catalogRevision: "val-044", satisfiations: [] } as never;
+      },
+    },
+    rails: registry,
+    journal: createSqlDispatchJournal(ctx.port),
+    generateId,
+    defaultTimeoutMs: 150_000,
+    hashRequest: (request) =>
+      createHash("sha256").update(JSON.stringify(request), "utf8").digest("hex"),
+  });
+  const principal = { actorId: world.actorId, authenticatedAt: new Date().toISOString() };
+  // ONE connection registered ONCE for the whole live run (the
+  // review-proven posture: a per-row registration would mint fresh
+  // master keys while the label uniqueness converges onto the first
+  // connection — the cross-cipher materialize then fails the envelope
+  // integrity check).
+  const { connection } = await connections.registerConnection(
+    {
+      principal,
+      applicationId: world.applicationId,
+      rail: "openrouter",
+      label: "val-044-openrouter",
+      registerCredential: { material: OPENROUTER_KEY },
+    },
+    `val-044-conn-${generateId().slice(-8)}`,
+  );
+
+  const dispatch: LiveRailDispatch = async (request: LiveRailCompletionRequest) => {
+    const startedAt = Date.now();
+    const result = await gateway.complete(principal, world.applicationId, connection.id, {
+      model: request.model,
+      maxTokens: request.maxTokens,
+      ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+      messages: request.messages,
+    });
+    const latencyMs = Date.now() - startedAt;
+    if (result.outcome.kind === "provider-success") {
+      const response = result.outcome.response;
+      const completion: LiveRailCompletionResult = {
+        kind: "success",
+        content: response.content.join("\n"),
+        usage: {
+          inputTokens: response.usage.inputTokens,
+          outputTokens: response.usage.outputTokens,
+          ...(response.usage.costUsd === null || response.usage.costUsd === undefined
+            ? {}
+            : { costUsd: response.usage.costUsd }),
+        },
+        latencyMs,
+      };
+      return completion;
+    }
+    const failure = result.outcome.failure;
+    return {
+      kind: "failure",
+      category: failure.category,
+      message: failure.providerMessage ?? "provider failure (no provider message)",
+      latencyMs,
+    };
+  };
+  return { dispatch };
+}
+
+// ---------------------------------------------------------------------------
 // The per-row crown orchestration
 // ---------------------------------------------------------------------------
 
@@ -282,7 +434,10 @@ function createLandedProvider(
  * while the driver drives the landed execution through the REAL
  * platform path — the RECORDED arm inputs verified against their arm
  * corpora, sealed through the REAL accounting rails, the adjusted
- * comparison derived PURELY over the recorded results.
+ * comparison derived PURELY over the recorded results. The inputs
+ * default to the row's honest recorded bundles; the live row passes
+ * the bundles re-derived over its freshly MEASURED arm traces (the
+ * live-rail recording — RECORDED digests over real measured facts).
  */
 async function driveCrownRow(options: {
   readonly ctx: PgContext;
@@ -293,6 +448,8 @@ async function driveCrownRow(options: {
   readonly runSuffix: string;
   readonly driven: Set<string>;
   readonly facts: () => Promise<EconomicWorldFacts>;
+  /** The row's input bundles (default: the honest recorded bundles). */
+  readonly inputs?: readonly RecordedArmInput[];
 }): Promise<{
   readonly result: Awaited<ReturnType<typeof driveAdjustedRow>>;
   readonly appOutcome: Awaited<ReturnType<typeof runAdjustedApp>>;
@@ -347,7 +504,7 @@ async function driveCrownRow(options: {
   const result = await driveAdjustedRow({
     row,
     lifecycle,
-    inputs: inputsForRow(row),
+    inputs: options.inputs ?? inputsForRow(row),
     rails: createRealAccountingRails(),
     metadata,
     environmentIdentity: `val-044-crown-${row.rowId}`,
@@ -603,6 +760,36 @@ definePgSuite("VAL-044 adjusted-cost synthesis over the real platform path", (ct
     const runFacts: RunFacts[] = [];
 
     try {
+      // ONE live dispatch binding for the whole live run (the
+      // review-proven VAL-025 posture): the connection and its sealed
+      // credential envelope are registered ONCE and shared.
+      const { dispatch } = await buildLiveDispatch(ctx, world);
+
+      // ---- the REAL dispatch seam (the Task-78/79 repair): the three
+      //      arms' live corpus rows are driven over the rail FIRST and
+      //      the MEASURED traces recorded — the arm references then
+      //      carry RECORDED digests over real measured facts and the
+      //      input-integrity oracle re-derives them ----
+      const recording = await driveLiveArmsAndRecord({
+        dispatch,
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        paceMs: 500,
+      });
+      for (const arm of recording.arms) {
+        console.info(
+          `[VAL-044]   LIVE arm ${arm.armLabel}:${arm.corpusRowId} -> recorded ` +
+            `${arm.runCount}r/${arm.resolvedCount}x over ${arm.dispatchedRequests} REAL dispatch(es)` +
+            `${arm.cacheHits > 0 ? ` + ${arm.cacheHits} cache hit(s)` : ""} ` +
+            `measured=${arm.measuredCostMicroUsd}µ$ digest=${arm.recordedDigest} ` +
+            `latency=${arm.latencyMs}ms`,
+        );
+      }
+      console.info(
+        `[VAL-044] LIVE arms recorded: ${recording.totalDispatches} REAL dispatch(es) on the pinned ` +
+          `rail, ${recording.totalMeasuredMicroUsd}µ$ measured total, wallclock ${recording.totalLatencyMs}ms ` +
+          `— the three arms' live traces are now the RECORDED corpora the synthesis derives over.`,
+      );
+
       for (const row of liveRows) {
         if (!liveGateOpen(row, process.env)) {
           continue;
@@ -620,6 +807,10 @@ definePgSuite("VAL-044 adjusted-cost synthesis over the real platform path", (ct
           runSuffix,
           driven,
           facts,
+          // The live row consumes the bundles re-derived over the
+          // freshly MEASURED arm traces (RECORDED digests — the
+          // input-integrity oracle re-derives the same facts).
+          ...(row.needsDispatch ? { inputs: recording.inputs } : {}),
         });
 
         expect(result.terminal, `${row.rowId} terminal`).toBe(row.expected.terminal);
@@ -651,17 +842,23 @@ definePgSuite("VAL-044 adjusted-cost synthesis over the real platform path", (ct
         });
         console.info(
           `[VAL-044]   LIVE ${row.rowId} -> ${result.terminal} (${row.family}) ` +
+            `inputs=${result.inputs.length} verified=${runFacts[runFacts.length - 1]?.verifiedInputs} ` +
+            `pooled=${synthesis?.pooledRuns ?? 0}r/${synthesis?.pooledResolved ?? 0}x ` +
             `measured=${synthesis?.measuredCostMicroUsd ?? "0"}µ$ ` +
-            `adjusted=${synthesis?.adjustedCostMicroUsd ?? "null"}µ$ latency=${result.totalLatencyMs}ms`,
+            `adjusted=${synthesis?.adjustedCostMicroUsd ?? "null"}µ$ ` +
+            `digests=${runFacts[runFacts.length - 1]?.inputDigests.join(",")} ` +
+            `latency=${result.totalLatencyMs}ms appPassed=${String(appOutcome.passed)}`,
         );
       }
 
       const completed = runFacts.filter((fact) => fact.terminal === "COMPLETED").length;
       console.info(
         `[VAL-044] LIVE rail summary: ${completed} COMPLETED of ${runFacts.length} driven live rows ` +
-          `over the REAL OpenRouter rail (every arm priced at its pinned manifest revision, the ` +
-          `adjusted families computed over MEASURED facts, the verdict recorded through the REAL ` +
-          `recorder with honest economics).`,
+          `over the REAL OpenRouter rail (${recording.totalDispatches} REAL dispatches on the three ` +
+          `arms' live slices recorded into their corpora first — every arm priced at its pinned ` +
+          `manifest revision, the arm references carrying RECORDED digests over the MEASURED traces, ` +
+          `the input-integrity oracle re-deriving them, the adjusted families computed over MEASURED ` +
+          `facts, the verdict recorded through the REAL recorder with honest economics).`,
       );
       for (const boundary of notRun) {
         console.warn(`[VAL-044] NOT RUN boundary: ${boundary}`);
