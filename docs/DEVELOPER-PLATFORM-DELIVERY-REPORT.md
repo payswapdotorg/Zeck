@@ -7,7 +7,7 @@ access limitations. Frontier truth lives in
 `spec/platform-delivery-state/frontier-state.json`; this report is the human/
 agent-readable history behind it.
 
-Report refreshed at: main `3111950` (2026-09-17, Tech Lead session B).
+Report refreshed at: main `7378da5` (2026-09-17, Tech Lead session B).
 
 ## Delivery ledger
 
@@ -16,6 +16,7 @@ Report refreshed at: main `3111950` (2026-09-17, Tech Lead session B).
 | DEP-010 | A | (wave-A main) | #125 | 97c9e37 | console shell, applications/environments lifecycle, guided playground (AC1-7); full battery green |
 | DEP-020 | A | (wave-A main) | #124 | cc49adb | docs + integration kit (AC1-6); 27 examples over 22 workload families, machine manifests (openapi 19 paths, capability/env-vars/error-codes/examples manifests, AGENT-GUIDE) |
 | DEP-025 | A | (wave-A main) | #127 | 1e45199 | Validation Library + rerunnable experiment center (AC1-9): definitions, historical evidence, rerun/compare/export paths |
+| DEP-012 | B | e49c36f | #130 | 9429fb8 | LEAD-DIRECT (dispatch capacity-gated; AI_CONTINUATION precedent): explorer module + list/six-view detail/machine-facts console routes + nav entry; full battery green (typecheck 0 / lint 0-61w-8i / unit 330f-5805t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke |
 | DEP-013 | B | e70f2ed | #129 | cdf6338 | interactive sandbox playground for every workload class (AC1-9); worker chat 59c09e03, tarball sha256 `6546a0b5…` verified byte-identical at harvest; Lead independently reproduced the full battery (typecheck 0 / lint 0-61w-8i / unit 329f-5782t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke of catalog, composer, honest NOT RUN (three-d) and example-source routes |
 
 ## Absorbed items
@@ -28,8 +29,8 @@ Report refreshed at: main `3111950` (2026-09-17, Tech Lead session B).
 
 ## Current frontier (main 3111950)
 
-- delivered: DEP-010, DEP-013, DEP-020, DEP-025
-- eligible: DEP-001, DEP-011, DEP-012, DEP-014
+- delivered: DEP-010, DEP-012, DEP-013, DEP-020, DEP-025
+- eligible: DEP-001, DEP-011, DEP-014
 - in flight: none (see dead-lane audit below)
 - blocked: DEP-002 ← DEP-001; DEP-003 ← DEP-001 + DEP-002
 - later authorized items awaiting dispatch gating: DEP-030..033, DEP-040..044
@@ -44,6 +45,10 @@ Both lanes were reopened as eligible for redispatch. The 2026-09-16 wave-B
 DEP-011 dispatch (chat 15bb72ae) died the same way pre-checkpoint-1 (pod
 expired mid-work; work lost) and is queued for redispatch on the refreshed
 base.
+
+DEP-012 was implemented LEAD-DIRECT (PR #130) while the dispatch channel
+was capacity-gated — the recorded precedent for Lead-direct implementation
+with full contract rigor.
 
 ## Failure/defect log (program-level)
 
@@ -70,6 +75,6 @@ base.
 ## Remaining roadmap
 
 DEP-001 → DEP-002 → DEP-003 (deployment chain, blocked on DEP-001);
-DEP-011, DEP-012, DEP-014 (console wave B, eligible now);
+DEP-011, DEP-014 (console wave B, eligible now);
 DEP-030..033 (developer product completeness);
 DEP-040..044 (deployment acceptance + release gate).
