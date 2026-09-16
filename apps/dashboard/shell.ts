@@ -86,6 +86,26 @@ const DEVELOPER_CONSOLE: readonly NavItem[] = [
     modes: PROFESSIONAL,
   },
   {
+    label: "Executions",
+    path: "/console/executions",
+    description:
+      "The complete execution explorer — result, verification, activity, route, costs, provenance, machine facts.",
+    keywords: [
+      "execution",
+      "explorer",
+      "runs",
+      "result",
+      "verification",
+      "activity",
+      "route",
+      "cost",
+      "provenance",
+      "evidence",
+      "develop",
+    ],
+    modes: PROFESSIONAL,
+  },
+  {
     label: "Validation Lab",
     path: "/console/validation",
     description:

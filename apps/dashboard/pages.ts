@@ -86,6 +86,18 @@ import {
 } from "./controls";
 import { advancedDisclosure } from "./disclosure";
 import {
+  type ExplorerFacts,
+  type ExplorerRunFact,
+  explorerFactsOf,
+  explorerFamilyOf,
+  explorerListFactsJson,
+  explorerNotFoundView,
+  explorerRunsOf,
+  explorerTabNav,
+  explorerView,
+  explorerViewOf,
+} from "./explorer";
+import {
   assetResult,
   type HandlerResult,
   type HttpContext,
@@ -4438,6 +4450,176 @@ function validationProviderTable(): string {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Executions explorer (DEP-012 — the complete execution inspection surface
+// over the public contracts: list → six-view detail → machine facts)
+// ---------------------------------------------------------------------------
+
+/** Live results fan-out for the list rows (a missing result is an honest
+ * empty cost cell, never an error — the record may not be settled yet). */
+async function readResults(
+  client: ZeckClient,
+  executionIds: readonly string[],
+): Promise<Map<string, ExecutionResult>> {
+  const reads = await Promise.all(
+    executionIds.map(async (id) => {
+      try {
+        return await client.getResult(id);
+      } catch (error) {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }
+    }),
+  );
+  const results = new Map<string, ExecutionResult>();
+  executionIds.forEach((id, index) => {
+    const result = reads[index];
+    if (result !== null && result !== undefined) {
+      results.set(id, result);
+    }
+  });
+  return results;
+}
+
+function explorerListRows(runs: readonly ExplorerRunFact[]): string {
+  if (runs.length === 0) {
+    return emptyState(
+      "No executions opened in this browser yet",
+      "Run one from the playground, the validation lab, or the quickstart — executions you open appear here for inspection.",
+    );
+  }
+  const rows = runs
+    .map(
+      (run) => `<tr>
+      <td><a class="run-title" href="/console/executions/${encodeURIComponent(run.id)}">${esc(run.id)}</a></td>
+      <td>${statusBadge(run.status)}</td>
+      <td>${esc(run.family)}</td>
+      <td class="mono">${esc(run.createdAt)}</td>
+      <td class="mono">${run.terminalAt === null ? "—" : esc(run.terminalAt)}</td>
+      <td>${run.costMicroUsd === null ? "—" : `$${esc(formatMicroUsd(run.costMicroUsd))}`}</td>
+      <td class="mono">${run.origin === null ? "—" : esc(run.origin)}</td>
+    </tr>`,
+    )
+    .join("\n  ");
+  return `<table class="data">
+  <thead><tr><th scope="col">Execution</th><th scope="col">Status</th><th scope="col">Workload family</th><th scope="col">Created</th><th scope="col">Terminal</th><th scope="col">Recorded cost</th><th scope="col">Origin</th></tr></thead>
+  <tbody>${rows}</tbody>
+</table>`;
+}
+
+async function executionsConsolePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const { executions, survivingIds } = await readRecentExecutions(client, ids);
+  const results = await readResults(client, survivingIds);
+  const runs = explorerRunsOf(executions, results);
+  const setCookies =
+    survivingIds.length === ids.length ? undefined : [recentsCookieHeader(survivingIds)];
+  const content = `${pageHead({ title: "Executions", path: "/console/executions" })}
+<p class="muted">The complete execution explorer — every execution you open, inspected through the public contracts: result, verification, activity, route and substrate, costs and provenance.</p>
+${unavailableState(
+  "No application-scoped execution listing exists in the public API",
+  "The list below is this browser's disclosed recents — each row is re-read live through GET /executions/:id. The public API exposes no listing route yet; when it does, this page projects it (DEP-012's honest boundary).",
+  "GET /executions (listing)",
+)}
+${explorerListRows(runs)}
+${lookupForm()}
+<p class="muted">Machine parity: every execution's composed public facts are served as verbatim JSON at <span class="mono">/console/executions/&lt;id&gt;/facts.json</span> — an agent follows an execution without scraping HTML.</p>`;
+  return page(
+    { title: "Zeck — Executions", activePath: "/console/executions", mainContent: content },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function executionExplorerPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const executionId = ctx.params.executionId ?? "";
+  let facts: ExplorerFacts;
+  try {
+    const [execution, result, events, verification] = await Promise.all([
+      client.getExecution(executionId),
+      client.getResult(executionId),
+      client.listEvents(executionId),
+      client.listVerification(executionId),
+    ]);
+    facts = { execution, result, events, verification };
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status === 404) {
+      const content = `${pageHead({ title: "Execution not found", path: "/console/executions" })}
+${explorerNotFoundView(executionId)}
+${lookupForm()}`;
+      return htmlStatusResult(
+        404,
+        appShell({
+          title: "Zeck — Execution not found",
+          activePath: "/console/executions",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
+  const view = explorerViewOf(ctx.query.get("tab"));
+  const setCookies = [
+    recentsCookieHeader(addRecent(parseRecents(ctx.cookies[RECENTS_COOKIE]), facts.execution.id)),
+  ];
+  const content = `${pageHead({
+    title: `Execution ${facts.execution.id}`,
+    path: "/console/executions",
+    currentLabel: facts.execution.id,
+    headingHtml: `${esc(facts.execution.id)}\n    ${statusBadge(facts.execution.status)}`,
+  })}
+<p class="muted">Workload family <strong>${esc(explorerFamilyOf(facts.execution))}</strong> · recorded facts only — every missing fact names its missing public contract.</p>
+${explorerTabNav(facts.execution.id, view)}
+${explorerView(view, facts)}
+<p class="muted">Machine parity: <a href="/console/executions/${encodeURIComponent(
+    facts.execution.id,
+  )}/facts.json">the composed public facts as verbatim JSON</a>.</p>`;
+  return page(
+    {
+      title: `Zeck — Execution ${facts.execution.id}`,
+      activePath: "/console/executions",
+      mainContent: content,
+    },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function executionFactsRoute(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const executionId = ctx.params.executionId ?? "";
+  let facts: ExplorerFacts;
+  try {
+    const [execution, result, events, verification] = await Promise.all([
+      client.getExecution(executionId),
+      client.getResult(executionId),
+      client.listEvents(executionId),
+      client.listVerification(executionId),
+    ]);
+    facts = { execution, result, events, verification };
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status === 404) {
+      return jsonResult(
+        JSON.stringify(
+          {
+            error: "NOT_FOUND",
+            message: `No execution "${executionId}" is visible through the governed API for this token.`,
+          },
+          null,
+          2,
+        ),
+        404,
+      );
+    }
+    throw error;
+  }
+  return jsonResult(JSON.stringify(explorerFactsOf(facts), null, 2));
+}
+
 async function validationLabPage(ctx: HttpContext): Promise<HandlerResult> {
   const experiments = validationExperiments();
   const content = `${pageHead({
@@ -6009,6 +6191,22 @@ export function createDashboardRoutes(
     // DEP-013: the copyable integration-kit example behind each family
     // (machine parity — served read-only from the repository).
     wrap("GET", "/console/playground/:family/example", (ctx) => playgroundExamplePage(ctx)),
+    // Executions explorer (DEP-012): the list → six-view detail → machine
+    // facts chain. Static list route first, then the parameterized detail
+    // and its verbatim-JSON machine twin.
+    wrap("GET", "/console/executions", (ctx) => executionsConsolePage(client, ctx)),
+    wrap("GET", "/console/executions/facts.json", async (ctx) => {
+      const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+      const { executions, survivingIds } = await readRecentExecutions(client, ids);
+      const results = await readResults(client, survivingIds);
+      return jsonResult(
+        JSON.stringify(explorerListFactsJson(explorerRunsOf(executions, results)), null, 2),
+      );
+    }),
+    wrap("GET", "/console/executions/:executionId/facts.json", (ctx) =>
+      executionFactsRoute(client, ctx),
+    ),
+    wrap("GET", "/console/executions/:executionId", (ctx) => executionExplorerPage(client, ctx)),
     // Validation Lab (DEP-025). Static routes precede parameterized ones:
     // capability/workload/stage/start/agent/compare must win over
     // :workOrder, and the machine routes sit under the api/ prefix.

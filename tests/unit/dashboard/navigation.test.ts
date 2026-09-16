@@ -370,6 +370,7 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP
       "Quickstart",
       "Applications",
       "Playground",
+      "Executions",
       "Validation Lab",
       "Providers",
       "Docs",
