@@ -84,6 +84,15 @@ import {
   spendSummarySection,
   teamSection,
 } from "./controls";
+import {
+  type CredentialConsoleTransport,
+  credentialMutationUnavailableContent,
+  credentialReplayContent,
+  credentialRevealContent,
+  credentialsSections,
+  credentialTransportFromEnvironment,
+  validateCredentialIssueForm,
+} from "./credentials";
 import { advancedDisclosure } from "./disclosure";
 import {
   type ExplorerFacts,
@@ -3421,7 +3430,16 @@ ${runsList(mine, "No executions of this application were opened in this browser 
   );
 }
 
-async function credentialsPage(scope: string, ctx: HttpContext): Promise<HandlerResult> {
+async function credentialsPage(
+  credentials: CredentialConsoleTransport | null,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  // DEP-011: the real credential lifecycle projected through the public
+  // API (list, issue, rotate/revoke confirmations, connections). The
+  // console holds zero credential state; the safe-rules and env-contract
+  // sections stay the authority's own vocabulary.
+  const sections = await credentialsSections(credentials, {}, ctx.query);
   const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
 ${applicationsTabNav("keys")}
 <h2>The console's transport credential</h2>
@@ -3444,9 +3462,9 @@ ${distinctionList([
     backed: true,
   },
   {
-    label: "Credential issuance in this console",
-    fact: "Not exposed: the public API has no credential issuance route yet, and the console must not become a second credential authority.",
-    backed: false,
+    label: "Credential lifecycle in this console",
+    fact: "Live: the credential authority's lifecycle (issue with show-once, metadata-only list, rotate, revoke) projects through the public API onto this page — the console composes it, never re-implements it.",
+    backed: true,
   },
 ])}
 <h2>The environment contract (names only — never values)</h2>
@@ -3456,12 +3474,7 @@ ${keyValueTable([
   ["ZECK_APPLICATION_ID", "the application scope this console is bound to"],
   ["ZECK_ENVIRONMENT_ID", "optional — a disposable sandbox environment for executions"],
 ])}
-<h2>Issue a credential</h2>
-${unavailableState(
-  "Credential issuance",
-  "There is no credential issuance route in the public API yet. When the credential surface ships, secrets that policy requires showing will appear exactly once at creation and never again — this console states that policy now and will render those facts from the credential authority through the public API, never from a console-local store.",
-  "the credential authority through the public API",
-)}
+${sections}
 <p>Guided path: <a href="/console/docs/AUTH.md">authentication</a> and <a href="/console/docs/CONFIGURATION.md">provider/model configuration</a> in the docs. Routing facts from real runs (BYOK, secret-mediated): <a href="/assets/connections">Connections</a>.</p>`;
   return page(
     {
@@ -3471,6 +3484,206 @@ ${unavailableState(
     },
     ctx,
   );
+}
+
+/**
+ * The issue POST (DEP-011): the governed mutation through the credential
+ * transport. The FIRST response IS the show-once reveal (no server-side
+ * state — M24); a re-POST of the same idempotency key renders the honest
+ * replay page (the authority returns no secret on replay).
+ */
+async function credentialIssueHandler(
+  credentials: CredentialConsoleTransport | null,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  void scope;
+  if (credentials === null) {
+    return page(
+      {
+        title: "Zeck — Credential action unavailable",
+        activePath: "/console/applications/keys",
+        mainContent: credentialMutationUnavailableContent("issue"),
+      },
+      ctx,
+    );
+  }
+  const validation = validateCredentialIssueForm(ctx.form);
+  if (validation.values === null) {
+    const sections = await credentialsSections(
+      credentials,
+      ctx.form,
+      new URLSearchParams(),
+      validation.errors,
+    );
+    const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
+${applicationsTabNav("keys")}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The credential could not be issued — fix the highlighted fields.</div>
+${sections}`;
+    return htmlStatusResult(
+      422,
+      appShell({
+        title: "Zeck — API keys & credentials",
+        activePath: "/console/applications/keys",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  try {
+    const view = await credentials.issueCredential(
+      { label: validation.values.label, role: validation.values.role },
+      validation.values.idempotencyKey,
+    );
+    const content =
+      view.replayed || view.secret === null
+        ? credentialReplayContent({ action: "issued", view })
+        : credentialRevealContent({ action: "issued", view });
+    return page(
+      {
+        title: "Zeck — Credential issued",
+        activePath: "/console/applications/keys",
+        mainContent: content,
+      },
+      ctx,
+    );
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const sections = await credentialsSections(credentials, ctx.form, new URLSearchParams());
+      const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
+${applicationsTabNav("keys")}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this issuance: ${esc(
+        error.body.message,
+      )} (${esc(error.body.code)})</div>
+${sections}`;
+      return htmlStatusResult(
+        error.status === 403 || error.status === 401 ? 403 : 422,
+        appShell({
+          title: "Zeck — API keys & credentials",
+          activePath: "/console/applications/keys",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
+}
+
+/** The rotate POST: successor secret (show-once reveal / honest replay). */
+async function credentialRotateHandler(
+  credentials: CredentialConsoleTransport | null,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  void scope;
+  if (credentials === null) {
+    return page(
+      {
+        title: "Zeck — Credential action unavailable",
+        activePath: "/console/applications/keys",
+        mainContent: credentialMutationUnavailableContent("rotate"),
+      },
+      ctx,
+    );
+  }
+  const credentialId = ctx.params.credentialId ?? "";
+  const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
+  if (idempotencyKey.length === 0) {
+    return redirectResult("/console/applications/keys");
+  }
+  try {
+    const view = await credentials.rotateCredential(credentialId, idempotencyKey);
+    const content =
+      view.replayed || view.secret === null
+        ? credentialReplayContent({ action: "rotated", view })
+        : credentialRevealContent({ action: "rotated", view });
+    return page(
+      {
+        title: "Zeck — Credential rotated",
+        activePath: "/console/applications/keys",
+        mainContent: content,
+      },
+      ctx,
+    );
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const sections = await credentialsSections(credentials, {}, new URLSearchParams());
+      const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
+${applicationsTabNav("keys")}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this rotation: ${esc(
+        error.body.message,
+      )} (${esc(error.body.code)})</div>
+${sections}`;
+      return htmlStatusResult(
+        error.status === 401 || error.status === 403 ? 403 : 422,
+        appShell({
+          title: "Zeck — API keys & credentials",
+          activePath: "/console/applications/keys",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
+}
+
+/** The revoke POST: immediate + idempotent; PRG back to the list. */
+async function credentialRevokeHandler(
+  credentials: CredentialConsoleTransport | null,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  void scope;
+  if (credentials === null) {
+    return page(
+      {
+        title: "Zeck — Credential action unavailable",
+        activePath: "/console/applications/keys",
+        mainContent: credentialMutationUnavailableContent("revoke"),
+      },
+      ctx,
+    );
+  }
+  const credentialId = ctx.params.credentialId ?? "";
+  const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
+  if (idempotencyKey.length === 0) {
+    return redirectResult("/console/applications/keys");
+  }
+  try {
+    await credentials.revokeCredential(credentialId, idempotencyKey);
+    // PRG: the list renders the authority's own status transition.
+    return redirectResult("/console/applications/keys");
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const sections = await credentialsSections(credentials, {}, new URLSearchParams());
+      const content = `${pageHead({ title: "API keys & credentials", path: "/console/applications/keys" })}
+${applicationsTabNav("keys")}
+<div id="form-status" role="status" aria-live="polite" class="live-region">The platform rejected this revocation: ${esc(
+        error.body.message,
+      )} (${esc(error.body.code)})</div>
+${sections}`;
+      return htmlStatusResult(
+        error.status === 401 || error.status === 403 ? 403 : 422,
+        appShell({
+          title: "Zeck — API keys & credentials",
+          activePath: "/console/applications/keys",
+          mainContent: content,
+          appearance: appearanceOf(ctx.cookies),
+          mode: modeOf(ctx.cookies),
+          returnTo: ctx.path,
+        }),
+      );
+    }
+    throw error;
+  }
 }
 
 async function environmentsConsolePage(
@@ -6118,6 +6331,16 @@ export interface DashboardRoutesOptions {
    * this value is presentation prefill only.
    */
   readonly applicationId?: string;
+  /**
+   * The credential-console transport (DEP-011): the projection seam over
+   * the public credential routes. OPTIONAL — when absent, the console
+   * derives it from the deployment's environment contract
+   * (ZECK_API_URL / ZECK_TOKEN / ZECK_APPLICATION_ID, the same variables
+   * the dashboard entry point requires) and renders the honest unavailable
+   * state when those are not bound. The console holds zero credential
+   * state of its own either way.
+   */
+  readonly credentials?: CredentialConsoleTransport;
 }
 
 /** Create the dashboard route table bound to one SDK client. */
@@ -6126,6 +6349,11 @@ export function createDashboardRoutes(
   options: DashboardRoutesOptions = {},
 ): readonly RouteDefinition[] {
   const scope = options.applicationId ?? "";
+  // DEP-011: the credential transport — injectable through the options
+  // seam; otherwise derived from the deployment's environment contract
+  // (null ⇒ the honest unavailable states, never a fabricated transport).
+  const credentials =
+    options.credentials !== undefined ? options.credentials : credentialTransportFromEnvironment();
   const wrap = (
     method: "GET" | "POST",
     pattern: string,
@@ -6175,7 +6403,18 @@ export function createDashboardRoutes(
     wrap("GET", "/console", (ctx) => consoleHomePage(scope, ctx)),
     wrap("GET", "/console/quickstart", (ctx) => quickstartPage(scope, ctx)),
     wrap("GET", "/console/applications", (ctx) => applicationsPage(client, scope, ctx)),
-    wrap("GET", "/console/applications/keys", (ctx) => credentialsPage(scope, ctx)),
+    wrap("GET", "/console/applications/keys", (ctx) => credentialsPage(credentials, scope, ctx)),
+    // DEP-011: the credential lifecycle's governed POSTs (issue → show-once
+    // reveal; rotate → successor reveal; revoke → PRG back to the list).
+    wrap("POST", "/console/applications/keys/issue", (ctx) =>
+      credentialIssueHandler(credentials, scope, ctx),
+    ),
+    wrap("POST", "/console/applications/keys/:credentialId/rotate", (ctx) =>
+      credentialRotateHandler(credentials, scope, ctx),
+    ),
+    wrap("POST", "/console/applications/keys/:credentialId/revoke", (ctx) =>
+      credentialRevokeHandler(credentials, scope, ctx),
+    ),
     wrap("GET", "/console/applications/environments", (ctx) =>
       environmentsConsolePage(client, ctx),
     ),

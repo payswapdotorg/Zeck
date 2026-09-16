@@ -23,7 +23,8 @@
     { "name": "agents", "description": "Read-only governed agent inventory projection." },
     { "name": "economic-actions", "description": "Governed agentic economic-intent surface." },
     { "name": "codebase-analysis", "description": "Advisory codebase opportunity analysis (execution-bound)." },
-    { "name": "health", "description": "Deployment readiness (control plane vs dependency facts)." }
+    { "name": "health", "description": "Deployment readiness (control plane vs dependency facts)." },
+    { "name": "credentials", "description": "Scoped application transport-credential lifecycle (issue show-once, metadata-only listing, rotation, revocation)." }
   ],
   "paths": {
     "/executions": {
@@ -575,6 +576,146 @@
           }
         }
       }
+    },
+    "/credentials": {
+      "post": {
+        "tags": ["credentials"],
+        "operationId": "issueCredential",
+        "summary": "Issue a scoped transport credential (show-once secret).",
+        "description": "Creates a credential through the auth module's credential authority. The secret material is returned EXACTLY ONCE — on this response when replayed=false; a replay of the same Idempotency-Key returns the metadata-only record (secret=null). The idempotency ledger's durable outcome never contains secret material, so no later route, log or render path can retrieve it. The request body carries the application selector; the effective tenant/application scope is derived server-side from durable membership rows. Unknown keys are rejected fail-closed.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CredentialIssueRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The durable issue outcome (show-once secret when this request created it).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CredentialIssueResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
+          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
+          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "422": {
+            "description": "422 — CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment / the authority is not wired in the composition).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PublicError" }
+              }
+            }
+          },
+          "502": { "$ref": "#/components/responses/ProviderError" }
+        }
+      },
+      "get": {
+        "tags": ["credentials"],
+        "operationId": "listCredentials",
+        "summary": "List credentials (metadata only, scope-checked).",
+        "description": "Every credential visible to the request's application scope: identity, label, role/permission scope, creation/rotation timestamps and status. The response carries NO secret material and no secret reference (metadata-only by construction). The issuance.enabled fact states the deployment's issuance capability honestly.",
+        "parameters": [
+          { "$ref": "#/components/parameters/ZeckApplication" }
+        ],
+        "responses": {
+          "200": {
+            "description": "The metadata-only credential list.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CredentialListResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
+          "403": { "$ref": "#/components/responses/TenantScopeViolation" }
+        }
+      }
+    },
+    "/credentials/{credentialId}/rotate": {
+      "post": {
+        "tags": ["credentials"],
+        "operationId": "rotateCredential",
+        "summary": "Rotate a credential (successor secret, show-once).",
+        "description": "Issues a successor secret under the SAME credential identity and retires the predecessor (status=retired, rotatedAt set, supersededBy naming the successor). The successor secret is shown EXACTLY ONCE on this response when replayed=false; a replay returns the successor record with secret=null. Revoked credentials cannot rotate (409 INVALID_STATE_TRANSITION). Cross-tenant or cross-application targets fail TENANT_SCOPE_VIOLATION.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/CredentialId" }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": {}, "additionalProperties": false }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The successor record (show-once secret when this request executed the rotation).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CredentialIssueResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
+          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "422": {
+            "description": "422 — CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PublicError" }
+              }
+            }
+          },
+          "502": { "$ref": "#/components/responses/ProviderError" }
+        }
+      }
+    },
+    "/credentials/{credentialId}/revoke": {
+      "post": {
+        "tags": ["credentials"],
+        "operationId": "revokeCredential",
+        "summary": "Revoke a credential (immediate, idempotent).",
+        "description": "Transitions the credential identity's current record to status=revoked — immediate and idempotent: revoking an already-revoked credential converges to the same durable outcome (no error). Rotation and revocation are both reflected in the list.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/CredentialId" }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "properties": {}, "additionalProperties": false }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The revoked record (the durable outcome).",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CredentialRevokeResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
+          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "502": { "$ref": "#/components/responses/ProviderError" }
+        }
+      }
     }
   },
   "components": {
@@ -629,6 +770,13 @@
         "in": "path",
         "required": true,
         "schema": { "type": "string" }
+      },
+      "CredentialId": {
+        "name": "credentialId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "The STABLE credential identity (shared across rotations; the list response names it)."
       }
     },
     "responses": {
@@ -1734,6 +1882,76 @@
         },
         "additionalProperties": false,
         "description": "The signed webhook envelope (delivery surface, not an HTTP route): signed with HMAC-SHA256 hex over the canonical basis in the x-zeck-signature header; event id in x-zeck-event-id."
+      },
+      "CredentialStatus": {
+        "type": "string",
+        "enum": ["active", "retired", "revoked"],
+        "description": "The credential lifecycle: active (usable), retired (superseded by a rotation successor), revoked (terminal; immediate and idempotent)."
+      },
+      "CredentialRecord": {
+        "type": "object",
+        "description": "Metadata-only credential projection. NO field carries secret material or a secret reference — by construction there is no field where either could appear.",
+        "required": ["id", "credentialId", "applicationId", "label", "role", "status", "createdAt", "rotatedAt", "supersededBy", "permissions"],
+        "properties": {
+          "id": { "type": "string", "description": "Row id of this record (one per issued secret binding)." },
+          "credentialId": { "type": "string", "description": "The STABLE credential identity — shared across rotations." },
+          "applicationId": { "type": "string" },
+          "label": { "type": "string", "description": "Operator-facing label (validated shape; never secret material)." },
+          "role": { "type": "string", "enum": ["owner", "admin", "member"], "description": "The house role whose permission set scopes this credential." },
+          "status": { "$ref": "#/components/schemas/CredentialStatus" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "rotatedAt": { "type": ["string", "null"], "format": "date-time", "description": "Set on the predecessor when its rotation successor was issued." },
+          "supersededBy": { "type": ["string", "null"], "description": "The successor record id after rotation (lineage fact)." },
+          "permissions": { "type": "array", "items": { "type": "string" }, "description": "The permission scope the authority derives from the role." }
+        },
+        "additionalProperties": false
+      },
+      "CredentialIssueRequest": {
+        "type": "object",
+        "description": "The closed create contract: applicationId, label and role only — unknown keys are rejected fail-closed.",
+        "required": ["applicationId", "label", "role"],
+        "properties": {
+          "applicationId": { "type": "string" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$" },
+          "role": { "type": "string", "enum": ["owner", "admin", "member"] }
+        },
+        "additionalProperties": false
+      },
+      "CredentialIssueResponse": {
+        "type": "object",
+        "description": "Issue/rotate outcome. The show-once contract: secret is present ONLY when replayed is false (the request that durably created the credential); a replay of the same idempotency key returns the metadata-only record with secret=null, and no other route can retrieve it.",
+        "required": ["credential", "secret", "replayed"],
+        "properties": {
+          "credential": { "$ref": "#/components/schemas/CredentialRecord" },
+          "secret": { "type": ["string", "null"], "description": "Show-once secret material: present exactly once, on the response to the request that durably created it; null on every replay and every other route." },
+          "replayed": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "CredentialListResponse": {
+        "type": "object",
+        "required": ["credentials", "issuance"],
+        "properties": {
+          "credentials": { "type": "array", "items": { "$ref": "#/components/schemas/CredentialRecord" } },
+          "issuance": {
+            "type": "object",
+            "required": ["enabled"],
+            "properties": {
+              "enabled": { "type": "boolean", "description": "The deployment's issuance capability fact — false when the composition's secret store cannot hold issued credentials (the honest gate the console renders)." }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "CredentialRevokeResponse": {
+        "type": "object",
+        "required": ["credential", "replayed"],
+        "properties": {
+          "credential": { "$ref": "#/components/schemas/CredentialRecord" },
+          "replayed": { "type": "boolean" }
+        },
+        "additionalProperties": false
       }
     }
   },

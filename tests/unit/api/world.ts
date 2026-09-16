@@ -23,7 +23,15 @@ import type {
   AgentVersionRecord,
 } from "../../../src/modules/agents/public";
 import type { IdentityStore, MembershipRecord } from "../../../src/modules/auth/public";
-import { createScopeResolver, type ScopeResolver } from "../../../src/modules/auth/public";
+import {
+  type CredentialService,
+  createCredentialService,
+  createScopeResolver,
+  InMemoryCredentialIdempotency,
+  InMemoryCredentialSecretStore,
+  InMemoryCredentialStore,
+  type ScopeResolver,
+} from "../../../src/modules/auth/public";
 import {
   createCapabilityRegistry,
   createInMemoryCatalogStore,
@@ -67,6 +75,10 @@ export interface ApiWorld {
   readonly agentRegistry: FakeAgentRegistry;
   readonly economics: EconomicActionService;
   readonly codebaseAnalyzer: OpportunityAnalyzer;
+  /** The credential AUTHORITY over the in-memory stores (DEP-011). */
+  readonly credentials: CredentialService;
+  /** The in-memory secret store (test introspection for show-once probes). */
+  readonly credentialSecrets: InMemoryCredentialSecretStore;
   /** The analyzer's in-memory store (WORK-022 discrimination probes). */
   readonly opportunityStore: InMemoryOpportunityStore;
   /** The executions world's budget-authority fake call counts (M6 probes). */
@@ -212,6 +224,7 @@ function fakeIdentityStore(
     readonly actorId: string;
     readonly applicationId: string;
     readonly tenantId: string;
+    readonly role?: "owner" | "admin" | "member";
   }[],
 ): IdentityStore {
   const notImplemented = (name: string) => () => {
@@ -220,7 +233,10 @@ function fakeIdentityStore(
   const rows = new Map(
     memberships.map((m) => [
       `${m.actorId}:${m.applicationId}`,
-      { membership: m as unknown as MembershipRecord, applicationTenantId: m.tenantId },
+      {
+        membership: { role: "owner", ...m } as unknown as MembershipRecord,
+        applicationTenantId: m.tenantId,
+      },
     ]),
   );
   return {
@@ -263,6 +279,31 @@ export async function seedApiWorld(options: SeedApiWorldOptions = {}): Promise<A
       },
     ]),
   );
+
+  // Credentials (DEP-011): the REAL credential service over the in-memory
+  // store + idempotency ledger + secret store (issuance ENABLED in this
+  // world; the cross-tenant rows reuse the world's other-tenant membership).
+  const credentialStore = new InMemoryCredentialStore();
+  const credentialSecrets = new InMemoryCredentialSecretStore();
+  let credentialCounter = 0;
+  const credentials = createCredentialService({
+    identityStore: fakeIdentityStore([
+      { actorId: ACTOR_ID, applicationId, tenantId },
+      {
+        actorId: OTHER_TENANT_ACTOR_ID,
+        applicationId: otherTenantApplicationId,
+        tenantId: otherTenantId,
+      },
+    ]),
+    credentialStore,
+    idempotency: new InMemoryCredentialIdempotency(credentialStore),
+    resolver: scopeResolver,
+    generateId: () => `00000000-0000-7000-c000-${String(++credentialCounter).padStart(12, "0")}`,
+    generateSecret: () => `zeck-test-secret-${String(++credentialCounter).padStart(8, "0")}`,
+    now: () => new Date(),
+    secretStore: credentialSecrets,
+    issuanceEnabled: true,
+  });
 
   let authenticateCalls = 0;
   const tokens = new Map<string, string>([
@@ -344,6 +385,7 @@ export async function seedApiWorld(options: SeedApiWorldOptions = {}): Promise<A
     executions,
     agents: agentRegistry,
     economics,
+    credentials,
     codebaseAnalyzer,
     scopeResolver,
     authenticate,
@@ -363,6 +405,8 @@ export async function seedApiWorld(options: SeedApiWorldOptions = {}): Promise<A
     executions,
     agentRegistry,
     economics,
+    credentials,
+    credentialSecrets,
     codebaseAnalyzer,
     opportunityStore,
     budgetReserveCalls: () => executionsWorld.budgets.reserveCalls.length,

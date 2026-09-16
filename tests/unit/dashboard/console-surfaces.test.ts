@@ -261,8 +261,12 @@ describe("applications (scope, keys, environments, usage)", () => {
     expect(html).toContain("shown exactly once at creation");
     expect(html).toContain("ZECK_TOKEN");
     expect(html).toContain("ZECK_APPLICATION_ID");
-    expect(html).toContain("Credential issuance");
-    expect(html).toContain("not yet exposed by the public API");
+    // DEP-011: the credential lifecycle routes now exist in the public API —
+    // the honest boundary this unbound deployment renders is the missing
+    // transport binding, NOT a missing public contract.
+    expect(html).toContain("Issue a credential");
+    expect(html).toContain("not reachable from this console deployment");
+    expect(html).toContain("Connections — bring your own keys");
     // Values never appear — names only.
     expect(html).not.toContain(HOSTILE_TOKEN);
   });

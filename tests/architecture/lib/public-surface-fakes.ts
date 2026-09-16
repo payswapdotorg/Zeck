@@ -2,10 +2,24 @@
 
 import type { Authenticate } from "../../../src/api";
 import type { AgentRegistry } from "../../../src/modules/agents/public";
-import type { ScopeResolver } from "../../../src/modules/auth/public";
+import type { CredentialService, ScopeResolver } from "../../../src/modules/auth/public";
 import type { EconomicActionService } from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/public";
 import type { OpportunityAnalyzer } from "../../../src/modules/learning/public";
+
+export function fakeCredentialService(): CredentialService {
+  const reject = (name: string) => async () => {
+    throw new Error(`not exercised by the architecture gate: ${name}`);
+  };
+  return {
+    issuanceEnabled: () => false,
+    issue: reject("issue") as never,
+    rotate: reject("rotate") as never,
+    revoke: reject("revoke") as never,
+    list: (async () => []) as never,
+    permissionsOf: () => [],
+  };
+}
 
 export function fakeEconomicsService(): EconomicActionService {
   const reject = (name: string) => async () => {
