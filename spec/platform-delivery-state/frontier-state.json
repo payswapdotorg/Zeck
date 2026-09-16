@@ -1,20 +1,54 @@
 {
- "schemaVersion": 1,
- "program": "zeck-developer-platform",
- "status": "active",
- "delivered": ["DEP-010", "DEP-020", "DEP-025"],
- "eligible": ["DEP-011", "DEP-013", "DEP-014"],
- "inFlight": ["DEP-001", "DEP-012"],
- "blocked": [
-  {"item": "DEP-002", "on": ["DEP-001"]},
-  {"item": "DEP-003", "on": ["DEP-001", "DEP-002"]}
- ],
- "absorbed": [
-  {"item": "DEP-021", "by": "DEP-020", "evidence": "examples-manifest.json: 27 examples covering all 22 workload families with runnable/provider-gated classifications; WORKLOADS.md per-family catalog"},
-  {"item": "DEP-022", "by": "DEP-020", "evidence": "docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md"},
-  {"item": "DEP-023", "by": "DEP-020", "evidence": "docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps"}
- ],
- "maxConcurrentWorkers": 3,
- "currentBase": "b89838374eb4dfe0c6341594625c94cbd54e3220",
- "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
+  "schemaVersion": 1,
+  "program": "zeck-developer-platform",
+  "status": "active",
+  "delivered": [
+    "DEP-010",
+    "DEP-020",
+    "DEP-025"
+  ],
+  "eligible": [
+    "DEP-011",
+    "DEP-013",
+    "DEP-014"
+  ],
+  "inFlight": [
+    "DEP-001",
+    "DEP-012"
+  ],
+  "blocked": [
+    {
+      "item": "DEP-002",
+      "on": [
+        "DEP-001"
+      ]
+    },
+    {
+      "item": "DEP-003",
+      "on": [
+        "DEP-001",
+        "DEP-002"
+      ]
+    }
+  ],
+  "absorbed": [
+    {
+      "item": "DEP-021",
+      "by": "DEP-020",
+      "evidence": "examples-manifest.json: 27 examples covering all 22 workload families with runnable/provider-gated classifications; WORKLOADS.md per-family catalog"
+    },
+    {
+      "item": "DEP-022",
+      "by": "DEP-020",
+      "evidence": "docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md"
+    },
+    {
+      "item": "DEP-023",
+      "by": "DEP-020",
+      "evidence": "docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps"
+    }
+  ],
+  "maxConcurrentWorkers": 3,
+  "currentBase": "ba5d601b2e3b28dae160a82c4af0bb1c6305a678",
+  "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
