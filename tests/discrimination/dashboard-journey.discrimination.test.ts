@@ -511,6 +511,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
       "/build/execution",
       "/build/workload",
       "/console/playground/:family",
+      "/console/validation/:workOrder/run",
       "/executions/:executionId/cancel",
       "/runs/:executionId/cancel",
     ]);
@@ -633,6 +634,27 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
       "/console/docs",
       "/console/docs/AUTH.md",
       "/console/settings",
+      // Validation Lab (DEP-025): every lab read journey issues zero
+      // mutations — the rerun only mutates through its governed POST.
+      "/console/validation",
+      "/console/validation/capability",
+      "/console/validation/workload",
+      "/console/validation/stage",
+      "/console/validation/start",
+      "/console/validation/agent",
+      "/console/validation/VAL-010",
+      "/console/validation/VAL-018",
+      "/console/validation/VAL-040",
+      `/console/validation/VAL-010?applicationId=${APP_ID}&mode=replay-exact&taskId=${encodeURIComponent(
+        "text.summarize-doc.v1#000",
+      )}`,
+      "/console/validation/evidence/VAL-010",
+      "/console/validation/compare",
+      "/console/validation/api/catalog.json",
+      "/console/validation/api/schema.json",
+      "/console/validation/api/VAL-010.json",
+      "/console/validation/api/VAL-010/bundle.json",
+      "/console/validation/api/evidence/VAL-010",
     ]) {
       const response = await get(path);
       expect(response.status, path).toBe(200);
@@ -655,13 +677,13 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
     const mutating = mutations.filter(
       (name) => name === "createExecution" || name === "cancelExecution",
     );
-    // The governed call sites: the execution create, the workload create
-    // and the playground sandbox create (the SAME governed create command
-    // through the same wire route) and the cancel — but the VOCABULARY is
-    // exactly the two governed commands (a foreign mutating call site
-    // fails every pin).
-    expect(mutating.length).toBe(4);
-    expect(mutating.filter((name) => name === "createExecution").length).toBe(3);
+    // The governed call sites: the execution create, the workload create,
+    // the playground sandbox create and the validation-lab rerun create
+    // (the SAME governed create command through the same wire route) and
+    // the cancel — but the VOCABULARY is exactly the two governed
+    // commands (a foreign mutating call site fails every pin).
+    expect(mutating.length).toBe(5);
+    expect(mutating.filter((name) => name === "createExecution").length).toBe(4);
     expect(mutating.filter((name) => name === "cancelExecution").length).toBe(1);
     expect(mutating.every((name) => ["createExecution", "cancelExecution"].includes(name))).toBe(
       true,

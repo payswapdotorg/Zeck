@@ -86,6 +86,24 @@ const DEVELOPER_CONSOLE: readonly NavItem[] = [
     modes: PROFESSIONAL,
   },
   {
+    label: "Validation Lab",
+    path: "/console/validation",
+    description:
+      "The executed validation library — every experiment, its evidence, safe reruns and the agent interface.",
+    keywords: [
+      "validation",
+      "lab",
+      "experiment",
+      "evidence",
+      "replay",
+      "rerun",
+      "compare",
+      "reproducibility",
+      "develop",
+    ],
+    modes: PROFESSIONAL,
+  },
+  {
     label: "Providers",
     path: "/console/providers",
     description:

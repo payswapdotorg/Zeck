@@ -34,6 +34,7 @@ import {
   distinctionList,
   esc,
   executionHeader,
+  formatDuration,
   formatMicroUsd,
   glanceGrid,
   keyValueTable,
@@ -173,6 +174,41 @@ import {
   trustAxisLabel,
   trustSummarySection,
 } from "./trust";
+import {
+  agentSchemaJson,
+  availabilityOf,
+  buildValidationRunRequest,
+  capabilityMatrixRows,
+  defaultTaskOf,
+  experimentDefinitionJson,
+  experimentIsRerunnable,
+  experimentOf,
+  experimentsByStage,
+  familyTaskCountOf,
+  notRunBoundaries,
+  providerAccessRows,
+  providerCoverageRows,
+  readValidationEvidence,
+  recommendedExperiments,
+  reproducibilityBundleJson,
+  runRecordJson,
+  sdkExampleOf,
+  tasksOfExperiment,
+  unissuedValidationIds,
+  VALIDATION_BUDGET_LIMIT_DOLLARS,
+  VALIDATION_BUDGET_LIMIT_MICRO_USD,
+  VALIDATION_FORM_KEYS,
+  VALIDATION_LAB_ORIGIN,
+  VALIDATION_LATENCY_LIMIT_MS,
+  VALIDATION_MAX_CONCURRENT_RUNS,
+  VALIDATION_RUN_MODES,
+  type ValidationExperiment,
+  validateValidationRunForm,
+  validationCatalogJson,
+  validationComparisonOf,
+  validationExperiments,
+  validationRunsForWorkOrder,
+} from "./validation-lab";
 
 const RECENTS_NOTE =
   "recently opened in this browser — navigation only; every view reads live through the governed API";
@@ -3894,6 +3930,1458 @@ ${playgroundCommitmentCard(
 }
 
 // ---------------------------------------------------------------------------
+// Validation Lab (DEP-025 — the validation library and rerunnable
+// experiment center; every definition is projected from repository truth)
+// ---------------------------------------------------------------------------
+
+/** The Validation Lab IA tab nav (the roadmap-governed section list). */
+function validationTabNav(active: string): string {
+  const tab = (name: string, label: string, href: string): string =>
+    `<a href="${esc(href)}"${active === name ? ' aria-current="page"' : ""}>${label}</a>`;
+  return `<nav class="tabs" aria-label="Validation Lab views">
+  ${tab("all", "All experiments", "/console/validation")}
+  ${tab("capability", "By capability", "/console/validation/capability")}
+  ${tab("workload", "By workload", "/console/validation/workload")}
+  ${tab("stage", "By validation stage", "/console/validation/stage")}
+  ${tab("start", "Recommended starting points", "/console/validation/start")}
+  ${tab("agent", "Agent / machine interface", "/console/validation/agent")}
+</nav>`;
+}
+
+/** The availability chip for an experiment row (symbol + text, never color alone). */
+function validationRerunChip(experiment: ValidationExperiment): string {
+  if (!experimentIsRerunnable(experiment)) {
+    return '<span class="chip">⊘ suite reproduction</span>';
+  }
+  const blocked = availabilityOf(experiment).hardBlocked.length > 0;
+  if (blocked) {
+    return '<span class="chip">⊘ provider gap</span>';
+  }
+  return '<span class="chip">▶ rerunnable</span>';
+}
+
+function validationExperimentRows(experiments: readonly ValidationExperiment[]): string {
+  return `<table class="data">
+  <thead><tr><th scope="col">Experiment</th><th scope="col">Stage</th><th scope="col">Workload families</th><th scope="col">Console rerun</th><th scope="col">Recorded status</th></tr></thead>
+  <tbody>${experiments
+    .map(
+      (experiment) => `<tr>
+      <td><a href="/console/validation/${encodeURIComponent(experiment.id)}">${esc(
+        experiment.id,
+      )}</a><br><span class="muted">${esc(experiment.title)}</span></td>
+      <td>${esc(experiment.stage)}</td>
+      <td>${
+        experiment.families.length === 0
+          ? '<span class="muted">app-local corpus</span>'
+          : experiment.families
+              .map((family) => `<span class="mono">${esc(family)}</span>`)
+              .join(", ")
+      }</td>
+      <td>${validationRerunChip(experiment)}</td>
+      <td>${esc(experiment.status)}${
+        experiment.recordedCoverage.length === 0
+          ? ""
+          : `<br><span class="muted">${esc(experiment.recordedCoverage[0]?.status ?? "")}</span>`
+      }</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+}
+
+function validationProgramFacts(): string {
+  const experiments = validationExperiments();
+  const rerunnable = experiments.filter((experiment) => experimentIsRerunnable(experiment));
+  return keyValueTable([
+    [
+      "Experiments",
+      `${String(experiments.length)} (every governed work order of the executed program)`,
+    ],
+    [
+      "Console-rerunnable",
+      `${String(rerunnable.length)} (a corpus task can be replayed through the governed API)`,
+    ],
+    [
+      "Suite reproduction",
+      `${String(experiments.length - rerunnable.length)} (the repository's governed suites are the reproduction path)`,
+    ],
+    ["Corpus version", "val-corpus.1.0.0 (the append-only golden corpus)"],
+    ["Program status", "roadmap-complete (spec/validation-state/program-state.json)"],
+    [
+      "Un-issued ids",
+      `${unissuedValidationIds().join(", ")} — never dispatched by the program; no definition exists`,
+    ],
+  ]);
+}
+
+function validationBoundaryInventory(): string {
+  return advancedDisclosure(
+    `The recorded NOT RUN boundaries (${String(notRunBoundaries().length)} — verbatim from the validation report)`,
+    `<table class="data">
+  <thead><tr><th scope="col">Surface</th><th scope="col">Exact reason</th></tr></thead>
+  <tbody>${notRunBoundaries()
+    .map(
+      (boundary) => `<tr>
+      <td>${esc(boundary.surface)}</td>
+      <td>${esc(boundary.exactReason)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>
+<p class="muted">A NOT RUN boundary never converts into a pass — the console projects the recorded reasons verbatim and never invents an availability fact.</p>`,
+  );
+}
+
+function validationProviderTable(): string {
+  return advancedDisclosure(
+    "The recorded provider/model coverage (verbatim from the validation report)",
+    `<table class="data">
+  <thead><tr><th scope="col">Provider / model</th><th scope="col">Capability</th><th scope="col">Access status</th></tr></thead>
+  <tbody>${providerCoverageRows()
+    .map(
+      (row) => `<tr>
+      <td>${esc(row.providerModel)}</td>
+      <td>${esc(row.capability)}</td>
+      <td>${esc(row.accessStatus)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`,
+  );
+}
+
+async function validationLabPage(ctx: HttpContext): Promise<HandlerResult> {
+  const experiments = validationExperiments();
+  const content = `${pageHead({
+    title: "Validation Lab",
+    path: "/console/validation",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/validation/start">Recommended starting points</a>',
+  })}
+<p>The complete executed Zeck validation program — every work order VAL-001..VAL-052 the governed state records, projected from repository truth: the work-order specs (objectives), the immutable evidence documents, the golden corpus, the capability matrix and the recorded validation report. Historical evidence is read-only; every rerun creates a NEW governed execution linked to the definition through its lineage metadata.</p>
+${validationTabNav("all")}
+<h2>The catalog</h2>
+${validationExperimentRows(experiments)}
+<h2>Program facts</h2>
+${validationProgramFacts()}
+${validationProviderTable()}
+${validationBoundaryInventory()}
+<p class="muted">Machine interface: <a href="/console/validation/api/catalog.json">catalog.json</a> · <a href="/console/validation/api/schema.json">schema.json</a> · the <a href="/console/validation/agent">agent guide</a>. Every page of this lab is the same projection the machine routes serve — there is no console-only source of truth.</p>`;
+  return page(
+    { title: "Zeck — Validation Lab", activePath: "/console/validation", mainContent: content },
+    ctx,
+  );
+}
+
+async function validationStagePage(ctx: HttpContext): Promise<HandlerResult> {
+  const sections = experimentsByStage()
+    .map(
+      (section) => `<section class="card">
+  <h2>${esc(section.stage)}</h2>
+  ${validationExperimentRows(section.experiments)}
+</section>`,
+    )
+    .join("\n");
+  const content = `${pageHead({
+    title: "Validation Lab — by stage",
+    path: "/console/validation",
+    currentLabel: "By validation stage",
+  })}
+<p>The validation roadmap's own stage vocabulary — the ranges are parsed from the roadmap's stage block, never re-typed here. Each stage lists its experiments in governed id order.</p>
+${validationTabNav("stage")}
+${sections}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab by stage",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function validationCapabilityPage(ctx: HttpContext): Promise<HandlerResult> {
+  const matrixRows = `<table class="data">
+  <thead><tr><th scope="col">Capability</th><th scope="col">Required by (corpus families)</th><th scope="col">Candidate access</th><th scope="col">Experiments</th></tr></thead>
+  <tbody>${capabilityMatrixRows()
+    .map(
+      (row) => `<tr>
+      <td class="mono">${esc(row.capability)}</td>
+      <td>${row.requiredBy.map((family) => esc(family)).join(", ")}</td>
+      <td>${
+        row.candidates.length === 0
+          ? '<span class="muted">no candidate provider in the authorized set</span>'
+          : esc(row.accessRequirement)
+      }</td>
+      <td>${
+        row.experiments.length === 0
+          ? '<span class="muted">—</span>'
+          : row.experiments
+              .map(
+                (experiment) =>
+                  `<a href="/console/validation/${encodeURIComponent(experiment.id)}">${esc(experiment.id)}</a>`,
+              )
+              .join(", ")
+      }</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const accessRows = `<table class="data">
+  <thead><tr><th scope="col">Provider</th><th scope="col">Credential env var (name only)</th><th scope="col">A successful base probe certifies</th></tr></thead>
+  <tbody>${providerAccessRows()
+    .map(
+      (row) => `<tr>
+      <td>${esc(row.provider)}</td>
+      <td class="mono">${esc(row.credentialEnvVar)}</td>
+      <td>${esc(row.probeSummary)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const content = `${pageHead({
+    title: "Validation Lab — by capability",
+    path: "/console/validation",
+    currentLabel: "By capability",
+  })}
+<p>The capability matrix the validation program probed (VAL-009): every capability the golden corpus declares, the workload families that require it and its candidate provider access. Readiness was resolved ONLY from probe outcomes — a capability without a successful probe is a gap, never a silent pass.</p>
+${validationTabNav("capability")}
+<h2>The capability matrix</h2>
+${matrixRows}
+<h2>Provider access (credential NAMES only)</h2>
+${accessRows}
+${validationProviderTable()}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab by capability",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function validationWorkloadPage(ctx: HttpContext): Promise<HandlerResult> {
+  const families = new Map<string, readonly ValidationExperiment[]>();
+  for (const experiment of validationExperiments()) {
+    for (const family of experiment.families) {
+      const existing = families.get(family) ?? [];
+      families.set(family, [...existing, experiment]);
+    }
+  }
+  const workloadRows = `<table class="data">
+  <thead><tr><th scope="col">Workload family</th><th scope="col">Corpus tasks</th><th scope="col">Experiments</th></tr></thead>
+  <tbody>${[...families.keys()]
+    .sort()
+    .map(
+      (family) => `<tr>
+      <td class="mono">${esc(family)}</td>
+      <td>${String(familyTaskCountOf(family))}</td>
+      <td>${(families.get(family) ?? [])
+        .map(
+          (experiment) =>
+            `<a href="/console/validation/${encodeURIComponent(experiment.id)}">${esc(experiment.id)}</a>`,
+        )
+        .join(", ")}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const content = `${pageHead({
+    title: "Validation Lab — by workload",
+    path: "/console/validation",
+    currentLabel: "By workload",
+  })}
+<p>The golden corpus's own workload-family registry (22 families, append-only), crossed with the experiments whose applications exercise them. Applications with an app-local deterministic corpus derive their family mechanically (README scenario/kind tokens and the app directory's own name); an experiment no rule can place stays on the suite-reproduction path, honestly.</p>
+${validationTabNav("workload")}
+<h2>Families × experiments</h2>
+${workloadRows}
+${validationBoundaryInventory()}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab by workload",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function validationStartPage(ctx: HttpContext): Promise<HandlerResult> {
+  const recommended = recommendedExperiments();
+  const cards = recommended
+    .map((experiment) => {
+      const task = defaultTaskOf(experiment);
+      const coverage = experiment.recordedCoverage[0];
+      return `<section class="tile">
+  <h3><a href="/console/validation/${encodeURIComponent(experiment.id)}">${esc(
+    experiment.id,
+  )} — ${esc(experiment.title)}</a></h3>
+  <p>${esc(experiment.objective)}</p>
+  <p class="muted">${
+    task === null ? "" : `Default corpus task <span class="mono">${esc(task.taskId)}</span> · `
+  }${coverage === undefined ? "" : `${esc(coverage.runs)} · ${esc(coverage.status)} · `}stage: ${esc(
+    experiment.stage,
+  )}</p>
+</section>`;
+    })
+    .join("\n");
+  const content = `${pageHead({
+    title: "Validation Lab — recommended starting points",
+    path: "/console/validation",
+    currentLabel: "Recommended starting points",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/validation/VAL-010">Open VAL-010 (the text portfolio)</a>',
+  })}
+<p>Where to start: the experiments that are console-rerunnable, whose recorded coverage completed live, and whose required capabilities all have candidate provider access in the capability matrix. Every one of them opens with its objective, its original evidence and a governed replay form.</p>
+${validationTabNav("start")}
+<div class="tiles">
+${cards}
+</div>
+${validationBoundaryInventory()}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab starting points",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function validationAgentPage(ctx: HttpContext): Promise<HandlerResult> {
+  const steps = [
+    [
+      "1. List",
+      "GET /console/validation/api/catalog.json",
+      "every experiment: stages, definitions, availability, boundaries",
+    ],
+    [
+      "2. Inspect",
+      "GET /console/validation/api/VAL-010.json",
+      "one definition: objective, tasks, expected outcomes, access, cost, run fields",
+    ],
+    [
+      "3. Check access",
+      "availability on the definition",
+      "missingEnvVars names the exact credential NAMES absent from the deployment; hardBlocked names capabilities with no candidate provider",
+    ],
+    [
+      "4. Estimate cost",
+      "costEstimate on the definition",
+      "the binding hard ceilings plus the recorded validation-program costs where measured",
+    ],
+    [
+      "5. Start run",
+      "POST /console/validation/VAL-010/run",
+      "urlencoded form: applicationId, environmentId, spendLimitDollars, mode, taskId, idempotencyKey, format",
+    ],
+    [
+      "6. Poll / retrieve",
+      "GET /console/validation/api/runs/{executionId}.json",
+      "status, outcome, verification, cost, latency, trajectory, lineage, comparisonToExpectation",
+    ],
+    [
+      "7. Compare",
+      "GET /console/validation/compare?runs={id1},{id2}",
+      "side-by-side comparison against the corpus's recorded expectation",
+    ],
+    [
+      "8. Export",
+      "GET /console/validation/api/VAL-010/bundle.json",
+      "the reproducibility bundle: definition + evidence + reproduction suites + boundaries",
+    ],
+  ];
+  const content = `${pageHead({
+    title: "Validation Lab — agent / machine interface",
+    path: "/console/validation",
+    currentLabel: "Agent / machine interface",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/validation/api/catalog.json">catalog.json</a>',
+  })}
+<p>The same projected catalog the human console renders, served as machine-readable JSON — an agent can discover, inspect, check access, estimate, start, poll, retrieve, compare and export without any UI-only state. The schema document describes every shape: <a href="/console/validation/api/schema.json">schema.json</a>.</p>
+${validationTabNav("agent")}
+<h2>The agent journey</h2>
+<table class="data">
+  <thead><tr><th scope="col">Step</th><th scope="col">Interface</th><th scope="col">Returns</th></tr></thead>
+  <tbody>${steps
+    .map(
+      ([step, api, returns]) => `<tr>
+    <td>${esc(step)}</td>
+    <td class="mono">${esc(api)}</td>
+    <td>${esc(returns)}</td>
+  </tr>`,
+    )
+    .join("")}</tbody>
+</table>
+<h2>Starting a run (the governed POST)</h2>
+<pre class="raw">curl -X POST "$ZECK_CONSOLE/console/validation/VAL-010/run" \\
+  -H "content-type: application/x-www-form-urlencoded" \\
+  --data-urlencode "applicationId=$ZECK_APPLICATION_ID" \\
+  --data-urlencode "mode=replay-exact" \\
+  --data-urlencode "taskId=text.summarize-doc.v1#000" \\
+  --data-urlencode "idempotencyKey=agent-val-010-1" \\
+  --data-urlencode "format=json"</pre>
+<p class="muted">The response is a 303 redirect to the run page (HTML agents) or, with format=json, a 200 JSON receipt carrying the execution id and the run-record URL. Every run is an ordinary governed execution — the hard budget/latency constraints and the disposable-sandbox lineage ride the request itself, provider selection is structurally impossible, and the platform's policy admission stays the final gate.</p>
+<h2>Sandbox envelope</h2>
+${keyValueTable([
+  [
+    "Budget ceiling",
+    `$${VALIDATION_BUDGET_LIMIT_DOLLARS} per run (the request always carries the cost constraint)`,
+  ],
+  [
+    "Latency ceiling",
+    `${String(VALIDATION_LATENCY_LIMIT_MS / 1000)} seconds per run (replay-exact honors the corpus row's recorded target when lower)`,
+  ],
+  [
+    "Concurrency",
+    `at most ${String(VALIDATION_MAX_CONCURRENT_RUNS)} in-flight sandbox runs per browser`,
+  ],
+  ["Data", "synthetic — the golden corpus's authored inputs, verbatim"],
+  ["Identity", `${VALIDATION_LAB_ORIGIN} (disposable)`],
+  ["Side effects", "behind the platform's policy admission and approval gates"],
+])}
+${validationBoundaryInventory()}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab agent interface",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function validationEvidencePage(ctx: HttpContext): Promise<HandlerResult> {
+  const workOrder = ctx.params.workOrder ?? "";
+  const evidence = readValidationEvidence(workOrder);
+  if (evidence === null) {
+    const content = `${pageHead({ title: "Evidence not found", path: "/console/validation" })}
+${errorState(
+  "No such validation experiment",
+  `The governed program state records no experiment "${workOrder}" — the console projects the program and invents nothing.`,
+  "spec/validation-state/program-state.json (the governed state)",
+)}
+<p><a href="/console/validation">Back to the Validation Lab catalog</a></p>`;
+    return htmlStatusResult(
+      404,
+      appShell({
+        title: "Zeck — Evidence not found",
+        activePath: "/console/validation",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const content = `${pageHead({
+    title: `Evidence — ${evidence.experiment.id}`,
+    path: "/console/validation",
+    currentLabel: `${evidence.experiment.id} evidence`,
+    primaryActionHtml: `<a class="button-link" href="/console/validation/${encodeURIComponent(
+      evidence.experiment.id,
+    )}">The experiment</a>`,
+  })}
+<p class="muted mono">${esc(evidence.experiment.evidencePath)} — served verbatim from the repository; read-only forever (a rerun never mutates historical evidence).</p>
+<pre class="raw">${esc(evidence.content)}</pre>`;
+  return page(
+    {
+      title: `Zeck — ${evidence.experiment.id} evidence`,
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+function validationExperimentNotFoundView(workOrderId: string, ctx: HttpContext): HandlerResult {
+  const content = `${pageHead({ title: "Experiment not found", path: "/console/validation" })}
+${errorState(
+  "No such validation experiment",
+  `The governed program state records no experiment "${workOrderId}" — the console projects the program and invents nothing.`,
+  "spec/validation-state/program-state.json (the governed state)",
+)}
+<p><a href="/console/validation">Back to the Validation Lab catalog</a></p>`;
+  return htmlStatusResult(
+    404,
+    appShell({
+      title: "Zeck — Experiment not found",
+      activePath: "/console/validation",
+      mainContent: content,
+      appearance: appearanceOf(ctx.cookies),
+      mode: modeOf(ctx.cookies),
+      returnTo: ctx.path,
+    }),
+  );
+}
+
+/** The experiment's required-access panel (the AC6 pre-execution surface). */
+function validationAccessSection(experiment: ValidationExperiment): string {
+  const availability = availabilityOf(experiment);
+  const accessRows = `<table class="data">
+  <thead><tr><th scope="col">Capability</th><th scope="col">Access requirement</th><th scope="col">Candidate credentials (names)</th><th scope="col">In this deployment</th></tr></thead>
+  <tbody>${availability.access
+    .map(
+      (fact) => `<tr>
+      <td class="mono">${esc(fact.capability)}</td>
+      <td>${esc(fact.accessRequirement)}</td>
+      <td>${
+        fact.candidateEnvVars.length === 0
+          ? '<span class="muted">no candidate provider recorded</span>'
+          : fact.candidateEnvVars.map((name) => `<span class="mono">${esc(name)}</span>`).join(", ")
+      }</td>
+      <td>${
+        fact.candidateEnvVars.length === 0
+          ? "—"
+          : fact.candidateEnvVars
+              .map((name) =>
+                availability.presentEnvVars.includes(name)
+                  ? `<span class="mono">${esc(name)}</span> present`
+                  : `<span class="mono">${esc(name)}</span> absent`,
+              )
+              .join("; ")
+      }</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const blocked =
+    availability.hardBlocked.length === 0
+      ? ""
+      : `\n${availability.hardBlocked
+          .map(
+            (block) => `<div class="state state-blocked">
+  <p class="state-title">NOT RUN — ${esc(block.capability)} has no provider in the authorized set</p>
+  <p class="state-body">${esc(block.reason)} ${esc(block.accessRequirement)}</p>
+  <p class="state-source">The recorded boundary and its gating credential are named in the validation report's NOT RUN inventory — never converted into a pass; the Lead owns the credentialed re-run.</p>
+</div>`,
+          )
+          .join("\n")}`;
+  const missing =
+    availability.missingEnvVars.length === 0
+      ? ""
+      : `<p class="muted">Absent in this deployment's environment: ${availability.missingEnvVars
+          .map((name) => `<span class="mono">${esc(name)}</span>`)
+          .join(
+            ", ",
+          )} (names only — values are never read, never rendered). A console rerun still submits through the governed API with synthetic data; the platform's authorized rails and policy admission decide the outcome, and a missing-rail outcome is recorded as it occurs — never represented as PASS.</p>`;
+  return `<section class="card">
+  <h2>Required access</h2>
+  ${availability.access.length === 0 ? '<p class="muted">No live provider dependency — this experiment reproduces through the repository suites.</p>' : accessRows}
+  ${blocked}
+  ${missing}
+</section>`;
+}
+
+function validationModeDescription(mode: string): string {
+  if (mode === "replay-exact") {
+    return "same definition, pinned corpus task, the corpus row's recorded latency target where one exists — the closest reproduction of the original run's configuration";
+  }
+  if (mode === "rerun-current") {
+    return "same definition against the CURRENT platform — the sandbox ceiling applies, the run records what the platform does today";
+  }
+  return "your changes (a different corpus task of the experiment's families, a lower spend ceiling) with the lineage to the original definition preserved in the run's metadata";
+}
+
+function validationEditLink(
+  experiment: ValidationExperiment,
+  values: Record<string, string>,
+  idempotencyKey: string,
+): string {
+  const params = new URLSearchParams();
+  for (const key of VALIDATION_FORM_KEYS) {
+    params.set(key, values[key] ?? "");
+  }
+  params.set("edit", "1");
+  params.set("idempotencyKey", idempotencyKey);
+  return `/console/validation/${encodeURIComponent(experiment.id)}?${params.toString()}`;
+}
+
+/** The rerun composer (constraints only — the task is the corpus's synthetic input). */
+function validationRunForm(
+  experiment: ValidationExperiment,
+  defaultTaskId: string,
+  values: Record<string, string>,
+  errors: Record<string, string | undefined>,
+  idempotencyKey: string,
+): string {
+  const taskOptions = tasksOfExperiment(experiment)
+    .map(
+      (task) =>
+        `<option value="${esc(task.taskId)}"${values.taskId === task.taskId ? " selected" : ""}>${esc(
+          `${task.taskId} — ${task.description}`,
+        )}</option>`,
+    )
+    .join("");
+  const modeOptions = VALIDATION_RUN_MODES.map(
+    (mode) =>
+      `<option value="${esc(mode)}"${values.mode === mode ? " selected" : ""}>${esc(mode)} — ${esc(
+        validationModeDescription(mode),
+      )}</option>`,
+  ).join("");
+  return `<form class="flow card" method="get" action="/console/validation/${encodeURIComponent(
+    experiment.id,
+  )}">
+  <input type="hidden" name="idempotencyKey" value="${esc(idempotencyKey)}">
+  ${executionFormField(
+    "vf-application",
+    "Application id",
+    `<input id="vf-application" name="applicationId" value="${esc(
+      values.applicationId ?? "",
+    )}" required>`,
+    "The governed application scope the rerun (and any spend) belongs to.",
+    errors.applicationId,
+  )}
+  ${executionFormField(
+    "vf-environment",
+    "Compute environment (optional)",
+    `<input id="vf-environment" name="environmentId" value="${esc(values.environmentId ?? "")}">`,
+    "Leave empty for the default environment; a disposable sandbox environment id goes here.",
+    errors.environmentId,
+  )}
+  ${executionFormField(
+    "vf-mode",
+    "Rerun mode",
+    `<select id="vf-mode" name="mode">${modeOptions}</select>`,
+    "The contract's rerun vocabulary — every mode creates a NEW immutable run identity linked to this definition.",
+    errors.mode,
+  )}
+  ${executionFormField(
+    "vf-task",
+    "Corpus task",
+    `<select id="vf-task" name="taskId">${taskOptions}</select>`,
+    `The golden corpus's synthetic task, verbatim. The pinned default is ${defaultTaskId}.`,
+    errors.taskId,
+  )}
+  ${executionFormField(
+    "vf-spend",
+    `Spend limit (dollars, optional — validation ceiling $${VALIDATION_BUDGET_LIMIT_DOLLARS})`,
+    `<input id="vf-spend" name="spendLimitDollars" value="${esc(
+      values.spendLimitDollars ?? "",
+    )}" inputmode="decimal" placeholder="1.50">`,
+    `Sent as the per-run cost constraint. The $${VALIDATION_BUDGET_LIMIT_DOLLARS} ceiling is enforced either way; a higher entry is refused before any wire call.`,
+    errors.spendLimitDollars,
+  )}
+  <div class="form-actions"><button type="submit" class="primary">Review the rerun</button></div>
+</form>`;
+}
+
+function validationEnvelope(
+  request: ExecutionRequest,
+  task: { readonly taskId: string; readonly latencyTargetMs?: number },
+): string {
+  const constraints = request.constraints ?? {};
+  const metadata = request.metadata as Readonly<Record<string, unknown>>;
+  return `<div class="card review-envelope">
+  <h2>Proposed validation rerun</h2>
+  <h3>The synthetic corpus task (verbatim from the golden corpus)</h3>
+  ${keyValueTable(safeTaskPairs(request.task))}
+  <h3>The rerun mode</h3>
+  <p>${esc(validationModeDescription(String(metadata.mode ?? "")))}</p>
+  <h3>Sandbox constraints</h3>
+  ${keyValueTable([
+    [
+      "Cost ceiling",
+      formatMicroUsd(constraints.maxCostMicroUsd ?? VALIDATION_BUDGET_LIMIT_MICRO_USD),
+    ],
+    [
+      "Latency ceiling",
+      constraints.maxLatencyMs === task.latencyTargetMs && task.latencyTargetMs !== undefined
+        ? `${String(constraints.maxLatencyMs)} ms (the corpus row's recorded target)`
+        : `${String(constraints.maxLatencyMs ?? VALIDATION_LATENCY_LIMIT_MS)} ms (the sandbox ceiling)`,
+    ],
+    ["Sandbox identity", `${VALIDATION_LAB_ORIGIN} (disposable)`],
+  ])}
+  <h3>Lineage metadata (links this NEW run to the immutable definition)</h3>
+  ${keyValueTable(Object.keys(metadata).map((key) => [key, String(metadata[key] ?? "")] as const))}
+  <p class="muted">No provider, model, rail, connection or agent is selected — the frozen create contract forbids provider selection, and Zeck owns the route. Policy admission is decided platform-side at dispatch. Historical evidence is never touched.</p>
+</div>`;
+}
+
+function validationCommitmentCard(
+  experiment: ValidationExperiment,
+  values: Record<string, string>,
+  request: ExecutionRequest,
+  idempotencyKey: string,
+  confirmLabel: string,
+): string {
+  const constraints = request.constraints ?? {};
+  return confirmationCard({
+    title: "Run this validation rerun?",
+    consequence: `The rerun submits the governed create request for ${experiment.id}'s corpus task: exactly ONE new execution is created — its own immutable run identity — and its lineage metadata links it to the definition (work order ${experiment.id}, definition revision ${experiment.definitionRevision}). The events, verification results, output artifacts and settled cost are recorded platform-side; you follow the run on its execution page. The historical evidence document stays read-only.`,
+    affected: `A governed execution record in application ${values.applicationId ?? ""}${
+      (values.environmentId ?? "").length > 0
+        ? `, environment ${values.environmentId ?? ""}`
+        : " (default environment)"
+    }.`,
+    cost: `Spend ceiling ${formatMicroUsd(
+      constraints.maxCostMicroUsd ?? VALIDATION_BUDGET_LIMIT_MICRO_USD,
+    )} and latency ceiling ${String(
+      Math.round((constraints.maxLatencyMs ?? VALIDATION_LATENCY_LIMIT_MS) / 1000),
+    )} seconds — the request's own constraints. No pre-run estimate exists; the settled cost is recorded per execution.`,
+    whyAllowed:
+      "The create request is valid against the frozen create contract — it selects no provider, model, rail, connection or agent (selection is forbidden; the platform plans the route), and policy admission is decided platform-side at dispatch: a denial is surfaced on the execution, never silently retried.",
+    reversible: false,
+    reversibleDetail:
+      "No — a committed execution cannot be undone through the public contract. The governed stop is Cancel (its own consequence preview); work already performed and its evidence stay recorded and inspectable.",
+    approvalNote:
+      "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary.",
+    idempotencyNote: `The idempotency key ${idempotencyKey} is carried: resubmitting the same request converges on ONE execution rather than creating duplicates.`,
+    hiddenFields: VALIDATION_FORM_KEYS.filter(
+      (key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0,
+    ).map((key) => [key, values[key] ?? ""] as const),
+    confirmAction: `/console/validation/${encodeURIComponent(experiment.id)}/run`,
+    confirmLabel,
+    cancelHref: validationEditLink(experiment, values, idempotencyKey),
+  });
+}
+
+function validationConcurrencyGate(inFlight: number): string {
+  return `<div class="state state-blocked">
+  <p class="state-title">Sandbox concurrency limit reached</p>
+  <p class="state-body">${inFlight} sandbox runs opened in this browser are still in flight (the limit is ${String(
+    VALIDATION_MAX_CONCURRENT_RUNS,
+  )}). The console refuses to submit another until one finishes or is cancelled — uncontrolled spend and side effects are prevented by default, and this gate holds no server-side state: it is derived live from the runs this browser opened.</p>
+  <p class="state-source">Open the active runs to wait or cancel: <a href="/runs/active">Active runs</a>.</p>
+</div>`;
+}
+
+function validationHistorySection(
+  experiment: ValidationExperiment,
+  runs: readonly {
+    readonly executionId: string;
+    readonly mode: string | null;
+    readonly corpusTask: string | null;
+    readonly status: string;
+    readonly createdAt: string;
+  }[],
+): string {
+  if (runs.length === 0) {
+    return emptyState(
+      "No reruns of this experiment yet in this browser",
+      "The run history is derived live from the executions this browser opened (navigation-only; every view reads through the governed API). Launch a rerun above and it appears here.",
+    );
+  }
+  const compareLink = `/console/validation/compare?runs=${runs
+    .slice(0, 4)
+    .map((run) => encodeURIComponent(run.executionId))
+    .join(",")}&amp;workOrder=${encodeURIComponent(experiment.id)}`;
+  return `<table class="data">
+  <thead><tr><th scope="col">Run</th><th scope="col">Mode</th><th scope="col">Corpus task</th><th scope="col">Status</th><th scope="col">Opened</th></tr></thead>
+  <tbody>${runs
+    .map(
+      (run) => `<tr>
+      <td><a href="/runs/${encodeURIComponent(run.executionId)}" class="mono">${esc(
+        run.executionId,
+      )}</a></td>
+      <td>${esc(run.mode ?? "—")}</td>
+      <td class="mono">${esc(run.corpusTask ?? "—")}</td>
+      <td>${statusBadge(run.status)}</td>
+      <td>${esc(run.createdAt)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>
+<p><a class="button-link" href="${compareLink}">Compare these runs</a></p>`;
+}
+
+async function validationExperimentPage(
+  client: ZeckClient,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const workOrderId = ctx.params.workOrder ?? "";
+  const experiment = experimentOf(workOrderId);
+  if (experiment === null) {
+    return validationExperimentNotFoundView(workOrderId, ctx);
+  }
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const history = validationRunsForWorkOrder(recents.executions, experiment.id);
+  const inFlight = inFlightCount(recents.executions);
+  const gated = inFlight >= VALIDATION_MAX_CONCURRENT_RUNS;
+  const availability = availabilityOf(experiment);
+  const rerunnable = experimentIsRerunnable(experiment);
+  const defaultTask = defaultTaskOf(experiment);
+  const query: Record<string, string> = {};
+  for (const key of [...VALIDATION_FORM_KEYS, "edit"]) {
+    const value = ctx.query.get(key);
+    if (value !== null) {
+      query[key] = value;
+    }
+  }
+  const idempotencyKey =
+    (query.idempotencyKey ?? "").length > 0
+      ? (query.idempotencyKey ?? "")
+      : `dash-${crypto.randomUUID()}`;
+  const submitted = (query.applicationId ?? "").trim().length > 0;
+  const applicationId = query.applicationId ?? scope;
+  const values: Record<string, string> = {
+    applicationId,
+    environmentId: query.environmentId ?? "",
+    spendLimitDollars: query.spendLimitDollars ?? "",
+    mode: query.mode ?? "replay-exact",
+    taskId: query.taskId ?? defaultTask?.taskId ?? "",
+    idempotencyKey,
+  };
+  const reviewable = submitted && query.edit !== "1";
+  let runSurface: string;
+  if (!rerunnable || defaultTask === null) {
+    runSurface = `<div class="state state-unavailable">
+  <p class="state-title">Console rerun — NOT RUN for this experiment</p>
+  <p class="state-body">This experiment's applications pin an app-local deterministic corpus or a multi-run orchestration the console cannot honestly reproduce as one governed execution. Its reproduction path is the repository's governed suites${
+    experiment.apps.some((app) => app.suitePath !== null)
+      ? ` (${experiment.apps
+          .map((app) => app.suitePath)
+          .filter((path): path is string => path !== null)
+          .map((path) => `<span class="mono">${esc(path)}</span>`)
+          .join(", ")})`
+      : ""
+  } — the full battery re-run is the Lead's credentialed environment. The definition, evidence and reproducibility bundle below are still complete.</p>
+  <p class="state-source">Export the bundle: <a href="/console/validation/api/${encodeURIComponent(
+    experiment.id,
+  )}/bundle.json">${esc(experiment.id)} bundle.json</a></p>
+</div>`;
+  } else if (availability.hardBlocked.length > 0) {
+    runSurface = validationAccessSection(experiment);
+  } else if (gated) {
+    runSurface = validationConcurrencyGate(inFlight);
+  } else if (!reviewable) {
+    runSurface = validationRunForm(experiment, defaultTask.taskId, values, {}, idempotencyKey);
+  } else {
+    const validation = validateValidationRunForm(experiment, query);
+    if (validation.values === null) {
+      runSurface = validationRunForm(
+        experiment,
+        defaultTask.taskId,
+        values,
+        validation.errors,
+        idempotencyKey,
+      );
+    } else {
+      const task =
+        tasksOfExperiment(experiment).find(
+          (candidate) => candidate.taskId === validation.values?.taskId,
+        ) ?? defaultTask;
+      const request = buildValidationRunRequest(experiment, task, validation.values);
+      runSurface = `${validationEnvelope(request, task)}
+${validationCommitmentCard(experiment, values, request, idempotencyKey, "Run validation rerun")}`;
+    }
+  }
+  const coverageSection =
+    experiment.recordedCoverage.length === 0
+      ? ""
+      : `<h2>Recorded coverage (verbatim from the validation report)</h2>
+<table class="data">
+  <thead><tr><th scope="col">Workload</th><th scope="col">Runs</th><th scope="col">Quality</th><th scope="col">Cost/success</th><th scope="col">Status</th></tr></thead>
+  <tbody>${experiment.recordedCoverage
+    .map(
+      (row) => `<tr>
+    <td>${esc(row.workload)}</td>
+    <td>${esc(row.runs)}</td>
+    <td>${esc(row.quality)}</td>
+    <td>${esc(row.costPerSuccess)}</td>
+    <td>${esc(row.status)}</td>
+  </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const tasksDisclosure = rerunnable
+    ? advancedDisclosure(
+        `Every corpus task of this experiment (${String(experiment.corpusTaskCount)})`,
+        `<table class="data">
+  <thead><tr><th scope="col">Task</th><th scope="col">Expected terminal</th><th scope="col">Expected verification</th><th scope="col">Evaluation</th><th scope="col">Latency target</th></tr></thead>
+  <tbody>${tasksOfExperiment(experiment)
+    .map(
+      (task) => `<tr>
+    <td class="mono">${esc(task.taskId)}</td>
+    <td>${esc(task.expectedOutcome.terminalStatus)}</td>
+    <td>${esc(task.expectedOutcome.verification ?? "—")}</td>
+    <td>${esc(task.evaluation.method)}</td>
+    <td>${task.latencyTargetMs === undefined ? "—" : `${String(task.latencyTargetMs)} ms`}</td>
+  </tr>`,
+    )
+    .join("")}</tbody>
+</table>`,
+      )
+    : "";
+  const sdkExample =
+    rerunnable && defaultTask !== null
+      ? `<h2>The copyable SDK example</h2>
+<p class="muted">Composed from the projected definition — the exact governed create request a console replay submits (the same wire contract the repository examples ride).</p>
+<pre class="raw">${esc(sdkExampleOf(experiment, defaultTask))}</pre>`
+      : "";
+  const content = `${pageHead({
+    title: `${experiment.id} — ${experiment.title}`,
+    path: "/console/validation",
+    currentLabel: experiment.id,
+    primaryActionHtml: `<a class="button-link" href="/console/validation/evidence/${encodeURIComponent(
+      experiment.id,
+    )}">The original evidence</a>`,
+  })}
+${validationTabNav("all")}
+<section class="card">
+  <h2>What it proves</h2>
+  <p>${esc(experiment.objective)}</p>
+  ${keyValueTable([
+    ["Stage", experiment.stage],
+    ["Governed status", experiment.status],
+    ["Definition revision", `${experiment.definitionRevision} (merge of record)`],
+    [
+      "Dependencies",
+      experiment.dependencies.length === 0 ? "—" : experiment.dependencies.join(", "),
+    ],
+    ["Spec", experiment.specPath],
+    ["Evidence", experiment.evidencePath],
+  ])}
+</section>
+<h2>Original evidence (immutable, read-only)</h2>
+<p>Served verbatim from the repository — a rerun never mutates it. <a href="/console/validation/evidence/${encodeURIComponent(
+    experiment.id,
+  )}">Open the evidence document</a> · machine route <span class="mono">/console/validation/api/evidence/${esc(
+    experiment.id,
+  )}</span></p>
+${coverageSection}
+<h2>Workload and corpus</h2>
+${keyValueTable([
+  [
+    "Workload families",
+    experiment.families.length === 0
+      ? "app-local corpus (no golden-family linkage)"
+      : experiment.families.join(", "),
+  ],
+  ["Corpus tasks", String(experiment.corpusTaskCount)],
+  [
+    "Applications",
+    experiment.apps.map((app) => `benchmarks/validation/apps/${app.dir}`).join(", "),
+  ],
+])}
+${tasksDisclosure}
+${rerunnable ? validationAccessSection(experiment) : ""}
+<h2>Run it (the rerun center)</h2>
+${
+  rerunnable
+    ? `<p class="muted">Every mode creates a NEW immutable run identity; the lineage metadata links it to this definition. The pinned default task is <span class="mono">${
+        defaultTask?.taskId ?? ""
+      }</span>.</p>`
+    : ""
+}
+${runSurface}
+<h2>Run history (this browser)</h2>
+${validationHistorySection(experiment, history)}
+${sdkExample}
+<h2>Reproducibility</h2>
+${keyValueTable([
+  [
+    "Repository suites",
+    experiment.apps.some((app) => app.suitePath !== null)
+      ? experiment.apps
+          .map((app) => app.suitePath)
+          .filter((path): path is string => path !== null)
+          .join(", ")
+      : "recorded in the evidence document",
+  ],
+  ["Environment gates", experiment.apps.flatMap((app) => app.liveGateEnvVars).join(", ") || "—"],
+  ["Bundle export", `/console/validation/api/${experiment.id}/bundle.json`],
+])}
+<p class="muted">${esc(RECENTS_NOTE)}.</p>`;
+  return page(
+    {
+      title: `Zeck — ${experiment.id}`,
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+    { setCookies },
+  );
+}
+
+async function createValidationRunHandler(
+  client: ZeckClient,
+  scope: string,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const workOrderId = ctx.params.workOrder ?? "";
+  const experiment = experimentOf(workOrderId);
+  if (experiment === null) {
+    return validationExperimentNotFoundView(workOrderId, ctx);
+  }
+  const wantsJson = (ctx.form.format ?? "").trim() === "json";
+  const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
+  const validation = validateValidationRunForm(experiment, ctx.form);
+  const defaultTask = defaultTaskOf(experiment);
+  const rerunRefusedView = (
+    status: number,
+    statusMessage: string,
+    surface: string,
+  ): HandlerResult =>
+    htmlStatusResult(
+      status,
+      appShell({
+        title: `Zeck — ${experiment.id}`,
+        activePath: "/console/validation",
+        mainContent: `${pageHead({
+          title: `${experiment.id} — ${experiment.title}`,
+          path: "/console/validation",
+          currentLabel: experiment.id,
+        })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">${esc(statusMessage)}</div>
+${surface}`,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  if (!experimentIsRerunnable(experiment) || defaultTask === null) {
+    if (wantsJson) {
+      return {
+        status: 409,
+        body: JSON.stringify(
+          {
+            error: "NOT_RUN",
+            workOrder: experiment.id,
+            reason:
+              "this experiment's reproduction path is the repository's governed suites — the console does not re-execute them",
+            bundle: `/console/validation/api/${experiment.id}/bundle.json`,
+          },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      };
+    }
+    return rerunRefusedView(
+      409,
+      "This experiment is not console-rerunnable — its reproduction path is the repository suite.",
+      `<div class="state state-unavailable">
+  <p class="state-title">Console rerun — NOT RUN for this experiment</p>
+  <p class="state-body">The repository's governed suites are the reproduction path; the full battery re-run is the Lead's credentialed environment.</p>
+  <p class="state-source">Export the bundle: <a href="/console/validation/api/${encodeURIComponent(
+    experiment.id,
+  )}/bundle.json">${esc(experiment.id)} bundle.json</a></p>
+</div>`,
+    );
+  }
+  if (validation.values === null || idempotencyKey.length === 0) {
+    const errors: Record<string, string | undefined> = {
+      ...(validation.errors as Record<string, string | undefined>),
+    };
+    if (idempotencyKey.length === 0) {
+      errors.applicationId =
+        (errors.applicationId ?? "") +
+        (errors.applicationId === undefined ? "" : " ") +
+        "The form state was lost — fill the application id again and resubmit.";
+    }
+    if (wantsJson) {
+      return {
+        status: 422,
+        body: JSON.stringify(
+          { error: "INVALID_FORM", workOrder: experiment.id, fields: validation.errors },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      };
+    }
+    return rerunRefusedView(
+      422,
+      "The rerun could not be submitted — fix the highlighted fields.",
+      validationRunForm(
+        experiment,
+        defaultTask.taskId,
+        { ...ctx.form, applicationId: ctx.form.applicationId ?? scope },
+        errors,
+        idempotencyKey.length > 0 ? idempotencyKey : `dash-${crypto.randomUUID()}`,
+      ),
+    );
+  }
+  const availability = availabilityOf(experiment);
+  if (availability.hardBlocked.length > 0) {
+    if (wantsJson) {
+      return {
+        status: 409,
+        body: JSON.stringify(
+          {
+            error: "NOT_RUN",
+            workOrder: experiment.id,
+            reason:
+              "a required capability has no candidate provider in the authorized set — surfaced before execution, never a pass",
+            hardBlocked: availability.hardBlocked,
+          },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      };
+    }
+    return rerunRefusedView(
+      409,
+      "The rerun was refused before any wire call — a required capability has no provider in the authorized set.",
+      validationAccessSection(experiment),
+    );
+  }
+  const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
+  const recents = await readRecentExecutions(client, ids);
+  const inFlight = inFlightCount(recents.executions);
+  if (inFlight >= VALIDATION_MAX_CONCURRENT_RUNS) {
+    if (wantsJson) {
+      return {
+        status: 429,
+        body: JSON.stringify(
+          {
+            error: "CONCURRENCY_LIMIT",
+            workOrder: experiment.id,
+            inFlight,
+            limit: VALIDATION_MAX_CONCURRENT_RUNS,
+          },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      };
+    }
+    return rerunRefusedView(
+      422,
+      "The sandbox concurrency limit refused this submission.",
+      validationConcurrencyGate(inFlight),
+    );
+  }
+  const values = validation.values;
+  const task =
+    tasksOfExperiment(experiment).find((candidate) => candidate.taskId === values.taskId) ??
+    defaultTask;
+  try {
+    const request = buildValidationRunRequest(experiment, task, values);
+    const { receipt } = await client.createExecution(request, idempotencyKey);
+    if (wantsJson) {
+      return {
+        status: 200,
+        body: JSON.stringify(
+          {
+            executionId: receipt.executionId,
+            status: receipt.status,
+            workOrder: experiment.id,
+            mode: values.mode,
+            corpusTask: task.taskId,
+            runRecord: `/console/validation/api/runs/${encodeURIComponent(receipt.executionId)}.json`,
+            run: `/runs/${encodeURIComponent(receipt.executionId)}`,
+          },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      };
+    }
+    return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status < 500) {
+      const policyBoundary =
+        error.body.code === "POLICY_DENIED" || error.body.code === "BUDGET_EXCEEDED"
+          ? `\n${createBlockedExplanation(error.body.code, error.body.message)}`
+          : "";
+      if (wantsJson) {
+        return {
+          status: error.status,
+          body: JSON.stringify(
+            {
+              error: error.body.code,
+              message: error.body.message,
+              retryable: error.body.retryable,
+            },
+            null,
+            2,
+          ),
+          contentType: "application/json",
+        };
+      }
+      const request = buildValidationRunRequest(experiment, task, values);
+      return rerunRefusedView(
+        422,
+        `The platform rejected this rerun: ${error.body.message} (${error.body.code})`,
+        `${policyBoundary}
+${validationEnvelope(request, task)}
+${validationCommitmentCard(
+  experiment,
+  {
+    applicationId: values.applicationId,
+    environmentId: values.environmentId,
+    spendLimitDollars: values.spendLimitDollars,
+    mode: values.mode,
+    taskId: values.taskId,
+    idempotencyKey,
+  },
+  request,
+  idempotencyKey,
+  "Try again",
+)}`,
+      );
+    }
+    throw error;
+  }
+}
+
+async function validationComparePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const runsParam = ctx.query.get("runs") ?? "";
+  const requested = runsParam
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0)
+    .slice(0, 6);
+  const workOrderParam = ctx.query.get("workOrder") ?? "";
+  const experiment =
+    experimentOf(workOrderParam) ?? (requested.length === 0 ? experimentOf("VAL-010") : null);
+  const rows: string[] = [];
+  for (const executionId of requested) {
+    try {
+      const execution = await client.getExecution(executionId);
+      let result: ExecutionResult | null = null;
+      try {
+        result = await client.getResult(executionId);
+      } catch (error) {
+        if (!(error instanceof ZeckApiError && error.status === 404)) {
+          throw error;
+        }
+      }
+      const comparison = validationComparisonOf(execution, result);
+      const verdict = (matches: boolean | null): string =>
+        matches === null ? "—" : matches ? "✓ matches" : "✗ differs";
+      rows.push(`<tr>
+      <td><a href="/runs/${encodeURIComponent(execution.id)}" class="mono">${esc(
+        execution.id,
+      )}</a></td>
+      <td>${esc(comparison.mode ?? "—")}</td>
+      <td class="mono">${esc(comparison.corpusTask ?? "—")}</td>
+      <td>${statusBadge(comparison.status)}</td>
+      <td>${esc(comparison.expectedTerminalStatus ?? "—")}<br><span class="muted">${esc(
+        verdict(comparison.matchesExpectedTerminal),
+      )}</span></td>
+      <td>${esc(comparison.expectedVerification ?? "—")}<br><span class="muted">${esc(
+        verdict(comparison.matchesExpectedVerification),
+      )}</span></td>
+      <td>${comparison.costMicroUsd === null ? "—" : formatMicroUsd(comparison.costMicroUsd)}</td>
+      <td>${comparison.durationMs === null ? "—" : formatDuration(comparison.durationMs)}</td>
+    </tr>`);
+    } catch (error) {
+      if (!(error instanceof ZeckApiError && error.status === 404)) {
+        throw error;
+      }
+      rows.push(`<tr>
+      <td class="mono">${esc(executionId)}</td>
+      <td colspan="7">${errorState(
+        "Run not readable",
+        `No execution "${executionId}" is readable through the governed API in this scope — the comparison states the absence honestly.`,
+      )}</td>
+    </tr>`);
+    }
+  }
+  const table =
+    requested.length === 0
+      ? emptyState(
+          "No runs to compare yet",
+          "Enter two or more execution ids (or open an experiment and use its run history's compare link). Every fact below reads live through the governed API; the corpus's recorded expectation is the baseline column.",
+        )
+      : `<table class="data">
+  <thead><tr><th scope="col">Run</th><th scope="col">Mode</th><th scope="col">Corpus task</th><th scope="col">Status</th><th scope="col">Expected terminal</th><th scope="col">Expected verification</th><th scope="col">Cost</th><th scope="col">Duration</th></tr></thead>
+  <tbody>${rows.join("")}</tbody>
+</table>
+<p class="muted">A "✗ differs" row is an honest finding — never converted into a pass, never retried away. The recorded baseline comes from the corpus row the run's lineage names; the original evidence document stays one click away on the experiment page.</p>`;
+  const contextSection =
+    experiment === null
+      ? ""
+      : `<h2>Against ${esc(experiment.id)}</h2>
+<p>${esc(experiment.objective)}</p>
+<p><a href="/console/validation/${encodeURIComponent(
+          experiment.id,
+        )}">The experiment</a> · <a href="/console/validation/evidence/${encodeURIComponent(
+          experiment.id,
+        )}">The original evidence</a></p>`;
+  const content = `${pageHead({
+    title: "Validation Lab — compare runs",
+    path: "/console/validation",
+    currentLabel: "Compare",
+  })}
+<p>Compare reruns (and any governed execution) against each other and against the corpus's recorded expectation — the original evidence document stays immutable, and every comparison fact reads live through the governed API.</p>
+${validationTabNav("all")}
+<form class="flow card" method="get" action="/console/validation/compare">
+  ${executionFormField(
+    "vc-runs",
+    "Execution ids (comma-separated, up to six)",
+    `<input id="vc-runs" name="runs" value="${esc(runsParam)}" placeholder="id-one,id-two">`,
+    "The runs to compare — each is read live; an unreadable id renders an honest absence row.",
+  )}
+  ${executionFormField(
+    "vc-workorder",
+    "Experiment context (optional)",
+    `<input id="vc-workorder" name="workOrder" value="${esc(workOrderParam)}" placeholder="VAL-010">`,
+    "Adds the definition's objective and evidence links above the comparison.",
+  )}
+  <div class="form-actions"><button type="submit" class="primary">Compare</button></div>
+</form>
+${contextSection}
+${table}`;
+  return page(
+    {
+      title: "Zeck — Validation Lab compare",
+      activePath: "/console/validation",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+// The agent/machine routes (DEP-025 AC3 — the same projection, JSON)
+
+function jsonResult(body: string, status = 200): HandlerResult {
+  return { status, body, contentType: "application/json" };
+}
+
+function validationCatalogRoute(): HandlerResult {
+  return jsonResult(validationCatalogJson());
+}
+
+function validationSchemaRoute(): HandlerResult {
+  return jsonResult(agentSchemaJson());
+}
+
+function validationDefinitionRoute(ctx: HttpContext): Promise<HandlerResult> {
+  const artifact = ctx.params.artifact ?? "";
+  const match = /^(VAL-\d{3})\.json$/.exec(artifact);
+  if (match === null) {
+    return Promise.resolve(
+      jsonResult(
+        JSON.stringify(
+          {
+            error: "NOT_FOUND",
+            reason: "the definition route serves /console/validation/api/VAL-NNN.json",
+            catalog: "/console/validation/api/catalog.json",
+          },
+          null,
+          2,
+        ),
+        404,
+      ),
+    );
+  }
+  const experiment = experimentOf(match[1] ?? "");
+  if (experiment === null) {
+    return Promise.resolve(
+      jsonResult(
+        JSON.stringify(
+          {
+            error: "NOT_FOUND",
+            reason: `the governed program state records no experiment ${String(match[1])}`,
+            unissuedIds: unissuedValidationIds(),
+          },
+          null,
+          2,
+        ),
+        404,
+      ),
+    );
+  }
+  return Promise.resolve(jsonResult(experimentDefinitionJson(experiment)));
+}
+
+function validationBundleRoute(ctx: HttpContext): Promise<HandlerResult> {
+  const workOrder = ctx.params.workOrder ?? "";
+  const experiment = experimentOf(workOrder);
+  if (experiment === null) {
+    return Promise.resolve(
+      jsonResult(
+        JSON.stringify({ error: "NOT_FOUND", reason: `no experiment ${workOrder}` }, null, 2),
+        404,
+      ),
+    );
+  }
+  const evidence = readValidationEvidence(workOrder);
+  if (evidence === null) {
+    return Promise.resolve(
+      jsonResult(
+        JSON.stringify({ error: "NOT_FOUND", reason: "evidence document unreadable" }, null, 2),
+        404,
+      ),
+    );
+  }
+  return Promise.resolve(jsonResult(reproducibilityBundleJson(experiment, evidence.content)));
+}
+
+function validationEvidenceRoute(ctx: HttpContext): HandlerResult {
+  const workOrder = ctx.params.workOrder ?? "";
+  const evidence = readValidationEvidence(workOrder);
+  if (evidence === null) {
+    return jsonResult(
+      JSON.stringify({ error: "NOT_FOUND", reason: `no experiment ${workOrder}` }, null, 2),
+      404,
+    );
+  }
+  return assetResult(evidence.content, "text/markdown");
+}
+
+async function validationRunRecordRoute(
+  client: ZeckClient,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const artifact = ctx.params.executionId ?? "";
+  const match = /^(.+)\.json$/.exec(artifact);
+  const executionId = match === null ? artifact : (match[1] ?? "");
+  if (executionId.length === 0) {
+    return jsonResult(
+      JSON.stringify({ error: "NOT_FOUND", reason: "no execution id" }, null, 2),
+      404,
+    );
+  }
+  try {
+    const execution = await client.getExecution(executionId);
+    const [result, events, verification] = await Promise.all([
+      client.getResult(executionId).catch((error: unknown) => {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return null;
+        }
+        throw error;
+      }),
+      client.listEvents(executionId).catch((error: unknown) => {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return [];
+        }
+        throw error;
+      }),
+      client.listVerification(executionId).catch((error: unknown) => {
+        if (error instanceof ZeckApiError && error.status === 404) {
+          return [];
+        }
+        throw error;
+      }),
+    ]);
+    return jsonResult(
+      runRecordJson({
+        execution,
+        result,
+        events,
+        verification,
+        now: new Date().toISOString(),
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status === 404) {
+      return jsonResult(
+        JSON.stringify(
+          {
+            error: "NOT_FOUND",
+            reason: `no execution ${executionId} is readable through the governed API in this scope`,
+          },
+          null,
+          2,
+        ),
+        404,
+      );
+    }
+    throw error;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Providers & capabilities, docs, settings
 // ---------------------------------------------------------------------------
 
@@ -4129,6 +5617,35 @@ export function createDashboardRoutes(
     wrap("GET", "/console/playground/:family", (ctx) => playgroundFamilyPage(client, scope, ctx)),
     wrap("POST", "/console/playground/:family", (ctx) =>
       createPlaygroundRunHandler(client, scope, ctx),
+    ),
+    // Validation Lab (DEP-025). Static routes precede parameterized ones:
+    // capability/workload/stage/start/agent/compare must win over
+    // :workOrder, and the machine routes sit under the api/ prefix.
+    wrap("GET", "/console/validation", (ctx) => validationLabPage(ctx)),
+    wrap("GET", "/console/validation/capability", (ctx) => validationCapabilityPage(ctx)),
+    wrap("GET", "/console/validation/workload", (ctx) => validationWorkloadPage(ctx)),
+    wrap("GET", "/console/validation/stage", (ctx) => validationStagePage(ctx)),
+    wrap("GET", "/console/validation/start", (ctx) => validationStartPage(ctx)),
+    wrap("GET", "/console/validation/agent", (ctx) => validationAgentPage(ctx)),
+    wrap("GET", "/console/validation/compare", (ctx) => validationComparePage(client, ctx)),
+    wrap("GET", "/console/validation/api/catalog.json", () => validationCatalogRoute()),
+    wrap("GET", "/console/validation/api/schema.json", () => validationSchemaRoute()),
+    wrap("GET", "/console/validation/api/evidence/:workOrder", (ctx) =>
+      validationEvidenceRoute(ctx),
+    ),
+    wrap("GET", "/console/validation/api/runs/:executionId", (ctx) =>
+      validationRunRecordRoute(client, ctx),
+    ),
+    wrap("GET", "/console/validation/api/:workOrder/bundle.json", (ctx) =>
+      validationBundleRoute(ctx),
+    ),
+    wrap("GET", "/console/validation/api/:artifact", (ctx) => validationDefinitionRoute(ctx)),
+    wrap("GET", "/console/validation/evidence/:workOrder", (ctx) => validationEvidencePage(ctx)),
+    wrap("GET", "/console/validation/:workOrder", (ctx) =>
+      validationExperimentPage(client, scope, ctx),
+    ),
+    wrap("POST", "/console/validation/:workOrder/run", (ctx) =>
+      createValidationRunHandler(client, scope, ctx),
     ),
     wrap("GET", "/console/providers", (ctx) => providersPage(ctx)),
     wrap("GET", "/console/docs", (ctx) => docsPage(ctx)),
