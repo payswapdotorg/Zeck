@@ -58,15 +58,16 @@ The Tech Lead may dispatch **at most three concurrent implementation workers**, 
 
 The core implementation and validation programs are complete. The current product-delivery program is the **Developer Platform Deployment Program**. It turns `apps/dashboard` and the existing deployment/runtime foundation into a complete public developer console and real sandbox experience.
 
-Current first wave:
+Delivered so far (see `docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md` for the cumulative ledger and `spec/platform-delivery-state/frontier-state.json` for live state):
 
 ```text
-DEP-001  public deployment/bootstrap + free-tier-first provider topology
-DEP-010  end-to-end developer console + sandbox playground
-DEP-020  developer + agent documentation/integration kit
+DEP-010  end-to-end developer console + sandbox playground   (merged, PR #125)
+DEP-020  developer + agent documentation/integration kit     (merged, PR #124)
+DEP-025  Validation Lab: library + rerunnable experiments    (merged, PR #127)
+DEP-013  interactive sandbox playground, all workload classes (merged, PR #129)
 ```
 
-These are independent at the repository-surface level and may be executed concurrently up to the three-worker limit. Later work covers usage/economics, compare mode, reproducibility/export, hardening, public E2E acceptance, fresh developer/agent trials, production/provider-exit drills and the final release gate.
+Currently eligible for dispatch: DEP-001 (deployment bootstrap — unblocks DEP-002/003), DEP-011 (credentials/API-key UX), DEP-012 (complete execution explorer), DEP-014 (sandbox budgets/quotas/expiration/reset/synthetic-data policy). DEP-021/022/023 were absorbed by DEP-020 (absorption audit recorded in the frontier state). Later waves cover usage/economics, compare mode, reproducibility/export, hardening, public E2E acceptance, fresh developer/agent trials, production/provider-exit drills and the final release gate.
 
 ## Provider strategy
 
