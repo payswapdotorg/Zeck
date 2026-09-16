@@ -11,12 +11,13 @@
     "DEP-025"
   ],
   "eligible": [
-    "DEP-001",
-    "DEP-014",
     "DEP-031",
     "DEP-032"
   ],
-  "inFlight": [],
+  "inFlight": [
+    "DEP-001",
+    "DEP-014"
+  ],
   "blocked": [
     {
       "item": "DEP-002",
