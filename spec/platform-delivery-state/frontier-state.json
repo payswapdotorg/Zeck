@@ -4,12 +4,12 @@
   "status": "active",
   "delivered": [
     "DEP-010",
+    "DEP-013",
     "DEP-020",
     "DEP-025"
   ],
   "eligible": [
     "DEP-011",
-    "DEP-013",
     "DEP-014"
   ],
   "inFlight": [
@@ -49,6 +49,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "ba5d601b2e3b28dae160a82c4af0bb1c6305a678",
+  "currentBase": "cdf63384e47bebfc9543741f9913fb68724e92a7",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
