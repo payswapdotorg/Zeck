@@ -133,7 +133,7 @@ describe("openapi.json reconciles with the live API surface", () => {
       ),
     );
     expect([...documented].sort()).toEqual([...live].sort());
-    expect(live.size).toBe(19);
+    expect(live.size).toBe(23);
   });
 
   test("the error-code enum is exactly the wire contract's ERROR_CODES", () => {

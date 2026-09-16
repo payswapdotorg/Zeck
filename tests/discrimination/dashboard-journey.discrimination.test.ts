@@ -510,11 +510,18 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     expect(postRoutes.sort()).toEqual([
       "/build/execution",
       "/build/workload",
+      "/console/applications/keys/:credentialId/revoke",
+      "/console/applications/keys/:credentialId/rotate",
+      "/console/applications/keys/issue",
       "/console/playground/:family",
       "/console/validation/:workOrder/run",
       "/executions/:executionId/cancel",
       "/runs/:executionId/cancel",
     ]);
+    // The DEP-011 POSTs are governed commands too: each submits through
+    // the credential authority's public routes with a mandatory
+    // Idempotency-Key (the show-once reveal IS the POST response — no
+    // server-side state).
     // The mutant: an ungoverned direct mutation route.
     const mutantRoutes = [...postRoutes, "/command"];
     expect(mutantRoutes.length).not.toBe(postRoutes.length);

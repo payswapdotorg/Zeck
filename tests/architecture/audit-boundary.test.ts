@@ -147,7 +147,10 @@ describe("D-08 audit/compliance architecture boundaries (WORK-059)", () => {
       .sort();
     expect(migrations).toContain("0032_audit_compliance.sql");
     const highest = migrations[migrations.length - 1];
-    expect(highest).toBe("0032_audit_compliance.sql");
+    // DEP-011: 0033_application_credentials is the frontier migration now —
+    // the audit migration (0032) remains the last pre-DEP-011 one and its
+    // content pins below still hold.
+    expect(highest).toBe("0033_application_credentials.sql");
     const sql = readFileSync(join(REPO_ROOT, MIGRATION_PATH), "utf8");
     expect(sql).toContain("CREATE SCHEMA audit");
     expect(sql).toContain("audit.audit_records");

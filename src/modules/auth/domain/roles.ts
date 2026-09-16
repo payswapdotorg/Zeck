@@ -12,6 +12,8 @@ export type ApplicationRole = (typeof APPLICATION_ROLES)[number];
 export const PERMISSIONS = [
   "applications:read",
   "applications:write",
+  "credentials:read",
+  "credentials:write",
   "environments:read",
   "environments:write",
   "memberships:read",
@@ -31,12 +33,14 @@ const ROLE_PERMISSIONS: Readonly<Record<ApplicationRole, readonly Permission[]>>
   admin: [
     "applications:read",
     "applications:write",
+    "credentials:read",
+    "credentials:write",
     "environments:read",
     "environments:write",
     "memberships:read",
     "memberships:write",
   ],
-  member: ["applications:read", "environments:read", "memberships:read"],
+  member: ["applications:read", "credentials:read", "environments:read", "memberships:read"],
 };
 
 /** Permissions granted by an application-scoped membership role. */

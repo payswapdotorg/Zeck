@@ -28,7 +28,7 @@
 import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { AgentRegistry } from "../modules/agents/public";
-import type { ScopeResolver } from "../modules/auth/public";
+import type { CredentialService, ScopeResolver } from "../modules/auth/public";
 import type { EconomicActionService } from "../modules/economics/public";
 import type { ExecutionService } from "../modules/executions/public";
 import type { OpportunityAnalyzer } from "../modules/learning/public";
@@ -36,6 +36,7 @@ import { PlatformError } from "../shared/errors";
 import type { Authenticate } from "./request-identity";
 import { registerAgentRoutes } from "./routes/agents";
 import { registerCodebaseAnalysisRoutes } from "./routes/codebase-analysis";
+import { registerCredentialRoutes } from "./routes/credentials";
 import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
 import type { DependencyReadinessWire } from "./routes/health";
@@ -46,6 +47,14 @@ export interface ApiServerDeps {
   readonly agents: AgentRegistry;
   /** The economics AUTHORITY (WORK-032 economic-action surface). */
   readonly economics: EconomicActionService;
+  /**
+   * The credential AUTHORITY (DEP-011). OPTIONAL: the deploy composition
+   * is another Work Order's surface — when absent, the credential routes
+   * still register and answer with the honest 422 CAPABILITY_UNAVAILABLE
+   * (never a fabricated fact), so the route table stays identical across
+   * compositions and the machine manifest stays true.
+   */
+  readonly credentials?: CredentialService;
   readonly scopeResolver: ScopeResolver;
   readonly authenticate: Authenticate;
   /**
@@ -183,6 +192,11 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
   });
   registerEconomicActionRoutes(app, {
     economics: deps.economics,
+    scopeResolver: deps.scopeResolver,
+    authenticate: deps.authenticate,
+  });
+  registerCredentialRoutes(app, {
+    ...(deps.credentials === undefined ? {} : { credentials: deps.credentials }),
     scopeResolver: deps.scopeResolver,
     authenticate: deps.authenticate,
   });
