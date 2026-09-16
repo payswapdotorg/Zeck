@@ -16,7 +16,30 @@ For dispatch/review/orchestration behavior also read:
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
 - `docs/E1.1-RESEARCH-BASELINE.md`
 
-## Current continuation pointer
+## Current program: Developer Platform Deployment (live as of 2026-09-17)
+
+The ACTIVE program is the **Zeck Developer Platform Deployment Program**
+(`docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`, DEP-001..DEP-044). The
+earlier D-08/E1.1/validation sections below are HISTORICAL RECORD — the
+validation program VAL-001..052 executed and its evidence is immutable;
+the sections are preserved, not current.
+
+- Contract: `docs/LLM-DEVELOPER-PLATFORM-TECH-LEAD-CONTRACT.md`.
+- Live state authority: `spec/platform-delivery-state/frontier-state.json`
+  (delivered / eligible / inFlight / blocked / absorbed / currentBase).
+- Cumulative delivery report: `docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md`.
+- Delivered so far: DEP-010, DEP-012 (Lead-direct, PR #130), DEP-013
+  (PR #129), DEP-020, DEP-025 (PRs #124/#125/#127). DEP-021/022/023
+  absorbed by DEP-020 (audit recorded in the frontier state).
+- Every merge follows the governance loop: fetch main → verify merge →
+  governance check → reconcile frontier → recompute base → next wave.
+- Workers never merge their own PRs; the Tech Lead reviews, applies and
+  merges. When the worker dispatch channel is capacity-gated, the Tech
+  Lead implements work orders directly with full contract rigor (the
+  recorded precedent on this page, first applied during the validation
+  program, applied again for DEP-012).
+
+## Current continuation pointer (historical program record)
 
 - Core Architecture v1.0: frozen after approval.
 - Deployment/runtime Architecture D1.0: approved and subordinate to v1.0.
