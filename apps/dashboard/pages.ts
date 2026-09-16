@@ -47,7 +47,6 @@ import {
   whyPanel,
 } from "./components";
 import {
-  buildPlaygroundExecutionRequest,
   type ConsoleFamily,
   capabilityKinds,
   classificationChip,
@@ -60,7 +59,6 @@ import {
   familyOf,
   inFlightCount,
   PLAYGROUND_BUDGET_LIMIT_DOLLARS,
-  PLAYGROUND_FORM_KEYS,
   PLAYGROUND_LATENCY_LIMIT_MS,
   PLAYGROUND_MAX_CONCURRENT_RUNS,
   PLAYGROUND_ORIGIN,
@@ -68,7 +66,6 @@ import {
   readDeveloperDoc,
   sandboxLimitsSection,
   seedCapabilities,
-  validatePlaygroundForm,
 } from "./console";
 import {
   type AuditLedgerRow,
@@ -100,6 +97,23 @@ import {
 } from "./http";
 import { deploymentSessionExecutionSection, inspectionPanel, modalitySections } from "./inspection";
 import { type ExperienceMode, modeCookieHeader, modeOf, modeSelectionForm } from "./modes";
+import {
+  buildInteractiveRunRequest,
+  type ComposerField,
+  composedTaskOf,
+  composerSchemaOf,
+  corpusTaskCountOf,
+  defaultTaskFormValuesOf,
+  exampleOfFamily,
+  familyIsHardBlocked,
+  formKeyOf,
+  interactiveFormKeysOf,
+  type PlaygroundRunFact,
+  playgroundAvailabilityOf,
+  playgroundRunsForFamily,
+  readPlaygroundExampleSource,
+  validateInteractiveRunForm,
+} from "./playground";
 import {
   type AgentSelectionFact,
   APPEARANCE_COOKIE,
@@ -3538,12 +3552,14 @@ ${unavailableState(
 }
 
 // ---------------------------------------------------------------------------
-// Playground (DEP-010 — every workload family, honest availability)
+// Playground (DEP-010 — every workload family, honest availability;
+// DEP-013 — the INTERACTIVE playground: choose → compose → run → inspect)
 // ---------------------------------------------------------------------------
 
+/** The catalog rows: every family the machine capability manifest records. */
 function playgroundFamilyRows(): string {
   return `<table class="data">
-  <thead><tr><th scope="col">Family</th><th scope="col">Classification</th><th scope="col">Recorded availability</th><th scope="col">Example</th></tr></thead>
+  <thead><tr><th scope="col">Family</th><th scope="col">Classification</th><th scope="col">Recorded availability</th><th scope="col">Corpus tasks</th><th scope="col">Example</th></tr></thead>
   <tbody>${consoleFamilies()
     .map(
       (family) => `<tr>
@@ -3552,7 +3568,10 @@ function playgroundFamilyRows(): string {
       )}</a></td>
       <td>${classificationChip(family.classification)}</td>
       <td>${esc(family.availability)}</td>
-      <td class="mono">${esc(family.example)}</td>
+      <td>${String(corpusTaskCountOf(family.family))}</td>
+      <td class="mono"><a href="/console/playground/${encodeURIComponent(
+        family.family,
+      )}/example">${esc(family.example)}</a></td>
     </tr>`,
     )
     .join("")}</tbody>
@@ -3565,12 +3584,18 @@ async function playgroundPage(ctx: HttpContext): Promise<HandlerResult> {
     title: "Playground",
     path: "/console/playground",
     primaryActionHtml:
-      '<a class="button-link primary" href="/console/playground/text">Run the text family</a>',
+      '<a class="button-link primary" href="/console/playground/text">Compose a text run</a>',
   })}
-<p>Guided sandbox runs for every workload family the platform supports — the catalog below is projected live from the machine capability manifest (the same source the validation program validates), so the console can never drift from it. Each family page states the recorded availability honestly, shows the synthetic task a guided run submits, and runs it through the governed public API inside the sandbox envelope.</p>
+<p>Choose any workload class the platform supports, compose your own run over the class's advertised contract, execute it in the governed sandbox and inspect the outcome end to end — editable parameters, not canned demos. The catalog below is projected live from the machine capability manifest (the same source the validation program validates), so the console can never drift from it.</p>
+<ol class="steps">
+  <li><strong>Choose</strong> a workload class — every family the catalog carries, rendered from the manifest (never hardcoded).</li>
+  <li><strong>Compose</strong> the run — editable inputs constrained to the recorded synthetic corpus vocabulary and envelopes.</li>
+  <li><strong>Run</strong> it — a real execution through the governed public API under a disposable-sandbox identity.</li>
+  <li><strong>Inspect</strong> it — the outcome deep-links into the execution explorer's public facts (result, verification, events, costs where exposed).</li>
+</ol>
 <h2>Families</h2>
 ${playgroundFamilyRows()}
-<p class="muted">${split.runnable.length} families classify runnable (the integration path is live for any deployment exposing the public API); ${split.providerGated.length} classify provider-gated (completion requires provider capabilities that may be gated or absent — the gate is about the deployment's rails, never about your code).</p>
+<p class="muted">${split.runnable.length} families classify runnable (the integration path is live for any deployment exposing the public API); ${split.providerGated.length} classify provider-gated (completion requires provider capabilities that may be gated or absent — the gate is about the deployment's rails, never about your code). Families whose required capability has no candidate provider rail render an honest NOT RUN state on their page — never hidden, never faked.</p>
 ${sandboxLimitsSection()}`;
   return page(
     { title: "Zeck — Playground", activePath: "/console/playground", mainContent: content },
@@ -3578,27 +3603,192 @@ ${sandboxLimitsSection()}`;
   );
 }
 
-function playgroundEditLink(
-  family: ConsoleFamily,
-  values: Record<string, string>,
-  idempotencyKey: string,
-): string {
-  const params = new URLSearchParams();
-  for (const key of PLAYGROUND_FORM_KEYS) {
-    params.set(key, values[key] ?? "");
-  }
-  params.set("edit", "1");
-  params.set("idempotencyKey", idempotencyKey);
-  return `/console/playground/${encodeURIComponent(family.family)}?${params.toString()}`;
+/** The required-access table + the honest NOT RUN boundaries (DEP-013 AC3). */
+function playgroundAccessSection(family: ConsoleFamily): string {
+  const availability = playgroundAvailabilityOf(family);
+  const rows = `<table class="data">
+  <thead><tr><th scope="col">Required capability</th><th scope="col">Kind</th><th scope="col">Access requirement</th><th scope="col">Candidate credentials (names)</th><th scope="col">In this deployment</th></tr></thead>
+  <tbody>${availability.facts
+    .map(
+      (fact) => `<tr>
+      <td class="mono">${esc(fact.capability)}</td>
+      <td>${esc(fact.kind)}</td>
+      <td>${esc(fact.accessRequirement)}</td>
+      <td>${
+        fact.kind !== "provider-rail" || fact.candidateEnvVars.length === 0
+          ? '<span class="muted">—</span>'
+          : fact.candidateEnvVars.map((name) => `<span class="mono">${esc(name)}</span>`).join(", ")
+      }</td>
+      <td>${
+        fact.kind !== "provider-rail"
+          ? "—"
+          : fact.candidateEnvVars.length === 0
+            ? "no candidate provider recorded"
+            : fact.candidateEnvVars
+                .map((name) =>
+                  availability.presentEnvVars.includes(name)
+                    ? `<span class="mono">${esc(name)}</span> present`
+                    : `<span class="mono">${esc(name)}</span> absent`,
+                )
+                .join("; ")
+      }</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>`;
+  const blocked =
+    availability.hardBlocked.length === 0
+      ? ""
+      : `\n${availability.hardBlocked
+          .map(
+            (block) => `<div class="state state-blocked">
+  <p class="state-title">NOT RUN — ${esc(block.capability)} has no provider in the authorized set</p>
+  <p class="state-body">${esc(block.reason)} ${esc(block.accessRequirement)}</p>
+  <p class="state-source">Recorded by the capability matrix and the machine capability manifest — never converted into a pass; the Lead owns the credentialed re-run.</p>
+</div>`,
+          )
+          .join("\n")}`;
+  const missing =
+    availability.missingEnvVars.length === 0
+      ? ""
+      : `<p class="muted">Absent in this deployment's environment: ${availability.missingEnvVars
+          .map((name) => `<span class="mono">${esc(name)}</span>`)
+          .join(
+            ", ",
+          )} (names only — values are never read, never rendered). A composed run still submits through the governed API with synthetic data; the platform's authorized rails and policy admission decide the outcome, and a missing-rail outcome is recorded as it occurs — never represented as PASS.</p>`;
+  return `<section class="card">
+  <h2>Required access</h2>
+  ${rows}
+  ${blocked}
+  ${missing}
+</section>`;
 }
 
-/** The sandbox run form (the guided composer; constraints only — the task is the manifest's synthetic shape). */
-function playgroundRunForm(
+/** The honest NOT RUN gate that replaces the commit path for hard-blocked families. */
+function playgroundNotRunState(family: ConsoleFamily): string {
+  const availability = playgroundAvailabilityOf(family);
+  const naming = availability.hardBlocked
+    .map((block) => `${block.capability} (${block.accessRequirement})`)
+    .join("; ");
+  return `<div class="state state-blocked">
+  <p class="state-title">Interactive run — NOT RUN for the ${esc(family.family)} family</p>
+  <p class="state-body">This family's completion requires a capability the authorized provider set does not carry: ${esc(
+    naming,
+  )}. The console refuses to submit a run it cannot honestly pursue — the class stays visible and compose-able, the recorded availability stays verbatim below, and the missing contract is named, never faked.</p>
+  <p class="state-source">Reproduce the integration shape without the console: the copyable example <a href="/console/playground/${encodeURIComponent(
+    family.family,
+  )}/example">${esc(family.example)}</a>; live-rail rows are the Lead's credentialed environment.</p>
+</div>`;
+}
+
+/** The honest unavailable state for parameterizable environment templates. */
+function playgroundEnvironmentNote(): string {
+  return unavailableState(
+    "Parameterizable sandbox environment templates",
+    "The composer carries the optional environment id passthrough (the create contract's environmentId selector) and the sandbox envelope's budget, latency and concurrency ceilings. Environment TEMPLATES a developer may parameterize are not yet exposed by the public API — no console-local shape can honestly stand in for them.",
+    "the sandbox environments surface (the environments authority's public contract; the budgets/quotas/expiration program is DEP-014)",
+  );
+}
+
+/** The synthetic-data discipline note (what is enforced, what is DEP-014's). */
+function playgroundSyntheticDataNote(): string {
+  return `<p class="muted">Synthetic-data-only enforcement is active in this composer: fixture fields accept only the family's recorded synthetic corpus values, numeric parameters sit inside the recorded envelopes, and free text is neutralized (real-world web addresses, emails, IPs, long digit runs, credential-shaped material, markup, control characters and opaque blobs are refused before any wire call). The platform-wide synthetic-data policy surface is owned by DEP-014 (not yet merged at this revision) — until it lands, this composer's rules are the enforced boundary.</p>`;
+}
+
+/** One composer field's input (the interactive editable control). */
+function composerFieldHtml(
+  field: ComposerField,
+  values: Record<string, string>,
+  errors: Record<string, string | undefined>,
+): string {
+  const id = `pf-task-${field.key}`;
+  const formKey = formKeyOf(field);
+  const raw = values[formKey] ?? "";
+  const error = errors[formKey];
+  switch (field.kind) {
+    case "fixed":
+      return `<div class="form-field">
+  <p class="form-label"><span class="mono">${esc(formKey)}</span> — fixed by the advertised contract</p>
+  <p class="form-value mono">${esc(field.value)}</p>
+  <p class="form-hint">The task discriminator is part of the class's recorded shape; the composer never lets the wire payload change it.</p>
+</div>`;
+    case "select":
+      return executionFormField(
+        id,
+        formKey,
+        `<select id="${id}" name="${esc(formKey)}">${field.values
+          .map(
+            (value) =>
+              `<option value="${esc(value)}"${(raw.length > 0 ? raw : field.defaultValue) === value ? " selected" : ""}>${esc(value)}</option>`,
+          )
+          .join("")}</select>`,
+        "One of the family's recorded synthetic corpus values (synthetic-data-only enforcement — free entry is not accepted).",
+        error,
+      );
+    case "number":
+      return executionFormField(
+        id,
+        formKey,
+        `<input id="${id}" name="${esc(formKey)}" value="${esc(
+          raw.length > 0 ? raw : String(field.defaultValue),
+        )}" inputmode="numeric" type="number" min="${String(field.min)}" max="${String(
+          field.max,
+        )}" step="1">`,
+        `A whole number within the recorded envelope for this family: ${String(
+          field.min,
+        )}–${String(field.max)}.`,
+        error,
+      );
+    case "boolean":
+      return executionFormField(
+        id,
+        formKey,
+        `<select id="${id}" name="${esc(formKey)}">${["true", "false"]
+          .map(
+            (value) =>
+              `<option value="${value}"${(raw.length > 0 ? raw : String(field.defaultValue)) === value ? " selected" : ""}>${value}</option>`,
+          )
+          .join("")}</select>`,
+        "The recorded contract's flag (true or false).",
+        error,
+      );
+    case "list":
+      return executionFormField(
+        id,
+        formKey,
+        `<input id="${id}" name="${esc(formKey)}" value="${esc(
+          raw.length > 0 ? raw : field.defaultValue.join(","),
+        )}" placeholder="${esc(field.defaultValue.join(","))}">`,
+        `Comma-separated items from the recorded synthetic vocabulary: ${field.vocabulary.join(
+          ", ",
+        )}.`,
+        error,
+      );
+    case "text":
+      return executionFormField(
+        id,
+        formKey,
+        `<input id="${id}" name="${esc(formKey)}" value="${esc(
+          raw.length > 0 ? raw : field.defaultValue,
+        )}" maxlength="${String(field.maxLength)}">`,
+        `Free synthetic text (at most ${String(
+          field.maxLength,
+        )} characters). Real-world identifiers, credential-shaped material, markup and opaque blobs are refused — the synthetic-data-only rule.`,
+        error,
+      );
+  }
+}
+
+/** The interactive composer form (choose → compose; GET round-trips the composed values). */
+function playgroundComposerForm(
   family: ConsoleFamily,
   values: Record<string, string>,
   errors: Record<string, string | undefined>,
   idempotencyKey: string,
 ): string {
+  const taskFields = composerSchemaOf(family)
+    .map((field) => composerFieldHtml(field, values, errors))
+    .join("\n");
   return `<form class="flow card" method="get" action="/console/playground/${encodeURIComponent(
     family.family,
   )}">
@@ -3628,11 +3818,59 @@ function playgroundRunForm(
     `Sent as the per-run cost constraint. The $${PLAYGROUND_BUDGET_LIMIT_DOLLARS} ceiling is enforced either way; a higher entry is refused before any wire call.`,
     errors.spendLimitDollars,
   )}
+  <h3>The composed task (the class's advertised contract)</h3>
+  <p class="muted">Every field below is derived from the family's recorded task shape with the synthetic corpus as the value authority — the composed payload can only carry synthetic data.</p>
+  ${taskFields}
   <div class="form-actions"><button type="submit" class="primary">Review the sandbox run</button></div>
-</form>`;
+</form>
+${playgroundSyntheticDataNote()}
+${playgroundEnvironmentNote()}`;
 }
 
-/** The consequence/commitment card for a sandbox run (the WORK-035 confirmation primitive). */
+function playgroundEditLink(
+  family: ConsoleFamily,
+  values: Record<string, string>,
+  idempotencyKey: string,
+): string {
+  const params = new URLSearchParams();
+  for (const key of interactiveFormKeysOf(family)) {
+    params.set(key, values[key] ?? "");
+  }
+  params.set("edit", "1");
+  params.set("idempotencyKey", idempotencyKey);
+  return `/console/playground/${encodeURIComponent(family.family)}?${params.toString()}`;
+}
+
+/** The proposed-run envelope: exactly what the create request will carry. */
+function playgroundEnvelope(family: ConsoleFamily, request: ExecutionRequest): string {
+  const constraints = request.constraints ?? {};
+  const budget =
+    constraints.maxCostMicroUsd === undefined
+      ? `$${PLAYGROUND_BUDGET_LIMIT_DOLLARS}`
+      : formatMicroUsd(constraints.maxCostMicroUsd);
+  const latencySeconds = Math.round(
+    (constraints.maxLatencyMs ?? PLAYGROUND_LATENCY_LIMIT_MS) / 1000,
+  );
+  return `<div class="card review-envelope">
+  <h2>Proposed sandbox run</h2>
+  <h3>The composed task (your edited parameters)</h3>
+  ${keyValueTable(safeTaskPairs(request.task))}
+  <h3>Capability requirements</h3>
+  <ul>${family.capabilityRequirements
+    .map((requirement) => `<li class="mono">${esc(requirement)}</li>`)
+    .join("")}</ul>
+  <h3>Sandbox constraints</h3>
+  ${keyValueTable([
+    ["Cost ceiling", budget],
+    ["Latency ceiling", `${latencySeconds} seconds`],
+    ["Sandbox identity", `${PLAYGROUND_ORIGIN} (disposable, interactive)`],
+    ["Example", family.example],
+  ])}
+  <p class="muted">No provider, model, rail, connection or agent is selected — the frozen create contract forbids provider selection, and Zeck owns the route. Policy admission is decided platform-side at dispatch.</p>
+</div>`;
+}
+
+/** The consequence/commitment card for an interactive run (the WORK-035 confirmation primitive). */
 function playgroundCommitmentCard(
   family: ConsoleFamily,
   values: Record<string, string>,
@@ -3650,7 +3888,7 @@ function playgroundCommitmentCard(
   );
   return confirmationCard({
     title: "Run this sandbox execution?",
-    consequence: `Run submits the governed create request for the ${family.family} family's recorded synthetic task: exactly one execution is created, Zeck plans the route and executes under policy, and the events, verification results, output artifacts and settled cost are recorded platform-side — you follow the run on its execution page. The sandbox identity (${PLAYGROUND_ORIGIN}, disposable) rides the request's metadata.`,
+    consequence: `Run submits the governed create request for your COMPOSED ${family.family} task: exactly one execution is created, Zeck plans the route and executes under policy, and the events, verification results, output artifacts and settled cost are recorded platform-side — you follow the run on its execution page. The sandbox identity (${PLAYGROUND_ORIGIN}, disposable, interactive) rides the request's metadata.`,
     affected: `A governed execution record in application ${values.applicationId ?? ""}${
       (values.environmentId ?? "").length > 0
         ? `, environment ${values.environmentId ?? ""}`
@@ -3665,42 +3903,13 @@ function playgroundCommitmentCard(
     approvalNote:
       "No user pre-approval is part of the public create contract — the platform's policy admission at dispatch is the authorization boundary.",
     idempotencyNote: `The idempotency key ${idempotencyKey} is carried: resubmitting the same request converges on ONE execution rather than creating duplicates.`,
-    hiddenFields: PLAYGROUND_FORM_KEYS.filter(
-      (key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0,
-    ).map((key) => [key, values[key] ?? ""] as const),
+    hiddenFields: interactiveFormKeysOf(family)
+      .filter((key) => key !== "idempotencyKey" || (values[key] ?? "").length > 0)
+      .map((key) => [key, values[key] ?? ""] as const),
     confirmAction: `/console/playground/${encodeURIComponent(family.family)}`,
     confirmLabel,
     cancelHref: playgroundEditLink(family, values, idempotencyKey),
   });
-}
-
-/** The proposed-sandbox-run envelope: exactly what the create request will carry. */
-function playgroundEnvelope(family: ConsoleFamily, request: ExecutionRequest): string {
-  const constraints = request.constraints ?? {};
-  const budget =
-    constraints.maxCostMicroUsd === undefined
-      ? `$${PLAYGROUND_BUDGET_LIMIT_DOLLARS}`
-      : formatMicroUsd(constraints.maxCostMicroUsd);
-  const latencySeconds = Math.round(
-    (constraints.maxLatencyMs ?? PLAYGROUND_LATENCY_LIMIT_MS) / 1000,
-  );
-  return `<div class="card review-envelope">
-  <h2>Proposed sandbox run</h2>
-  <h3>The synthetic task (verbatim from the capability manifest)</h3>
-  ${playgroundTaskTable(family)}
-  <h3>Capability requirements</h3>
-  <ul>${family.capabilityRequirements
-    .map((requirement) => `<li class="mono">${esc(requirement)}</li>`)
-    .join("")}</ul>
-  <h3>Sandbox constraints</h3>
-  ${keyValueTable([
-    ["Cost ceiling", budget],
-    ["Latency ceiling", `${latencySeconds} seconds`],
-    ["Sandbox identity", `${PLAYGROUND_ORIGIN} (disposable)`],
-    ["Example", family.example],
-  ])}
-  <p class="muted">No provider, model, rail, connection or agent is selected — the frozen create contract forbids provider selection, and Zeck owns the route. Policy admission is decided platform-side at dispatch.</p>
-</div>`;
 }
 
 function playgroundFamilyNotFoundView(familyId: string, ctx: HttpContext): HandlerResult {
@@ -3732,6 +3941,39 @@ function playgroundConcurrencyGate(inFlight: number): string {
 </div>`;
 }
 
+/** The run-history section: this browser's playground runs of the family (inspect deep links). */
+function playgroundRunHistorySection(
+  family: ConsoleFamily,
+  runs: readonly PlaygroundRunFact[],
+): string {
+  void family;
+  if (runs.length === 0) {
+    return `<h2>Run history (this browser)</h2>
+${emptyState(
+  "No interactive runs of this family yet",
+  "Runs you compose and execute in this browser appear here with deep links into the execution explorer's public facts — result, verification, events and costs where exposed.",
+  RECENTS_NOTE,
+)}`;
+  }
+  return `<h2>Run history (this browser)</h2>
+<table class="data">
+  <thead><tr><th scope="col">Execution</th><th scope="col">Composed</th><th scope="col">Status</th><th scope="col">Opened</th></tr></thead>
+  <tbody>${runs
+    .map(
+      (run) => `<tr>
+      <td><a href="/runs/${encodeURIComponent(run.executionId)}" class="mono">${esc(
+        run.executionId,
+      )}</a></td>
+      <td>${run.composed ? "interactive" : "guided"}</td>
+      <td>${statusBadge(run.status)}</td>
+      <td>${esc(run.createdAt)}</td>
+    </tr>`,
+    )
+    .join("")}</tbody>
+</table>
+<p class="muted">${esc(RECENTS_NOTE)}.</p>`;
+}
+
 async function playgroundFamilyPage(
   client: ZeckClient,
   scope: string,
@@ -3745,10 +3987,14 @@ async function playgroundFamilyPage(
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const history = playgroundRunsForFamily(recents.executions, family.family);
   const inFlight = inFlightCount(recents.executions);
   const gated = inFlight >= PLAYGROUND_MAX_CONCURRENT_RUNS;
+  const availability = playgroundAvailabilityOf(family);
+  const hardBlocked = familyIsHardBlocked(availability);
+  const defaults = defaultTaskFormValuesOf(family);
   const query: Record<string, string> = {};
-  for (const key of [...PLAYGROUND_FORM_KEYS, "edit"]) {
+  for (const key of [...interactiveFormKeysOf(family), "edit"]) {
     const value = ctx.query.get(key);
     if (value !== null) {
       query[key] = value;
@@ -3759,29 +4005,54 @@ async function playgroundFamilyPage(
       ? (query.idempotencyKey ?? "")
       : `dash-${crypto.randomUUID()}`;
   const submitted = (query.applicationId ?? "").trim().length > 0;
-  const applicationId = query.applicationId ?? scope;
   const values: Record<string, string> = {
-    applicationId,
+    applicationId: query.applicationId ?? scope,
     environmentId: query.environmentId ?? "",
     spendLimitDollars: query.spendLimitDollars ?? "",
     idempotencyKey,
+    ...defaults,
+    ...query,
   };
   const reviewable = submitted && query.edit !== "1";
   let runSurface: string;
   if (gated) {
     runSurface = playgroundConcurrencyGate(inFlight);
   } else if (!reviewable) {
-    runSurface = playgroundRunForm(family, values, {}, idempotencyKey);
+    runSurface = playgroundComposerForm(family, values, {}, idempotencyKey);
   } else {
-    const validation = validatePlaygroundForm(query);
+    const validation = validateInteractiveRunForm(family, query);
     if (validation.values === null) {
-      runSurface = playgroundRunForm(family, values, validation.errors, idempotencyKey);
+      runSurface = playgroundComposerForm(family, values, validation.errors, idempotencyKey);
+    } else if (hardBlocked) {
+      runSurface = `${playgroundNotRunState(family)}
+${playgroundComposerForm(family, values, {}, idempotencyKey)}`;
     } else {
-      const request = buildPlaygroundExecutionRequest(family, validation.values);
+      const task = composedTaskOf(family, validation.values);
+      const request = buildInteractiveRunRequest(family, task, validation.values.envelope);
       runSurface = `${playgroundEnvelope(family, request)}
 ${playgroundCommitmentCard(family, values, request, idempotencyKey, "Run sandbox execution")}`;
     }
   }
+  const example = exampleOfFamily(family);
+  const exampleSection =
+    example === null
+      ? errorState(
+          "The machine example inventory does not carry this family's recorded example",
+          `The capability manifest records ${family.example} for this family, but the examples manifest carries no such entry — the console renders the miss honestly instead of inventing a link.`,
+          "docs/developer/machine/examples-manifest.json",
+        )
+      : `<h2>The example behind this family</h2>
+${keyValueTable([
+  ["Example", example.path],
+  ["Title", example.title],
+  ["Classification", example.classification],
+  ["Env vars (names only)", example.envVars.join(", ")],
+])}
+<p>Open the copyable source: <a href="/console/playground/${encodeURIComponent(
+          family.family,
+        )}/example">${esc(example.path)}</a> — the same wire contract this composer rides, runnable without the console: <span class="mono">ZECK_API_URL=… ZECK_TOKEN=… ZECK_APPLICATION_ID=… bun run ${esc(
+          example.path,
+        )}</span>. An agent reproduces any playground run from it; there is no UI-only path to capability.</p>`;
   const content = `${pageHead({
     title: `Playground — ${family.family}`,
     path: "/console/playground",
@@ -3789,19 +4060,20 @@ ${playgroundCommitmentCard(family, values, request, idempotencyKey, "Run sandbox
     primaryActionHtml: '<a class="button-link" href="/console/playground">All families</a>',
   })}
 ${familyAvailabilitySection(family)}
-<h2>The synthetic task</h2>
-<p class="muted">The guided run submits this recorded task shape verbatim — synthetic data by construction, never a live document.</p>
+${playgroundAccessSection(family)}
+<h2>The advertised contract</h2>
+<p class="muted">The recorded synthetic task shape — the manifest's verbatim default for this family; the composer below edits within it.</p>
 ${playgroundTaskTable(family)}
-<h2>Run it in the sandbox</h2>
+<h2>Compose your run</h2>
+${
+  hardBlocked
+    ? playgroundNotRunState(family)
+    : '<p class="muted">Edit the parameters within the recorded synthetic vocabulary and envelopes, then review the exact request before it is submitted through the governed public API.</p>'
+}
 ${runSurface}
 ${sandboxLimitsSection()}
-<h2>The example behind this family</h2>
-${keyValueTable([
-  ["Example", family.example],
-  ["Classification", family.classification],
-  ["Capability requirements", family.capabilityRequirements.join(", ")],
-])}
-<p class="muted">The example file in the repository is the copy/paste-runnable form of the same integration; the guided run here is the console form of it — same wire contract, same synthetic task.</p>`;
+${playgroundRunHistorySection(family, history)}
+${exampleSection}`;
   return page(
     {
       title: `Zeck — Playground ${family.family}`,
@@ -3824,7 +4096,9 @@ async function createPlaygroundRunHandler(
     return playgroundFamilyNotFoundView(familyId, ctx);
   }
   const idempotencyKey = (ctx.form.idempotencyKey ?? "").trim();
-  const validation = validatePlaygroundForm(ctx.form);
+  const availability = playgroundAvailabilityOf(family);
+  const hardBlocked = familyIsHardBlocked(availability);
+  const validation = validateInteractiveRunForm(family, ctx.form);
   if (validation.values === null || idempotencyKey.length === 0) {
     const errors: Record<string, string | undefined> = {
       ...(validation.errors as Record<string, string | undefined>),
@@ -3835,13 +4109,41 @@ async function createPlaygroundRunHandler(
         (errors.applicationId === undefined ? "" : " ") +
         "The form state was lost — fill the application id again and resubmit.";
     }
+    const defaults = defaultTaskFormValuesOf(family);
     const content = `${pageHead({
       title: `Playground — ${family.family}`,
       path: "/console/playground",
       currentLabel: family.family,
     })}
 <div id="form-status" role="status" aria-live="polite" class="live-region">The sandbox run could not be submitted — fix the highlighted fields.</div>
-${playgroundRunForm(family, { ...ctx.form, applicationId: ctx.form.applicationId ?? scope }, errors, idempotencyKey.length > 0 ? idempotencyKey : `dash-${crypto.randomUUID()}`)}
+${playgroundComposerForm(
+  family,
+  { ...defaults, ...ctx.form, applicationId: ctx.form.applicationId ?? scope },
+  errors,
+  idempotencyKey.length > 0 ? idempotencyKey : `dash-${crypto.randomUUID()}`,
+)}
+${sandboxLimitsSection()}`;
+    return htmlStatusResult(
+      422,
+      appShell({
+        title: `Zeck — Playground ${family.family}`,
+        activePath: "/console/playground",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  if (hardBlocked) {
+    const content = `${pageHead({
+      title: `Playground — ${family.family}`,
+      path: "/console/playground",
+      currentLabel: family.family,
+    })}
+<div id="form-status" role="status" aria-live="polite" class="live-region">This family is an honest NOT RUN boundary — the submission was refused before any wire call.</div>
+${playgroundNotRunState(family)}
+${playgroundAccessSection(family)}
 ${sandboxLimitsSection()}`;
     return htmlStatusResult(
       422,
@@ -3881,7 +4183,8 @@ ${sandboxLimitsSection()}`;
     );
   }
   try {
-    const request = buildPlaygroundExecutionRequest(family, values);
+    const task = composedTaskOf(family, values);
+    const request = buildInteractiveRunRequest(family, task, values.envelope);
     const { receipt } = await client.createExecution(request, idempotencyKey);
     return redirectResult(`/runs/${encodeURIComponent(receipt.executionId)}`);
   } catch (error) {
@@ -3890,7 +4193,8 @@ ${sandboxLimitsSection()}`;
         error.body.code === "POLICY_DENIED" || error.body.code === "BUDGET_EXCEEDED"
           ? `\n${createBlockedExplanation(error.body.code, error.body.message)}`
           : "";
-      const request = buildPlaygroundExecutionRequest(family, values);
+      const task = composedTaskOf(family, values);
+      const request = buildInteractiveRunRequest(family, task, values.envelope);
       const content = `${pageHead({
         title: `Playground — ${family.family}`,
         path: "/console/playground",
@@ -3904,10 +4208,12 @@ ${playgroundEnvelope(family, request)}
 ${playgroundCommitmentCard(
   family,
   {
-    applicationId: values.applicationId,
-    environmentId: values.environmentId,
-    spendLimitDollars: values.spendLimitDollars,
+    ...defaultTaskFormValuesOf(family),
+    applicationId: values.envelope.applicationId,
+    environmentId: values.envelope.environmentId,
+    spendLimitDollars: values.envelope.spendLimitDollars,
     idempotencyKey,
+    ...values.task,
   },
   request,
   idempotencyKey,
@@ -3927,6 +4233,88 @@ ${playgroundCommitmentCard(
     }
     throw error;
   }
+}
+
+/** The copyable integration-kit example page (machine parity — DEP-013 AC6). */
+async function playgroundExamplePage(ctx: HttpContext): Promise<HandlerResult> {
+  const familyId = ctx.params.family ?? "";
+  const family = familyOf(familyId);
+  if (family === null) {
+    return playgroundFamilyNotFoundView(familyId, ctx);
+  }
+  const example = exampleOfFamily(family);
+  if (example === null) {
+    const content = `${pageHead({ title: `Example — ${family.family}`, path: "/console/playground" })}
+${errorState(
+  "The machine example inventory does not carry this family's recorded example",
+  `The capability manifest records ${family.example} for this family, but the examples manifest carries no such entry — the console renders the miss honestly instead of inventing a link.`,
+  "docs/developer/machine/examples-manifest.json",
+)}
+<p><a href="/console/playground/${encodeURIComponent(family.family)}">Back to the family</a></p>`;
+    return htmlStatusResult(
+      404,
+      appShell({
+        title: `Zeck — Example ${family.family}`,
+        activePath: "/console/playground",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const source = readPlaygroundExampleSource(family);
+  if (source === null) {
+    const content = `${pageHead({ title: `Example — ${family.family}`, path: "/console/playground" })}
+${errorState(
+  "The recorded example file is not present in this repository checkout",
+  `The machine manifests record ${family.example}, but the file could not be read from the repository — the console renders the miss honestly.`,
+  "docs/developer/machine/examples-manifest.json (the validated machine inventory)",
+)}
+<p><a href="/console/playground/${encodeURIComponent(family.family)}">Back to the family</a></p>`;
+    return htmlStatusResult(
+      404,
+      appShell({
+        title: `Zeck — Example ${family.family}`,
+        activePath: "/console/playground",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const content = `${pageHead({
+    title: `Example — ${family.family}`,
+    path: "/console/playground",
+    currentLabel: family.family,
+    primaryActionHtml: `<a class="button-link" href="/console/playground/${encodeURIComponent(
+      family.family,
+    )}">Back to the composer</a>`,
+  })}
+<section class="card">
+  <h2>The copyable integration-kit example</h2>
+  ${keyValueTable([
+    ["Path", example.path],
+    ["Title", example.title],
+    ["Workload family", example.family],
+    ["Classification", example.classification],
+    ["Env vars (names only)", example.envVars.join(", ")],
+  ])}
+  <p class="muted">Served verbatim and read-only from the repository — the same wire contract the interactive composer rides. Run it without the console: <span class="mono">ZECK_API_URL=… ZECK_TOKEN=… ZECK_APPLICATION_ID=… bun run ${esc(
+    example.path,
+  )}</span>. Machine parity: an agent reproduces any playground run from this file; there is no UI-only path to capability.</p>
+</section>
+<h2>Source (verbatim)</h2>
+<pre class="raw">${esc(source)}</pre>`;
+  return page(
+    {
+      title: `Zeck — Example ${family.family}`,
+      activePath: "/console/playground",
+      mainContent: content,
+    },
+    ctx,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -5618,6 +6006,9 @@ export function createDashboardRoutes(
     wrap("POST", "/console/playground/:family", (ctx) =>
       createPlaygroundRunHandler(client, scope, ctx),
     ),
+    // DEP-013: the copyable integration-kit example behind each family
+    // (machine parity — served read-only from the repository).
+    wrap("GET", "/console/playground/:family/example", (ctx) => playgroundExamplePage(ctx)),
     // Validation Lab (DEP-025). Static routes precede parameterized ones:
     // capability/workload/stage/start/agent/compare must win over
     // :workOrder, and the machine routes sit under the api/ prefix.

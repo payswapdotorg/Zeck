@@ -279,6 +279,8 @@ describe("the guided sandbox run (two-step, governed POST)", () => {
       origin: PLAYGROUND_ORIGIN,
       family: "text",
       sandbox: "disposable",
+      composed: "interactive",
+      example: "examples/text-summarization.ts",
     });
     expect(call?.body.applicationId).toBe(APP_ID);
     // The redirect lands on the run explorer (live read of the same world).
