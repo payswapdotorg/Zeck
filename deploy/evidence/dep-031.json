@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-031",
+  "title": "Playground compare mode: baseline vs Zeck strategy and execution explanation — verification evidence record",
+  "recordedBy": "DEP-031 implementation worker (3-b + continuation turns 3-b-resume, 3-b-resume-2)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker); git worktree /home/z/zeck-w-dep031, branch work/DEP-031-usage-comparison at base 5660d9f (post DEP-030 + DEP-002 + DEP-032 merges), branch head 9c38093 before this record",
+  "date": "2026-09-17",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. Compare is a pure console projection over the public records, so the whole surface is verifiable without credentials: every check below was executed in the worktree by this continuation tail turn (the lead smoke and the FULL battery were re-run at 9c38093 BEFORE this record was written — every number is this turn's own run, reproducing the prior turns' recorded claims).",
+  "notRun": [
+    {
+      "check": "Real-browser drive of the compare view (headless Chromium over the booted REAL API + REAL dashboard stack, the DEP-032 browser-smoke precedent)",
+      "reason": "The delivered surface carries the lead smoke (real processes, real HTTP, real dashboard composition — below) but no separate browser-drive runner, and this tail turn's mandate is the evidence record + battery only. Every compare journey is verified end-to-end over real HTTP; the pixel-level browser drive (rendering, click-through of the picker/launcher forms, zero page errors) is the one layer not driven here.",
+      "owner": "Lead credentialed re-run (agent-browser against the booted stack, per the DEP-032 browser-smoke precedent)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Governance",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[] (exit 0)"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit)"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "68 warnings / 8 infos / 0 errors, exit 0, 1900 files checked — the recorded baseline exactly. The only diagnostic on any file this work order touched is the PRE-EXISTING apps/dashboard/pages.ts noUnusedImports warning (the sandbox-governance import block, untouched by this order); zero new violations introduced."
+    },
+    {
+      "check": "Full test suite (unit + architecture + discrimination + integration)",
+      "command": "bun run test",
+      "evidence": "Test Files 503 passed | 147 skipped (650); Tests 8548 passed | 201 skipped (8749); 0 failures; 205.97s. Base 5660d9f was 502 files / 8513 tests; the +1 file / +35 tests are exactly the new compare suite (tests/unit/dashboard/compare-console.test.ts). The file/test-level skips are the honest PG/credential-gated suites (unchanged baseline behavior). Run at tree 9c38093 (code identical to the final branch state; only this evidence JSON follows)."
+    },
+    {
+      "check": "Targeted dashboard + discrimination runs (pre-record confirmation)",
+      "command": "bunx vitest run tests/unit/dashboard/compare-console.test.ts tests/unit/dashboard/navigation.test.ts; bunx vitest run tests/unit/dashboard; bunx vitest run tests/discrimination/dashboard-journey.discrimination.test.ts",
+      "evidence": "compare-console: 35/35 tests; navigation: 21/21 (route pin +2 additive rows); dashboard directory: 30 files / 627 tests green (was 592 at DEP-032 + the 35 new); dashboard-journey discrimination: 53/53 incl. the D11 POST-route pin with the additive /console/compare/baseline row and the D12 compare.ts mutation-vocabulary pin (exactly ONE governed createExecution call site — the baseline launcher; every other client call a read)"
+    },
+    {
+      "check": "AC1 — two runs of the same composed workload compared side by side on the public facts, with selection entry points",
+      "command": "tests/unit/dashboard/compare-console.test.ts + scripts/lead-smoke-dep031.ts",
+      "evidence": "HTTP-verified over the REAL API + REAL dashboard: the compare view renders every public-fact axis (status, terminal outcome, recorded cost/usage, route summary, verification outcomes, duration) with EVERY rendered fact equal to the public records verbatim; durations are the recorded timestamps' own arithmetic (disclosed); selection entry points exist on the explorer list (Compare column + primary action), the explorer detail footer and the playground family page run history (Compare column + section note); both orderings render the same compare"
+    },
+    {
+      "check": "AC2 — the explanation panel renders the platform's recorded planning rationale verbatim",
+      "command": "tests/unit/dashboard/compare-console.test.ts + scripts/lead-smoke-dep031.ts",
+      "evidence": "planningDecisionOf is the SINGLE reader of the event ledger's planning-decision facts (equality-pinned in the unit suite); each side renders its OWN recorded decision verbatim — candidates with expected cost/quality/latency, selected strategy, rationale, deterministic-sufficiency outcome, substrate selection — never re-derived or approximated console-side; the no-decision case renders the honest empty state"
+    },
+    {
+      "check": "AC3 — the baseline path uses the frozen public create contract only, or the honest unavailable state naming the missing contract",
+      "command": "tests/unit/dashboard/compare-console.test.ts + scripts/lead-smoke-dep031.ts",
+      "evidence": "the launcher POST re-submits through the frozen create contract (303 to the new run; captured request keys == the frozen vocabulary, FORBIDDEN_REQUEST_KEYS absent, task verbatim, constraints capped at the playground sandbox limits); the new run's PUBLIC record carries the source task verbatim + the baseline lineage (metadata.baseline=single-model-baseline-requested, metadata.baselineOf=<source run>) + the capped constraints; the sandbox concurrency gate refuses a fourth in-flight run (422, honestly); the view names the missing baseline-planning contract explicitly (BASELINE_MISSING_CONTRACT) and renders both launcher cards; unknown-source 404 and incomplete-form 422 pinned"
+    },
+    {
+      "check": "AC4 — machine parity: a JSON compare view serves the same composed records; no UI-only state",
+      "command": "tests/unit/dashboard/compare-console.test.ts + scripts/lead-smoke-dep031.ts",
+      "evidence": "GET /console/compare/facts.json serves the SAME composition the HTML renders (ONE composeCompare object drives both); facts.a and facts.b EQUAL the per-run facts.json compositions (HTTP-verified parity — explorerFactsOf embedded verbatim); the machine view carries the projection-doctrine authority note and every universal boundary; honest JSON 400 (same run twice, missing selections) and 404 (unknown ids)"
+    },
+    {
+      "check": "AC5 — unit tests (house vitest style) + hostile-value probes; existing pins stay in sync",
+      "command": "tests/unit/dashboard/compare-console.test.ts + tests/discrimination/dashboard-journey.discrimination.test.ts + full suite",
+      "evidence": "35-test wire-exact fake-API suite driving the REAL dashboard end to end; hostile probes: markup-carrying ids (404 view), hostile lineage metadata/strategy fields (200 view), hostile task values (delta + machine data), the hostile-family catalog gate (honest unrecorded marker, never the injected string); pins synced: navigation route map (+2 additive rows), D11 governed-POST pin (+1 additive row), D12 mutation-vocabulary pin (new for compare.ts)"
+    },
+    {
+      "check": "AC6 — machine manifests and the route-count pin stay in sync with any new additive routes",
+      "command": "git diff 5660d9f..HEAD --stat + full suite (developer-docs / machine-schemas suites)",
+      "evidence": "ZERO new public API routes (composition-only console surface — the DEP-030/032 preferred path): openapi.json and every deploy/ manifest are byte-identical to base (the 6-file diff touches only apps/dashboard/{compare.ts,pages.ts}, tests, scripts/); the three new console routes (GET /console/compare, GET /console/compare/facts.json, POST /console/compare/baseline) are pinned in navigation.test.ts; all machine-manifest suites green in the full run"
+    },
+    {
+      "check": "AC7 — the composed-surface pattern and the honesty doctrine",
+      "command": "code review of apps/dashboard/compare.ts (1,316 lines) + the boundary inventory",
+      "evidence": "composeCompare is pure over its two ExplorerFacts inputs (every fact read from the four public records); four universal boundaries with named missing contracts (realizedQualityScores, baselinePlanningSemantics, statisticalComparison, perStepCostBreakdown) + the conditional differentWorkloadFamilies boundary; cross-family compares say generic-axes-only (view + machine genericAxesOnly flag + task delta suppressed); missing recorded facts render as honest unavailable cells, never guesses; digest-less artifact references render the explorer's own '(no digest recorded)' marker"
+    },
+    {
+      "check": "Dashboard/browser smoke — real-process lead smoke (RE-RUN by this tail turn at 9c38093 before this record)",
+      "command": "bun scripts/lead-smoke-dep031.ts",
+      "evidence": "27/27 PASS, SMOKE OK — REAL API server + REAL dashboard over in-memory services (store persists verification results so the verification axis crosses the real route + serialization boundary): compose ONE workload family twice through the governed platform, compare BOTH orderings with every fact verbatim, the explanation panels render each run's OWN recorded planning decision verbatim, facts.a/facts.b HTTP-verified parity with the per-run facts.json, the baseline launcher journey (frozen create contract, 303, lineage + capped constraints on the new run's public record), the honest missing-contract naming, the concurrency-gate 422, unknown-id 404 (view + JSON), same-run 400, missing-selection 400, cross-family generic-axes-only with parity, missing-fact unavailable cells"
+    },
+    {
+      "check": "Inherited-work independent re-verification (continuation tail turn 3-b-resume-2)",
+      "command": "bun scripts/lead-smoke-dep031.ts + the FULL battery (governance / typecheck / lint / bun run test) at tree 9c38093",
+      "evidence": "the prior turns' recorded claims reproduced independently by this tail turn BEFORE any record was written: lead smoke 27/27 PASS again, full suite 503f/8548t+201 skips green, lint at the exact 68w/8i/0e baseline, governance OK, typecheck 0 — zero defects found by the re-verification sweep (nothing needed fixing)"
+    }
+  ],
+  "notes": [
+    "NEW FILES OUTSIDE THE CONSOLE SURFACE (merge note for the Lead): this evidence record itself (deploy/evidence/dep-031.json — a new additive file in DEP-001's evidence directory, following the DEP-002/032/003 precedent; no existing deploy/ file was edited) and the smoke runner scripts/lead-smoke-dep031.ts (new additive file, house lead-smoke precedent from DEP-011..032).",
+    "BASELINE-SEMANTICS MERGE NOTE (the work order's Lead path): a TRUE baseline — a plain single-model execution planned on request — needs baseline planning semantics the frozen public create contract does not carry. The delivered launcher never widens the vocabulary: it re-submits the SAME composed task through the SAME frozen create contract carrying only the lineage metadata the platform records (metadata.baseline=single-model-baseline-requested, metadata.baselineOf=source run), so the platform still plans the new run under its own governed strategy selection. The missing contract is NAMED in the surface (BASELINE_MISSING_CONTRACT: a create-contract extension carrying baseline planning semantics, e.g. a planning.baseline request vocabulary) and renders as the honest unavailable state. If the platform later adds baseline planning semantics, that is a public-contract decision for the Lead — this console order neither implements nor blocks it.",
+    "The baseline lineage vocabulary is recorded metadata, never a planning override: provider/model selection is structurally impossible in the frozen create contract (D12's mutation-vocabulary pin plus the launcher's captured-request-keys proof). The compare renders lineage chips from the records (baselineLineageOf is the single reader).",
+    "navigation.test.ts gained TWO additive rows, not one: /console/compare (the new route) and /console/executions — the latter closes a PRE-EXISTING pin gap (the executions explorer route was registered at base 5660d9f but was missing from the navigation route-map pin).",
+    "Inherited-work defects found and fixed by the continuation turns (all committed): checkpoint 1 (6f27962) fixed five defects in the preserved 3-b module — a nonexistent inclusiveTotal interpolation (typecheck error), self-compare cancel links (?a=X&b=X), a broken 'in application application scope' interpolation, un-pinned picker rows linking self-compares, and a use-before-declaration constant; checkpoint 3 (4b2b2df) added the digest-less artifact marker; checkpoint 4 (b3b89e5) fixed the two pin-sync defects (D11 POST-route pin, D12 mutation-vocabulary blind spot). This tail turn's re-verification found ZERO further defects.",
+    "Commit-author anomaly (cosmetic, disclosed): checkpoints 3-5 (4b2b2df, b3b89e5, 9c38093) carry author 'DEP-003 worker <dep003-worker@zeck.local>' — worktree git-identity inheritance during the 3-b-resume turn. No history rewrite was performed (prohibited); the commits' content is DEP-031 surface only.",
+    "The 201 test-level and 147 file-level skips are the unchanged PG/credential-gated baseline suites (ZECK_PG_TEST_URL etc.) — the same honest-skip behavior the DEP-030/032/003 records carry.",
+    "Cross-family compare behavior (merge note): runs of different workload families compare ONLY on the generic axes — the composition carries sameFamily/genericAxesOnly flags, the machine view carries the differentWorkloadFamilies boundary, and the composed-task delta is suppressed with an explanatory note (the shapes are not comparable across families)."
+  ]
+}
