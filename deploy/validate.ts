@@ -48,7 +48,15 @@
  *     recorded limits per entry, degradation modes that equal the
  *     providers.json declarations, and upgrade/exit notes (a provider
  *     outside the ledger — or a ledger entry inventing a degradation
- *     story — is unrepresentable).
+ *     story — is unrepresentable);
+ * 15. (DEP-002) the sandbox-account provisioning manifest loads
+ *     fail-closed (closed synthetic-data/dimension/window/guard
+ *     vocabularies cross-checked against the DEP-014 platform
+ *     surfaces and quota-guards.json; authoritative-data environments
+ *     declare no accounts; disposable classes declare their identity
+ *     set) and its raw source passes the secret-plaintext scan
+ *     (malformed or credential-shaped rows abort BEFORE any provider
+ *     call — the provision tool runs this gate first).
  *
  * Exit 0 = the configuration is valid; exit 1 = violations listed.
  */
@@ -73,6 +81,7 @@ import {
   REPOSITORY_ROOT,
   scanManifestsForSecretPlaintext,
 } from "./lib";
+import { parseSandboxAccounts, SANDBOX_ACCOUNTS_MANIFEST_FILE } from "./sandbox-accounts";
 
 export interface DeploymentValidationReport {
   readonly valid: boolean;
@@ -99,6 +108,10 @@ export interface DeploymentValidationReport {
   readonly providerTierEntries: number;
   /** (DEP-001) the ledger's verification status (recorded-not-live-verified is the honest worker-pod state). */
   readonly providerTierVerification: string;
+  /** (DEP-002) environment classes declaring sandbox accounts (authoritative classes declare none). */
+  readonly sandboxAccountEnvironments: number;
+  /** (DEP-002) sandbox accounts across every environment class. */
+  readonly sandboxAccounts: number;
 }
 
 /** The full validation core (the CLI and the D-06 validation gate share one path). */
@@ -106,6 +119,25 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
   const problems: string[] = [];
   const manifest = loadManifest();
   const conventions = namingConventionsOf(manifest);
+
+  // (DEP-002) the sandbox-account provisioning manifest is part of the
+  // scanned surface: its raw source passes the secret-plaintext scan
+  // alongside the core manifests.
+  let sandboxAccountsSource: string;
+  try {
+    sandboxAccountsSource = readFileSync(
+      resolve(REPOSITORY_ROOT, "deploy", "manifests", SANDBOX_ACCOUNTS_MANIFEST_FILE),
+      "utf8",
+    );
+  } catch {
+    sandboxAccountsSource = "";
+  }
+  problems.push(
+    ...scanManifestsForSecretPlaintext({
+      ...manifest.sources,
+      [SANDBOX_ACCOUNTS_MANIFEST_FILE]: sandboxAccountsSource,
+    }),
+  );
 
   // Naming computes for every environment (including a deterministic
   // preview branch example proving the per-branch path).
@@ -126,7 +158,6 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
 
   problems.push(...checkPortContracts(manifest));
   problems.push(...checkPlannedPhases(manifest));
-  problems.push(...scanManifestsForSecretPlaintext(manifest.sources));
 
   // The D-06 repository-resident release policy: closed vocabulary +
   // environments.json ladder coverage (fail closed on drift).
@@ -301,6 +332,36 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     problems.push(`provider-tiers.json: ${(error as Error).message}`);
   }
 
+  // Rule 15 (DEP-002): the sandbox-account provisioning manifest
+  // loads fail-closed against the environment matrix and the
+  // quota-guards policy (closed vocabularies, cross-checked policy
+  // classes, resolved guard wiring, authoritative-class refusal,
+  // disposable-class coverage). Malformed rows abort BEFORE any
+  // provider call — deploy/provision runs this gate as its first
+  // convergence step.
+  let sandboxAccountEnvironmentCount = 0;
+  let sandboxAccountCount = 0;
+  try {
+    const quotaGuardsSource = readFileSync(
+      resolve(REPOSITORY_ROOT, "deploy", "manifests", "quota-guards.json"),
+      "utf8",
+    );
+    const ledger = parseSandboxAccounts(
+      sandboxAccountsSource,
+      manifest,
+      loadQuotaGuardsPolicy(quotaGuardsSource),
+    );
+    for (const environment of ["local", "preview", "staging", "production"] as const) {
+      const accounts = ledger.accounts[environment];
+      if (accounts.length > 0) {
+        sandboxAccountEnvironmentCount += 1;
+        sandboxAccountCount += accounts.length;
+      }
+    }
+  } catch (error) {
+    problems.push(`sandbox-accounts.json: ${(error as Error).message}`);
+  }
+
   return {
     valid: problems.length === 0,
     problems,
@@ -320,6 +381,8 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     providerRedundancyProfiles,
     providerTierEntries: providerTierCount,
     providerTierVerification,
+    sandboxAccountEnvironments: sandboxAccountEnvironmentCount,
+    sandboxAccounts: sandboxAccountCount,
   };
 }
 

@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck sandbox-account provisioning manifest (DEP-002). Declares, per environment class, the DISPOSABLE sandbox-account set the class permits: the synthetic-data policy artifact that governs admission (cross-checked fail-closed against the frozen platform artifact in src/modules/sandbox/domain/synthetic-data-policy.ts — the ONE policy authority), the quota envelope (dimensions from the budgets module's QUOTA_DIMENSIONS vocabulary, wired to the environment-level guards in quota-guards.json), and the expiry semantics (TTL + the DEP-014 reset/post-expiry discipline). The provision tool PROJECTS these facts into per-environment sandbox-account records — it never keeps a tool-local account registry. Environments whose environments.json dataPolicy is 'authoritative' (production) declare NO sandbox accounts: disposable synthetic identities in the authoritative environment are unrepresentable.",
+  "authority": {
+    "syntheticDataPolicy": "src/modules/sandbox/domain/synthetic-data-policy.ts (SYNTHETIC_DATA_POLICY — the frozen, digest-carrying platform artifact; the classes declared below must EQUAL its sets)",
+    "quotaDimensions": "src/modules/budgets/domain/quota.ts (QUOTA_DIMENSIONS / QUOTA_WINDOWS — the budgets module stays the ONE quota authority)",
+    "expiry": "src/modules/sandbox/domain/sandbox-identity.ts (SANDBOX_IDENTITY_DEFAULT_TTL_MS, state-non-carrying reset, honest post-expiry reads)",
+    "environmentGuards": "deploy/manifests/quota-guards.json (the environment-level warn/critical thresholds the envelope wires into)"
+  },
+  "accounts": {
+    "local": [
+      {
+        "id": "local-developer",
+        "description": "The developer workstation's disposable sandbox identity for playground/validation runs against the local control plane. Fully synthetic state; torn down with the local environment class.",
+        "syntheticDataPolicy": {
+          "artifact": "zeck-synthetic-data-policy",
+          "version": "1",
+          "permittedClasses": [
+            "synthetic-text",
+            "synthetic-fixture-reference",
+            "synthetic-numeric-parameter",
+            "synthetic-vocabulary-item"
+          ],
+          "prohibitedClasses": [
+            "real-pii",
+            "credentials",
+            "secrets",
+            "production-data",
+            "real-world-identifiers"
+          ]
+        },
+        "quotaEnvelope": {
+          "dimensions": [
+            { "dimension": "spend-micro-usd", "limit": "10000000", "window": "per-identity" },
+            { "dimension": "wall-clock-ms", "limit": "3600000", "window": "per-identity" },
+            { "dimension": "concurrent-runs", "limit": "4", "window": "per-identity" },
+            { "dimension": "artifact-count", "limit": "1000", "window": "per-identity" },
+            { "dimension": "artifact-bytes", "limit": "1073741824", "window": "per-identity" }
+          ],
+          "guards": ["compute-claims", "queue-backlog", "database-size"]
+        },
+        "expiry": {
+          "ttlSource": "platform-default",
+          "ttlMs": 7200000,
+          "reset": "state-non-carrying",
+          "postExpiryReads": "honest-expired-state"
+        }
+      }
+    ],
+    "preview": [
+      {
+        "id": "preview-disposable",
+        "description": "The per-branch preview deployment's disposable sandbox identity. Synthetic data only; the record set is namespaced by the preview branch slug and never promoted (preview resources are never implicitly promoted).",
+        "syntheticDataPolicy": {
+          "artifact": "zeck-synthetic-data-policy",
+          "version": "1",
+          "permittedClasses": [
+            "synthetic-text",
+            "synthetic-fixture-reference",
+            "synthetic-numeric-parameter",
+            "synthetic-vocabulary-item"
+          ],
+          "prohibitedClasses": [
+            "real-pii",
+            "credentials",
+            "secrets",
+            "production-data",
+            "real-world-identifiers"
+          ]
+        },
+        "quotaEnvelope": {
+          "dimensions": [
+            { "dimension": "spend-micro-usd", "limit": "5000000", "window": "per-identity" },
+            { "dimension": "wall-clock-ms", "limit": "1800000", "window": "per-identity" },
+            { "dimension": "concurrent-runs", "limit": "2", "window": "per-identity" },
+            { "dimension": "artifact-count", "limit": "500", "window": "per-identity" },
+            { "dimension": "artifact-bytes", "limit": "536870912", "window": "per-identity" }
+          ],
+          "guards": ["compute-claims", "queue-backlog", "database-size"]
+        },
+        "expiry": {
+          "ttlSource": "platform-default",
+          "ttlMs": 7200000,
+          "reset": "state-non-carrying",
+          "postExpiryReads": "honest-expired-state"
+        }
+      }
+    ],
+    "staging": [
+      {
+        "id": "staging-validation",
+        "description": "The staging environment's disposable validation identity (Validation-Lab rerun path): proves production-shaped topology with disposable synthetic state. Staging itself is persistent; this ACCOUNT is disposable and resets state-non-carrying like every sandbox identity.",
+        "syntheticDataPolicy": {
+          "artifact": "zeck-synthetic-data-policy",
+          "version": "1",
+          "permittedClasses": [
+            "synthetic-text",
+            "synthetic-fixture-reference",
+            "synthetic-numeric-parameter",
+            "synthetic-vocabulary-item"
+          ],
+          "prohibitedClasses": [
+            "real-pii",
+            "credentials",
+            "secrets",
+            "production-data",
+            "real-world-identifiers"
+          ]
+        },
+        "quotaEnvelope": {
+          "dimensions": [
+            { "dimension": "spend-micro-usd", "limit": "20000000", "window": "per-identity" },
+            { "dimension": "wall-clock-ms", "limit": "14400000", "window": "per-identity" },
+            { "dimension": "concurrent-runs", "limit": "4", "window": "per-identity" },
+            { "dimension": "artifact-count", "limit": "2000", "window": "per-identity" },
+            { "dimension": "artifact-bytes", "limit": "2147483648", "window": "per-identity" }
+          ],
+          "guards": ["compute-claims", "queue-backlog", "database-size"]
+        },
+        "expiry": {
+          "ttlSource": "declared",
+          "ttlMs": 86400000,
+          "reset": "state-non-carrying",
+          "postExpiryReads": "honest-expired-state"
+        }
+      }
+    ],
+    "production": []
+  }
+}

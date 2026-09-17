@@ -15,6 +15,7 @@
     "test:pg": "vitest run tests/integration/postgres",
     "deploy:validate": "bun deploy/validate.ts",
     "deploy:bootstrap": "bun deploy/bootstrap.ts",
+    "deploy:provision": "bun deploy/provision.ts",
     "deploy:teardown": "bun deploy/teardown.ts",
     "deploy:smoke": "bun deploy/smoke.ts",
     "deploy:identity": "bun deploy/identity.ts",

@@ -26,9 +26,11 @@ deploy/
     variables.json           the non-secret environment variable contract
     provider-tiers.json      DEP-001: free-tier-first provider topology ledger (limits/terms/degradation/upgrade-exit)
   lib.ts                     shared tooling plumbing (root resolution, secret scan)
-  validate.ts                configuration validation gate
+  validate.ts                configuration validation gate (15 rule families)
   bootstrap.ts               idempotent local convergence; provider plans
-  teardown.ts                classification-guarded disposable teardown
+  provision.ts               DEP-002: environment/secret/sandbox-account provisioning (plan + converge)
+  sandbox-accounts.ts        DEP-002: the fail-closed sandbox-accounts manifest parser + projector
+  teardown.ts                classification-guarded disposable teardown (incl. provisioned records)
   smoke.ts                   readiness + exact-revision identity attestation
   identity.ts                deployment identity emission
   api.ts                     DEP-001: the independently-runnable public API bootstrap host (/health + /identity)
@@ -40,8 +42,10 @@ deploy/
   release.ts                 D-06: the release-control operator surface (record/gate/promote/rollback/inspect/status/alerts)
   manifests/release-policy.json   D-06: the closed gate-kind vocabulary + per-phase entry gates
   manifests/quota-guards.json     D-06: quota/operational alert thresholds (actionable, fail-closed)
+  manifests/sandbox-accounts.json DEP-002: per-environment disposable sandbox-account policy facts (projection input)
   evidence/dep-001.json            DEP-001: the structured NOT RUN / verified-locally evidence record
-  PUBLIC-DEPLOYMENT.md             DEP-001: the operator reproduction recipe (AC1)
+  evidence/dep-002.json            DEP-002: the structured NOT RUN / verified-locally evidence record
+  PUBLIC-DEPLOYMENT.md             DEP-001: the operator reproduction recipe (AC1; §8 = the DEP-002 provision path)
 ```
 
 ## Environments
@@ -80,7 +84,11 @@ bun run deploy:validate                                   # configuration gate (
 bun run deploy:bootstrap -- --environment local           # converge local resources
 bun run deploy:bootstrap -- --environment staging         # emit the staging plan
 bun run deploy:bootstrap -- --environment preview --branch work/WORK-042-x
-bun run deploy:teardown -- --environment local            # remove disposable local resources
+# DEP-002: environment/secret/sandbox-account provisioning (see PUBLIC-DEPLOYMENT.md §8)
+bun run deploy:provision -- --environment local --plan   # dry-run: zero credentials needed
+ZECK_ENVIRONMENT=local bun run deploy:provision -- --environment local   # converge (idempotent)
+bun run deploy:provision -- --environment preview --branch work/DEP-002-x --plan
+bun run deploy:teardown -- --environment local            # remove disposable local resources (incl. provisioned records)
 bun run deploy:teardown -- --environment production       # REFUSED (exit 3, always)
 bun run deploy:smoke -- --environment local               # readiness + identity (exit = gate)
 bun run deploy:smoke -- --environment local --allow-degraded
