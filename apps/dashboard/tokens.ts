@@ -630,7 +630,7 @@ pre.raw {
  * an auto-minimum track — the run-detail artifacts table (mono digests +
  * ISO timestamps, min-content ~392px) sized the track past the 351px mobile
  * content width and re-created the D1 scroll-trap INSIDE main (404px document
- * scrollWidth at a 375px viewport, measured in the DEP-033 browser drive).
+ * scrollWidth on the 375px viewport class, measured in the DEP-033 browser drive).
  * minmax(0, 1fr) — the same 0-minimum the >=1025px two-column rule already
  * carried — lets the track shrink so the D1 in-box table scroll takes over. */
 .detail-grid { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
