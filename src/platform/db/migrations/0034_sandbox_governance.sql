@@ -20,7 +20,10 @@ CREATE TABLE IF NOT EXISTS budgets.application_quotas (
     status         text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'exhausted')),
     identity_id    uuid,
     updated_at     timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (application_id, dimension, identity_id)
+    -- NULLS NOT DISTINCT: one live quota row per (application, dimension,
+    -- identity) INCLUDING the shared null-identity row (the in-memory
+    -- twin's single-key semantics; PG16+).
+    UNIQUE NULLS NOT DISTINCT (application_id, dimension, identity_id)
 );
 
 CREATE INDEX IF NOT EXISTS application_quotas_scope_idx

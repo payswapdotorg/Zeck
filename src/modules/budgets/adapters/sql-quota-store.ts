@@ -95,7 +95,7 @@ export function createSqlQuotaStore(db: Executor): QuotaStore {
                 status = CASE WHEN consumed + $3 = limit_value THEN 'exhausted' ELSE status END,
                 updated_at = now()
           WHERE application_id = $1 AND dimension = $2
-            AND COALESCE(identity_id, '') = COALESCE($4, '')
+            AND identity_id IS NOT DISTINCT FROM $4
             AND consumed + $3 <= limit_value
         RETURNING id, application_id, tenant_id, dimension, limit_value, consumed, window_kind, status, identity_id, updated_at`,
         parameters: [input.applicationId, input.dimension, input.amount, input.identityId],
@@ -110,7 +110,7 @@ export function createSqlQuotaStore(db: Executor): QuotaStore {
                 status = 'active',
                 updated_at = now()
           WHERE application_id = $1 AND dimension = $2
-            AND COALESCE(identity_id, '') = COALESCE($4, '')
+            AND identity_id IS NOT DISTINCT FROM $4
         RETURNING id, application_id, tenant_id, dimension, limit_value, consumed, window_kind, status, identity_id, updated_at`,
         parameters: [input.applicationId, input.dimension, input.amount, input.identityId],
       });

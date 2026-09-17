@@ -76,7 +76,7 @@ defineSuite<Ctx>(
         // append-only optimization decision record store) +
         // 0031_isolation_profiles (WORK-058 / D-08) + 0032_audit_compliance
         // (WORK-059 / D-08; Architect merge reconciliation numbering).
-        expect(handle.migrations.applied).toHaveLength(32); // DEP-011: +0033_application_credentials
+        expect(handle.migrations.applied).toHaveLength(33); // DEP-014: +0034_sandbox_governance
         expect(handle.migrations.skipped).toBe(0);
         expect(handle.serverVersion).toContain("PostgreSQL 16");
         // Non-secret endpoint identity only.
@@ -100,8 +100,8 @@ defineSuite<Ctx>(
       });
       try {
         expect(second.migrations.applied).toHaveLength(0);
-        expect(second.migrations.skipped).toBe(32); // DEP-011
-        expect(second.migrations.applied.length + second.migrations.skipped).toBe(32); // DEP-011
+        expect(second.migrations.skipped).toBe(33); // DEP-014
+        expect(second.migrations.applied.length + second.migrations.skipped).toBe(33); // DEP-014
       } finally {
         await second.close();
       }
