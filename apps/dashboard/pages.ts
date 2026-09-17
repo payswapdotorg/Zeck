@@ -31,6 +31,12 @@ import {
 import { attentionArea, attentionSummary } from "./attention";
 import { CLIENT_SCRIPT } from "./client";
 import {
+  compareBaselineLaunchHandler,
+  compareConsolePage,
+  compareFactsRoute,
+  compareLinkOf,
+} from "./compare";
+import {
   distinctionList,
   esc,
   executionHeader,
@@ -4283,7 +4289,7 @@ ${emptyState(
   }
   return `<h2>Run history (this browser)</h2>
 <table class="data">
-  <thead><tr><th scope="col">Execution</th><th scope="col">Composed</th><th scope="col">Status</th><th scope="col">Opened</th></tr></thead>
+  <thead><tr><th scope="col">Execution</th><th scope="col">Composed</th><th scope="col">Status</th><th scope="col">Opened</th><th scope="col">Compare</th></tr></thead>
   <tbody>${runs
     .map(
       (run) => `<tr>
@@ -4293,11 +4299,12 @@ ${emptyState(
       <td>${run.composed ? "interactive" : "guided"}</td>
       <td>${statusBadge(run.status)}</td>
       <td>${esc(run.createdAt)}</td>
+      <td><a href="${esc(compareLinkOf(run.executionId))}">Compare</a></td>
     </tr>`,
     )
     .join("")}</tbody>
 </table>
-<p class="muted">${esc(RECENTS_NOTE)}.</p>`;
+<p class="muted">${esc(RECENTS_NOTE)} · <a href="/console/compare">Compare runs</a>: pick a second run of this family (the Compare column pins run a) and see both side by side — status, cost, route, verification, duration — with the platform's own recorded planning explanation for each route.</p>`;
 }
 
 async function playgroundFamilyPage(
@@ -4814,11 +4821,12 @@ function explorerListRows(runs: readonly ExplorerRunFact[]): string {
       <td class="mono">${run.terminalAt === null ? "—" : esc(run.terminalAt)}</td>
       <td>${run.costMicroUsd === null ? "—" : `$${esc(formatMicroUsd(run.costMicroUsd))}`}</td>
       <td class="mono">${run.origin === null ? "—" : esc(run.origin)}</td>
+      <td><a href="${esc(compareLinkOf(run.id))}">Compare</a></td>
     </tr>`,
     )
     .join("\n  ");
   return `<table class="data">
-  <thead><tr><th scope="col">Execution</th><th scope="col">Status</th><th scope="col">Workload family</th><th scope="col">Created</th><th scope="col">Terminal</th><th scope="col">Recorded cost</th><th scope="col">Origin</th></tr></thead>
+  <thead><tr><th scope="col">Execution</th><th scope="col">Status</th><th scope="col">Workload family</th><th scope="col">Created</th><th scope="col">Terminal</th><th scope="col">Recorded cost</th><th scope="col">Origin</th><th scope="col">Compare</th></tr></thead>
   <tbody>${rows}</tbody>
 </table>`;
 }
@@ -4830,7 +4838,11 @@ async function executionsConsolePage(client: ZeckClient, ctx: HttpContext): Prom
   const runs = explorerRunsOf(executions, results);
   const setCookies =
     survivingIds.length === ids.length ? undefined : [recentsCookieHeader(survivingIds)];
-  const content = `${pageHead({ title: "Executions", path: "/console/executions" })}
+  const content = `${pageHead({
+    title: "Executions",
+    path: "/console/executions",
+    primaryActionHtml: '<a class="button-link" href="/console/compare">Compare runs</a>',
+  })}
 <p class="muted">The complete execution explorer — every execution you open, inspected through the public contracts: result, verification, activity, route and substrate, costs and provenance.</p>
 ${unavailableState(
   "No application-scoped execution listing exists in the public API",
@@ -4839,7 +4851,7 @@ ${unavailableState(
 )}
 ${explorerListRows(runs)}
 ${lookupForm()}
-<p class="muted">Machine parity: every execution's composed public facts are served as verbatim JSON at <span class="mono">/console/executions/&lt;id&gt;/facts.json</span> — an agent follows an execution without scraping HTML.</p>`;
+<p class="muted">Machine parity: every execution's composed public facts are served as verbatim JSON at <span class="mono">/console/executions/&lt;id&gt;/facts.json</span> — an agent follows an execution without scraping HTML. Compare: select two runs (the Compare column pins run a) and open <a href="/console/compare">the compare view</a> — side by side, with the platform's own recorded planning explanation.</p>`;
   return page(
     { title: "Zeck — Executions", activePath: "/console/executions", mainContent: content },
     ctx,
@@ -4895,7 +4907,9 @@ ${explorerView(view, facts)}
     facts.execution.id,
   )}/facts.json">the composed public facts as verbatim JSON</a> · reproducibility: <a href="/console/executions/${encodeURIComponent(
     facts.execution.id,
-  )}/export">export the bundle</a> (the same facts plus the reproduction recipe).</p>`;
+  )}/export">export the bundle</a> (the same facts plus the reproduction recipe) · compare: <a href="${esc(
+    compareLinkOf(facts.execution.id),
+  )}">pick a second run</a> and see both side by side.</p>`;
   return page(
     {
       title: `Zeck — Execution ${facts.execution.id}`,
@@ -6656,6 +6670,15 @@ export function createDashboardRoutes(
       executionExportPage(client, ctx),
     ),
     wrap("GET", "/console/executions/:executionId", (ctx) => executionExplorerPage(client, ctx)),
+    // Playground compare (DEP-031): baseline-vs-strategy comparison over
+    // the SAME public records — the selection picker + the side-by-side
+    // view + the verbatim-JSON machine twin (the SAME composition — no
+    // UI-only state), and the baseline launcher's governed POST (the
+    // frozen create contract carrying the recorded baseline lineage
+    // metadata — never a provider/model selection).
+    wrap("GET", "/console/compare", (ctx) => compareConsolePage(client, ctx)),
+    wrap("GET", "/console/compare/facts.json", (ctx) => compareFactsRoute(client, ctx)),
+    wrap("POST", "/console/compare/baseline", (ctx) => compareBaselineLaunchHandler(client, ctx)),
     // Usage, economics and optimization (DEP-030): the first-class
     // application-scoped usage projection + its machine twin (the SAME
     // composition — no UI-only state). The budgets transport derives

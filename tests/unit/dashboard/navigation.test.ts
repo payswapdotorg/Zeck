@@ -206,6 +206,8 @@ describe("the v2 route map: every route renders", () => {
     ["/console/applications/00000000-0000-7000-8000-0000000000a1", 200],
     ["/console/playground", 200],
     ["/console/playground/text", 200],
+    ["/console/executions", 200],
+    ["/console/compare", 200],
     ["/console/providers", 200],
     ["/console/docs", 200],
     ["/console/docs/AUTH.md", 200],

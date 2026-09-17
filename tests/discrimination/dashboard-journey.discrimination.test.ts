@@ -513,6 +513,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
       "/console/applications/keys/:credentialId/revoke",
       "/console/applications/keys/:credentialId/rotate",
       "/console/applications/keys/issue",
+      "/console/compare/baseline",
       "/console/playground/:family",
       "/console/validation/:workOrder/run",
       "/executions/:executionId/cancel",
@@ -521,7 +522,10 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     // The DEP-011 POSTs are governed commands too: each submits through
     // the credential authority's public routes with a mandatory
     // Idempotency-Key (the show-once reveal IS the POST response — no
-    // server-side state).
+    // server-side state). The DEP-031 baseline launcher POST is the same
+    // governed class: it submits the frozen create contract through the
+    // SDK client with the form's mandatory idempotency key (a governed
+    // create, never a direct mutation).
     // The mutant: an ungoverned direct mutation route.
     const mutantRoutes = [...postRoutes, "/command"];
     expect(mutantRoutes.length).not.toBe(postRoutes.length);
@@ -700,6 +704,18 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
     const mutantCall = "await client.dispatchExternalSideEffect(id)";
     expect(mutantCall.includes("dispatchExternalSideEffect")).toBe(true);
     expect(["createExecution", "cancelExecution"]).not.toContain("dispatchExternalSideEffect");
+    // DEP-031 pin sync: the compare module is journey code too — its
+    // MUTATING vocabulary is pinned the same way (exactly ONE governed
+    // createExecution call site, the baseline launcher; every other
+    // client call is a read; a foreign mutating call site added to
+    // compare.ts fails this pin).
+    const compareCalls = [...appsSource("compare.ts").matchAll(/await client\.(\w+)\(/g)].map(
+      (match) => match[1] ?? "",
+    );
+    const compareMutating = compareCalls.filter(
+      (name) => name === "createExecution" || name === "cancelExecution",
+    );
+    expect(compareMutating).toEqual(["createExecution"]);
   });
 });
 
