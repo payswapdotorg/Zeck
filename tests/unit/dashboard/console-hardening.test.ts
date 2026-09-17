@@ -48,6 +48,18 @@
  *    <p class="form-label"> — unstyled (lighter than the editable fields'
  *    labels, so one composed form read as two kinds of fields). Fix:
  *    .form-field > .form-label { font-weight: 600 }.
+ *  - D10 the run-detail .detail-grid used a bare `1fr` track (an
+ *    auto-minimum track): the artifacts table's ~392px min-content sized
+ *    the track past the 351px mobile content width and re-created the D1
+ *    scroll-trap INSIDE main (404px document scrollWidth at 375px,
+ *    measured in the DEP-033 browser drive). Fix: minmax(0, 1fr) on the
+ *    base and <=1024px tracks (the >=1025px rule already had minmax(0,2fr)).
+ *  - D11 the table-row action controls (the Compare column on the
+ *    executions explorer + the playground run history) rendered as bare
+ *    inline links measuring 69x18 — below the WCAG 2.2 AA 2.5.8 24x24
+ *    minimum target size. Fix: a.row-action (inline-block, min 24x24,
+ *    token padding). Inline prose links stay exempt (2.5.8 inline
+ *    exception).
  *
  * AC3 hostile-value probes: every console render path that interpolates
  * user-influenced strings — execution ids (lookup redirect, path params,
@@ -91,6 +103,9 @@ const HOSTILE = `"><script>zeck("x")</script>&'`;
 const HOSTILE_ENCODED = encodeURIComponent(HOSTILE);
 /** A hostile execution id that "exists" in the fake API world. */
 const HOSTILE_EXECUTION_ID = `h-"><script>alert(1)</script>-id`;
+/** A benign playground-origin execution the run-history path can derive
+ * facts from (the playground's history filters on origin + family). */
+const PLAYGROUND_EXECUTION_ID = "00000000-0000-7000-8000-0000000000e2";
 
 function hostileExecution(id: string): ReturnType<typeof benignExecution> {
   return {
@@ -139,6 +154,15 @@ const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
   const path = new URL(String(input)).pathname;
   if (path === `/executions/${encodeURIComponent(HOSTILE_EXECUTION_ID)}`) {
     return json(hostileExecution(HOSTILE_EXECUTION_ID));
+  }
+  if (path === `/executions/${encodeURIComponent(PLAYGROUND_EXECUTION_ID)}`) {
+    // A benign run of the text family, composed in the playground — the
+    // record the run-history Compare control renders from.
+    return json({
+      ...benignExecution(),
+      id: PLAYGROUND_EXECUTION_ID,
+      metadata: { origin: "zeck-console-playground", family: "text", composed: "interactive" },
+    });
   }
   if (path === `/executions/${encodeURIComponent(HOSTILE_EXECUTION_ID)}/events`) {
     // A hostile event payload that ALSO carries secret-shaped keys: the
@@ -590,6 +614,62 @@ describe("D9: the composer's fixed-field labels match the editable label weight 
     // renders as a labelled non-editable fact beside the editable fields.
     expect(html).toContain('class="form-label"');
     expect(html).toContain("fixed by the advertised contract");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D10 — the run-detail scroll-trap inside main (found by the browser drive)
+// ---------------------------------------------------------------------------
+
+describe("D10: the detail grid's mobile track can shrink below table min-content (fail-before: bare 1fr re-created the D1 trap at 375px)", () => {
+  test("the base .detail-grid track is minmax(0, 1fr), not the auto-minimum 1fr", () => {
+    // The run-detail artifacts table (mono digests + ISO timestamps,
+    // ~392px min-content) sized a bare `1fr` track past the 351px mobile
+    // content width: 404px document scrollWidth at a 375px viewport,
+    // measured in the DEP-033 browser drive. The >=1025px rule already
+    // carried minmax(0, 2fr); the base and <=1024 rules must carry the
+    // same 0 minimum so the D1 in-box table scroll takes over instead.
+    expect(DASHBOARD_CSS).toContain(
+      ".detail-grid { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }",
+    );
+  });
+
+  test("the <=1024px collapse keeps the 0-minimum track", () => {
+    expect(DASHBOARD_CSS).toContain(
+      "@media (max-width: 1024px) {\n  .detail-grid { grid-template-columns: minmax(0, 1fr); }",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D11 — table-row action controls meet the 24x24 minimum target size
+// ---------------------------------------------------------------------------
+
+describe("D11: the Compare row-action links meet the 24x24 minimum target (fail-before: the bare inline link measured 69x18 in the browser drive)", () => {
+  test("the stylesheet gives a.row-action a 24x24 padded hit area", () => {
+    expect(DASHBOARD_CSS).toContain("a.row-action {");
+    expect(DASHBOARD_CSS).toContain("min-width: 24px;");
+    expect(DASHBOARD_CSS).toContain("min-height: 24px;");
+  });
+
+  test("the executions explorer Compare column carries the row-action class", async () => {
+    // One recent execution that EXISTS in the fake wire world — the
+    // explorer renders its row (and its Compare action) from the recents
+    // cookie, the same cookie-derived path the AC3 probe drives.
+    const cookie = `zeck_recent_executions=${encodeURIComponent(HOSTILE_EXECUTION_ID)}`;
+    const html = await getHtml("/console/executions", cookie);
+    expect(html).toContain('class="row-action"');
+    // The Compare cell is the row's action control (the lone link in the
+    // last cell), never inline prose — it must not render bare.
+    expect(html).not.toContain('<td><a href="/console/compare?a=');
+  });
+
+  test("the playground run-history Compare column carries the row-action class", async () => {
+    // The history filters on origin zeck-console-playground + family text —
+    // the fake world serves exactly such a record for this id.
+    const cookie = `zeck_recent_executions=${encodeURIComponent(PLAYGROUND_EXECUTION_ID)}`;
+    const html = await getHtml("/console/playground/text", cookie);
+    expect(html).toContain('class="row-action"');
   });
 });
 

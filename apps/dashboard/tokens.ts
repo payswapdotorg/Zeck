@@ -313,6 +313,19 @@ table.data, table.kv { display: block; overflow-x: auto; }
 th, td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
 th { color: var(--text-secondary); font-weight: 600; }
 table.data thead th { border-bottom: 2px solid var(--border-strong); }
+/* DEP-033 (D11 touch-target hardening): table-row action controls (the
+ * Compare column on the executions explorer + the playground run history)
+ * meet the 24x24 CSS-px minimum target size (WCAG 2.2 AA 2.5.8) — the bare
+ * inline link measured 69x18 in the DEP-033 browser drive. Inline prose
+ * links stay exempt (the 2.5.8 inline exception); this rule is for the
+ * lone-action-link-in-a-cell pattern only. */
+a.row-action {
+  display: inline-block;
+  min-width: 24px;
+  min-height: 24px;
+  padding: var(--space-1) var(--space-2);
+  box-sizing: border-box;
+}
 
 .badge {
   display: inline-flex;
@@ -613,7 +626,14 @@ pre.raw {
   font-family: var(--font-mono);
   font-size: 0.85rem;
 }
-.detail-grid { display: grid; gap: var(--space-5); grid-template-columns: 1fr; align-items: start; }
+/* DEP-033 (D10 responsive hardening): the detail grid's bare 1fr track is
+ * an auto-minimum track — the run-detail artifacts table (mono digests +
+ * ISO timestamps, min-content ~392px) sized the track past the 351px mobile
+ * content width and re-created the D1 scroll-trap INSIDE main (404px document
+ * scrollWidth at a 375px viewport, measured in the DEP-033 browser drive).
+ * minmax(0, 1fr) — the same 0-minimum the >=1025px two-column rule already
+ * carried — lets the track shrink so the D1 in-box table scroll takes over. */
+.detail-grid { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
 .runs-list { list-style: none; margin: 0; padding: 0; }
 .runs-list li { border-bottom: 1px solid var(--border-subtle); padding: var(--space-3) 0; }
 .runs-list .run-line { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
@@ -836,7 +856,7 @@ a.button-link.danger { color: var(--status-error); border-color: var(--status-er
   .detail-grid { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); }
 }
 @media (max-width: 1024px) {
-  .detail-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: minmax(0, 1fr); }
   .app-nav { padding: var(--space-2) var(--space-3); }
   .app-header { padding: var(--space-3); }
 }

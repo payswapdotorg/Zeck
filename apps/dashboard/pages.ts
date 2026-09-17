@@ -4313,7 +4313,7 @@ ${emptyState(
       <td>${run.composed ? "interactive" : "guided"}</td>
       <td>${statusBadge(run.status)}</td>
       <td>${esc(run.createdAt)}</td>
-      <td><a href="${esc(compareLinkOf(run.executionId))}">Compare</a></td>
+      <td><a class="row-action" href="${esc(compareLinkOf(run.executionId))}">Compare</a></td>
     </tr>`,
     )
     .join("")}</tbody>
@@ -4835,7 +4835,7 @@ function explorerListRows(runs: readonly ExplorerRunFact[]): string {
       <td class="mono">${run.terminalAt === null ? "—" : esc(run.terminalAt)}</td>
       <td>${run.costMicroUsd === null ? "—" : `$${esc(formatMicroUsd(run.costMicroUsd))}`}</td>
       <td class="mono">${run.origin === null ? "—" : esc(run.origin)}</td>
-      <td><a href="${esc(compareLinkOf(run.id))}">Compare</a></td>
+      <td><a class="row-action" href="${esc(compareLinkOf(run.id))}">Compare</a></td>
     </tr>`,
     )
     .join("\n  ");
