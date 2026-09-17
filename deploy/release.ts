@@ -39,13 +39,21 @@ import { parseConnectionConfig } from "../src/platform/db/connection";
 import { PgDatabasePort } from "../src/platform/db/pg-database-port";
 import type { DatabasePort } from "../src/platform/db/port";
 import { shippedMigrations } from "../src/platform/db/startup";
-import { deploymentIdentity, manifestDigest } from "../src/platform/deployment/identity";
+import {
+  deploymentIdentity,
+  manifestDigest,
+  namingConventionsOf,
+} from "../src/platform/deployment/identity";
 import type { EnvironmentId } from "../src/platform/deployment/naming";
+import { previewBranchSlug } from "../src/platform/deployment/naming";
+import { parseProviderTiers } from "../src/platform/deployment/provider-tiers";
+import type { QuotaFenceEvaluation } from "../src/platform/deployment/quota-fence";
 import {
   evaluateOperationalAlerts,
   evaluateQuotaAlerts,
   hasCriticalAlert,
   loadQuotaGuardsPolicy,
+  type QuotaGuardsPolicy,
 } from "../src/platform/observability/alerts";
 import {
   AVAILABILITY_OUTCOMES,
@@ -70,8 +78,21 @@ import {
 } from "../src/platform/release";
 import { evaluatePromotion, loadReleasePolicy } from "../src/platform/release/policy";
 import { createUuidv7Generator } from "../src/shared/ids";
+import {
+  evaluateEnvironmentGuardrails,
+  fenceSnapshotsOf,
+  GuardLimitError,
+  type GuardLimitResolution,
+  resolveGuardLimit,
+} from "./guardrails";
 import { gitRevision, loadManifest, REPOSITORY_ROOT } from "./lib";
 import { resolveDatabaseUrl } from "./migrate";
+import {
+  attestDeployedPlane,
+  type PlaneAttestation,
+  promotionIdentityGuard,
+  rollbackReattestation,
+} from "./plane-identity";
 import { runSmokeAttestation } from "./smoke";
 import { validateDeploymentConfiguration } from "./validate";
 
@@ -166,7 +187,13 @@ async function openStore(
 export async function collectQuotaSnapshots(
   db: DatabasePort,
   environment: string,
+  options: { readonly policy?: QuotaGuardsPolicy } = {},
 ): Promise<readonly QuotaUtilizationSnapshot[]> {
+  const policy =
+    options.policy ??
+    loadQuotaGuardsPolicy(
+      readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/quota-guards.json`, "utf8"),
+    );
   const snapshots: QuotaUtilizationSnapshot[] = [];
   // compute-claims: live claims per compute environment vs the quota.
   const claims = await db.execute<{
@@ -187,30 +214,50 @@ FROM compute_plane.environment_quotas q ORDER BY q.compute_environment_id`,
       limit: row.max_concurrent_claims,
     });
   }
-  // queue-backlog: pending (recorded/backlogged) envelopes.
+  // queue-backlog: pending (recorded/backlogged) envelopes. The bound
+  // resolves from the MANIFEST row (the only limit carrier — DEP-003)
+  // with the operator override (ZECK_QUEUE_BACKLOG_BOUND) on top; a
+  // MALFORMED override aborts fail-closed (GuardLimitError), never a
+  // silent substitution of the manifest default. No manifest row and
+  // no override ⇒ no declared bound ⇒ no snapshot is fabricated.
+  const backlogBound = resolveGuardLimit(
+    "queue-backlog",
+    policy,
+    process.env.ZECK_QUEUE_BACKLOG_BOUND,
+  );
   const backlog = await db.execute<{ readonly count: string }>({
     sql: `SELECT count(*) AS count FROM queue_transport.dispatch_envelopes
 WHERE state IN ('recorded', 'backlogged')`,
   });
   const backlogCount = Number(backlog.rows[0]?.count ?? 0);
-  const backlogLimit = Number.parseInt(process.env.ZECK_QUEUE_BACKLOG_BOUND ?? "1000", 10);
-  snapshots.push({
-    guard: "queue-backlog",
-    environment,
-    used: backlogCount,
-    limit: Number.isFinite(backlogLimit) && backlogLimit > 0 ? backlogLimit : 1000,
-  });
-  // database-size: pg_database_size vs the declared plan ceiling.
+  if (backlogBound.limit !== null) {
+    snapshots.push({
+      guard: "queue-backlog",
+      environment,
+      used: backlogCount,
+      limit: backlogBound.limit,
+    });
+  }
+  // database-size: pg_database_size vs the declared plan ceiling (the
+  // same manifest-carried resolution; override
+  // ZECK_DB_SIZE_LIMIT_BYTES; malformed aborts fail-closed).
+  const sizeCeiling = resolveGuardLimit(
+    "database-size",
+    policy,
+    process.env.ZECK_DB_SIZE_LIMIT_BYTES,
+  );
   const size = await db.execute<{ readonly size: string }>({
     sql: `SELECT pg_database_size(current_database()) AS size`,
   });
   const usedBytes = Number(size.rows[0]?.size ?? 0);
-  snapshots.push({
-    guard: "database-size",
-    environment,
-    used: usedBytes,
-    limit: Number.parseInt(process.env.ZECK_DB_SIZE_LIMIT_BYTES ?? "5368709120", 10),
-  });
+  if (sizeCeiling.limit !== null) {
+    snapshots.push({
+      guard: "database-size",
+      environment,
+      used: usedBytes,
+      limit: sizeCeiling.limit,
+    });
+  }
   return snapshots;
 }
 
@@ -283,6 +330,85 @@ export async function evaluateAlerts(
     }
   }
   return [...quotaAlerts, ...operational, ...availabilityAlerts];
+}
+
+// ---------------------------------------------------------------------------
+// The composed environment guardrail evaluation (DEP-003)
+// ---------------------------------------------------------------------------
+
+/** The composed guardrail summary of one environment class (DEP-003). */
+export interface EnvironmentGuardrailSummary {
+  readonly environment: string;
+  /** The spend-fence enforcement answers (ceiling refusals carry the declared degradation mode). */
+  readonly fenceDecisions: readonly QuotaFenceEvaluation[];
+  /** The full alert set (quota + operational + availability — one authority). */
+  readonly alerts: readonly OperationalAlert[];
+  /** The D-06 promotion guardrail: a CRITICAL alert blocks promotion. */
+  readonly promotionBlocked: boolean;
+  readonly blockReasons: readonly string[];
+  /** The manifest thresholds that governed the evaluation (auditable). */
+  readonly thresholdsApplied: Readonly<
+    Record<string, { warnAtPct: number; criticalAtPct: number }>
+  >;
+  /** Where each evaluated guard's limit came from (auditable, DEP-003). */
+  readonly limitResolutions: readonly GuardLimitResolution[];
+}
+
+/**
+ * Evaluate the composed spend/quota guardrails of one environment class:
+ * the manifest-threshold alert set (quota + operational + availability)
+ * AND the provider spend-fence decisions projected from the same
+ * authoritative snapshots (DEP-003 — the fence refusals and the alert
+ * thresholds are proven together; thresholds and limits ALWAYS come
+ * from the quota-guards manifest, never tool-local constants).
+ *
+ * Read-path best-effort semantics match evaluateAlerts: a collection
+ * failure on a fresh ledger database yields the honest empty set — a
+ * MALFORMED operator limit override still aborts fail-closed
+ * (GuardLimitError propagates; callers must not swallow it).
+ */
+export async function evaluateGuardrailReport(
+  db: DatabasePort,
+  environment: string,
+  options: { readonly store?: SqlReleaseControlStore } = {},
+): Promise<EnvironmentGuardrailSummary> {
+  const policy = loadQuotaGuardsPolicy(
+    readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/quota-guards.json`, "utf8"),
+  );
+  const quotaSnapshots = await collectQuotaSnapshots(db, environment, { policy });
+  const report = evaluateEnvironmentGuardrails(loadManifest(), policy, {
+    environment,
+    quotaSnapshots,
+    fenceSnapshots: fenceSnapshotsOf(quotaSnapshots, policy),
+  });
+  const operational = evaluateOperationalAlerts(
+    await collectOperationalSnapshots(db),
+    policy.operationalThresholds,
+  );
+  const availabilityAlerts: OperationalAlert[] = [];
+  if (options.store !== undefined && isHostingEnvironment(environment)) {
+    const record = await latestAvailabilityRecord(options.store, environment);
+    if (record !== null) {
+      const alert = availabilityAlertOf(record);
+      if (alert !== null) {
+        availabilityAlerts.push(alert);
+      }
+    }
+  }
+  const alerts = [...report.alerts, ...operational, ...availabilityAlerts];
+  const criticalAlerts = alerts.filter((alert) => alert.severity === "critical");
+  return {
+    environment,
+    fenceDecisions: report.fenceDecisions,
+    alerts,
+    promotionBlocked: criticalAlerts.length > 0,
+    blockReasons: criticalAlerts.map((alert) => `${alert.subject}: ${alert.detail}`),
+    thresholdsApplied: report.thresholdsApplied,
+    limitResolutions: [
+      resolveGuardLimit("queue-backlog", policy, process.env.ZECK_QUEUE_BACKLOG_BOUND),
+      resolveGuardLimit("database-size", policy, process.env.ZECK_DB_SIZE_LIMIT_BYTES),
+    ],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -864,6 +990,35 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
   const checkout = checkoutRelease();
   const ledgerEnvironment: HostingEnvironment =
     target === "ci" ? "local" : isHostingEnvironment(target) ? target : "local";
+  // DEP-003 AC4 — the deployed-plane identity verification BEFORE the
+  // promotion: with --plane-url configured, the plane serving traffic
+  // must ATTEST the candidate revision (real HTTP round trip against
+  // the real plane; drift, tampering, wrong revision or an unreachable
+  // plane REFUSES the promotion — fail closed, never a warning).
+  // Without --plane-url the recorded identity-audit gate evidence
+  // (the ledger binding) remains the identity authority — the honest
+  // note, never a fabricated verification.
+  const planeUrl = stringOption(process.argv, "--plane-url");
+  let planeAttestation: PlaneAttestation | null = null;
+  if (planeUrl !== undefined && isHostingEnvironment(target)) {
+    const ledger = parseProviderTiers(
+      readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/provider-tiers.json`, "utf8"),
+      manifest,
+    );
+    const branch = stringOption(process.argv, "--branch");
+    const slug =
+      target === "preview" && branch !== undefined
+        ? previewBranchSlug(branch, namingConventionsOf(manifest).previewBranchSlugMaxLength)
+        : undefined;
+    planeAttestation = await attestDeployedPlane(planeUrl.replace(/\/$/, ""), {
+      revision: checkout.gitRevision,
+      environment: target,
+      ...(slug === undefined ? {} : { previewSlug: slug }),
+      manifest,
+      ledger,
+    });
+  }
+  const identityGuard = promotionIdentityGuard(planeAttestation, checkout.gitRevision);
   const { store, db } = await openStore(ledgerEnvironment);
   try {
     // The release + (for hosting targets) the identity binding must exist.
@@ -882,20 +1037,59 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
         actor,
       });
     }
+    // The plane-identity guard refuses BEFORE the gate evaluation: an
+    // unverified/wrong-revision plane is not promotable regardless of
+    // the gate evidence (the refusal is journaled, exit 1).
+    if (!identityGuard.allowed) {
+      const reason = identityGuard.reason ?? "deployment identity verification failed";
+      await store.recordPromotionDecision({
+        releaseId: checkout.releaseId,
+        fromPhase: "none",
+        toPhase: target,
+        decision: "refused",
+        reason: reason.slice(0, 1000),
+        actor,
+      });
+      console.error(`error: ${reason}`);
+      console.log(
+        JSON.stringify(
+          {
+            tool: "deploy/release",
+            command: "promote",
+            target,
+            releaseId: checkout.releaseId,
+            allowed: false,
+            planeIdentity: {
+              ...(planeUrl === undefined ? {} : { planeUrl }),
+              verified: false,
+            },
+          },
+          null,
+          2,
+        ),
+      );
+      process.exit(1);
+    }
     const effective = await store.effectiveGateResults(checkout.releaseId, target);
     const evaluation = evaluatePromotion(target, effective, policy);
-    // The cost/quota guardrail: a CRITICAL alert for the target
-    // environment blocks promotion (observable before exhaustion; no
-    // uncontrolled overage).
-    let alerts: readonly OperationalAlert[] = [];
+    // The cost/quota guardrail (DEP-003 composition): the manifest-
+    // threshold alert set + the provider spend-fence decisions of the
+    // environment class, evaluated together. A CRITICAL alert blocks
+    // promotion (the D-06 semantics); a MALFORMED operator limit
+    // override aborts fail-closed (GuardLimitError propagates).
+    let guardrails: EnvironmentGuardrailSummary | null = null;
     try {
-      alerts = await evaluateAlerts(db, ledgerEnvironment, { store });
-    } catch {
+      guardrails = await evaluateGuardrailReport(db, ledgerEnvironment, { store });
+    } catch (error) {
+      if (error instanceof GuardLimitError) {
+        throw error;
+      }
       // The snapshot collection failed (e.g. an empty fresh ledger
       // database): the guardrail is best-effort on read, fail-closed
-      // on write paths that need it (below).
+      // on write paths that need it.
     }
-    const critical = hasCriticalAlert(alerts);
+    const alerts = guardrails?.alerts ?? [];
+    const critical = guardrails?.promotionBlocked ?? hasCriticalAlert(alerts);
     if (!evaluation.allowed || critical) {
       const reason = !evaluation.allowed
         ? (evaluation.reason ?? "promotion refused")
@@ -920,6 +1114,12 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
             allowed: false,
             missingGates: evaluation.missing,
             criticalAlerts: alerts.filter((alert) => alert.severity === "critical"),
+            ...(guardrails === null
+              ? {}
+              : {
+                  fenceDecisions: guardrails.fenceDecisions,
+                  limitResolutions: guardrails.limitResolutions,
+                }),
             effectiveGates: inspection.effectiveGates.filter((gate) => gate.environment === target),
           },
           null,
@@ -933,7 +1133,9 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
       fromPhase: "none",
       toPhase: target,
       decision: "promoted",
-      reason: `entry gates satisfied: ${evaluation.satisfied.join(", ")}`,
+      reason: `entry gates satisfied: ${evaluation.satisfied.join(", ")}${
+        identityGuard.evidence === undefined ? "" : `; plane identity: ${identityGuard.evidence}`
+      }`,
       actor,
     });
     if (isHostingEnvironment(target)) {
@@ -953,6 +1155,24 @@ async function commandPromote(target: ReleasePhase, actor: string): Promise<void
             promoted: true,
             satisfiedGates: evaluation.satisfied,
             activeDeployment: active,
+            planeIdentity:
+              planeAttestation === null
+                ? identityGuard.reason
+                : {
+                    planeUrl: planeAttestation.planeUrl,
+                    verified: true,
+                    attestedRevision: planeAttestation.attested?.gitRevision,
+                    runtimeIdentityId: planeAttestation.attested?.runtimeIdentityId,
+                  },
+            ...(guardrails === null
+              ? {}
+              : {
+                  guardrails: {
+                    promotionBlocked: guardrails.promotionBlocked,
+                    fenceDecisions: guardrails.fenceDecisions,
+                    limitResolutions: guardrails.limitResolutions,
+                  },
+                }),
           },
           null,
           2,
@@ -1031,6 +1251,57 @@ ORDER BY recorded_at DESC, release_id DESC LIMIT 1`,
       reason,
       actor,
     });
+    // DEP-003 AC4 — the post-rollback RE-ATTESTATION: with --plane-url
+    // configured, the plane serving traffic must attest the TARGET
+    // release's revision after the governed pointer flip (the operator
+    // repoints the plane, then re-runs; the re-attestation proves the
+    // repoint landed). The re-attestation NEVER touches domain
+    // authority: the identity document is hosting-independent and the
+    // provider topology is manifest-declared (invariant under
+    // repoint) — only the attested revision changes. A plane still
+    // serving the FROM revision reports the exact honest failure and
+    // exits non-zero (the rollback itself already happened; the
+    // repoint is the operator's remaining step).
+    const planeUrl = stringOption(process.argv, "--plane-url");
+    let reattestation: ReturnType<typeof rollbackReattestation> | null = null;
+    let attestedSummary: unknown =
+      "no plane URL configured: the deployment-identity-audit gate evidence (the recorded ledger binding) is the identity authority for this rollback";
+    if (planeUrl !== undefined) {
+      const targetInspection = await store.inspectRelease(target);
+      const targetRevision = targetInspection.release?.gitRevision;
+      if (targetRevision === undefined) {
+        console.error(`error: the rollback target release ${target} is not in the ledger`);
+        process.exit(1);
+      }
+      const ledger = parseProviderTiers(
+        readFileSync(`${REPOSITORY_ROOT}/deploy/manifests/provider-tiers.json`, "utf8"),
+        manifest,
+      );
+      const branch = stringOption(process.argv, "--branch");
+      const slug =
+        environment === "preview" && branch !== undefined
+          ? previewBranchSlug(branch, namingConventionsOf(manifest).previewBranchSlugMaxLength)
+          : undefined;
+      const attestation = await attestDeployedPlane(planeUrl.replace(/\/$/, ""), {
+        revision: targetRevision,
+        environment,
+        ...(slug === undefined ? {} : { previewSlug: slug }),
+        manifest,
+        ledger,
+      });
+      reattestation = rollbackReattestation(attestation, targetRevision);
+      attestedSummary = {
+        planeUrl: attestation.planeUrl,
+        verified: attestation.verified,
+        ...(attestation.attested === undefined
+          ? {}
+          : {
+              attestedRevision: attestation.attested.gitRevision,
+              runtimeIdentityId: attestation.attested.runtimeIdentityId,
+            }),
+        ...(reattestation.reason === undefined ? {} : { reason: reattestation.reason }),
+      };
+    }
     console.log(
       JSON.stringify(
         {
@@ -1041,12 +1312,17 @@ ORDER BY recorded_at DESC, release_id DESC LIMIT 1`,
           toReleaseId: target,
           reason,
           activeDeployment: result,
+          planeIdentity: attestedSummary,
           note: "deployment-state rollback: the release_control pointer flipped + the rollback event journaled; durable domain state is untouched",
         },
         null,
         2,
       ),
     );
+    if (reattestation !== null && !reattestation.allowed) {
+      console.error(`error: ${reattestation.reason}`);
+      process.exit(1);
+    }
   } catch (error) {
     if (error instanceof ReleaseControlError) {
       console.error(`error: ${error.message}`);
@@ -1123,21 +1399,53 @@ async function commandStatus(environment: HostingEnvironment): Promise<void> {
 async function commandAlerts(environment: HostingEnvironment): Promise<void> {
   const { store, db } = await openStore(environment);
   try {
-    const alerts = await evaluateAlerts(db, environment, { store });
+    // The DEP-003 composed evaluation: the manifest-threshold alert set
+    // (quota + operational + availability) AND the provider spend-fence
+    // decisions of the environment class, with the audit trail of where
+    // every limit came from (operator-override / manifest /
+    // authority-owned). One alert authority, honestly composed.
+    let report: EnvironmentGuardrailSummary;
+    try {
+      report = await evaluateGuardrailReport(db, environment, { store });
+    } catch (error) {
+      if (error instanceof GuardLimitError) {
+        throw error;
+      }
+      // Fresh/empty database: no snapshots yet — honest empty alert set.
+      const empty = await evaluateAlerts(db, environment, { store }).catch(() => []);
+      report = {
+        environment,
+        fenceDecisions: [],
+        alerts: empty,
+        promotionBlocked: hasCriticalAlert(empty),
+        blockReasons: empty
+          .filter((alert) => alert.severity === "critical")
+          .map((alert) => `${alert.subject}: ${alert.detail}`),
+        thresholdsApplied: {},
+        limitResolutions: [],
+      };
+    }
     console.log(
       JSON.stringify(
         {
           tool: "deploy/release",
           command: "alerts",
           environment,
-          alerts,
-          critical: hasCriticalAlert(alerts),
+          alerts: report.alerts,
+          critical: report.promotionBlocked,
+          guardrails: {
+            fenceDecisions: report.fenceDecisions,
+            thresholdsApplied: report.thresholdsApplied,
+            limitResolutions: report.limitResolutions,
+            promotionBlocked: report.promotionBlocked,
+            blockReasons: report.blockReasons,
+          },
         },
         null,
         2,
       ),
     );
-    process.exit(hasCriticalAlert(alerts) ? 1 : 0);
+    process.exit(report.promotionBlocked ? 1 : 0);
   } finally {
     await db.close();
   }

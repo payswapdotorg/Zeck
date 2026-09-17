@@ -31,16 +31,16 @@
 
 import type { DeploymentManifest } from "../src/platform/deployment/manifest";
 import {
+  evaluateQuotaFence,
   type OverageApproval,
   type OveragePolicy,
   type QuotaFenceEvaluation,
   type QuotaUsageSnapshot,
-  evaluateQuotaFence,
 } from "../src/platform/deployment/quota-fence";
 import {
-  type QuotaGuardsPolicy,
   evaluateQuotaAlerts,
   hasCriticalAlert,
+  type QuotaGuardsPolicy,
 } from "../src/platform/observability/alerts";
 import type {
   OperationalAlert,
@@ -49,6 +49,14 @@ import type {
 
 /** Where a guard's evaluation limit came from (auditable). */
 export type GuardLimitSource = "operator-override" | "manifest" | "authority-owned";
+
+/** A malformed operator limit override (fail-closed abort, never a silent substitution). */
+export class GuardLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GuardLimitError";
+  }
+}
 
 export interface GuardLimitResolution {
   readonly guard: string;
@@ -71,9 +79,13 @@ export function resolveGuardLimit(
   operatorOverride?: string,
 ): GuardLimitResolution {
   if (operatorOverride !== undefined && operatorOverride.trim() !== "") {
-    const parsed = Number.parseInt(operatorOverride, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-      throw new Error(
+    // STRICT parse: the whole trimmed value must be a positive integer
+    // literal ("1e3" is 1000, "1.5"/"12abc"/"abc" abort) — a partial
+    // parse (the parseInt truncation hole) would silently substitute a
+    // DIFFERENT limit than the operator declared.
+    const parsed = Number(operatorOverride.trim());
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      throw new GuardLimitError(
         `the operator override for guard "${guard}" ("${operatorOverride}") is not a positive integer — refusing to evaluate guardrails on a malformed limit (fail closed; the manifest-carried default is never silently substituted)`,
       );
     }
@@ -84,6 +96,69 @@ export function resolveGuardLimit(
     return { guard, limit: rule.defaultLimitBytes, source: "manifest" };
   }
   return { guard, limit: null, source: "authority-owned" };
+}
+
+// ---------------------------------------------------------------------------
+// The provider-concern projection (the fence is concern-keyed; the
+// authoritative stores are guard-keyed)
+// ---------------------------------------------------------------------------
+
+/** The guard → provider-concern projection (documented, closed). */
+const GUARD_TO_CONCERN: Readonly<
+  Record<string, { readonly concern: string; readonly metric: string }>
+> = Object.freeze({
+  "database-size": { concern: "relational-state", metric: "database-size-bytes" },
+  "queue-backlog": { concern: "async-transport", metric: "pending-dispatch-envelopes" },
+});
+
+/**
+ * Project the authoritative-store quota snapshots onto the provider
+ * concerns they meter, for the spend fence:
+ *
+ *  - database-size (pg_database_size of the authoritative store) meters
+ *    the "relational-state" concern — the provider plan ceiling of the
+ *    AUTHORITATIVE dependency (Neon free tier → paid beyond it). A
+ *    ceiling hit denies with the provider's declared fail-closed
+ *    posture: never a silent conversion into paid overage;
+ *  - queue-backlog (pending dispatch envelopes) meters the
+ *    "async-transport" concern against the manifest-declared backlog
+ *    bound — a ceiling hit denies with the declared degraded mode
+ *    (dispatch-backlogged; bounded re-delivery pressure);
+ *  - compute-claims is NOT projected: the compute-plane environment
+ *    quota IS the limit (authority-owned; the D-05 hard cap refuses at
+ *    the limit itself) — there is no provider spend to fence and none
+ *    is invented here;
+ *  - artifact-bytes usage is not measurable from the local
+ *    authoritative stores (the object store's own meter, credential
+ *    gated) — its absence is an honest NOT RUN boundary recorded in
+ *    the evidence, never a fabricated snapshot.
+ *
+ * The fence warn threshold derives from the SAME manifest row that
+ * governs the alert thresholds (warnAtPct) — never a tool-local
+ * constant.
+ */
+export function fenceSnapshotsOf(
+  quotaSnapshots: readonly QuotaUtilizationSnapshot[],
+  policy: QuotaGuardsPolicy,
+): readonly QuotaUsageSnapshot[] {
+  const fenceSnapshots: QuotaUsageSnapshot[] = [];
+  for (const snapshot of quotaSnapshots) {
+    const target = GUARD_TO_CONCERN[snapshot.guard];
+    if (target === undefined) {
+      continue;
+    }
+    const thresholds = policy.guards.find((rule) => rule.guard === snapshot.guard)?.thresholds;
+    fenceSnapshots.push({
+      concern: target.concern,
+      metric: target.metric,
+      used: snapshot.used,
+      limit: snapshot.limit,
+      ...(thresholds === undefined
+        ? {}
+        : { warnAt: Math.floor((snapshot.limit * thresholds.warnAtPct) / 100) }),
+    });
+  }
+  return fenceSnapshots;
 }
 
 export interface GuardrailEvaluationInput {
@@ -115,7 +190,9 @@ export interface GuardrailReport {
   readonly promotionBlocked: boolean;
   readonly blockReasons: readonly string[];
   /** The manifest thresholds that governed the evaluation (auditable). */
-  readonly thresholdsApplied: Readonly<Record<string, { warnAtPct: number; criticalAtPct: number }>>;
+  readonly thresholdsApplied: Readonly<
+    Record<string, { warnAtPct: number; criticalAtPct: number }>
+  >;
 }
 
 /**
