@@ -68,10 +68,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import {
-  type CredentialConsoleTransport,
-  type CredentialIssueView,
-  type CredentialListView,
+import type {
+  CredentialConsoleTransport,
+  CredentialIssueView,
+  CredentialListView,
 } from "../../../apps/dashboard/credentials";
 import {
   FormTooLargeError,
@@ -180,7 +180,10 @@ const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
   // path too.
   if (path.startsWith("/executions/")) {
     return json(
-      { code: "NOT_FOUND", message: `no execution ${decodeURIComponent(path.split("/")[2] ?? "")}` },
+      {
+        code: "NOT_FOUND",
+        message: `no execution ${decodeURIComponent(path.split("/")[2] ?? "")}`,
+      },
       404,
     );
   }
@@ -226,8 +229,8 @@ const credentials: CredentialConsoleTransport & { readonly issued: CredentialIss
         supersededBy: null,
         permissions: ["applications:read"],
       },
-      idempotencyKey,
     };
+    void idempotencyKey;
     this.issued.push(view);
     return view;
   },
@@ -265,10 +268,7 @@ beforeAll(async () => {
 });
 
 /** The dashboard's dispatch (apps/dashboard/index.ts's own machinery). */
-async function dispatch(
-  request: IncomingMessage,
-  response: ServerResponse,
-): Promise<void> {
+async function dispatch(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const url = new URL(request.url ?? "/", "http://dashboard.local");
   const method = request.method === "POST" ? "POST" : "GET";
   const match = matchRoute(routes, method, url.pathname);
@@ -326,10 +326,11 @@ async function postForm(path: string, form: Record<string, string>): Promise<Res
 }
 
 /** The hostile value's escaped HTML form (components.ts esc). */
-const ESCAPED_HOSTILE = HOSTILE.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
-  />/g,
-  "&gt;",
-).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+const ESCAPED_HOSTILE = HOSTILE.replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;")
+  .replace(/'/g, "&#39;");
 
 // ---------------------------------------------------------------------------
 // D1 — the responsive scroll-trap
@@ -340,7 +341,9 @@ describe("D1: the wide tables scroll in-box (fail-before: they stretched the pag
     // Pre-fix: .app-header/.app-nav/.app-main/.app-footer inherited the
     // grid default min-width:auto, so one wide child stretched the whole
     // document. Post-fix the regions can shrink below their content.
-    expect(DASHBOARD_CSS).toContain(".app-header, .app-nav, .app-main, .app-footer { min-width: 0; }");
+    expect(DASHBOARD_CSS).toContain(
+      ".app-header, .app-nav, .app-main, .app-footer { min-width: 0; }",
+    );
   });
 
   test("the stylesheet makes table.data/table.kv scroll within their own box", () => {
@@ -451,8 +454,8 @@ describe("D3: field errors render with .field-error + role=alert (fail-before: t
 // D4 — the flow-card form layout
 // ---------------------------------------------------------------------------
 
-describe("D4: forms use the flow card layout (fail-before: class=\"card form\" carried no stylesheet rule)", () => {
-  test("the explorer's lookup form uses class=\"flow card\"", async () => {
+describe('D4: forms use the flow card layout (fail-before: class="card form" carried no stylesheet rule)', () => {
+  test('the explorer\'s lookup form uses class="flow card"', async () => {
     const html = await getHtml("/console/executions");
     expect(html).toContain('class="flow card"');
     // Pre-fix: the lookup form rendered class="card form" — the .form
@@ -460,7 +463,7 @@ describe("D4: forms use the flow card layout (fail-before: class=\"card form\" c
     expect(html).not.toContain('card form"');
   });
 
-  test("the credentials issue form uses class=\"flow card\"", async () => {
+  test('the credentials issue form uses class="flow card"', async () => {
     const html = await getHtml("/console/applications/keys");
     expect(html).toContain('class="flow card"');
     expect(html).not.toContain('card form"');
@@ -534,7 +537,7 @@ describe("D6: the show-once secret reveal surface is styled (fail-before: sectio
 // ---------------------------------------------------------------------------
 
 describe("D7: the quickstart steps use the steps grid (fail-before: ol.timeline squeezed each step into the 9rem time column)", () => {
-  test("the quickstart renders <ol class=\"steps\">, never a timeline", async () => {
+  test('the quickstart renders <ol class="steps">, never a timeline', async () => {
     const html = await getHtml("/console/quickstart");
     expect(html).toContain('<ol class="steps">');
     // Pre-fix: <ol class="timeline"> — the time+stage two-column grid
@@ -566,7 +569,9 @@ describe("D8: the command-suggestions rules are well-formed (the tool-display ph
     expect(DASHBOARD_CSS).not.toContain("liidden]");
     // The surrounding rule family stays well-formed too.
     expect(DASHBOARD_CSS).toContain(".command-suggestions { list-style: none;");
-    expect(DASHBOARD_CSS).toContain(".command-suggestions a:hover { background: var(--surface-sunken); text-decoration: underline; }");
+    expect(DASHBOARD_CSS).toContain(
+      ".command-suggestions a:hover { background: var(--surface-sunken); text-decoration: underline; }",
+    );
   });
 });
 
@@ -579,7 +584,7 @@ describe("D9: the composer's fixed-field labels match the editable label weight 
     expect(DASHBOARD_CSS).toContain(".form-field > .form-label { font-weight: 600; }");
   });
 
-  test("the playground composer renders its fixed-by-contract fields with class=\"form-label\"", async () => {
+  test('the playground composer renders its fixed-by-contract fields with class="form-label"', async () => {
     const html = await getHtml("/console/playground/text");
     // The task discriminator is fixed by the advertised contract — it
     // renders as a labelled non-editable fact beside the editable fields.
