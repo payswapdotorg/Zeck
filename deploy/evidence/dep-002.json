@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-002",
+  "title": "Environment, secret and sandbox-account provisioning automation — verification evidence record",
+  "recordedBy": "DEP-002 implementation worker (2-a)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker)",
+  "date": "2026-09-17",
+  "doctrine": "Every live-provider operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a live result. The plan-mode provision path and the local artifact convergence are fully verified without credentials; the credentialed re-run (Lead) owns the live application of the provider plan (deploy/PUBLIC-DEPLOYMENT.md sections 3.2 + 8).",
+  "notRun": [
+    {
+      "check": "Neon project/branch creation per the deterministic resource plan (preview/staging/production classes)",
+      "reason": "No NEON_API_KEY in the worker pod; the tool records the step not-run with its credential variable and never performs provider control-plane calls.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-002 section)"
+    },
+    {
+      "check": "Cloudflare R2 bucket / Queues / Workflows resource creation per the deterministic plan",
+      "reason": "No CLOUDFLARE_API_TOKEN in the worker pod.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-002 section)"
+    },
+    {
+      "check": "Upstash Redis resource creation per the deterministic plan",
+      "reason": "No UPSTASH_API_KEY in the worker pod.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-002 section)"
+    },
+    {
+      "check": "Vercel project creation per the deterministic plan",
+      "reason": "No VERCEL_TOKEN in the worker pod.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-002 section)"
+    },
+    {
+      "check": "Live materialization of secret-reference VALUES into an external secret manager / CI environment",
+      "reason": "External-only doctrine by construction: the tool emits reference templates and CI variable skeletons only; values never transit it. The materialization itself is operator account-plane work.",
+      "owner": "Credentialed operator (deploy/PUBLIC-DEPLOYMENT.md section 3.2 step 3)"
+    },
+    {
+      "check": "PostgreSQL-backed integration suites (bootstrap/teardown over a real server)",
+      "reason": "No PostgreSQL server available in the worker pod (no server binaries, no Docker); the suites skip cleanly without ZECK_PG_TEST_URL.",
+      "owner": "Lead credentialed re-run (or any environment with a PostgreSQL 16+ server)"
+    },
+    {
+      "check": "CI execution of the deployment-validation workflow (including the provision steps)",
+      "reason": "Workers do not push to main; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows/deployment-validation.yml)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Deployment configuration validation including the new sandbox-accounts manifest (rule family 15, fail-closed)",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0, valid=true, sandboxAccountEnvironments=3, sandboxAccounts=3"
+    },
+    {
+      "check": "Provision plan mode with ZERO credentials (AC1: manifest validation, resource plan, scaffold + records projection, nothing written)",
+      "command": "bun run deploy:provision -- --environment local --plan",
+      "evidence": "exit 0; 5 documented steps PASS; 3 artifacts projected (all absent, nothing written); live provider steps: none for the local class"
+    },
+    {
+      "check": "Provision convergence + idempotence + drift re-convergence (AC3)",
+      "command": "tests/unit/deployment/provision.test.ts",
+      "evidence": "31 tests pass: first converge creates 3 artifacts, second run already-converged (0 created/repaired/pruned, 3 unchanged), corrupted/deleted/orphaned artifacts re-converge (1 repaired, 1 created, 1 pruned), post-convergence byte-comparison PASS"
+    },
+    {
+      "check": "Teardown classification guards extend to the provisioned records (AC3)",
+      "command": "tests/unit/deployment/provision.test.ts",
+      "evidence": "local/preview remove exactly the computed provisioned directory (already-absent reported honestly on re-run); staging/production refused with 'refusing to remove provisioned records … classification, not operator intent'"
+    },
+    {
+      "check": "Secret handling external-only — hostile probes (AC2)",
+      "command": "tests/unit/deployment/provision.test.ts",
+      "evidence": "plaintext in a reference variable aborts fail-closed in BOTH modes without echoing it; cross-environment references refused; planted credential values (NEON_API_KEY / CLOUDFLARE_API_TOKEN / ZECK_PG_ADMIN_URL / VERCEL_TOKEN / UPSTASH_API_KEY) never reach the report, the artifacts or the real-process CLI stdout/stderr; scaffold artifacts carry zeck-secret:// references only"
+    },
+    {
+      "check": "Sandbox-account records are a pure manifest projection (AC4)",
+      "command": "tests/unit/deployment/provision.test.ts",
+      "evidence": "policy facts (synthetic-data classes == the frozen platform artifact, quota dimensions from the budgets vocabulary, guard thresholds RESOLVED from quota-guards.json, DEP-014 TTL/reset/post-expiry) trace to manifest rows; byte-identical deterministic renders; an edited manifest row flows through the projection"
+    },
+    {
+      "check": "Fail-closed validation of malformed sandbox-accounts rows (before any provider call or write)",
+      "command": "tests/unit/deployment/provision.test.ts",
+      "evidence": "17 malformed-row classes abort the parser (invalid JSON, schema drift, unknown/missing environments, authoritative-class accounts, empty disposable class, drifted policy classes, unknown dimension/window/guard, non-integer limits, contradicting platform-default TTL, non-DEP-014 reset/post-expiry modes, malformed/duplicate ids)"
+    },
+    {
+      "check": "Governance / typecheck / lint / unit / architecture / integration batteries",
+      "command": "python3 scripts/governance-check.py && bun run typecheck && bun run lint && bun run test:unit && bun run test:architecture && bun run test:integration",
+      "evidence": "recorded in the DEP-002 worker report (2-a) — all green at the branch head; PG suites skip honestly without ZECK_PG_TEST_URL"
+    }
+  ],
+  "notes": [
+    "The sandbox-account records are provisioning policy facts (synthetic-data policy, quota envelope, expiry semantics) projected from deploy/manifests/sandbox-accounts.json — not runtime identities. Runtime sandbox identity lifecycle stays governed by the DEP-014 platform surface (src/modules/sandbox + apps/dashboard/sandbox-governance.ts).",
+    "The manifest is fail-closed against the platform authorities: synthetic-data classes must EQUAL the frozen artifact, quota dimensions/windows come from the budgets module's closed vocabularies, guard wiring must exist in quota-guards.json, platform-default TTLs must equal SANDBOX_IDENTITY_DEFAULT_TTL_MS.",
+    "Live-provider steps are gated on credential PRESENCE only (never values); with credentials present the plan is marked executable-plan for the credentialed operator application path — this tool performs no provider control-plane calls (provider-neutrality doctrine)."
+  ]
+}

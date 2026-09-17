@@ -13,9 +13,20 @@
  * the local data root. Authoritative application state is unreachable
  * by construction (no other database name, no other path).
  *
- * Preview teardown is plan-only: the disposable per-branch resource
- * set is named deterministically for the operator/provider adapters
- * (D-02+); the repository never mutates provider state in D-01.
+ * DEP-002: the guard extends to the PROVISIONED records — the
+ * secret-reference scaffold and sandbox-account record set deploy/
+ * provision converges under the local data root. Their removal rides
+ * the same classification guard (deploy/provision
+ * `teardownProvisionedRecords` re-checks it defensively): exactly the
+ * computed `provisioned/<environment>[/<preview-slug>]` directory is
+ * removed, and persistent environments are refused even if a caller
+ * bypasses this tool's own guard.
+ *
+ * Preview teardown is plan-only for PROVIDER resources: the disposable
+ * per-branch resource set is named deterministically for the
+ * operator/provider adapters (D-02+); the repository never mutates
+ * provider state in D-01. The preview PROVISIONED records (local
+ * artifacts under the data root) are removed for real.
  *
  * Usage:
  *   bun run deploy:teardown -- --environment local
@@ -28,6 +39,7 @@ import { Client } from "pg";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
 import { computeResourceNames, previewBranchSlug } from "../src/platform/deployment/naming";
 import { loadManifest, optionalBranch, requireEnvironment } from "./lib";
+import { teardownProvisionedRecords } from "./provision";
 
 const DEFAULT_DATA_ROOT = join(
   process.env.XDG_DATA_HOME ?? join(process.env.HOME ?? "/tmp", ".local", "share"),
@@ -89,11 +101,26 @@ async function main(): Promise<void> {
 
   if (environment === "local") {
     const operations: string[] = [];
+    // 0. (DEP-002) the provisioned records FIRST: they are pure local
+    // artifacts under the data root — their removal must not depend on
+    // an external server being reachable. Classification-guarded,
+    // computed-path-only (deploy/provision re-checks the guard).
+    const dataRoot = process.env.ZECK_LOCAL_DATA_ROOT ?? DEFAULT_DATA_ROOT;
+    const provisioned = teardownProvisionedRecords({
+      dataRoot,
+      environment,
+      previewSlug: slug,
+      environmentRecord,
+    });
+    operations.push(
+      provisioned.removed
+        ? `removed provisioned records: ${provisioned.directory}`
+        : `already-absent provisioned records: ${provisioned.directory}`,
+    );
     const pg = names.find((n) => n.kind === "pg-database");
     if (pg !== undefined) {
       operations.push(await dropLocalPostgres(pg.name));
     }
-    const dataRoot = process.env.ZECK_LOCAL_DATA_ROOT ?? DEFAULT_DATA_ROOT;
     const objectStore = names.find((n) => n.kind === "local-object-store");
     if (objectStore !== undefined) {
       const target = join(dataRoot, objectStore.name);
@@ -119,7 +146,14 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Preview teardown: plan-only (provider adapters arrive with D-02+).
+  // Preview teardown: provider resources are plan-only (adapters D-02+);
+  // the provisioned records are local artifacts and are removed for real.
+  const provisioned = teardownProvisionedRecords({
+    dataRoot: process.env.ZECK_LOCAL_DATA_ROOT ?? DEFAULT_DATA_ROOT,
+    environment,
+    previewSlug: slug,
+    environmentRecord,
+  });
   console.log(
     JSON.stringify(
       {
@@ -127,13 +161,23 @@ async function main(): Promise<void> {
         environment,
         environmentClass: environmentRecord.environmentClass,
         ...(slug === undefined ? {} : { previewBranch: branch ?? "", previewSlug: slug }),
-        operations: names.map((resource) => ({
-          resource: resource.id ?? "-",
-          kind: resource.kind,
-          name: resource.name,
-          action:
-            "plan-only (delete the disposable per-branch resource; provider adapter execution arrives with D-02+; preview data is synthetic and never promoted)",
-        })),
+        operations: [
+          ...names.map((resource) => ({
+            resource: resource.id ?? "-",
+            kind: resource.kind,
+            name: resource.name,
+            action:
+              "plan-only (delete the disposable per-branch resource; provider adapter execution arrives with D-02+; preview data is synthetic and never promoted)",
+          })),
+          {
+            resource: "provisioned-records",
+            kind: "provisioned-artifact-set",
+            name: provisioned.directory,
+            action: provisioned.removed
+              ? "removed (secret-reference scaffold + sandbox-account records converged by deploy/provision)"
+              : "already-absent",
+          },
+        ],
       },
       null,
       2,

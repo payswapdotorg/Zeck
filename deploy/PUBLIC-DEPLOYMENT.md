@@ -1,8 +1,8 @@
-# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001)
+# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002)
 
 **Status:** OPERATIONAL RUNBOOK (repository truth; provider consoles are evidence, never authority)
 **Parent:** `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0), `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`
-**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine.
+**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002).
 
 This recipe is the DEP-001 deliverable for AC1 ("fresh operator can
 reproduce the target deployment from repository configuration"). Every
@@ -89,11 +89,21 @@ free-tier resources never become operationally critical):
 git clone https://github.com/payswapdotorg/Zeck.git && cd Zeck
 bun install
 bun run deploy:validate                 # configuration gate (no network)
+bun run deploy:provision -- --environment local --plan   # DEP-002 dry-run: the full convergence plan, zero credentials
+ZECK_ENVIRONMENT=local bun run deploy:provision -- --environment local   # converge the scaffold + sandbox-account records (idempotent)
 bun run deploy:api -- --environment local   # boots the bootstrap host (127.0.0.1:8787)
 # in another shell:
 curl -s http://127.0.0.1:8787/identity | jq '.identity.gitRevision'   # == git rev-parse HEAD
 bun run deploy:public-smoke -- --environment local [--allow-degraded]
 ```
+
+The provision step (DEP-002) writes under the local data root
+(`ZECK_LOCAL_DATA_ROOT`, default `$XDG_DATA_HOME/zeck`): the
+secret-reference scaffold (`secrets.reference.env` + CI variable
+skeleton) and the sandbox-account records projected from
+`deploy/manifests/sandbox-accounts.json`. It is idempotent — a second
+run reports already-converged — and `deploy:teardown --environment
+local` removes the records under the same classification guard.
 
 The strict public smoke requires a reachable PostgreSQL authority
 (`ZECK_PG_ADMIN_URL`, or `ZECK_DATABASE_URL` in provider
@@ -120,7 +130,11 @@ provider accounts):
 3. Secret references are materialized (environment-scoped):
    `zeck-secret://preview/<name>` URIs in the `ZECK_SECRET_*_REF`
    variables plus their values in your secret manager / CI environment
-   (the inventory: `deploy/manifests/secret-references.json`).
+   (the inventory: `deploy/manifests/secret-references.json`). Run
+   `ZECK_ENVIRONMENT=preview bun run deploy:provision -- --environment preview --branch <branch>`
+   to generate the reference scaffold and CI variable skeleton for
+   exactly this environment — the tool emits the REFERENCES ONLY; the
+   values never transit it (see §8).
 4. Re-verify the free-tier limits against current provider pricing
    pages; update `deploy/manifests/provider-tiers.json` if drifted
    (then `bun run deploy:validate` must stay green).
@@ -188,7 +202,7 @@ above and the architect-approval gate.
 
 | AC | Evidence |
 |---|---|
-| 1. Reproducible from repository configuration | this recipe + `deploy/manifests/**` + `deploy:validate` (14 rule families, fail-closed) |
+| 1. Reproducible from repository configuration | this recipe + `deploy/manifests/**` + `deploy:validate` (15 rule families incl. the DEP-002 sandbox-accounts manifest, fail-closed) |
 | 2. API health + public integration smoke at exact revision | `deploy:public-smoke` (identity attest + health semantics + auth boundary); `GET /identity` surface |
 | 3. Environment/credential isolation | `tests/unit/deployment/env-contract.test.ts` (cross-environment references rejected); `zeck-secret://` environment scoping |
 | 4. Free-tier choices + exact tested limits recorded | `deploy/manifests/provider-tiers.json` + `tests/unit/deployment/provider-tiers.test.ts` |
@@ -207,3 +221,59 @@ above and the architect-approval gate.
   deployment seams (identity, readiness, transport) are production
   surfaces.
 - Free-tier limits are recorded, not live-verified (see §2).
+
+## 8. Environment provisioning — `deploy:provision` (DEP-002)
+
+`bun run deploy:provision -- --environment <class> [--branch <branch>] [--plan] [--json]`
+is the single reproducible operator path that converges an environment
+class from repository truth, in documented order:
+
+1. **manifest validation** — the full `deploy:validate` gate (15 rule
+   families, including the sandbox-accounts manifest) runs FIRST;
+   malformed rows abort before any provider call or write;
+2. **resource plan** — the deterministic resource set from the DEP-001
+   bootstrap seam (computed names, never invented topology); local
+   convergence stays `deploy:bootstrap`'s lane;
+3. **secret-reference scaffold** — per-environment reference templates
+   (`secrets.reference.env`) and CI variable skeletons
+   (`ci-variables.json`) mapping every `secret-references.json` entry
+   to where its VALUE gets injected. EXTERNAL-ONLY by construction:
+   the tool never accepts, stores, logs or renders secret plaintext —
+   a reference variable holding non-reference material aborts
+   fail-closed;
+4. **sandbox-account records** — the disposable identity set the
+   environment class permits (local `local-developer`, per-branch
+   `preview-disposable`, staging `staging-validation`; production
+   declares none — disposable synthetic identities are unrepresentable
+   in the authoritative environment). Every record is a PURE projection
+   of `deploy/manifests/sandbox-accounts.json`: synthetic-data policy
+   cross-checked against the frozen platform artifact, quota envelope
+   wired to `quota-guards.json` thresholds, DEP-014 expiry semantics
+   (TTL, state-non-carrying reset, honest post-expiry reads);
+5. **post-convergence validation** — the on-disk artifact set is
+   re-derived and byte-compared against the manifest projection.
+
+Idempotence and teardown: a second run reports already-converged; a
+drifted state (missing/corrupted/orphaned artifacts) re-converges;
+`deploy:teardown` removes exactly the classification-permitted records
+(persistent classes are refused — classification, not operator intent,
+governs removal).
+
+Live-provider steps (Neon/R2/Cloudflare/Upstash/Vercel resource
+creation) are account-plane work gated on credential PRESENCE (never
+values): without credentials each step records honest NOT RUN with the
+owner "Lead credentialed re-run"; with credentials present the plan is
+marked executable for the credentialed operator application path. This
+tool performs no provider control-plane calls (provider-neutrality
+doctrine, §3.2).
+
+**DEP-002 honest boundaries:** no live provider resource was created
+from the DEP-002 worker pod (no credentials); the executable plan is
+the deliverable and the credentialed re-run owns the live application.
+The sandbox-account records are provisioning facts (policy envelopes),
+not runtime identities — runtime sandbox identities stay governed by
+the DEP-014 platform surface. Pinned by
+`tests/unit/deployment/provision.test.ts` (plan mode without
+credentials, idempotence, drift re-convergence, teardown guards,
+secret external-only hostile probes, fail-closed manifest validation,
+pure-manifest projection).

@@ -71,6 +71,13 @@ export function hasFlag(argv: readonly string[], flag: string): boolean {
 }
 
 /**
+ * The manifest files covered by the secret-plaintext scan: the five
+ * core manifests plus the DEP-002 provisioning manifest (absent
+ * sources are skipped — callers decide which files they supply).
+ */
+const SCANNED_MANIFEST_FILES: readonly string[] = [...MANIFEST_FILES, "sandbox-accounts.json"];
+
+/**
  * The secret-plaintext scan over raw manifest sources. Manifests are
  * repository-resident truth: credential-shaped content anywhere in
  * them is a violation of the secret-reference model (D1.0 §14) and
@@ -94,7 +101,7 @@ export function scanManifestsForSecretPlaintext(
       pattern: /["'](token|secret|password|api[_-]?key)["']\s*:\s*["'][^"']{12,}["']/i,
     },
   ];
-  for (const file of MANIFEST_FILES) {
+  for (const file of SCANNED_MANIFEST_FILES) {
     const content = sources[file];
     if (content === undefined) {
       continue;
