@@ -7,16 +7,17 @@
     "DEP-011",
     "DEP-012",
     "DEP-013",
+    "DEP-014",
     "DEP-020",
     "DEP-025"
   ],
   "eligible": [
+    "DEP-030",
     "DEP-031",
     "DEP-032"
   ],
   "inFlight": [
-    "DEP-001",
-    "DEP-014"
+    "DEP-001"
   ],
   "blocked": [
     {
@@ -30,12 +31,6 @@
       "on": [
         "DEP-001",
         "DEP-002"
-      ]
-    },
-    {
-      "item": "DEP-030",
-      "on": [
-        "DEP-014"
       ]
     },
     {
@@ -65,6 +60,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "5409bf4",
+  "currentBase": "ff783e47196858374900074b707ac110b69c150d",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
