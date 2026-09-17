@@ -23,6 +23,7 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-013 | B | e70f2ed | #129 | cdf6338 | interactive sandbox playground for every workload class (AC1-9); worker chat 59c09e03, tarball sha256 `6546a0b5…` verified byte-identical at harvest; Lead independently reproduced the full battery (typecheck 0 / lint 0-61w-8i / unit 329f-5782t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke of catalog, composer, honest NOT RUN (three-d) and example-source routes |
 | DEP-030 | P3-1 | 28cf509 | #134 | 7ad8ada | usage/economics/optimization dashboard (AC1-7); worker chat 9a796433 (wave-1), tarball sha256 `a9dc3e81…` verified at harvest; composition-only (zero new API routes — the preferred path; openapi/env-vars/route-count pins untouched and green); Lead independently reproduced the full battery (typecheck 0 / lint 68w-8i baseline / unit 340f-5956t / arch 139f-2230t+4skip / int 21f-269t+197skip / governance OK) + lead-smoke 11/11 (real API + real dashboard: honest-unavailable states naming the four missing contracts, verbatim optimization decisions, real quota envelope, facts.json parity); worker caught+fixed a real `$$` double-currency defect mid-smoke with a regression pin; merge note: DEP-014 sandbox-governance transport omits X-Zeck-Application (environments console live quota read degrades empty vs real API) — recorded for the hardening wave |
 | DEP-002 | P0-2 | 58a3df3 | #135 | 3856347 | environment/secret/sandbox-account provisioning automation (AC1-7); Task-tool subagent worker 2-a (the dispatch call returned context-deadline-exceeded but the worker completed in the background — commit 47ab2de by `DEP-002 worker`, worktree clean, evidence file self-recorded); Lead independently reproduced the full battery on the worktree (governance OK / typecheck 0 / lint 68w-8i baseline / unit 340f-5962t / full suite 500f-8461t+201 honest skips / deploy:validate valid=true with 3 sandbox accounts across 3 environments / provision --plan exit 0 with all five convergence steps PASS) + provision suite standalone 31/31 (AC1 plan-mode-no-credentials, AC2 hostile plaintext probes, AC3 idempotence+drift+teardown-guards, AC4 manifest-projected policy facts); honest NOT RUN boundaries for all live-provider steps with owners in deploy/evidence/dep-002.json; automatic merge over DEP-030-advanced main verified zero-overlap, full battery on the integration (501f/8486t) |
+| DEP-032 | P3-3 | d1faea0 | #136 | bd0bef8 | execution reproducibility-bundle export + self-host handoff (AC1-7); worker 2-c-resume (Task-tool continuation over the preserved uncommitted progress of the dead 03:28 UTC turn; 4 checkpoint commits: core 7777e92, lead-smoke 59252a9, browser-smoke stack 106bc2d, evidence b75d579); composition-only (zero new API routes); Lead pre-dispatch union-merge of pages.ts over DEP-030's usage routes (both route sets coexist — the predicted mechanical reconciliation); Lead independently reproduced the full battery (governance OK / typecheck 0 / lint 68w-8i / full suite 502f-8513t+201 skips — identical to worker evidence) + lead-smoke 18/18 PASS (real API + real dashboard: create→plan→dispatch→settle→export journey, bundle.facts HTTP-verified parity with facts.json, artifact rows references+digests only, hostile 404s) + live-stack endpoint probe (export view 200, bundle.json composed, unknown-id 404, self-host guide 200); honest NOT RUN: live-deployment reproduction, real-PG self-host path, live-provider ops, CI-on-branch — owners in deploy/evidence/dep-032.json |
 
 ## Absorbed items
 
@@ -32,25 +33,18 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-022 | DEP-020 | docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md |
 | DEP-023 | DEP-020 | docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps |
 
-## Current frontier (main 3856347 after the DEP-002 merge, 2026-09-17)
+## Current frontier (main bd0bef8 after the DEP-032 merge, 2026-09-17)
 
-- delivered: DEP-001, DEP-002, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025, DEP-030
-- in flight: DEP-032 (worker 2-c-resume, Task-tool channel, base 58a3df3 worktree with
-  preserved uncommitted progress from the dead 03:28 UTC turn — export.ts,
-  SELF-HOSTING.md, execution-export.test.ts + pages.ts/PRODUCTION/README/
-  integration-recipe edits; pages.ts union with DEP-030's merged route block is the
-  known mechanical reconciliation at Lead-apply)
-- eligible: DEP-003 (unblocked by DEP-002 — the P0 chain continues), DEP-031
-  (wave-2 after DEP-032 lands: explorer/playground overlap with DEP-032's edits)
-- blocked: DEP-033 ← DEP-031/DEP-032 (DEP-030 delivered, removed from the gate)
-- channel decision (2026-09-17): the browser replay channel is RETIRED for worker
-  dispatch — its worker chats were deleted server-side during the peak-hours gate
-  incident and the stack's console occupied port 3000 (now restored to the sandbox
-  preview app); the Task-tool subagent channel is the proven dispatch path (DEP-002
-  delivered end-to-end: direct worktree access, no peak gate, no chat deletion;
-  the only artifact is the dispatch call's context-deadline-exceeded return while
-  the worker keeps executing — Lead verifies by worktree state, not call status)
-- later authorized items awaiting dispatch gating: DEP-031..033, DEP-040..044
+- delivered: DEP-001, DEP-002, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025,
+  DEP-030, DEP-032
+- in flight: DEP-003 (worker 3-a, Task-tool channel, worktree at base d1faea0; first commit
+  777cc06 — plane-identity attestation core + full public-route production smoke with
+  wrong-revision/unreachable fail-closed negatives; guardrails.ts + quota-guards additive rows
+  in progress)
+- eligible: DEP-031 (usage comparison — dispatching now at the post-DEP-032 head; the
+  explorer/playground overlap with DEP-032 is resolved since DEP-032 merged first)
+- blocked: DEP-033 ← DEP-031 only (030/032 delivered)
+- later authorized items awaiting dispatch gating: DEP-033, DEP-040..044
 
 ## Dead-lane audit (2026-09-17, commit 3111950)
 
@@ -93,8 +87,7 @@ with full contract rigor.
 
 ## Remaining roadmap
 
-DEP-003 (deployment chain — unblocked by DEP-002's merge);
-DEP-031 (P3 wave, after DEP-032 lands), DEP-032 (in flight, continuation worker),
-DEP-033 (last, gated on 031/032);
+DEP-003 (in flight, worker 3-a); DEP-031 (dispatching at the post-DEP-032 head);
+DEP-033 (last P3, gated on 031);
 DEP-040..044 (deployment acceptance — after the P3 wave; the DEP-040 live-provider validation needs operator-provided free-tier credentials, the recorded NOT RUN boundary of DEP-001);
 DEP-040..044 (deployment acceptance + release gate).
