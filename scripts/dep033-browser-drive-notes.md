@@ -94,3 +94,34 @@ run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
   skipped by Chromium autofill and are not password-manager material; the show-once +
   esc()-escaping + readonly triad is pinned by the unit suite. Recorded here for the
   Lead as a possible future belt-and-braces attribute.
+
+## Surface 3 — /console/playground/text (choose -> compose -> review -> run -> inspect) @ 1280x800
+
+- Document: no horizontal scroll (1280 == 1280); 87 interactive elements; 4 tables
+  (data availability 2-row, kv advertised contract 3-row, kv sandbox envelope 8-row,
+  kv example 4-row) — all fit at desktop; a11y tree exposes columnheader/rowheader/cell.
+- Composer (D9 verified in-browser): every field label renders at computed
+  font-weight 600 — the editable <label> fields (Application id, Compute environment,
+  Spend limit, task.doc, task.maxWords) AND the fixed-by-contract p.form-label
+  ("task.kind — fixed by the advertised contract") — one composed form, one weight.
+- Server-side validation drive (D2+D3 verified in-browser): submitted Spend limit "50"
+  -> the page re-renders with the field error "Sandbox runs are capped at $2.00 per
+  execution — enter a lower ceiling." (.field-error styling) AND the control gains
+  aria-describedby="pf-spend-error" pointing at that error (the D2 conditional wiring:
+  described-by appears exactly when the error exists). The GET form keeps the whole
+  review state in the URL (no-script foundation).
+- Journey (mouse-equivalent + semantic-locator drive): Spend limit corrected to "1" ->
+  "Review the sandbox run" -> review step renders ("Proposed sandbox run", "Run this
+  sandbox execution?", the composed request preview) -> "Run sandbox execution" (POST)
+  -> 303 redirect to /runs/00000000-0000-7000-9000-000000000013 with h1
+  "<id> Created" — the inspect step.
+- New-run detail (CREATED status): no horizontal scroll; navigation "Execution views"
+  (Result / Evidence / Activity / Inspection); kv status table exposes rowheader/cell
+  with the honest non-terminal state ("Terminal at — (still in progress)"); region
+  "Can you trust it?" with drill-down links; "Cancel this execution…" affordance present.
+- Harness observation (NOT a console defect): an agent-browser ref (@e24) resolved
+  against the error re-render did not submit on first click; re-driving via the
+  semantic locator (find role button --name) worked. Driver-side quirk, recorded for
+  honesty; the form itself submits correctly every time.
+- Touch targets: all discrete controls >= 24x24; only inline prose/breadcrumb links
+  below 24px height (19-22px) — WCAG 2.5.8 inline exception.
