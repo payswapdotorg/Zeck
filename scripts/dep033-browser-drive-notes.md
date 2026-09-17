@@ -52,3 +52,9 @@ run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
   "playground's text family", "execution explorer", "Evidence", "artifacts", "docs")
   — WCAG 2.5.8 inline-text exception class; recorded, not a defect.
 - Page errors: none (agent-browser errors empty). Console: no errors.
+- A11y tree (quickstart): the kv table exposes FULL table semantics under display:block —
+  `table` role with 8 `row` children, each `rowheader` + `cell` (e.g. rowheader
+  "Budget ceiling" / cell "$2.00 per run ..."). The five-step journey renders as an
+  ordered `list` with 5 `listitem [level=1]` + ListMarker "1.".."5." (the D7 fix:
+  ol.steps grid change preserved list semantics). Skip target, main landmark, nav
+  landmarks all present in the tree.
