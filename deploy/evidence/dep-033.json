@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-033",
+  "title": "Accessibility, responsive behavior, security and cross-browser hardening of the developer console — verification evidence record",
+  "recordedBy": "DEP-033 implementation workers (4-a + continuation turns 4-a-resume, 4-a-resume-2, 4-a-resume-3)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker; WebKit/Firefox engines unavailable); git worktree /home/z/zeck-w-dep033, branch work/DEP-033-console-hardening at base f338f9f (post DEP-003 + DEP-031 merges), branch head ce67eab before this record",
+  "date": "2026-09-17",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The browser drive was performed by the final tail turn (4-a-resume-3) with a REAL Chromium (chrome 152.0.7977.64 headless via agent-browser 0.35.0) against the booted REAL API + REAL dashboard stack (scripts/browser-stack-dep033.ts, in-memory stores, one SETTLED execution + one BARE non-terminal execution + the live credential authority on fixed ports 3928/3929); every measurement below is that turn's own run, persisted to scripts/dep033-browser-drive-notes.md as it was extracted.",
+  "notRun": [
+    {
+      "check": "WebKit engine verification of the console surfaces",
+      "reason": "No WebKit engine is available/installable in the sandboxed worker pod (no network-fetchable browser engine; only the agent-bundled Chromium is present). Never assumed-pass.",
+      "owner": "Lead credentialed re-run (Safari/WebKit drive against the booted stack, or an engine-inclusive CI job)"
+    },
+    {
+      "check": "Firefox (Gecko) engine verification of the console surfaces",
+      "reason": "No Firefox engine is available/installable in the sandboxed worker pod. Never assumed-pass.",
+      "owner": "Lead credentialed re-run (Firefox drive against the booted stack, or an engine-inclusive CI job)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    },
+    {
+      "check": "Screen-reader drive (NVDA/JAWS/VoiceOver) beyond the accessibility-tree verification",
+      "reason": "The browser drive verified the accessibility tree (roles, labels, live regions, tab order, focus visibility) in real Chromium; no screen-reader application is runnable in the pod.",
+      "owner": "Lead credentialed re-run (VoiceOver/NVDA pass over the primary journeys)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Governance",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[] (exit 0)"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit)"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "68 warnings / 8 infos / 0 errors, exit 0 — the recorded baseline exactly. The only diagnostic on any file this work order touched is the PRE-EXISTING apps/dashboard/pages.ts noUnusedImports warning (pages.ts:207, the sandbox-governance import block, untouched by this order); zero new violations introduced by credentials.ts/pages.ts/tokens.ts or any test/script file."
+    },
+    {
+      "check": "Full test suite (unit + architecture + discrimination + integration)",
+      "command": "bun run test",
+      "evidence": "Test Files 506 passed | 147 skipped (653); Tests 8613 passed | 201 skipped (8814); 0 failures. Base f338f9f was 506f/8577t; the +36-file-level... precisely: +1 file (tests/unit/dashboard/console-hardening.test.ts) and +36 tests over base at checkpoint 3, +5 more (D10/D11 pins) = 41 tests in the hardening suite at head; the numbers above are this record's own run at tree ce67eab. The 201 test-level and 147 file-level skips are the unchanged PG/credential-gated baseline suites (ZECK_PG_TEST_URL etc.)."
+    },
+    {
+      "check": "AC1 — keyboard-only operator completes each primary journey with visible focus and honest error recovery",
+      "command": "real-Chromium tab drive (agent-browser) + tests/unit/dashboard/console-hardening.test.ts + scripts/lead-smoke-dep033.ts",
+      "evidence": "Quickstart tab cycle DRIVEN: 36 tab stops to wraparound, DOM order == tab order (zero tabindex escapes), ALL 36/36 stops render a visible 2px solid rgb(11,98,196) focus outline (the :focus-visible token), skip-link first-focusable confirmed live. Credentials issue->reveal DRIVEN end to end (native required gate held the empty submit: validity.valueMissing; server-side spend/label errors re-render with .field-error + aria-describedby on the CONTROL). Playground choose->compose->review->run->inspect DRIVEN (review step + POST -> 303 to the run detail). Cancel journey DRIVEN (confirmation form -> POST -> Cancelled). Unit suite pins the skip link, no-positive-tabindex, native-controls-only, and error-wiring rules on every journey page."
+    },
+    {
+      "check": "AC2 — primary journeys render and operate across viewport classes; limitations recorded honestly",
+      "command": "real-Chromium responsive sweeps at 1280x800, 768x1024, 375x667 (12 surface views at mobile)",
+      "evidence": "Desktop 1280: all 8 surfaces zero document horizontal scroll. Tablet 768: all 7 surfaces zero document scroll; wide tables scroll in-box (keys 873>720, explorer 1005>720). Mobile 375 POST-FIX: all 12 views zero document scroll; every wide table scrolls in-box (keys 615>351, playground 680>301, explorer 1013>351, artifacts 392>351, events 496>351, evidence 585>351, compare 438/419>351). TWO genuine defects were found and fixed mid-drive (D10 detail-grid mobile scroll-trap 404px doc width at 375px; D11 Compare action links 69x18) — both re-driven clean after the fix. Discrete controls at 375: 47 controls, min 44px height / 76px width (>= 24x24 everywhere); the only sub-24px targets are inline prose links (h 19-22px) — the WCAG 2.2 AA 2.5.8 inline exception, recorded not fixed."
+    },
+    {
+      "check": "AC3 — hostile-value probes over every render path; all refused/escaped; zero regressions",
+      "command": "tests/unit/dashboard/console-hardening.test.ts (AC3 section) + scripts/lead-smoke-dep033.ts",
+      "evidence": "Markup-carrying hostile execution ids (lookup redirect percent-encoded; path 404 escaped), hostile family ids, hostile credential labels, hostile form values re-rendered escaped on validation failure (no attribute breakout), cookie-derived recents carrying hostile ids (escaped + pruned on 404), hostile task/metadata/route fields, the [not displayed] redaction doctrine on secret-shaped event payload keys, hostile API error messages on failed creates — all pinned in the 41-test suite and re-verified over real HTTP by the lead smoke."
+    },
+    {
+      "check": "AC4 — the no-script foundation works for the primary journeys; client.js enhances without breaking it",
+      "command": "real-Chromium with the client.js network route aborted + the unit suite's AC4 section + the lead smoke",
+      "evidence": "With client.js genuinely blocked in the driven browser (verified: Ctrl+K no longer opens the command dialog), the quickstart page renders fully (4 native forms, 7 details groups) and the Trust/Library nav disclosures open via NATIVE summary clicks (details.open true). The playground compose/review/run and cancel journeys driven earlier were native GET/POST form submissions throughout. Unit pins: native links on every journey page, zero inline handlers, no javascript: URLs, native GET forms (lookup + preferences), the issue form a native POST, details/summary disclosures, client.js the single deferred external script."
+    },
+    {
+      "check": "AC5 — cross-browser verification recorded with honest NOT RUN boundaries",
+      "command": "real Chromium driven (chrome 152.0.7977.64 headless, agent-browser 0.35.0); engine availability audit",
+      "evidence": "Chromium: the full drive above (focus, tab order, a11y tree, responsive, touch targets, no-script). WebKit: NOT RUN — engine unavailable in the environment (owner: Lead). Firefox: NOT RUN — engine unavailable in the environment (owner: Lead). Both recorded in notRun above; never assumed-pass."
+    },
+    {
+      "check": "AC6 — every defect fixed carries a regression test that fails before and passes after",
+      "command": "bunx vitest run tests/unit/dashboard/console-hardening.test.ts (41/41) + fail-before verification on base f338f9f in a clean worktree",
+      "evidence": "D1-D9 pinned by the inherited 36-test suite (16 verified fail-before on base by the predecessor turns). D10 + D11 (this tail turn's browser-drive findings) pinned by 5 new tests: fail-before verified on base f338f9f (2 D10 failures + 3 D11 failures in a clean base worktree with only the new test file copied in), 41/41 pass at head."
+    },
+    {
+      "check": "AC7 — existing pins, manifests and route counts stay in sync; no new routes",
+      "command": "git diff f338f9f..HEAD --stat -- openapi.json deploy/ + navigation/discrimination suites",
+      "evidence": "openapi.json and EVERY deploy/ manifest byte-identical to base (zero diff lines). The dashboard route table is exactly 88 routes (pinned by the hardening suite; 40 GET /console + 6 POST /console spot-checked); navigation.test.ts 21/21 (route map unchanged — no rows added); dashboard-journey discrimination 53/53 (the DEP-031 mutation-vocabulary and POST-route pins still hold). The order's surface diff is apps/dashboard/{credentials,pages,tokens}.ts + tests + scripts only."
+    },
+    {
+      "check": "Dashboard/browser smoke — real-process lead smoke (RE-RUN by this tail turn at 0de6f41, after the D10/D11 fixes)",
+      "command": "bun scripts/lead-smoke-dep033.ts",
+      "evidence": "28/28 PASS, SMOKE OK — REAL API server + REAL dashboard over in-memory services. NOTE (honest correction of the inherited record): the script carries exactly 28 check() calls (grep-verified on the source, byte-identical since checkpoint 4 c47fd50) and prints 28 PASS lines + 'SMOKE OK'; the inherited '29/29' claim (checkpoint-4 commit message, Lead worklog) was an off-by-one, most likely counting the SMOKE OK line. The checks cover the journeys, hostile probes, table-semantics-beside-in-box-scroll, the no-script foundation and the mode-switch GET round-trip."
+    },
+    {
+      "check": "Real-Chromium browser drive (the DEP-032-precedent layer this order adds) — focus, tab order, a11y tree, responsive, touch targets, no-script",
+      "command": "scripts/browser-stack-dep033.ts (REAL stack, fixed ports) driven by agent-browser 0.35.0 / chrome 152.0.7977.64 headless; measurements persisted live to scripts/dep033-browser-drive-notes.md",
+      "evidence": "Surfaces driven: quickstart, keys (issue->reveal->reload-replay), playground text (compose->review->run->inspect + the $50-spend server-side error path), executions explorer, run detail (result + activity + events + evidence + inspection views), cancel journey, settings, compare (two pairs). Focus visibility 36/36 tab stops (2px solid #0b62c4 on every stop, skip-link included); table semantics survive display:block in the accessibility tree (table/row/rowheader/columnheader/cell roles exposed on every surface incl. the 8-column explorer and the 9-row events table); ol.steps renders as a numbered list (ListMarker 1..5, the D7 pin); aria-current=page on the active run-detail tab; role=status live regions on the reveal + replay surfaces; the show-once secret doctrine verified with a real reload (secret GONE, honest replay outcome rendered); touch targets: every discrete control >= 24x24 at every viewport class (smallest observed 79x43 button / 229x33 nav link at desktop, 44px min height at mobile), the sole sub-24px class being inline prose links (2.5.8 exception)."
+    }
+  ],
+  "notes": [
+    "DEFECT TAXONOMY (the work order's reporting rule — every defect with reproduction, root-cause class, fix, pin): D1 responsive scroll-trap (console; .app-shell items min-width:auto) -> min-width:0 + table display:block/overflow-x:auto, pinned. D2 aria-describedby on the label (console) -> injected on the control, pinned. D3 unstyled field errors + never-rendered idempotency error (console) -> .field-error + role=alert + errorOf(), pinned. D4 class='card form' carrying no rule (console) -> class='flow card', pinned. D5 credentials form hints unwired (console) -> aria-describedby wiring, pinned. D6 unstyled secret reveal (console) -> section.reveal/.secret-reveal rules, pinned. D7 ol.steps reusing the timeline two-column grid (console) -> ol.steps grid rule + markup switch, pinned. D8 command-suggestions 'mangle' (harness/display-pipeline PHANTOM — the environment strips the byte sequence '[h' from displayed output; od -c + git blob comparison proved the bytes well-formed) -> pinned byte-exactly, no code change. D9 unstyled .form-label (console) -> font-weight 600, pinned. D10 run-detail mobile scroll-trap (console — found by THIS tail turn's drive): .detail-grid's bare 1fr auto-minimum track sized to the artifacts table's ~392px min-content at the 351px mobile content width -> 404px document scrollWidth at 375px; fixed with minmax(0,1fr) on the base and <=1024px tracks (the >=1025px rule already had it); re-driven clean; pinned (2 tests, fail-before on base). D11 Compare action links 69x18 below the WCAG 2.2 AA 2.5.8 24x24 minimum (console — found by the drive) -> a.row-action (inline-block, min 24x24, token padding) on both call sites; re-driven 85x32; pinned (3 tests, fail-before on base). Root-cause classes: ALL eleven are console-class except D8 (harness/display-pipeline). No Zeck-core, provider or access defects surfaced.",
+    "VERIFIED-CLEAN SURFACES (the work order asks for these too): settings (no tables, no overflow, all controls sized, only inline-exception links); the compare view across all three viewport classes (5 tables, full semantics, in-box scroll); the keys/issue reveal + reload-replay states; the run-detail evidence/inspection/activity/events views at mobile; the skip-link + breadcrumb + command-bar chrome on every surface; the credentials empty state (honest cell in the table).",
+    "NEW FILES OUTSIDE THE CONSOLE SURFACE (merge note for the Lead): scripts/lead-smoke-dep033.ts, scripts/browser-stack-dep033.ts, scripts/dep033-browser-drive-notes.md (the drive evidence, persisted live), tests/unit/dashboard/console-hardening.test.ts, and this evidence record — all additive; no existing deploy/ file edited; openapi.json and every deploy/ manifest byte-identical to base.",
+    "SMOKE-COUNT CORRECTION (honest disclosure): the lead smoke is 28 checks / 28 PASS / SMOKE OK, not the inherited '29/29' (off-by-one in the checkpoint-4 commit message and the Lead's worklog; the script is byte-identical since c47fd50 and grep-verifies 28 check() calls). The Lead may want to note this in the delivery-report ledger.",
+    "HARNESS LESSONS for the failure log: (a) this tool environment REAPS background processes started with setsid/nohup at command boundaries — a Bun spawn(detached:true).unref() daemon (ppid 1) survives, which is how the stack was kept alive for the drive; (b) the D8 display-pipeline stripping ('[h' byte sequence) recurred as a near-miss: a CSS comment containing a backtick-quoted `1fr` inside the DASHBOARD_CSS template literal terminated the string (parse error caught by the suite before commit) — byte-level verification discipline held.",
+    "TOUCH-TARGET BAR (recorded for reproducibility): the drive used the WCAG 2.2 AA 2.5.8 minimum (24x24 CSS px) as the bar for discrete controls, with the inline-prose exception applied only to links inside sentences/breadcrumb text lines; 44x44 (2.5.5 AAA / platform HIG) was NOT the bar — every observed discrete control nevertheless clears it except nav summary/link heights (33-43px), which clear 24 but not 44.",
+    "The 201 test-level and 147 file-level skips are the unchanged PG/credential-gated baseline suites — the same honest-skip behavior the DEP-030/031/032/003 records carry.",
+    "Commit chain over base f338f9f: 23c9e3a, fe65980, c4b3cb0, c47fd50, 28df3e1 (inherited from workers 4-a/4-a-resume/4-a-resume-2) + 33d905b, 162d982, 9c0ac42, 0de6f41, ce67eab (this tail turn: the live-persisted drive notes, the D10/D11 fixes + pins, the completed notes). Evidence commit follows."
+  ]
+}
