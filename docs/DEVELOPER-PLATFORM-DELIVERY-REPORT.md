@@ -21,6 +21,7 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-001 | A | ffe5a202 | #133 | 0b668f0 | worker chat 12f83dcf (both checkpoints in-pod despite the turn death); tarball sha256 `08a65af2…` verified at harvest; Lead merged over DEP-014-advanced main (pins reconciled 23→28, openapi union 27 paths); full battery on the integration (339f/5931t, arch, int, governance, deploy:validate valid) + zero regressions | LEAD-DIRECT (chat-channel capacity-gated; 3 consecutive worker turn deaths): quota authority + identity lifecycle + synthetic-data policy + 4 API routes + console projection + migration 0034; battery green (typecheck 0 / lint 0-68w-8i / unit 334f-5869t / arch 139f-2230t / int 20f-266t / governance OK) + 7-check real-process smoke + zero regressions | worker chat 2442b7bd, tarball sha256 `b2e925d1…` verified at harvest; Lead re-ran the FULL battery on the DEP-011+012 integration (333f/5857t, arch, int, governance OK) + all three lead smokes; real-browser journey evidence |
 | DEP-012 | B | e49c36f | #130 | 9429fb8 | LEAD-DIRECT (dispatch capacity-gated; AI_CONTINUATION precedent): explorer module + list/six-view detail/machine-facts console routes + nav entry; full battery green (typecheck 0 / lint 0-61w-8i / unit 330f-5805t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke |
 | DEP-013 | B | e70f2ed | #129 | cdf6338 | interactive sandbox playground for every workload class (AC1-9); worker chat 59c09e03, tarball sha256 `6546a0b5…` verified byte-identical at harvest; Lead independently reproduced the full battery (typecheck 0 / lint 0-61w-8i / unit 329f-5782t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke of catalog, composer, honest NOT RUN (three-d) and example-source routes |
+| DEP-030 | P3-1 | 28cf509 | #134 | 7ad8ada | usage/economics/optimization dashboard (AC1-7); worker chat 9a796433 (wave-1), tarball sha256 `a9dc3e81…` verified at harvest; composition-only (zero new API routes — the preferred path; openapi/env-vars/route-count pins untouched and green); Lead independently reproduced the full battery (typecheck 0 / lint 68w-8i baseline / unit 340f-5956t / arch 139f-2230t+4skip / int 21f-269t+197skip / governance OK) + lead-smoke 11/11 (real API + real dashboard: honest-unavailable states naming the four missing contracts, verbatim optimization decisions, real quota envelope, facts.json parity); worker caught+fixed a real `$$` double-currency defect mid-smoke with a regression pin; merge note: DEP-014 sandbox-governance transport omits X-Zeck-Application (environments console live quota read degrades empty vs real API) — recorded for the hardening wave |
 
 ## Absorbed items
 
@@ -30,10 +31,11 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-022 | DEP-020 | docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md |
 | DEP-023 | DEP-020 | docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps |
 
-## Current frontier (main 71800c2, reconciled 2026-09-18)
+## Current frontier (main 7ad8ada, 2026-09-17 wave-1 in flight)
 
-- delivered: DEP-001, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025
-- eligible: DEP-002, DEP-030, DEP-031, DEP-032
+- delivered: DEP-001, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025, DEP-030
+- in flight: DEP-002 (worker 2-a, chat f73f52f3, base 28cf509), DEP-032 (worker 2-c, chat cd655d30, base 28cf509) — both peak-hours-gated, assault loop armed
+- eligible: DEP-002, DEP-031, DEP-032
 - in flight: none
 - blocked: DEP-003 ← DEP-002 (P0 chain sequence: provisioning automation
   precedes the production smoke/guardrail/identity order — correction of the

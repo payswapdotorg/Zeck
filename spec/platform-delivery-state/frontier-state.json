@@ -10,7 +10,8 @@
     "DEP-013",
     "DEP-014",
     "DEP-020",
-    "DEP-025"
+    "DEP-025",
+    "DEP-030"
   ],
   "eligible": [
     "DEP-031"
@@ -19,20 +20,16 @@
     {
       "item": "DEP-002",
       "branch": "work/DEP-002-provisioning-automation",
-      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
-      "worker": "2-a"
-    },
-    {
-      "item": "DEP-030",
-      "branch": "work/DEP-030-usage-dashboard",
-      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
-      "worker": "2-b"
+      "base": "28cf509ed99c4b7e61ec4e2de68b649381fc9334",
+      "worker": "2-a",
+      "chat": "f73f52f3 (3rd dispatch; peak-gated)"
     },
     {
       "item": "DEP-032",
       "branch": "work/DEP-032-export-bundle",
-      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
-      "worker": "2-c"
+      "base": "28cf509ed99c4b7e61ec4e2de68b649381fc9334",
+      "worker": "2-c",
+      "chat": "cd655d30 (peak-gated)"
     }
   ],
   "blocked": [
@@ -69,6 +66,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "71800c2aa31a160198eaf55d33ce0210eea23aba",
+  "currentBase": "7ad8ada6dceee07ed96e283fda700e32714d852e",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
