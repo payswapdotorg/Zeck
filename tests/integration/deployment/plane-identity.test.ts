@@ -60,7 +60,10 @@ interface PlaneProcess {
 const PLANE_STOPS: Array<() => Promise<void>> = [];
 
 /** Boot the REAL bootstrap host as a subprocess on an ephemeral port. */
-async function bootPlane(revisionOverride?: string): Promise<PlaneProcess> {
+async function bootPlane(
+  revisionOverride?: string,
+  extraEnv?: Readonly<Record<string, string>>,
+): Promise<PlaneProcess> {
   const host = "127.0.0.1";
   const port = 39900 + (process.pid % 500) + Math.floor(Math.random() * 40);
   const baseUrl = `http://${host}:${port}`;
@@ -73,6 +76,7 @@ async function bootPlane(revisionOverride?: string): Promise<PlaneProcess> {
         ...process.env,
         ZECK_ENVIRONMENT: "local",
         ...(revisionOverride === undefined ? {} : { ZECK_DEPLOY_GIT_REVISION: revisionOverride }),
+        ...(extraEnv ?? {}),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -131,6 +135,25 @@ afterAll(async () => {
 
 function currentRevision(): string {
   return execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPO_ROOT, encoding: "utf8" }).trim();
+}
+
+/** Reserve an ephemeral port then close the listener: a REAL endpoint with no listener. */
+async function reservedDeadPort(): Promise<number> {
+  const net = require("node:net") as typeof import("node:net");
+  const reserved = await new Promise<{ port: number }>((resolvePromise, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address === null || typeof address === "string") {
+        reject(new Error("no port"));
+        return;
+      }
+      const { port } = address;
+      server.close(() => resolvePromise({ port }));
+    });
+  });
+  return reserved.port;
 }
 
 interface ToolResult {
@@ -292,6 +315,75 @@ describe.skipIf(!HAS_GIT)(
         await plane.stop();
       }
     }, 45_000);
+
+    test("an authority endpoint that is REALLY unreachable: the plane reports down (503, fail closed) and the smoke honors both boundary modes", async () => {
+      // A configured PostgreSQL authority pointing at a REAL endpoint
+      // with no listener: the health probe's TCP connect is genuinely
+      // attempted and genuinely refused — never a mock of the probe
+      // path. This pins the authority-unavailable boundary
+      // deterministically, independent of whether the host running the
+      // suite happens to have a local PostgreSQL.
+      const deadPort = await reservedDeadPort();
+      const plane = await bootPlane(undefined, {
+        ZECK_PG_ADMIN_URL: `postgres://zeck:zeck@127.0.0.1:${deadPort}/zeck`,
+      });
+      try {
+        const response = await fetch(`${plane.baseUrl}/health`);
+        const body = (await response.json()) as {
+          status: string;
+          controlPlane: string;
+          dependencies: {
+            name: string;
+            authority: string;
+            status: string;
+            degradedMode?: string;
+            detail?: string | null;
+          }[];
+        };
+        // Fail-closed authority: the whole plane is DOWN with 503 while
+        // the control plane itself stays ready (the distinction on the
+        // wire).
+        expect(response.status).toBe(503);
+        expect(body.status).toBe("down");
+        expect(body.controlPlane).toBe("ready");
+        const relational = body.dependencies.find((d) => d.name === "relational-state");
+        expect(relational?.status).toBe("unavailable");
+        expect(relational?.detail).toContain("unreachable (fail closed)");
+        // The non-authoritative concerns degrade EXPLICITLY with their
+        // provider-declared modes (never silent, never fabricated ready).
+        for (const dependency of body.dependencies.filter((d) => d.name !== "relational-state")) {
+          expect(dependency.status).toBe("degraded");
+          expect(dependency.degradedMode).toBeDefined();
+        }
+
+        // The smoke boundaries against this exact plane: strict mode
+        // FAILS (the unattested authority is a problem, never a
+        // warning); --allow-degraded records the explicit
+        // down-allowed-degraded pass (exit 0).
+        const strict = runPublicSmoke(["--environment", "local", "--url", plane.baseUrl]);
+        expect(strict.code).toBe(1);
+        const strictReport = reportOf(strict);
+        const strictProblems = strictReport.problems as string[];
+        expect(
+          strictProblems.some((problem) => problem.includes("GET /health answered 503")),
+        ).toBe(true);
+
+        const degraded = runPublicSmoke([
+          "--environment",
+          "local",
+          "--url",
+          plane.baseUrl,
+          "--allow-degraded",
+        ]);
+        expect(degraded.code).toBe(0);
+        const degradedReport = reportOf(degraded);
+        const degradedAttestation = degradedReport.attestation as Record<string, unknown>;
+        expect(String(degradedAttestation.healthCheck)).toContain("down-allowed-degraded");
+        expect(degradedReport.problems).toEqual([]);
+      } finally {
+        await plane.stop();
+      }
+    }, 120_000);
   },
 );
 
