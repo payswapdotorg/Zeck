@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-032",
+  "title": "Execution reproducibility-bundle export, self-host/deployment handoff — verification evidence record",
+  "recordedBy": "DEP-032 implementation worker (2-c, continuation turn)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker); git worktree /home/z/zeck-w-dep032 at main head d1faea0 (post DEP-030 + DEP-002 merges)",
+  "date": "2026-09-17",
+  "doctrine": "Every live-provider operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a live result. The export surface itself is fully verifiable without credentials (it is a projection over the public records), and every check below was executed in the worktree with the exact numbers recorded.",
+  "notRun": [
+    {
+      "check": "Reproduction of an exported run against a LIVE deployment (issuing the bundle's recreated create request against a real hosted Zeck API)",
+      "reason": "No live deployment and no transport credential for one in the worker pod. The recipe is verified to the maximum extent possible without one: every documented API call matches the live route table, the example files resolve, the recreated request equals the recorded public facts verbatim, and the full journey runs end-to-end against the REAL API server + REAL dashboard in-process (lead-smoke, below).",
+      "owner": "Lead credentialed re-run (or any developer with a live deployment following docs/developer/SELF-HOSTING.md)"
+    },
+    {
+      "check": "Self-host path with a real PostgreSQL 16+ server (deploy:bootstrap / deploy:migrate / strict deploy:public-smoke)",
+      "reason": "No PostgreSQL server in the worker pod (no server binaries, no Docker). The developer-path commands in the guide are the deployment foundation's own documented sequence; deploy:validate (the no-network configuration gate) runs green here.",
+      "owner": "Lead credentialed re-run (or any environment with a PostgreSQL 16+ server)"
+    },
+    {
+      "check": "Live-provider resource operations (Neon / Cloudflare R2+Queues+Workflows / Upstash / Vercel)",
+      "reason": "No cloud credentials in the worker pod; the self-host guide projects these as operator-only boundaries by design (they are the honest boundary the guide teaches).",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md sections 3.2 + 8)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Governance",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit)"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "68 warnings / 8 infos — the recorded baseline; 0 errors. The inherited work carried 4 biome format/organize-imports errors in apps/dashboard/export.ts + tests/unit/dashboard/execution-export.test.ts; fixed with biome --write before this record (no baseline warnings touched)."
+    },
+    {
+      "check": "Full test suite (unit + architecture + discrimination + integration)",
+      "command": "bun run test",
+      "evidence": "Test Files 502 passed | 147 skipped (649); Tests 8513 passed | 201 skipped (8714); 0 failures; re-run at the final branch state (all code files identical to the recorded run; only this evidence JSON's wording differs) reproduced the identical counts (231.5s). The file/test-level skips are the honest PG/credential-gated suites (unchanged baseline behavior). New in this work order: tests/unit/dashboard/execution-export.test.ts — 25 tests, all passing."
+    },
+    {
+      "check": "Targeted dashboard + developer-docs runs (pre-full-battery checkpoints)",
+      "command": "bunx vitest run tests/unit/dashboard tests/unit/developer-docs",
+      "evidence": "dashboard: 29 files / 592 tests passed (incl. the 25 new export tests); developer-docs: 4 files / 73 tests passed (machine-manifest reconciliation incl. the integration-recipe.json additive row, docs-link walk incl. SELF-HOSTING.md, secret scan)"
+    },
+    {
+      "check": "AC1 — export for any execution visible to the scope, machine parity by construction",
+      "command": "tests/unit/dashboard/execution-export.test.ts + scripts/lead-smoke-dep032.ts",
+      "evidence": "HTTP-verified verbatim equality: bundle.facts EQUALS the served facts.json composition (unit, fake-API wire-exact world AND lead-smoke over the REAL API+dashboard); the explorer carries the export action; unknown/invisible ids 404 honestly (view + JSON twin)"
+    },
+    {
+      "check": "AC2 — artifact references and digests only, never content, never a second authority",
+      "command": "tests/unit/dashboard/execution-export.test.ts",
+      "evidence": "artifact rows carry exactly {createdAt, digest, id, reference}; forbidden content-bearing keys asserted absent; digest-less references name the artifactDigests boundary; empty artifact lists name the outputArtifacts boundary (nothing invented)"
+    },
+    {
+      "check": "AC3 — a real, console-free reproduction recipe",
+      "command": "tests/unit/dashboard/execution-export.test.ts + scripts/lead-smoke-dep032.ts",
+      "evidence": "example path examples/text-summarization.ts resolves to a real repository file (lead-smoke re-verifies over the real stack); quickstart fallback + RECIPE_DOC_PATHS all existSync; documentedApiCalls are the public routes (POST /executions, GET /executions/:id{,/results,/events,/verification}); the recreated create request equals the recorded task/constraints/metadata verbatim (lead-smoke, real records); unrecorded families fall back to the quickstart with the workloadFamilyExample boundary naming the miss"
+    },
+    {
+      "check": "AC4 — the self-host handoff projects deploy/ by link, no console-local drift",
+      "command": "tests/unit/dashboard/execution-export.test.ts + docs-links/secret-scan suites",
+      "evidence": "docs/developer/SELF-HOSTING.md serves at /console/docs/SELF-HOSTING.md and is listed by the docs index; every deploy seam it references exists (deploy/README.md, deploy/PUBLIC-DEPLOYMENT.md and all 8 referenced manifests); the guide embeds NO fenced JSON manifest copy (anti-drift assertion) and carries the deploy-wins authority statement; operator/developer boundaries drawn (accounts, secrets, promotion, free tiers, quota fence)"
+    },
+    {
+      "check": "AC5 — hostile-value probes on every new interpolation path",
+      "command": "tests/unit/dashboard/execution-export.test.ts",
+      "evidence": "markup-carrying execution ids (404 paths), hostile metadata/artifact ids/digests (200 paths) never render unescaped; the machine bundle stays parseable JSON carrying the hostile values as data; the recreated request round-trips hostile metadata as data"
+    },
+    {
+      "check": "AC6 — machine manifests and pins stay in sync (additive rows only)",
+      "command": "bunx vitest run tests/unit/developer-docs + full suite",
+      "evidence": "ZERO new public API routes (composition-only console surface — the preferred path), so openapi.json's live-route-table pin (28 routes) is untouched and green; integration-recipe.json step 9 gained the additive SELF-HOSTING.md artifact row + action text (machine-schemas suite green); the bundle itself carries all 6 machine manifests' declared revision facts + sha256 over exact bytes (lead-smoke re-computes all 6 digests against the checkout — 6/6 pinned)"
+    },
+    {
+      "check": "AC7 — composed-surface pattern + honesty doctrine",
+      "command": "code review + export.ts module contract",
+      "evidence": "the bundle embeds explorerFactsOf() VERBATIM (one composition, no drift); every fact the records do not carry renders as an explicit boundary field (artifactContent, environmentConfiguration, requestIdentity, deploymentGitRevision, perStepCostBreakdown + the conditional settledCost/usage/outputArtifacts/artifactDigests/workloadFamilyExample); the deployment git revision is named as the deploy foundation's GET /identity attestation, never approximated"
+    },
+    {
+      "check": "Dashboard/browser smoke — real-process lead smoke",
+      "command": "bun scripts/lead-smoke-dep032.ts",
+      "evidence": "18/18 PASS, SMOKE OK — REAL API server + REAL dashboard over in-memory services, a governed create→plan→dispatch→settle run with a real artifact + digest, then the export journey end-to-end (explorer action, view sections, refs+digests only, HTTP parity bundle.facts==facts.json, recreated request verbatim, 6/6 manifest digests pinned, bare-run boundaries, 404 paths, self-host guide + docs index)"
+    },
+    {
+      "check": "Dashboard/browser smoke — real-browser drive",
+      "command": "bun scripts/browser-smoke-dep032.ts (fixed ports 3921/3922) + agent-browser headless Chromium",
+      "evidence": "explorer renders with the 'Export reproducibility bundle' action; click → the bundle view renders every section; click 'download the bundle as verbatim JSON' → the bundle.json composition serves (schemaVersion 1); /console/docs/SELF-HOSTING.md renders the guide; the bare run's export renders the honest boundaries; ZERO page errors; full-page screenshot captured (worker-pod local)"
+    },
+    {
+      "check": "Deployment configuration gate (the self-host developer path's first step)",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0, valid=true (connectivityEnvironments=4, regionEnvironments=4, providerRedundancyProfiles=4, providerTierEntries=8, providerTierVerification=recorded-not-live-verified, sandboxAccountEnvironments=3, sandboxAccounts=3)"
+    }
+  ],
+  "notes": [
+    "NEW FILES OUTSIDE THE CONSOLE DOCS SURFACES (merge note for the Lead): this evidence record itself (deploy/evidence/dep-032.json — a new additive file in DEP-001's evidence directory, following the DEP-002 precedent; no existing deploy/ file was edited) and the two smoke runners scripts/lead-smoke-dep032.ts + scripts/browser-smoke-dep032.ts (new additive files, house lead-smoke/browser-smoke precedent from DEP-011..030).",
+    "The bundle's repository revision facts are the machine manifests' DECLARED revision facts (schemaVersion / openapi version) plus export-time sha256 over each manifest's exact bytes — an honest pin of the checkout's contract state. The RUNNING deployment's git revision remains the deploy foundation's GET /identity attestation, carried as an explicit boundary (never approximated console-side).",
+    "The reproduction recipe deliberately uses a FRESH Idempotency-Key: the original request's key and userId are not readable public facts (requestIdentity boundary); the recipe recreates the RUN as a new governed execution, not the original row.",
+    "Inherited-work defects found and fixed by this continuation turn: 4 biome format/organize-imports errors in the preserved export.ts + execution-export.test.ts (fixed via biome --write; no baseline diagnostics touched). No other defects found in the preserved work — its composition, routes, guide and tests were verified correct by the full battery."
+  ]
+}
