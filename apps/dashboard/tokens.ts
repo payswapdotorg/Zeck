@@ -252,6 +252,7 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
   box-shadow: inset 2px 0 0 var(--focus-ring);
 }
 
+.app-header, .app-nav, .app-main, .app-footer { min-width: 0; }
 .app-main {
   grid-area: main;
   padding: var(--space-5);
@@ -300,6 +301,15 @@ table.data, table.kv {
   margin: var(--space-3) 0;
   font-size: 0.95rem;
 }
+/* DEP-033 (responsive hardening): wide data/kv tables scroll WITHIN their
+ * own box instead of widening the page grid — without this, a table whose
+ * min-content exceeds the viewport (the 5–8 column console tables measure
+ * 826–1092px intrinsic) stretches the .app-shell grid items (min-width:
+ * auto) and traps the whole document in horizontal scroll on mobile and
+ * tablet viewport classes. Table semantics survive display:block (the
+ * accessibility tree still exposes table/rowheader/cell — verified in the
+ * DEP-033 browser drive). */
+table.data, table.kv { display: block; overflow-x: auto; }
 th, td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
 th { color: var(--text-secondary); font-weight: 600; }
 table.data thead th { border-bottom: 2px solid var(--border-strong); }
@@ -466,6 +476,14 @@ table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.87
 .timeline .stage { font-weight: 600; }
 .timeline .stage-detail { color: var(--text-secondary); }
 
+/* DEP-033 (presentation hardening): the numbered step journeys (quickstart
+ * five steps, playground choose/compose/run/inspect) are single-paragraph
+ * list items — they must NOT reuse the .timeline time+stage two-column
+ * grid (which squeezed each step into the 9rem time column: 144px usable
+ * beside 784px dead space, measured in the DEP-033 browser drive). */
+ol.steps { display: grid; gap: var(--space-4); margin: var(--space-3) 0 var(--space-5); }
+ol.steps li > :last-child { margin-bottom: 0; }
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
@@ -489,17 +507,17 @@ table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.87
   box-shadow: inset 0 -2px 0 var(--focus-ring);
 }
 
-details.why-panel, details.advanced {
+details.why-panel, details.advanced, details.disclosure {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   padding: var(--space-3) var(--space-4);
   margin: var(--space-4) 0;
 }
-details.advanced { background: var(--surface-sunken); }
-details.why-panel > summary, details.advanced > summary { font-weight: 600; cursor: pointer; }
-details.why-panel > summary::-webkit-details-marker, details.advanced > summary::-webkit-details-marker { display: none; }
-details.why-panel > summary::after, details.advanced > summary::after { content: " \\25be"; color: var(--text-muted); }
+details.advanced, details.disclosure { background: var(--surface-sunken); }
+details.why-panel > summary, details.advanced > summary, details.disclosure > summary { font-weight: 600; cursor: pointer; }
+details.why-panel > summary::-webkit-details-marker, details.advanced > summary::-webkit-details-marker, details.disclosure > summary::-webkit-details-marker { display: none; }
+details.why-panel > summary::after, details.advanced > summary::after, details.disclosure > summary::after { content: " \\25be"; color: var(--text-muted); }
 
 .state {
   border: 1px dashed var(--border-strong);
@@ -530,6 +548,24 @@ form.flow { display: grid; gap: var(--space-4); max-width: 44rem; }
 
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
 .suggested { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+
+/* DEP-033 (presentation hardening): the show-once secret reveal surface
+ * (credentials) — the copy affordance is a readonly full-width mono field
+ * on a sunken surface, selectable and copyable with no script. */
+section.reveal .secret-reveal {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+section.reveal .secret-reveal input {
+  width: 100%;
+  font-family: var(--font-mono);
+  background: var(--surface-raised);
+}
 
 input, select, textarea, button { font: inherit; color: inherit; }
 input, select, textarea {

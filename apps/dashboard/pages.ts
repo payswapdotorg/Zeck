@@ -349,7 +349,7 @@ async function readRecentExecutions(
 }
 
 function lookupForm(): string {
-  return `<form method="get" action="/executions" class="card">
+  return `<form method="get" action="/executions" class="flow card">
   <div class="form-field">
     <label for="lookup-id">Look up an execution by id</label>
     <input id="lookup-id" name="id" required placeholder="execution id">
@@ -529,10 +529,19 @@ function executionFormField(
   hint?: string,
   error?: string,
 ): string {
-  const describedBy = error === undefined ? "" : ` aria-describedby="${id}-error"`;
+  // DEP-033 (accessibility hardening): the error reference belongs on the
+  // CONTROL (aria-describedby on the input/select/textarea announces the
+  // field error when focus lands there) — never on the label, where it
+  // carried no meaning for assistive technology. Every caller builds the
+  // control markup with `id="<id>"` as its first attribute, so the
+  // association is injected there.
+  const control =
+    error === undefined
+      ? input
+      : input.replace(` id="${id}"`, ` id="${id}" aria-describedby="${id}-error"`);
   return `<div class="form-field">
-  <label for="${id}"${describedBy}>${esc(label)}</label>
-  ${input}
+  <label for="${id}">${esc(label)}</label>
+  ${control}
   ${hint === undefined ? "" : `<p class="form-hint">${esc(hint)}</p>`}
   ${error === undefined ? "" : `<p class="field-error" id="${id}-error">${esc(error)}</p>`}
 </div>`;
@@ -1038,10 +1047,15 @@ function workloadFormField(
   hint?: string,
   error?: string,
 ): string {
-  const describedBy = error === undefined ? "" : ` aria-describedby="${id}-error"`;
+  // DEP-033 (accessibility hardening): same rule as executionFormField —
+  // the error reference rides on the control, not the label.
+  const control =
+    error === undefined
+      ? input
+      : input.replace(` id="${id}"`, ` id="${id}" aria-describedby="${id}-error"`);
   return `<div class="form-field">
-  <label for="${id}"${describedBy}>${esc(label)}</label>
-  ${input}
+  <label for="${id}">${esc(label)}</label>
+  ${control}
   ${hint === undefined ? "" : `<p class="form-hint">${esc(hint)}</p>`}
   ${error === undefined ? "" : `<p class="field-error" id="${id}-error">${esc(error)}</p>`}
 </div>`;
@@ -3317,7 +3331,7 @@ async function quickstartPage(scope: string, ctx: HttpContext): Promise<HandlerR
       '<a class="button-link primary" href="/console/playground/text">Run the first sandbox execution</a>',
   })}
 <p>Five steps from zero to an inspectable sandbox execution — every step is a link into a live console surface, and every step states honestly what the platform exposes.</p>
-<ol class="timeline">
+<ol class="steps">
   <li>
     <p><strong>Your application scope.</strong> ${
       scope.length > 0
