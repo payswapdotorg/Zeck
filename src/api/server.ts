@@ -41,6 +41,8 @@ import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
 import type { DependencyReadinessWire } from "./routes/health";
 import { registerHealthRoutes } from "./routes/health";
+import type { RuntimeIdentityWire } from "./routes/identity";
+import { registerIdentityRoutes } from "./routes/identity";
 
 export interface ApiServerDeps {
   readonly executions: ExecutionService;
@@ -76,6 +78,16 @@ export interface ApiServerDeps {
    * computes it (see src/platform/deployment/readiness.ts).
    */
   readonly dependencyReadiness: () => Promise<readonly DependencyReadinessWire[]>;
+  /**
+   * OPTIONAL runtime deployment identity seam (DEP-001 AC2): the
+   * composition-owned attestation behind `GET /identity` — the exact
+   * Git revision + manifest digest + provider topology projection
+   * (see src/platform/deployment/runtime-identity.ts). Absent ⇒ the
+   * route still registers and answers with the honest fail-closed
+   * `unbound` state (never a fabricated identity), so the route table
+   * stays identical across compositions.
+   */
+  readonly deploymentIdentity?: () => Promise<RuntimeIdentityWire | null>;
   /**
    * OPTIONAL bounded request telemetry (WORK-047 / D-06): one log
    * record + one metric per completed request (route, method,
@@ -208,6 +220,11 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
   });
   registerHealthRoutes(app, {
     dependencyReadiness: deps.dependencyReadiness,
+  });
+  registerIdentityRoutes(app, {
+    ...(deps.deploymentIdentity === undefined
+      ? {}
+      : { deploymentIdentity: deps.deploymentIdentity }),
   });
 
   return {

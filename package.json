@@ -2,7 +2,7 @@
   "name": "@pectoraux/ai-execution-os",
   "private": true,
   "version": "0.1.0",
-  "description": "AI Execution OS \u2014 governed, provider-independent AI execution infrastructure",
+  "description": "AI Execution OS — governed, provider-independent AI execution infrastructure",
   "packageManager": "bun@1.3.4",
   "scripts": {
     "governance:check": "python3 scripts/governance-check.py",
@@ -25,6 +25,8 @@
     "deploy:workflow": "bun deploy/workflow.ts",
     "deploy:worker": "bun deploy/worker.ts",
     "deploy:release": "bun deploy/release.ts",
+    "deploy:api": "bun deploy/api.ts",
+    "deploy:public-smoke": "bun deploy/public-smoke.ts",
     "deploy:drill": "bun deploy/drill.ts"
   },
   "devDependencies": {
