@@ -13,12 +13,28 @@
     "DEP-025"
   ],
   "eligible": [
-    "DEP-002",
-    "DEP-030",
-    "DEP-031",
-    "DEP-032"
+    "DEP-031"
   ],
-  "inFlight": [],
+  "inFlight": [
+    {
+      "item": "DEP-002",
+      "branch": "work/DEP-002-provisioning-automation",
+      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
+      "worker": "2-a"
+    },
+    {
+      "item": "DEP-030",
+      "branch": "work/DEP-030-usage-dashboard",
+      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
+      "worker": "2-b"
+    },
+    {
+      "item": "DEP-032",
+      "branch": "work/DEP-032-export-bundle",
+      "base": "58a3df3fd3bf06047d822160850396e659c3fc7c",
+      "worker": "2-c"
+    }
+  ],
   "blocked": [
     {
       "item": "DEP-003",
