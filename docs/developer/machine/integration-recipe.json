@@ -62,8 +62,8 @@
     {
       "step": 9,
       "id": "production-path",
-      "action": "When moving beyond sandbox: follow the promotion ladder, secret management and quota guidance (cross-linked to the deployment surfaces).",
-      "artifacts": ["docs/developer/PRODUCTION.md", "docs/developer/SANDBOX.md", "deploy/README.md", "deploy/manifests/environments.json"]
+      "action": "When moving beyond sandbox: follow the promotion ladder, secret management and quota guidance (cross-linked to the deployment surfaces); to run a deployment yourself, follow the self-host handoff guide.",
+      "artifacts": ["docs/developer/PRODUCTION.md", "docs/developer/SELF-HOSTING.md", "docs/developer/SANDBOX.md", "deploy/README.md", "deploy/manifests/environments.json"]
     }
   ],
   "invariants": [

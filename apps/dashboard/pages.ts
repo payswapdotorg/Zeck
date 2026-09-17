@@ -107,6 +107,12 @@ import {
   explorerViewOf,
 } from "./explorer";
 import {
+  executionExportView,
+  explorerExportAction,
+  exportNotFoundView,
+  reproducibilityBundleOf,
+} from "./export";
+import {
   assetResult,
   type HandlerResult,
   type HttpContext,
@@ -4880,13 +4886,16 @@ ${lookupForm()}`;
     path: "/console/executions",
     currentLabel: facts.execution.id,
     headingHtml: `${esc(facts.execution.id)}\n    ${statusBadge(facts.execution.status)}`,
+    primaryActionHtml: explorerExportAction(facts.execution.id),
   })}
 <p class="muted">Workload family <strong>${esc(explorerFamilyOf(facts.execution))}</strong> · recorded facts only — every missing fact names its missing public contract.</p>
 ${explorerTabNav(facts.execution.id, view)}
 ${explorerView(view, facts)}
 <p class="muted">Machine parity: <a href="/console/executions/${encodeURIComponent(
     facts.execution.id,
-  )}/facts.json">the composed public facts as verbatim JSON</a>.</p>`;
+  )}/facts.json">the composed public facts as verbatim JSON</a> · reproducibility: <a href="/console/executions/${encodeURIComponent(
+    facts.execution.id,
+  )}/export">export the bundle</a> (the same facts plus the reproduction recipe).</p>`;
   return page(
     {
       title: `Zeck — Execution ${facts.execution.id}`,
@@ -4926,6 +4935,92 @@ async function executionFactsRoute(client: ZeckClient, ctx: HttpContext): Promis
     throw error;
   }
   return jsonResult(JSON.stringify(explorerFactsOf(facts), null, 2));
+}
+
+// The reproducibility-bundle export (DEP-032): the SAME public-record
+// read the explorer performs, composed into the bundle (machine view +
+// recipe) and rendered by apps/dashboard/export.ts — there is no second
+// composition on this side of the wire.
+
+async function readExplorerFacts(
+  client: ZeckClient,
+  executionId: string,
+): Promise<ExplorerFacts | null> {
+  try {
+    const [execution, result, events, verification] = await Promise.all([
+      client.getExecution(executionId),
+      client.getResult(executionId),
+      client.listEvents(executionId),
+      client.listVerification(executionId),
+    ]);
+    return { execution, result, events, verification };
+  } catch (error) {
+    if (error instanceof ZeckApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function executionExportPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  const executionId = ctx.params.executionId ?? "";
+  const facts = await readExplorerFacts(client, executionId);
+  if (facts === null) {
+    const content = `${pageHead({ title: "Execution not found", path: "/console/executions" })}
+${exportNotFoundView(executionId)}
+${lookupForm()}`;
+    return htmlStatusResult(
+      404,
+      appShell({
+        title: "Zeck — Execution not found",
+        activePath: "/console/executions",
+        mainContent: content,
+        appearance: appearanceOf(ctx.cookies),
+        mode: modeOf(ctx.cookies),
+        returnTo: ctx.path,
+      }),
+    );
+  }
+  const bundle = reproducibilityBundleOf(facts);
+  const content = `${pageHead({
+    title: `Export — ${facts.execution.id}`,
+    path: "/console/executions",
+    currentLabel: facts.execution.id,
+    primaryActionHtml: `<a class="button-link" href="/console/executions/${encodeURIComponent(
+      facts.execution.id,
+    )}">Back to the execution</a>`,
+  })}
+${executionExportView(bundle)}`;
+  return page(
+    {
+      title: `Zeck — Export ${facts.execution.id}`,
+      activePath: "/console/executions",
+      mainContent: content,
+    },
+    ctx,
+  );
+}
+
+async function executionExportBundleRoute(
+  client: ZeckClient,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const executionId = ctx.params.executionId ?? "";
+  const facts = await readExplorerFacts(client, executionId);
+  if (facts === null) {
+    return jsonResult(
+      JSON.stringify(
+        {
+          error: "NOT_FOUND",
+          message: `No execution "${executionId}" is visible through the governed API for this token — there is nothing to export.`,
+        },
+        null,
+        2,
+      ),
+      404,
+    );
+  }
+  return jsonResult(JSON.stringify(reproducibilityBundleOf(facts), null, 2));
 }
 
 async function validationLabPage(ctx: HttpContext): Promise<HandlerResult> {
@@ -6551,6 +6646,14 @@ export function createDashboardRoutes(
     }),
     wrap("GET", "/console/executions/:executionId/facts.json", (ctx) =>
       executionFactsRoute(client, ctx),
+    ),
+    // Reproducibility-bundle export (DEP-032): the bundle view + the
+    // verbatim-JSON machine twin (the machine view plus recipe).
+    wrap("GET", "/console/executions/:executionId/export/bundle.json", (ctx) =>
+      executionExportBundleRoute(client, ctx),
+    ),
+    wrap("GET", "/console/executions/:executionId/export", (ctx) =>
+      executionExportPage(client, ctx),
     ),
     wrap("GET", "/console/executions/:executionId", (ctx) => executionExplorerPage(client, ctx)),
     // Usage, economics and optimization (DEP-030): the first-class

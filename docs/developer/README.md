@@ -27,6 +27,7 @@ to your first sandbox execution, result, evidence and cost.
 | Configure providers/models/tools (BYOK) | [CONFIGURATION.md](CONFIGURATION.md) |
 | Understand the sandbox and its limits | [SANDBOX.md](SANDBOX.md) |
 | Go to production (promotion, secrets, quotas) | [PRODUCTION.md](PRODUCTION.md) |
+| Run Zeck yourself (self-host / deployment handoff) | [SELF-HOSTING.md](SELF-HOSTING.md) |
 | Diagnose failures (error playbook) | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
 | Know what is honestly available | [AVAILABILITY.md](AVAILABILITY.md) |
 | Integrate as a coding agent (machine recipe) | [AGENT-GUIDE.md](AGENT-GUIDE.md) |

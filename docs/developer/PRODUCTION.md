@@ -4,7 +4,9 @@
 promotion ladder (`local → ci → preview → staging → production`) with
 environment-scoped secrets, quota guards and release gates — owned by
 the deployment surfaces (`deploy/`, DEP-001) which this page
-cross-links, never duplicates.
+cross-links, never duplicates. To run a Zeck deployment yourself (the
+developer-side entry into the same foundation), start from
+[SELF-HOSTING.md](SELF-HOSTING.md).
 
 ## Your integration changes NOTHING between sandbox and production
 
