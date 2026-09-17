@@ -41,7 +41,14 @@
  * 13. (D-08 / WORK-060, AVA-003) every durable concern declares
  *     exactly one typed alternate provider with a governed-procedure
  *     failover profile (a durable concern depending on a single
- *     external provider is unrepresentable).
+ *     external provider is unrepresentable);
+ * 14. (DEP-001) the free-tier-first provider topology ledger loads
+ *     fail-closed and covers EVERY providers.json provider exactly
+ *     once, with closed tier-class/verification vocabularies, exact
+ *     recorded limits per entry, degradation modes that equal the
+ *     providers.json declarations, and upgrade/exit notes (a provider
+ *     outside the ledger — or a ledger entry inventing a degradation
+ *     story — is unrepresentable).
  *
  * Exit 0 = the configuration is valid; exit 1 = violations listed.
  */
@@ -55,6 +62,7 @@ import { isPrivateOnlyProfile } from "../src/platform/deployment/connectivity";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
 import { DURABLE_CONCERNS } from "../src/platform/deployment/manifest";
 import { computeResourceNames, previewBranchSlug } from "../src/platform/deployment/naming";
+import { parseProviderTiers } from "../src/platform/deployment/provider-tiers";
 import { loadQuotaGuardsPolicy } from "../src/platform/observability/alerts";
 import { parseRecoveryTargets } from "../src/platform/recovery/rto-rpo";
 import { loadReleasePolicy } from "../src/platform/release/policy";
@@ -87,6 +95,10 @@ export interface DeploymentValidationReport {
   readonly regionEnvironments: number;
   /** (D-08 / WORK-060) durable concerns with a typed alternate provider declared. */
   readonly providerRedundancyProfiles: number;
+  /** (DEP-001) provider tier-ledger entries loaded and cross-validated. */
+  readonly providerTierEntries: number;
+  /** (DEP-001) the ledger's verification status (recorded-not-live-verified is the honest worker-pod state). */
+  readonly providerTierVerification: string;
 }
 
 /** The full validation core (the CLI and the D-06 validation gate share one path). */
@@ -271,6 +283,24 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     }
   }
 
+  // Rule 14 (DEP-001): the free-tier-first provider topology ledger
+  // loads fail-closed and cross-validates against the provider map
+  // (coverage exactly-once, closed vocabularies, degradation-mode
+  // equality, upgrade/exit notes).
+  let providerTierCount = 0;
+  let providerTierVerification = "absent";
+  try {
+    const source = readFileSync(
+      resolve(REPOSITORY_ROOT, "deploy", "manifests", "provider-tiers.json"),
+      "utf8",
+    );
+    const ledger = parseProviderTiers(source, manifest);
+    providerTierCount = ledger.tiers.length;
+    providerTierVerification = ledger.verificationStatus;
+  } catch (error) {
+    problems.push(`provider-tiers.json: ${(error as Error).message}`);
+  }
+
   return {
     valid: problems.length === 0,
     problems,
@@ -288,6 +318,8 @@ export function validateDeploymentConfiguration(): DeploymentValidationReport {
     connectivityEnvironments,
     regionEnvironments,
     providerRedundancyProfiles,
+    providerTierEntries: providerTierCount,
+    providerTierVerification,
   };
 }
 

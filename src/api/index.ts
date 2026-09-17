@@ -5,6 +5,7 @@
 export { mapErrorToResponse, PublicValidationError, sendPublicError } from "./error-mapper";
 export type { Authenticate } from "./request-identity";
 export { bearerTokenOf, resolveRequestIdentity } from "./request-identity";
+export type { ProviderTopologyWire, RuntimeIdentityWire } from "./routes/identity";
 export {
   scrubSecretShapedKeys,
   toWireAgentStatus,

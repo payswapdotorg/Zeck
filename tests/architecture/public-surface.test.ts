@@ -207,6 +207,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /executions/:id/results",
         "GET /executions/:id/verification",
         "GET /health",
+        "GET /identity",
         "GET /sandbox/data-policy",
         "GET /sandbox/identities/:identityId",
         "GET /sandbox/quotas",
