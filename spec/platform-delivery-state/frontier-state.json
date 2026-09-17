@@ -3,6 +3,7 @@
   "program": "zeck-developer-platform",
   "status": "active",
   "delivered": [
+    "DEP-001",
     "DEP-010",
     "DEP-011",
     "DEP-012",
@@ -12,27 +13,14 @@
     "DEP-025"
   ],
   "eligible": [
+    "DEP-002",
+    "DEP-003",
     "DEP-030",
     "DEP-031",
     "DEP-032"
   ],
-  "inFlight": [
-    "DEP-001"
-  ],
+  "inFlight": [],
   "blocked": [
-    {
-      "item": "DEP-002",
-      "on": [
-        "DEP-001"
-      ]
-    },
-    {
-      "item": "DEP-003",
-      "on": [
-        "DEP-001",
-        "DEP-002"
-      ]
-    },
     {
       "item": "DEP-033",
       "on": [
@@ -60,6 +48,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "ff783e47196858374900074b707ac110b69c150d",
+  "currentBase": "0b668f094b48bb45fcc54ccbba11a9b600e960e7",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
