@@ -30,13 +30,22 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-022 | DEP-020 | docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md |
 | DEP-023 | DEP-020 | docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps |
 
-## Current frontier (main 3111950)
+## Current frontier (main 71800c2, reconciled 2026-09-18)
 
 - delivered: DEP-001, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025
-- eligible: DEP-002, DEP-003, DEP-030, DEP-031, DEP-032
+- eligible: DEP-002, DEP-030, DEP-031, DEP-032
 - in flight: none
-- in flight: none (see dead-lane audit below)
-- blocked: DEP-002 ← DEP-001; DEP-003 ← DEP-001 + DEP-002
+- blocked: DEP-003 ← DEP-002 (P0 chain sequence: provisioning automation
+  precedes the production smoke/guardrail/identity order — correction of the
+  post-DEP-001 refresh that had listed DEP-003 eligible); DEP-033 ←
+  DEP-030/031/032
+- work orders issued this session: DEP-002 (provisioning automation), DEP-003
+  (production smoke/health/guardrails/identity) — authored before dispatch per
+  the work-order discipline
+- state reconciliation: currentBase advanced 0b668f0 → 71800c2 (six intervening
+  commits were Lead-direct governance/CI fixes: DEP-001 ledger row, CI
+  full-suite reconciliation, release-control evidence improvements — no surface
+  overlap with the eligible lanes)
 - later authorized items awaiting dispatch gating: DEP-030..033, DEP-040..044
 
 ## Dead-lane audit (2026-09-17, commit 3111950)
