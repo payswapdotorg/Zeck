@@ -125,3 +125,48 @@ run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
   honesty; the form itself submits correctly every time.
 - Touch targets: all discrete controls >= 24x24; only inline prose/breadcrumb links
   below 24px height (19-22px) — WCAG 2.5.8 inline exception.
+
+## Surface 4 — run detail (settled run) + events tab @ 1280x800
+
+- /runs/<settled>?tab=activity&view=events: no horizontal scroll; the raw-events view
+  renders a 9-row data table (8 lifecycle events + settlement) with columnheaders
+  "# / Type / Event id / Occurred" and per-event cells (execution.created, authorize,
+  plan, queue, start, verify, ...completed) — full table semantics in the a11y tree.
+- /runs/<settled> (Result view): h1 "<id> Completed"; the Execution-views tab
+  navigation exposes aria-current="page" on Result (the current view), absent on the
+  others; kv status tables with rowheader/cell roles.
+
+## Surface 5 — cancel journey (bare run) @ 1280x800
+
+- /runs/<bare>?action=cancel renders the confirmation form: h2 "Cancel this
+  execution?", native POST form action /runs/<bare>/cancel, button "Cancel execution".
+- Submitting the POST -> 303 back to /runs/<bare> with h1 "<id> Cancelled" and the
+  status cell "Cancelled (CANCELLED)" — the full cancel journey driven end to end.
+
+## Surface 6 — /console/executions (explorer) @ 1280x800
+
+- No document horizontal scroll (scrollWidth 1280 == clientWidth 1280).
+- The 8-column runs table (Execution / Status / Workload family / Created / Terminal /
+  Recorded cost / Origin / Compare) renders 928px wide with scrollWidth 1005 >
+  clientWidth 928 -> scrollsInBox=true: the D1 fix observed live at DESKTOP — the wide
+  table scrolls within its own box, the document never widens.
+- Full table semantics in the a11y tree (columnheader + cell roles); the honest
+  recents disclosure states "The public API exposes no listing route yet" (DEP-012
+  boundary) right above the table.
+- Touch targets: all discrete controls >= 24x24; the per-row "Compare" links measure
+  69x18 ( BELOW the 24x24 minimum — see the D10 finding below); inline prose links
+  19-22px (WCAG 2.5.8 inline exception).
+
+## Surface 7 — /console/settings @ 1280x800
+
+- No horizontal scroll; no tables; only inline prose links below 24px; all discrete
+  controls (selects/Apply buttons) >= 24x24. Clean surface.
+
+## Surface 8 — /console/compare?a=<settled>&b=<cancelled> @ 1280x800
+
+- Reachable and rendering: 5 tables (side-by-side public facts 11-row with Axis /
+  Run a / Run b columnheaders; composed-task 4-row with Task field / Run a / Run b /
+  Compare; two 7-row kv explanation panels; machine-facts 5-row). No horizontal
+  scroll; all tables fit at desktop. Explanation headings + run-id links present.
+- Sub-24px: artifact link 102x18, run-id links 407x20 (heading text links); inline
+  prose class.
