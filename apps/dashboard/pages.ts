@@ -218,6 +218,7 @@ import {
   trustAxisLabel,
   trustSummarySection,
 } from "./trust";
+import { usageBudgetsTransportFromEnvironment, usageConsolePage, usageFactsRoute } from "./usage";
 import {
   agentSchemaJson,
   availabilityOf,
@@ -6552,6 +6553,17 @@ export function createDashboardRoutes(
       executionFactsRoute(client, ctx),
     ),
     wrap("GET", "/console/executions/:executionId", (ctx) => executionExplorerPage(client, ctx)),
+    // Usage, economics and optimization (DEP-030): the first-class
+    // application-scoped usage projection + its machine twin (the SAME
+    // composition — no UI-only state). The budgets transport derives
+    // per-request from the deployment's environment contract (null ⇒ the
+    // honest unavailable states, never a fabricated transport).
+    wrap("GET", "/console/usage", (ctx) =>
+      usageConsolePage(client, usageBudgetsTransportFromEnvironment(), ctx),
+    ),
+    wrap("GET", "/console/usage/facts.json", (ctx) =>
+      usageFactsRoute(client, usageBudgetsTransportFromEnvironment(), ctx),
+    ),
     // Validation Lab (DEP-025). Static routes precede parameterized ones:
     // capability/workload/stage/start/agent/compare must win over
     // :workOrder, and the machine routes sit under the api/ prefix.

@@ -106,6 +106,25 @@ const DEVELOPER_CONSOLE: readonly NavItem[] = [
     modes: PROFESSIONAL,
   },
   {
+    label: "Usage & economics",
+    path: "/console/usage",
+    description:
+      "The usage projection — per-run cost and token facts, budget/quota envelopes and the platform's recorded optimization decisions.",
+    keywords: [
+      "usage",
+      "economics",
+      "cost",
+      "spend",
+      "budget",
+      "quota",
+      "tokens",
+      "optimization",
+      "strategy",
+      "develop",
+    ],
+    modes: PROFESSIONAL,
+  },
+  {
     label: "Validation Lab",
     path: "/console/validation",
     description:
