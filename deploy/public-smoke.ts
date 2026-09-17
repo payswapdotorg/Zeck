@@ -271,7 +271,15 @@ async function main(): Promise<void> {
       if (health.status !== "ready" && health.status !== "degraded") {
         problems.push(`GET /health answered 200 with status ${JSON.stringify(health.status)}`);
       }
-      healthCheck = health.status ?? "unknown";
+      // An environment WITH a reachable authority can still answer
+      // degraded (a non-authoritative component) — in explicit mode the
+      // record names both facts: the explicit pass AND the degraded
+      // status (the same honest-boundary vocabulary as the 503 branch;
+      // the test contract pins the "allowed-degraded" marker).
+      healthCheck =
+        health.status === "degraded" && allowDegraded
+          ? "allowed-degraded (explicit; health status degraded)"
+          : (health.status ?? "unknown");
     } else if (healthStatus === 503) {
       // Fail-closed authority: honest when the authoritative dependency
       // is unattested; --allow-degraded records the explicit pass.
