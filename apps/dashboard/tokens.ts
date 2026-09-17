@@ -541,6 +541,12 @@ details.why-panel > summary::after, details.advanced > summary::after, details.d
 form.flow { display: grid; gap: var(--space-4); max-width: 44rem; }
 .form-field { display: grid; gap: var(--space-1); }
 .form-field > label { font-weight: 600; }
+/* DEP-033 (presentation hardening): the composer's fixed-by-contract fields
+ * render their label as a <p class="form-label"> (the discriminator is not
+ * editable, so a form-control label element would be wrong) — it carries the
+ * SAME weight as the editable fields' labels so one composed form never
+ * reads as two different kinds of fields. */
+.form-field > .form-label { font-weight: 600; }
 .form-hint { color: var(--text-muted); font-size: 0.875rem; }
 .field-error { color: var(--status-error); font-size: 0.875rem; }
 .live-region { color: var(--status-error); font-weight: 600; }
