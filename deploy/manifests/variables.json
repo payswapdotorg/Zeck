@@ -129,6 +129,20 @@
       "description": "Control-plane API base URL used by the dashboard experience client."
     },
     {
+      "name": "ZECK_API_HOST",
+      "type": "bind-host",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Bind host of the independently-runnable public API bootstrap host (deploy/api.ts; DEP-001). Default 127.0.0.1."
+    },
+    {
+      "name": "ZECK_API_PORT",
+      "type": "bounded-integer",
+      "required": false,
+      "credentialShaped": false,
+      "description": "Bind port of the independently-runnable public API bootstrap host (deploy/api.ts; DEP-001). Bounded [1,65535]; default 8787."
+    },
+    {
       "name": "ZECK_APPLICATION_ID",
       "type": "zeck-identifier",
       "required": false,

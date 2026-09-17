@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "description": "Zeck free-tier-first provider topology ledger (DEP-001). Records, for every provider in providers.json, the tier the public deployment bootstrap selects under the roadmap doctrine order (provider free tier -> usage-based/no-minimum -> low fixed-cost managed -> paid only where required), the CURRENT limits/terms as operational constraints, the degradation path on exhaustion/outage, and the explicit upgrade/exit note. Limits are external facts recorded with an asOf date and a verification status; they are NEVER architecture. Live verification of provider consoles was NOT RUN in the DEP-001 worker pod (no credentials) — every entry carries verification 'recorded-not-live-verified' and must be re-verified by the credentialed operator at dispatch time (DEP-001 AC7 / roadmap free-tier doctrine).",
+  "doctrineOrder": [
+    "provider-free-tier",
+    "usage-based-no-minimum",
+    "low-fixed-cost-managed",
+    "paid-where-required"
+  ],
+  "asOf": "2026-09-16",
+  "verification": {
+    "status": "recorded-not-live-verified",
+    "detail": "Limits below were recorded from the providers' public documentation knowledge at authoring time (asOf). NOT RUN: no provider console, quota API or live deployment was queried from the DEP-001 worker pod — no cloud credentials exist there (DEP-001 AC7). The credentialed operator (Lead re-run) must re-verify each limit against the provider's current pricing/limits page before applying the deployment; drift is an operational update to this ledger, never a silent assumption."
+  },
+  "tiers": [
+    {
+      "provider": "neon",
+      "concern": "relational-state",
+      "selectedTier": {
+        "tierClass": "provider-free-tier",
+        "tierName": "Neon Free",
+        "selectionRationale": "Doctrine position 1 (provider free tier): the authoritative relational concern runs on Neon Free for preview/sandbox exploration; PostgreSQL remains the only durable authority."
+      },
+      "limits": [
+        {
+          "metric": "storage-per-branch",
+          "value": "0.5 GiB",
+          "unit": "GiB"
+        },
+        {
+          "metric": "compute",
+          "value": "bounded free compute hours per month (plan-defined)",
+          "unit": "hours"
+        },
+        {
+          "metric": "projects",
+          "value": "plan-bounded (single-digit count)",
+          "unit": "projects"
+        }
+      ],
+      "limitsSource": "Neon public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "Free tier is for development/evaluation use; production commercial use should move to a paid plan (e.g. Neon Launch) per provider terms.",
+      "operationallyCritical": true,
+      "upgradeExit": "The authoritative concern MUST NOT remain on the free tier for commercial production: promote to Neon Launch (or any managed PostgreSQL provider — the adapter is provider-neutral over the PostgreSQL wire protocol; connection URLs only). Exit path: pg_dump/logical backup through deploy:backup, restore into the replacement through deploy:restore — both are repository-resident drills. The database-port contract (src/platform/db/port.ts) is unchanged by the move.",
+      "exhaustionBehavior": {
+        "mode": "authority-unavailable",
+        "effect": "Storage/compute exhaustion on the authoritative store fails closed: control-plane admission and every authority-bearing operation refuse. No datastore is silently promoted; no silent paid overage is enabled by default (Neon Free overage is disabled by design; the quota fence denies at the declared limit)."
+      }
+    },
+    {
+      "provider": "cloudflare-r2",
+      "concern": "artifact-bytes",
+      "selectedTier": {
+        "tierClass": "provider-free-tier",
+        "tierName": "Cloudflare R2 free allowances",
+        "selectionRationale": "Doctrine position 1 (provider free tier): artifact bytes (non-authoritative; metadata stays in PostgreSQL) fit the R2 free allowances for preview/sandbox volumes."
+      },
+      "limits": [
+        {
+          "metric": "storage",
+          "value": "10 GiB-month",
+          "unit": "GiB-month"
+        },
+        {
+          "metric": "class-a-operations",
+          "value": "1 million per month",
+          "unit": "operations"
+        },
+        {
+          "metric": "class-b-operations",
+          "value": "10 million per month",
+          "unit": "operations"
+        },
+        {
+          "metric": "egress",
+          "value": "no egress fees (zero-rated)",
+          "unit": "bytes"
+        }
+      ],
+      "limitsSource": "Cloudflare R2 public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "R2 free allowances apply on any plan; usage beyond allowances bills usage-based (no fixed minimum).",
+      "operationallyCritical": false,
+      "upgradeExit": "Non-authoritative bytes: exit to any S3-compatible object store through the D-07 artifact-exit drill (deploy:drill artifact-exit — digest-verified byte migration over two ObjectStorePort endpoints; endpoint+credentials only). The free allowance is disposable headroom, never an operational dependency: artifact metadata/provenance stay authoritative in PostgreSQL.",
+      "exhaustionBehavior": {
+        "mode": "artifact-store-unavailable",
+        "effect": "Operations requiring artifact bytes fail explicitly; metadata and provenance remain authoritative in PostgreSQL. No artifact bytes fall back through PostgreSQL. Paid overage beyond the free allowance requires the explicit recorded opt-in (quota fence); the default is deny-at-limit."
+      }
+    },
+    {
+      "provider": "cloudflare-queues",
+      "concern": "async-transport",
+      "selectedTier": {
+        "tierClass": "usage-based-no-minimum",
+        "tierName": "Cloudflare Queues usage-based",
+        "selectionRationale": "Doctrine position 2 (usage-based/no-minimum): Queues bills per operation with no fixed minimum; the dispatch transport is non-authoritative and backlogs safely in PostgreSQL."
+      },
+      "limits": [
+        {
+          "metric": "operations",
+          "value": "usage-based per million operations (no fixed minimum)",
+          "unit": "operations"
+        },
+        {
+          "metric": "message-size",
+          "value": "provider-defined per-message bound (envelopes carry reference-only correlation pointers)",
+          "unit": "bytes"
+        }
+      ],
+      "limitsSource": "Cloudflare Queues public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "Usage-based billing on the owning Cloudflare account; throughput/concurrency subject to plan limits.",
+      "operationallyCritical": false,
+      "upgradeExit": "Non-authoritative transport: exit to any managed queue/broker implementing the QueueTransportPort contract through the queue-recovery drill (transport substitution + replay convergence through existing dispatch/execution idempotency). Backlogged dispatch is recoverable by design (deploy:queue republish/replay).",
+      "exhaustionBehavior": {
+        "mode": "dispatch-backlogged",
+        "effect": "Execution admission continues through PostgreSQL authority; dispatch defers and backlogs. A queued message is never mistaken for execution success. Spend guardrail: publish attempts are bounded (ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS); the quota fence denies further publishes at the declared spend limit rather than silently continuing paid operations."
+      }
+    },
+    {
+      "provider": "cloudflare-workflows",
+      "concern": "durable-orchestration",
+      "selectedTier": {
+        "tierClass": "usage-based-no-minimum",
+        "tierName": "Cloudflare Workflows usage-based",
+        "selectionRationale": "Doctrine position 2 (usage-based/no-minimum): orchestration is non-authoritative and pauses safely; Workflows bills per invocation/duration with no fixed minimum."
+      },
+      "limits": [
+        {
+          "metric": "invocations",
+          "value": "usage-based per million invocations (no fixed minimum)",
+          "unit": "invocations"
+        },
+        {
+          "metric": "instance-retention",
+          "value": "30 days (documented provider retention; orphaned instances are bounded waste)",
+          "unit": "days"
+        }
+      ],
+      "limitsSource": "Cloudflare Workflows public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "Usage-based billing on the owning Cloudflare account; requires a deployed Worker script (Workers Scripts Write token).",
+      "operationallyCritical": false,
+      "upgradeExit": "Non-authoritative orchestration: exit to any durable workflow engine implementing the workflow port contract. Waiting executions live in PostgreSQL (workflow_orchestration.waits is the authority); instances are terminated by compaction and the replacement engine is re-armed by the recovery scan.",
+      "exhaustionBehavior": {
+        "mode": "orchestration-paused",
+        "effect": "Waiting orchestrations pause; execution status, budget, policy and ledger state remain authoritative in PostgreSQL and resume on recovery. Instance starts are bounded (ZECK_WORKFLOW_MAX_START_ATTEMPTS); the quota fence denies at the declared spend limit."
+      }
+    },
+    {
+      "provider": "upstash-redis",
+      "concern": "ephemeral-coordination",
+      "selectedTier": {
+        "tierClass": "provider-free-tier",
+        "tierName": "Upstash Redis Free",
+        "selectionRationale": "Doctrine position 1 (provider free tier): coordination data is recomputable/bounded/expiring — the textbook free-tier-safe workload."
+      },
+      "limits": [
+        {
+          "metric": "commands",
+          "value": "10,000 commands per day (free tier)",
+          "unit": "commands"
+        },
+        {
+          "metric": "max-data-size",
+          "value": "256 MB",
+          "unit": "MB"
+        }
+      ],
+      "limitsSource": "Upstash public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "Free tier for evaluation/development; pay-as-you-go beyond.",
+      "operationallyCritical": false,
+      "upgradeExit": "Disposable by doctrine: Redis holds NO authority data (locks, rate limits, dedup hints, cache only). Exit is dropping it — the coordination-degraded mode is a first-class operating state (local runs without Redis by default). Replacement: any managed Redis-compatible service (or local Redis) behind src/platform/redis/port.ts.",
+      "exhaustionBehavior": {
+        "mode": "coordination-degraded",
+        "effect": "Command-quota exhaustion or outage degrades to conservative local behavior; durable authority is untouched. The daily command quota makes exhaustion a routine expected state, not an incident."
+      }
+    },
+    {
+      "provider": "vercel",
+      "concern": "experience-delivery",
+      "selectedTier": {
+        "tierClass": "provider-free-tier",
+        "tierName": "Vercel Hobby",
+        "selectionRationale": "Doctrine position 1 (provider free tier) FOR PREVIEW/PERSONAL-NON-COMMERCIAL ONLY: the terms restriction is the binding constraint (ACR-002: Hobby is a development/non-commercial facility; free-tier claims are never commercial entitlements)."
+      },
+      "limits": [
+        {
+          "metric": "bandwidth",
+          "value": "100 GB per month (Hobby)",
+          "unit": "GB"
+        },
+        {
+          "metric": "serverless-execution",
+          "value": "bounded function invocations/GB-hours per month (plan-defined)",
+          "unit": "GB-hours"
+        },
+        {
+          "metric": "commercial-use",
+          "value": "PROHIBITED — personal/non-commercial development and preview only",
+          "unit": "terms"
+        }
+      ],
+      "limitsSource": "Vercel public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "terms": "Vercel Hobby is restricted to permitted personal/non-commercial use (repository contract, ACR-002, providers.json commercialUse). Commercial production MUST use a commercially permitted plan (Vercel Pro) or an alternate host.",
+      "operationallyCritical": false,
+      "upgradeExit": "Delivery-only concern: the API is independently runnable (deploy/api.ts; D1.0 section 12) — repoint delivery at any host running the same repository entry with configuration only. Upgrade: Vercel Pro for commercial production; exit: any alternate web/API host (the redundancy alternate in providers.json). Domain authority is unchanged by the repoint (the domain is operator-owned config, never the provider's).",
+      "exhaustionBehavior": {
+        "mode": "delivery-degraded",
+        "effect": "Hobby bandwidth/function limits make the experience layer unreachable; control-plane and execution-plane authority are unaffected. The degradation is honest at /health (delivery-degraded) and the operator repoints or upgrades — no silent paid overage (Hobby does not overage bandwidth by default)."
+      }
+    },
+    {
+      "provider": "zeck-container-runner",
+      "concern": "execution-compute",
+      "selectedTier": {
+        "tierClass": "paid-where-required",
+        "tierName": "self-hosted / governed runner",
+        "selectionRationale": "Doctrine position 4 (paid only where required): execution compute is a capability/isolation requirement — container isolation cannot be safely satisfied by a shared free-tier HTTP host. The reference deployment self-hosts the runner (zero marginal provider cost) or binds governed customer runners."
+      },
+      "limits": [
+        {
+          "metric": "concurrency",
+          "value": "operator-defined per-runner concurrency (fabric quotas govern)",
+          "unit": "runs"
+        },
+        {
+          "metric": "cost",
+          "value": "self-hosted runner cost only; no per-run provider fee",
+          "unit": "currency"
+        }
+      ],
+      "limitsSource": "Repository-defined protocol (deploy/README.md container-runner REST contract); no external provider quota.",
+      "terms": "First-party fleet runner or a governed customer runner implementing the documented protocol; Zeck validates configurations before the wire.",
+      "operationallyCritical": false,
+      "upgradeExit": "Non-authoritative executor: any runner daemon implementing the documented REST protocol (provider-neutral, no vendor SDK). Absent runner = container substrate reports unavailable and dispatch fails closed; the process substrate still executes.",
+      "exhaustionBehavior": {
+        "mode": "execution-compute-unavailable",
+        "effect": "Container sandbox dispatch fails closed (runtime-unavailable); executions stay durably recoverable in PostgreSQL and re-dispatch on recovery. No unisolated or ambient-host execution is ever a fallback."
+      }
+    },
+    {
+      "provider": "otel-export",
+      "concern": "observability-export",
+      "selectedTier": {
+        "tierClass": "usage-based-no-minimum",
+        "tierName": "any OpenTelemetry-compatible collector",
+        "selectionRationale": "Doctrine position 2 (usage-based/no-minimum): OTLP/HTTP-JSON is a transport standard; a self-hosted collector (zero cost) or a usage-based managed sink both satisfy the port."
+      },
+      "limits": [
+        {
+          "metric": "export",
+          "value": "bounded by repository constants (buffer maxima, batch sizes, retry attempts are hard-bounded)",
+          "unit": "records"
+        },
+        {
+          "metric": "cost",
+          "value": "self-hosted collector: zero provider cost; managed sink: usage-based",
+          "unit": "currency"
+        }
+      ],
+      "limitsSource": "Repository-defined observability port (src/platform/observability/port.ts); no external provider quota.",
+      "terms": "Any OpenTelemetry-compatible collector (self-hosted or managed); the protocol is a standard, not a vendor control plane.",
+      "operationallyCritical": false,
+      "upgradeExit": "Unconfigured endpoint is the declared logs-only degraded mode — observability never blocks the control or execution planes. Substitution is endpoint configuration only.",
+      "exhaustionBehavior": {
+        "mode": "logs-only",
+        "effect": "Endpoint unreachable or unconfigured: the sink degrades to bounded structured local logs with drop counters; overflow is dropped and counted, never buffered unbounded."
+      }
+    }
+  ]
+}

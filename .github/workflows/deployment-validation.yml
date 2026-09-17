@@ -80,3 +80,7 @@ jobs:
         with:
           name: deployment-identity-${{ github.sha }}
           path: deployment-identity.json
+      - name: "Public API smoke: health + exact-revision /identity attestation (DEP-001)"
+        run: bun run deploy:public-smoke -- --environment local
+      - name: "Public API smoke: the explicit degraded pass records the honest boundary (DEP-001)"
+        run: bun run deploy:public-smoke -- --environment local --allow-degraded

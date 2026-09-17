@@ -1218,6 +1218,55 @@
           }
         }
       }
+    },
+    "/identity": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "getIdentity",
+        "summary": "Deployment identity attestation (no auth).",
+        "description": "The runtime deployment identity: the exact Git revision, the content-addressed deployment identity id, the manifest digest, the resource digest, the topology digest and the provider topology projection (concern, provider, authority role, substitution target, free-tier-first tier class). Hosting-independent by construction (no host/port/URL fields). An unbound composition answers the honest fail-closed 503 'unbound' state; verification recomputes everything against the current manifests (drift and tampering fail closed).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "bound (the full runtime identity document).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "unbound or unattestable (the composition did not bind the deployment identity seam, or the seam failed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "unbound",
+                        "unattestable"
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3398,6 +3447,118 @@
           }
         },
         "additionalProperties": false
+      },
+      "IdentityResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "schemaVersion",
+          "runtimeIdentityId",
+          "identity",
+          "topologyDigest",
+          "providerTopology"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "bound"
+            ]
+          },
+          "schemaVersion": {
+            "type": "integer"
+          },
+          "runtimeIdentityId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "identity": {
+            "type": "object",
+            "required": [
+              "schemaVersion",
+              "identityId",
+              "gitRevision",
+              "environment",
+              "manifestDigest",
+              "resourceDigest"
+            ],
+            "properties": {
+              "schemaVersion": {
+                "type": "integer"
+              },
+              "identityId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "gitRevision": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40}$"
+              },
+              "environment": {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "preview",
+                  "staging",
+                  "production"
+                ]
+              },
+              "manifestDigest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "resourceDigest": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          },
+          "topologyDigest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "providerTopology": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "concern",
+                "provider",
+                "authorityRole",
+                "substitutionTarget",
+                "tierClass",
+                "tierName"
+              ],
+              "properties": {
+                "concern": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "authorityRole": {
+                  "type": "string"
+                },
+                "substitutionTarget": {
+                  "type": "string"
+                },
+                "tierClass": {
+                  "type": "string",
+                  "enum": [
+                    "provider-free-tier",
+                    "usage-based-no-minimum",
+                    "low-fixed-cost-managed",
+                    "paid-where-required",
+                    "undeclared"
+                  ]
+                },
+                "tierName": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },

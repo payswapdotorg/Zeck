@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-001",
+  "title": "Public deployment bootstrap and free-tier-first provider topology — verification evidence record",
+  "recordedBy": "DEP-001 implementation worker",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker)",
+  "date": "2026-09-16",
+  "doctrine": "Every live-provider operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a live result. The Lead's credentialed re-run is the verification of record for live rails (DEP-001 AC7).",
+  "notRun": [
+    {
+      "check": "Vercel deployment of the bootstrap host (preview)",
+      "reason": "No Vercel account/token in the worker pod.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md section 3.2)"
+    },
+    {
+      "check": "Neon project/branch creation and managed-PostgreSQL reachability",
+      "reason": "No Neon account/token in the worker pod; no local PostgreSQL server either (no pg_ctl/psql/docker binaries).",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Cloudflare R2 bucket creation and object-store round-trip",
+      "reason": "No Cloudflare account/token in the worker pod.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Cloudflare Queues transport round-trip (probe queue publish/pull/ack)",
+      "reason": "No Cloudflare account/token in the worker pod.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Cloudflare Workflows orchestration round-trip (probe workflow create/observe/terminate)",
+      "reason": "No Cloudflare account/token in the worker pod.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Upstash Redis coordination reachability",
+      "reason": "No Upstash account/token in the worker pod.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Real DNS / public domain binding and TLS for the public endpoint",
+      "reason": "No domain/DNS credentials in the worker pod.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "Live provider quota/limit probes (console or quota APIs)",
+      "reason": "No provider credentials in the worker pod; limits are recorded as operational constraints with an asOf date and a re-verification duty (deploy/manifests/provider-tiers.json verification block).",
+      "owner": "Lead credentialed re-run (re-verify before applying the deployment)"
+    },
+    {
+      "check": "PostgreSQL-backed integration suites (release CLI, migrate/backup/restore drills, pg-database-port)",
+      "reason": "No PostgreSQL server available in the worker pod (no server binaries, no Docker); the suites skip cleanly without ZECK_PG_TEST_URL.",
+      "owner": "Lead credentialed re-run (or any environment with a PostgreSQL 16+ server)"
+    },
+    {
+      "check": "CI execution of the deployment-validation workflow (including the public-smoke steps)",
+      "reason": "Workers do not push; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows/deployment-validation.yml)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Deployment configuration validation (14 rule families incl. the provider-tiers ledger)",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0, valid=true, providerTierEntries=8"
+    },
+    {
+      "check": "Public API smoke at the exact revision (identity attest + health semantics + auth boundary)",
+      "command": "bun run deploy:public-smoke -- --environment local --allow-degraded",
+      "evidence": "exit 0; identityBound/identityVerified/transportReachable/authBoundaryEnforced=true; health=503 down-allowed-degraded (no PostgreSQL in pod)"
+    },
+    {
+      "check": "Strict public smoke fails closed without a reachable authority",
+      "command": "bun run deploy:public-smoke -- --environment local",
+      "evidence": "exit 1 with the authoritative-dependency problem (honest refusal, never fabricated ready)"
+    },
+    {
+      "check": "Runtime /identity surface (bound/unbound/unattestable/scrubbed)",
+      "evidence": "tests/unit/api/identity-route.test.ts"
+    },
+    {
+      "check": "Free-tier ledger fail-closed loading + negative-path mutations",
+      "evidence": "tests/unit/deployment/provider-tiers.test.ts"
+    },
+    {
+      "check": "Quota exhaustion / provider outage / no-silent-overage negative paths (mock-verified)",
+      "evidence": "tests/unit/deployment/quota-fence.test.ts"
+    },
+    {
+      "check": "Runtime identity determinism + verification + tamper detection",
+      "evidence": "tests/unit/deployment/runtime-identity.test.ts"
+    },
+    {
+      "check": "Repoint/rollback authority-invariance drill",
+      "evidence": "tests/unit/deployment/repoint.test.ts"
+    }
+  ],
+  "notes": [
+    "The public bootstrap host (deploy/api.ts) binds the deployment seams for real; domain capabilities answer the honest CAPABILITY_UNAVAILABLE/AUTHENTICATION_FAILED until the console application work orders (DEP-010+) bind them.",
+    "Free-tier limits in provider-tiers.json are recorded from public documentation knowledge at the asOf date — verification status 'recorded-not-live-verified'."
+  ]
+}

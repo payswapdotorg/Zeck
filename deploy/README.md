@@ -24,12 +24,15 @@ deploy/
     resources.json           resource inventory per environment + naming constraints
     secret-references.json   environment-scoped zeck-secret:// reference inventory
     variables.json           the non-secret environment variable contract
+    provider-tiers.json      DEP-001: free-tier-first provider topology ledger (limits/terms/degradation/upgrade-exit)
   lib.ts                     shared tooling plumbing (root resolution, secret scan)
   validate.ts                configuration validation gate
   bootstrap.ts               idempotent local convergence; provider plans
   teardown.ts                classification-guarded disposable teardown
   smoke.ts                   readiness + exact-revision identity attestation
   identity.ts                deployment identity emission
+  api.ts                     DEP-001: the independently-runnable public API bootstrap host (/health + /identity)
+  public-smoke.ts            DEP-001: the public API smoke at an exact revision
   migrate.ts                 D-02: deterministic managed-PostgreSQL startup/migrations
   backup.ts                  D-02: logical backup of the authoritative state
   restore.ts                 D-02: the executed restore drill (create/migrate/restore/verify)
@@ -37,6 +40,8 @@ deploy/
   release.ts                 D-06: the release-control operator surface (record/gate/promote/rollback/inspect/status/alerts)
   manifests/release-policy.json   D-06: the closed gate-kind vocabulary + per-phase entry gates
   manifests/quota-guards.json     D-06: quota/operational alert thresholds (actionable, fail-closed)
+  evidence/dep-001.json            DEP-001: the structured NOT RUN / verified-locally evidence record
+  PUBLIC-DEPLOYMENT.md             DEP-001: the operator reproduction recipe (AC1)
 ```
 
 ## Environments
@@ -80,6 +85,10 @@ bun run deploy:teardown -- --environment production       # REFUSED (exit 3, alw
 bun run deploy:smoke -- --environment local               # readiness + identity (exit = gate)
 bun run deploy:smoke -- --environment local --allow-degraded
 bun run deploy:identity -- --environment local            # deterministic identity document
+# DEP-001: the public bootstrap host + the exact-revision public smoke
+bun run deploy:api -- --environment local [--host 127.0.0.1] [--port 8787]   # serve /health + /identity
+bun run deploy:public-smoke -- --environment local       # boots the host, attests /identity + health + auth boundary
+bun run deploy:public-smoke -- --environment local --allow-degraded  # explicit degraded pass (records the boundary)
 # D-02 (WORK-043): the managed database + artifact production path
 bun run deploy:migrate -- --environment local             # deterministic startup + migrations
 bun run deploy:migrate -- --environment staging           # via the materialized database-url secret
@@ -224,6 +233,79 @@ dependency not ready ⇒ HTTP 503 (fail closed); non-authoritative
 dependencies ⇒ HTTP 200 with the explicit degraded mode. Diagnostics are
 scrubbed (credential-shaped content never crosses the wire). The platform
 model behind it: `src/platform/deployment/readiness.ts`.
+
+## The DEP-001 public deployment bootstrap (host, identity, tiers, fence)
+
+The public deployment bootstrap extends the foundation above — no second
+deployment system. The four pieces:
+
+**The bootstrap host** (`deploy/api.ts`): the independently-runnable
+public API entry (D1.0 §12). REAL transport (`createApiServer` — the
+identical public route table), REAL deployment seams (the runtime
+identity behind `GET /identity`, the dependency readiness behind
+`GET /health`), and honestly UNBOUND domain capabilities: the console
+application work orders (DEP-010+) own the domain binding, and until
+then every domain seam answers the platform's typed
+`CAPABILITY_UNAVAILABLE` / `AUTHENTICATION_FAILED` — never a fabricated
+success. The host runs on any Bun-capable host (Vercel's Bun runtime,
+a container, a VM) behind configuration only (`ZECK_API_HOST` /
+`ZECK_API_PORT`; `--host` / `--port` flags).
+
+**The runtime identity surface** (`GET /identity`): any deployed
+instance proves what it is — the exact 40-hex Git revision, the
+content-addressed deployment identity id, the manifest digest, the
+resource digest, the topology digest and the provider topology
+projection (concern → provider, authority role, substitution target,
+free-tier-first tier class). The document is hosting-independent (no
+host/port/URL fields — repointing delivery cannot change it), and
+verification recomputes everything against the current manifests
+(`verifyRuntimeDeploymentIdentity` in
+`src/platform/deployment/runtime-identity.ts`; drift and tampering
+fail closed). An unbound composition answers the honest fail-closed
+503 `unbound` state — the route table stays identical across
+compositions.
+
+**The free-tier-first provider topology ledger**
+(`deploy/manifests/provider-tiers.json`): every providers.json
+provider records the tier selected under the roadmap doctrine order
+(free tier → usage-based/no-minimum → low fixed-cost → paid where
+required), the CURRENT limits/terms as operational constraints (with an
+`asOf` date and the honest `recorded-not-live-verified` status — the
+DEP-001 worker pod had no cloud credentials), the exhaustion/outage
+degradation path (which must EQUAL the providers.json declared
+degradation mode — the ledger never invents degradation stories), and
+the explicit upgrade/exit note (the authoritative concern on a free
+tier MUST carry the production upgrade path; Vercel Hobby carries the
+non-commercial-terms restriction as a recorded limit). `deploy:validate`
+rule 14 loads it fail-closed.
+
+**The quota/spend fence** (`src/platform/deployment/quota-fence.ts`):
+the provider-neutral decision point for AC5. Usage at/over a declared
+limit ⇒ DENY with the provider's declared degradation mode; the default
+overage policy is `fail-closed` — continuing paid consumption past a
+limit requires an EXPLICIT RECORDED approval (`explicit-opt-in` +
+`overageApproval`), so silent paid overage is unrepresentable. Unknown
+usage (provider outage / failed probe) denies spend-incurring
+operations fail-closed. Outage postures are typed from the manifest:
+authoritative ⇒ fail-closed, non-authoritative ⇒ the declared degraded
+mode, and `authorityPreserved` is a literal type — no code path can
+promote a secondary datastore.
+
+**The public smoke** (`deploy/public-smoke.ts`): boots the real host on
+an ephemeral port and attests over real HTTP — transport reachable,
+`/identity` bound + verified at the exact revision (`git rev-parse
+HEAD`, honoring the `ZECK_DEPLOY_GIT_REVISION` override contract),
+topology equal to the manifest concern map, `/health` honest (the
+authoritative dependency unattested ⇒ 503 fail closed;
+`--allow-degraded` records the explicit pass), the auth boundary
+enforced on a real route (honest 401), and graceful SIGTERM shutdown.
+CI (`.github/workflows/deployment-validation.yml`) runs both the
+strict and the `--allow-degraded` invocation.
+
+The operator recipe for reproducing the public deployment end-to-end
+(including the credentialed provider-environment path and the NOT RUN
+boundaries) is `deploy/PUBLIC-DEPLOYMENT.md`; the structured evidence
+record is `deploy/evidence/dep-001.json`.
 
 ## The D-03 runtime configuration (asynchronous execution transport)
 
