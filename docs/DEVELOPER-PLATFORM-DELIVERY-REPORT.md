@@ -7,7 +7,7 @@ access limitations. Frontier truth lives in
 `spec/platform-delivery-state/frontier-state.json`; this report is the human/
 agent-readable history behind it.
 
-Report refreshed at: main `67044b0` (2026-09-17, Tech Lead session B).
+Report refreshed at: main `9477aff` (2026-09-17, Tech Lead session B).
 
 ## Delivery ledger
 
@@ -16,7 +16,8 @@ Report refreshed at: main `67044b0` (2026-09-17, Tech Lead session B).
 | DEP-010 | A | (wave-A main) | #125 | 97c9e37 | console shell, applications/environments lifecycle, guided playground (AC1-7); full battery green |
 | DEP-020 | A | (wave-A main) | #124 | cc49adb | docs + integration kit (AC1-6); 27 examples over 22 workload families, machine manifests (openapi 19 paths, capability/env-vars/error-codes/examples manifests, AGENT-GUIDE) |
 | DEP-025 | A | (wave-A main) | #127 | 1e45199 | Validation Library + rerunnable experiment center (AC1-9): definitions, historical evidence, rerun/compare/export paths |
-| DEP-011 | B | 31119508 | #131 | e0824be | worker chat 2442b7bd, tarball sha256 `b2e925d1…` verified at harvest; Lead re-ran the FULL battery on the DEP-011+012 integration (333f/5857t, arch, int, governance OK) + all three lead smokes; real-browser journey evidence |
+| DEP-011 | B | 31119508 | #131 | e0824be |
+| DEP-014 | B | 7c8939b | #132 | ff783e4 | LEAD-DIRECT (chat-channel capacity-gated; 3 consecutive worker turn deaths): quota authority + identity lifecycle + synthetic-data policy + 4 API routes + console projection + migration 0034; battery green (typecheck 0 / lint 0-68w-8i / unit 334f-5869t / arch 139f-2230t / int 20f-266t / governance OK) + 7-check real-process smoke + zero regressions | worker chat 2442b7bd, tarball sha256 `b2e925d1…` verified at harvest; Lead re-ran the FULL battery on the DEP-011+012 integration (333f/5857t, arch, int, governance OK) + all three lead smokes; real-browser journey evidence |
 | DEP-012 | B | e49c36f | #130 | 9429fb8 | LEAD-DIRECT (dispatch capacity-gated; AI_CONTINUATION precedent): explorer module + list/six-view detail/machine-facts console routes + nav entry; full battery green (typecheck 0 / lint 0-61w-8i / unit 330f-5805t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke |
 | DEP-013 | B | e70f2ed | #129 | cdf6338 | interactive sandbox playground for every workload class (AC1-9); worker chat 59c09e03, tarball sha256 `6546a0b5…` verified byte-identical at harvest; Lead independently reproduced the full battery (typecheck 0 / lint 0-61w-8i / unit 329f-5782t / arch 139f-2230t / int 19f-257t-196skip / governance OK) + real-process smoke of catalog, composer, honest NOT RUN (three-d) and example-source routes |
 
@@ -30,8 +31,9 @@ Report refreshed at: main `67044b0` (2026-09-17, Tech Lead session B).
 
 ## Current frontier (main 3111950)
 
-- delivered: DEP-010, DEP-011, DEP-012, DEP-013, DEP-020, DEP-025
-- eligible: DEP-001, DEP-014
+- delivered: DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025
+- eligible: DEP-030, DEP-031, DEP-032
+- in flight: DEP-001 (worker generating)
 - in flight: none (see dead-lane audit below)
 - blocked: DEP-002 ← DEP-001; DEP-003 ← DEP-001 + DEP-002
 - later authorized items awaiting dispatch gating: DEP-030..033, DEP-040..044
@@ -76,7 +78,6 @@ with full contract rigor.
 
 ## Remaining roadmap
 
-DEP-001 → DEP-002 → DEP-003 (deployment chain, blocked on DEP-001);
-DEP-011, DEP-014 (console wave B, eligible now);
-DEP-030..033 (developer product completeness);
+DEP-001 (in flight, worker generating) → DEP-002 → DEP-003 (deployment chain);
+DEP-030, DEP-031, DEP-032 (P3 wave, eligible now; DEP-033 last, gated on 030/031/032);
 DEP-040..044 (deployment acceptance + release gate).
