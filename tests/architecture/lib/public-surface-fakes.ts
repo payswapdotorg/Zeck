@@ -3,9 +3,11 @@
 import type { Authenticate } from "../../../src/api";
 import type { AgentRegistry } from "../../../src/modules/agents/public";
 import type { CredentialService, ScopeResolver } from "../../../src/modules/auth/public";
+import type { QuotaService } from "../../../src/modules/budgets/public";
 import type { EconomicActionService } from "../../../src/modules/economics/public";
 import type { ExecutionService } from "../../../src/modules/executions/public";
 import type { OpportunityAnalyzer } from "../../../src/modules/learning/public";
+import type { SandboxIdentityService } from "../../../src/modules/sandbox/public";
 
 export function fakeCredentialService(): CredentialService {
   const reject = (name: string) => async () => {
@@ -101,5 +103,32 @@ export function fakeCodebaseAnalyzer(): OpportunityAnalyzer {
     recordEvaluationRating: reject("recordEvaluationRating") as never,
     advanceFinding: reject("advanceFinding") as never,
     consultOpportunitySignals: (async () => []) as never,
+  };
+}
+
+export function fakeQuotaService(): QuotaService {
+  const reject = (name: string) => async () => {
+    throw new Error(`not exercised by the architecture gate: ${name}`);
+  };
+  return {
+    configure: reject("configure") as never,
+    assess: (async () => []) as never,
+    consume: reject("consume") as never,
+    release: reject("release") as never,
+    violations: (async () => []) as never,
+  };
+}
+
+export function fakeSandboxIdentityService(): SandboxIdentityService {
+  const reject = (name: string) => async () => {
+    throw new Error(`not exercised by the architecture gate: ${name}`);
+  };
+  return {
+    establish: reject("establish") as never,
+    get: (async () => null) as never,
+    list: (async () => []) as never,
+    expireOverdue: (async () => []) as never,
+    reset: reject("reset") as never,
+    policyViolations: (async () => []) as never,
   };
 }

@@ -54,6 +54,10 @@ import { kindExecutes } from "../domain/environment";
 import type { IsolationProfileClass } from "../domain/isolation";
 import { isolationLadderAnchor } from "../domain/isolation";
 import type { SandboxPolicyEvidence } from "../domain/sandbox";
+import {
+  SYNTHETIC_DATA_POLICY,
+  syntheticDataClassesAdmitted,
+} from "../domain/synthetic-data-policy";
 import type {
   SandboxAdmission,
   SandboxAdmissionDecision,
@@ -111,6 +115,21 @@ export function createPolicySandboxAdmission(authority: PolicyAuthority): Sandbo
         applicationId: request.applicationId,
         executionId: request.executionId,
       };
+
+      // 0. The synthetic-data-policy fact (DEP-014): every DECLARED data
+      //    class must sit inside the permitted set — a class outside it
+      //    refuses the admission fail-closed, BEFORE any isolation or
+      //    network fact is even evaluated (policy before dispatch, and
+      //    data policy before environment policy). Violations record
+      //    facts only — the class and the decision, never payloads.
+      const dataClasses = request.declaredDataClasses ?? [];
+      const dataDecision = syntheticDataClassesAdmitted(dataClasses);
+      if (!dataDecision.admitted) {
+        return {
+          allowed: false,
+          reason: `the synthetic-data policy refuses data class "${dataDecision.prohibited}" (policy ${SYNTHETIC_DATA_POLICY.version}, ${SYNTHETIC_DATA_POLICY.digest}) — sandbox admission is fail-closed`,
+        };
+      }
 
       // 1. The isolation fact: which environment KIND + isolation-PROFILE
       //    class would be admitted. (no-execution submits no isolation

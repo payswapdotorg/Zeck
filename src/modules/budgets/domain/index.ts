@@ -29,6 +29,21 @@ export {
   subMicroUsd,
   toMicroUsdBigint,
 } from "./money";
+export type {
+  QuotaDimension,
+  QuotaRecord,
+  QuotaStatus,
+  QuotaViolationFact,
+  QuotaWindow,
+} from "./quota";
+export {
+  isQuotaDimension,
+  isQuotaWindow,
+  QUOTA_DIMENSIONS,
+  QUOTA_STATUSES,
+  QUOTA_WINDOWS,
+  quotaWouldExceed,
+} from "./quota";
 export type { ReservationRecord, ReservationStatus } from "./reservation";
 export { isReservationStatus, RESERVATION_STATUSES } from "./reservation";
 export type {

@@ -59,7 +59,7 @@ function fakePort(responses: {
 }
 
 describe("startup validation (fake port)", () => {
-  test("the shipped migration set is the repository's 32-file deterministic set", () => {
+  test("the shipped migration set is the repository's 33-file deterministic set", () => {
     const migrations = shippedMigrations();
     // 24 files through WORK-043 (0015 burned) + 0026_queue_transport
     // (WORK-044 / D-03: the queue_transport correlation schema) +
@@ -76,11 +76,14 @@ describe("startup validation (fake port)", () => {
     // renumbered from 0031 by the Architect merge reconciliation) +
     // 0033_application_credentials (DEP-011: the application transport
     // credential lifecycle — one ACTIVE record per identity, rotation
-    // lineage, tenant-composite binding; a table inside `identity`).
-    expect(migrations.length).toBe(32);
+    // lineage, tenant-composite binding; a table inside `identity`) +
+    // 0034_sandbox_governance (DEP-014: budgets.application_quotas with
+    // the fail-closed CHECK constraint + sandbox.identities with the
+    // reset-lineage partial unique index).
+    expect(migrations.length).toBe(33);
     expect(migrations[0]?.version).toBe(1);
-    expect(migrations[30]?.version).toBe(32);
     expect(migrations[31]?.version).toBe(33);
+    expect(migrations[32]?.version).toBe(34);
     // Versions are strictly ascending with the burned 0015 gap.
     const versions = migrations.map((file) => file.version);
     expect(new Set(versions).size).toBe(versions.length);

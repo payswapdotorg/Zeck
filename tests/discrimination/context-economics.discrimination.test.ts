@@ -351,8 +351,8 @@ describe("D3 the cache is never an authority (ECONOMIC-AUTHORITY-BOUNDARY mechan
     const migrations = readdirSync(join(REPO_ROOT, "src/platform/db/migrations"))
       .filter((name) => name.endsWith(".sql"))
       .sort();
-    expect(migrations).toHaveLength(32); // +0032_audit_compliance (WORK-059 / D-08) +0033_application_credentials (DEP-011 — the reviewed, disclosed credential-lifecycle extension)
-    expect(migrations[migrations.length - 1]).toMatch(/^0033_application_credentials/); // DEP-011 (0032_audit_compliance is the last pre-DEP-011 migration)
+    expect(migrations).toHaveLength(33); // +0033_application_credentials (DEP-011) +0034_sandbox_governance (DEP-014 — the reviewed, disclosed sandbox-quota/identity extension)
+    expect(migrations[migrations.length - 1]).toMatch(/^0034_sandbox_governance/); // DEP-014 (0033_application_credentials is the last pre-DEP-014 migration)
   });
 
   test("NO module/integration/api file references the plane (nothing depends on it for authority)", () => {

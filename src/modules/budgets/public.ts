@@ -21,9 +21,14 @@
 import type { ModuleDescriptor } from "../../shared/module";
 import type { BudgetService } from "./application/budget-service";
 import { createBudgetService } from "./application/budget-service";
+import type { QuotaService } from "./application/quota-service";
+import { createQuotaService } from "./application/quota-service";
 
 export const moduleDescriptor: ModuleDescriptor = { id: "budgets" };
 
+// In-memory compositions (tests + ephemeral deployments; DEP-014).
+export { createInMemoryQuotaStore } from "./adapters/in-memory-quota-store";
+export { createSqlQuotaStore } from "./adapters/sql-quota-store";
 // Application services + commands/outcomes.
 export type {
   BudgetService,
@@ -40,6 +45,15 @@ export type {
   SettleCommand,
   SettleOutcome,
 } from "./application/budget-service";
+// Sandbox quota governance (DEP-014): the quota/lifecycle extension of the
+// ONE budget authority — fail-closed consumption per dimension.
+export type {
+  ConfigureQuotaCommand,
+  ConsumeQuotaCommand,
+  QuotaCommandScope,
+  QuotaService,
+  QuotaServiceDeps,
+} from "./application/quota-service";
 // Domain vocabulary (BUD-001..BUD-005; money is integer micro-USD strings).
 export type { BudgetRecord, BudgetScopeKind } from "./domain/budget";
 export { BUDGET_CHECK_ORDER } from "./domain/budget";
@@ -64,6 +78,14 @@ export {
   parseMicroUsd,
   subMicroUsd,
 } from "./domain/money";
+export type {
+  QuotaDimension,
+  QuotaRecord,
+  QuotaStatus,
+  QuotaViolationFact,
+  QuotaWindow,
+} from "./domain/quota";
+export { QUOTA_DIMENSIONS, QUOTA_STATUSES, QUOTA_WINDOWS } from "./domain/quota";
 export type { ReservationRecord, ReservationStatus } from "./domain/reservation";
 export type {
   FundingSettings,
@@ -75,7 +97,8 @@ export type {
 export type { BudgetsIdempotencyPort } from "./ports/budget-idempotency";
 // Module ports (provider-neutral; implemented by adapters).
 export type { BudgetStore } from "./ports/budget-store";
-export { createBudgetService };
+export type { ConsumeQuotaInput, QuotaStore, UpsertQuotaInput } from "./ports/quota-store";
+export { createBudgetService, createQuotaService };
 
 /**
  * The durable budget admission surface Executions consult before dispatch

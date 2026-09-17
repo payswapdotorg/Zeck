@@ -29,9 +29,11 @@ import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance } from "fastify";
 import type { AgentRegistry } from "../modules/agents/public";
 import type { CredentialService, ScopeResolver } from "../modules/auth/public";
+import type { QuotaService } from "../modules/budgets/public";
 import type { EconomicActionService } from "../modules/economics/public";
 import type { ExecutionService } from "../modules/executions/public";
 import type { OpportunityAnalyzer } from "../modules/learning/public";
+import type { SandboxIdentityService } from "../modules/sandbox/public";
 import { PlatformError } from "../shared/errors";
 import type { Authenticate } from "./request-identity";
 import { registerAgentRoutes } from "./routes/agents";
@@ -41,6 +43,7 @@ import { registerEconomicActionRoutes } from "./routes/economic-actions";
 import { registerExecutionRoutes } from "./routes/executions";
 import type { DependencyReadinessWire } from "./routes/health";
 import { registerHealthRoutes } from "./routes/health";
+import { registerSandboxGovernanceRoutes } from "./routes/sandbox-governance";
 
 export interface ApiServerDeps {
   readonly executions: ExecutionService;
@@ -55,6 +58,15 @@ export interface ApiServerDeps {
    * compositions and the machine manifest stays true.
    */
   readonly credentials?: CredentialService;
+  /**
+   * The sandbox governance AUTHORITIES (DEP-014). OPTIONAL: the deploy
+   * composition wires them; when absent, the sandbox governance routes
+   * still register and answer with the honest 422 CAPABILITY_UNAVAILABLE
+   * (the policy artifact route stays live — it is a static governed
+   * document, not a composition fact).
+   */
+  readonly quotas?: QuotaService;
+  readonly identities?: SandboxIdentityService;
   readonly scopeResolver: ScopeResolver;
   readonly authenticate: Authenticate;
   /**
@@ -197,6 +209,12 @@ export function createApiServer(deps: ApiServerDeps): ApiServer {
   });
   registerCredentialRoutes(app, {
     ...(deps.credentials === undefined ? {} : { credentials: deps.credentials }),
+    scopeResolver: deps.scopeResolver,
+    authenticate: deps.authenticate,
+  });
+  registerSandboxGovernanceRoutes(app, {
+    ...(deps.quotas === undefined ? {} : { quotas: deps.quotas }),
+    ...(deps.identities === undefined ? {} : { identities: deps.identities }),
     scopeResolver: deps.scopeResolver,
     authenticate: deps.authenticate,
   });

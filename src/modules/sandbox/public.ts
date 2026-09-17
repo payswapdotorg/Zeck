@@ -81,6 +81,13 @@
 import type { ModuleDescriptor } from "../../shared/module";
 import type { EnvironmentCatalog, EnvironmentCatalogDeps } from "./application/environment-catalog";
 import { createEnvironmentCatalog } from "./application/environment-catalog";
+import type {
+  EstablishSandboxIdentityCommand,
+  ResetSandboxIdentityCommand,
+  SandboxIdentityService,
+  SandboxIdentityServiceDeps,
+} from "./application/sandbox-identity-service";
+import { createSandboxIdentityService } from "./application/sandbox-identity-service";
 import type { SandboxService, SandboxServiceDeps } from "./application/sandbox-service";
 import { createSandboxService } from "./application/sandbox-service";
 import type { TrainingService, TrainingServiceDeps } from "./application/training-service";
@@ -160,6 +167,25 @@ import {
   TERMINAL_SANDBOX_STATUSES,
   validateSandboxTask,
 } from "./domain/sandbox";
+import type { SandboxIdentityRecord, SandboxIdentityStatus } from "./domain/sandbox-identity";
+import {
+  identityIsPastTtl,
+  isSandboxIdentityStatus,
+  SANDBOX_IDENTITY_DEFAULT_TTL_MS,
+  SANDBOX_IDENTITY_STATUSES,
+} from "./domain/sandbox-identity";
+import type {
+  SyntheticDataClass,
+  SyntheticDataPolicyDocument,
+  SyntheticDataViolationFact,
+} from "./domain/synthetic-data-policy";
+import {
+  isSyntheticDataClass,
+  SYNTHETIC_DATA_PERMITTED_CLASSES,
+  SYNTHETIC_DATA_POLICY,
+  SYNTHETIC_DATA_PROHIBITED_CLASSES,
+  syntheticDataClassesAdmitted,
+} from "./domain/synthetic-data-policy";
 import type {
   AcceleratorClass,
   AcceleratorResourceRequest,
@@ -228,6 +254,10 @@ import type {
 } from "./ports/sandbox-admission";
 import type { SandboxCapabilityResolution } from "./ports/sandbox-capability-gate";
 import type {
+  InsertSandboxIdentityInput,
+  SandboxIdentityStore,
+} from "./ports/sandbox-identity-store";
+import type {
   LedgerStepEvent,
   LedgerStepEventOutcome,
   SandboxExecutionLedger,
@@ -273,10 +303,12 @@ export {
   acceleratorCapabilityIdFor,
   ContainerSandboxProvider,
   createExecutionResumeReadmission,
+  createInMemorySandboxIdentityStore,
   createPolicySandboxAdmission,
   createPolicyTrainingAdmission,
   createSandboxCapabilityGate,
   createSandboxExecutionLedgerAdapter,
+  createSqlSandboxIdentityStore,
   createSubstrateCatalogAdapter,
   createTrainingExecutionLedgerAdapter,
   createVerificationTrainingGate,
@@ -308,7 +340,9 @@ export type {
   EnvironmentCatalog,
   EnvironmentCatalogDeps,
   EnvironmentLifecycleStatus,
+  EstablishSandboxIdentityCommand,
   InsertEnvironmentInput,
+  InsertSandboxIdentityInput,
   InsertSandboxInput,
   InterconnectClass,
   IsolationProfile,
@@ -316,6 +350,7 @@ export type {
   IsolationProfileDeclaration,
   LedgerStepEvent,
   LedgerStepEventOutcome,
+  ResetSandboxIdentityCommand,
   SandboxAdmission,
   SandboxAdmissionDecision,
   SandboxAdmissionRequest,
@@ -332,6 +367,11 @@ export type {
   SandboxExecutionStatus,
   SandboxFailureClass,
   SandboxFilesystemPolicy,
+  SandboxIdentityRecord,
+  SandboxIdentityService,
+  SandboxIdentityServiceDeps,
+  SandboxIdentityStatus,
+  SandboxIdentityStore,
   SandboxNetworkPolicy,
   SandboxOutcomeClass,
   SandboxPolicyEvidence,
@@ -349,6 +389,9 @@ export type {
   SandboxTask,
   SandboxWorkspaceMode,
   SubstrateSelection,
+  SyntheticDataClass,
+  SyntheticDataPolicyDocument,
+  SyntheticDataViolationFact,
   TrainingAdmission,
   TrainingAdmissionDecision,
   TrainingAdmissionRequest,
@@ -394,6 +437,7 @@ export {
   containsRawSecretValue,
   createAcceleratorRuntimeRegistry,
   createEnvironmentCatalog,
+  createSandboxIdentityService,
   createSandboxProviderRegistry,
   createSandboxService,
   createTrainingService,
@@ -404,6 +448,7 @@ export {
   IMPLEMENTED_SANDBOX_KINDS,
   INTERCONNECT_CLASSES,
   ISOLATION_PROFILE_CLASSES,
+  identityIsPastTtl,
   isAcceleratorClass,
   isEnvironmentLifecycleStatus,
   isInterconnectClass,
@@ -411,6 +456,8 @@ export {
   isolationLadderAnchor,
   isSandboxEnvironmentKind,
   isSandboxExecutionStatus,
+  isSandboxIdentityStatus,
+  isSyntheticDataClass,
   isTerminalEnvironmentStatus,
   isTerminalSandboxStatus,
   isTerminalTrainingStatus,
@@ -424,12 +471,18 @@ export {
   SANDBOX_ENVIRONMENT_KINDS,
   SANDBOX_EXECUTION_STATUSES,
   SANDBOX_FAILURE_CLASSES,
+  SANDBOX_IDENTITY_DEFAULT_TTL_MS,
+  SANDBOX_IDENTITY_STATUSES,
   SANDBOX_KEY_PATTERN,
   SANDBOX_OUTCOME_CLASSES,
   SANDBOX_STATUS_TRANSITIONS,
   SANDBOX_WORKSPACE_MODES,
   STRICT_ELIGIBLE_KINDS,
+  SYNTHETIC_DATA_PERMITTED_CLASSES,
+  SYNTHETIC_DATA_POLICY,
+  SYNTHETIC_DATA_PROHIBITED_CLASSES,
   sandboxRequestFingerprint,
+  syntheticDataClassesAdmitted,
   TERMINAL_SANDBOX_STATUSES,
   TERMINAL_TRAINING_STATUSES,
   TRAINING_KEY_PATTERN,
