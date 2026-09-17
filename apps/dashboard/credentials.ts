@@ -345,20 +345,29 @@ function credentialIssueForm(
   values: CredentialIssueFormValues,
   errors: CredentialIssueFormErrors,
 ): string {
+  // DEP-033 (accessibility + presentation hardening): field errors use
+  // the stylesheet's .field-error class (the .form-error class carried no
+  // rule, so errors rendered unstyled) and each error reference is wired
+  // to its CONTROL through aria-describedby — announced when focus lands
+  // on the field, never orphaned.
   const errorOf = (key: string): string =>
     errors[key] === undefined
       ? ""
-      : `<p class="form-error" id="${esc(key)}-error" role="alert">${esc(errors[key] ?? "")}</p>`;
-  return `<form method="post" action="/console/applications/keys/issue" class="card form">
+      : `<p class="field-error" id="${esc(key)}-error" role="alert">${esc(errors[key] ?? "")}</p>`;
+  const describedBy = (key: string, hintId: string): string =>
+    errors[key] === undefined
+      ? ` aria-describedby="${hintId}"`
+      : ` aria-describedby="${hintId} ${esc(key)}-error"`;
+  return `<form method="post" action="/console/applications/keys/issue" class="flow card">
   <div class="form-field">
     <label for="credential-label">Label</label>
-    <input id="credential-label" name="label" type="text" value="${esc(values.label)}" maxlength="64" required aria-describedby="credential-label-help${errors.label === undefined ? "" : " label-error"}">
+    <input id="credential-label" name="label" type="text" value="${esc(values.label)}" maxlength="64" required${describedBy("label", "credential-label-help")}>
     <p class="muted" id="credential-label-help">A name you will recognize in the list (the authority validates its shape).</p>
     ${errorOf("label")}
   </div>
   <div class="form-field">
     <label for="credential-role">Role scope</label>
-    <select id="credential-role" name="role" required>
+    <select id="credential-role" name="role" required${errors.role === undefined ? "" : ' aria-describedby="role-error"'}>
       ${CREDENTIAL_ROLE_CHOICES.map(
         (role) =>
           `<option value="${esc(role)}"${values.role === role ? " selected" : ""}>${esc(role)}</option>`,
@@ -368,6 +377,7 @@ function credentialIssueForm(
     ${errorOf("role")}
   </div>
   <input type="hidden" name="idempotencyKey" value="${esc(values.idempotencyKey)}">
+  ${errorOf("idempotencyKey")}
   <div class="form-actions">
     <button type="submit" class="primary">Issue credential</button>
   </div>

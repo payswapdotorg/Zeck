@@ -1,0 +1,261 @@
+# DEP-033 browser-drive notes (step 6b — real-Chromium evidence)
+
+Runner: scripts/browser-stack-dep033.ts (REAL API :3928 + REAL dashboard :3929, one SETTLED
+execution `00000000-0000-7000-9000-000000000001`, one BARE non-terminal execution
+`00000000-0000-7000-9000-000000000011`, credential authority seeded).
+Driver: agent-browser 0.35.0 over real Chromium (headless). Measurements appended live
+during the drive — this file IS checkpoint 6. Discipline: every measurement is written
+to disk immediately after extraction.
+
+## Environment facts
+
+- Stack boot: `setsid nohup bun scripts/browser-stack-dep033.ts` (pid 16002); curl 200 on
+  /console/quickstart and the run-detail URL before driving.
+- Leftover orphan pid 3670 (browser-smoke-dep032.ts) holds 3921/3922 — no conflict with
+  3928/3929; not touched during the drive.
+
+## Persistence mechanism (harness note)
+
+`setsid nohup ... &` does NOT survive this tool's command boundary (verified with a
+`sleep 300` probe — reaped); a Bun `spawn(..., {detached: true}).unref()` DOES survive
+(ppid 1, own session — same shape as the surviving DEP-032 orphan pid 3670). Stack
+therefore booted via the latter (pid 16459): curl 200 on /console/quickstart and the
+run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
+(chrome 152.0.7977.64, headless) persist across commands (daemon pid 16104).
+
+## Surface 1 — /console/quickstart @ 1280x800 (desktop)
+
+- Document: scrollWidth 1280 == clientWidth 1280 -> NO document-level horizontal scroll.
+- Interactive elements: 87 in the DOM (incl. closed-disclosure nav links); the keyboard
+  tab cycle is 36 stops (closed `details` groups correctly keep their links out of the
+  tab order; the open Develop group exposes its 9 links).
+- Tab order (36 stops, verified by driving Tab to wraparound at stop 37 -> body):
+  skip-link "Skip to main content" -> brand "Zeck" -> command input -> Search ->
+  Command Ctrl K -> experience-mode select -> Apply -> appearance-mode select -> Apply ->
+  nav Home -> group summaries Work/Build/Develop -> Develop links (Quickstart,
+  Applications, Playground, Executions, Usage & economics, Validation Lab, Providers,
+  Docs, Settings) -> summaries Library/Trust/Control/Improve -> breadcrumb Home ->
+  Develop -> "Run the first sandbox executio[n]" -> Applications -> "API keys &
+  credentials" -> "playground's text family" -> "execution explorer" -> Evidence ->
+  artifacts -> docs -> body (cycle restarts). DOM order == tab order throughout
+  (zero tabIndex>0 escapes observed).
+- Focus visibility: ALL 36/36 tab stops render a visible focus indicator — computed
+  outline "solid 2px rgb(11, 98, 196)" (= --focus-ring #0b62c4) on every stop,
+  including the skip-link (which becomes visible on focus), native summary disclosures,
+  selects and inputs.
+- Table semantics: 1 table.kv, 8 rows, rendered 878px wide, scrollWidth == clientWidth
+  (no overflow at desktop). Accessibility tree roles verified separately (see below).
+- Touch targets: every DISCRETE control >= 24x24: smallest observed = nav links
+  229x33, buttons 79x43 ("Apply"), selects 193x39, "Run the first sandbox exec"
+  288x43, command input 226x43. Below 24px height ONLY inline prose links (h 19-22px,
+  w 37-194px: "Home", "Develop", "Applications", "API keys & credentials",
+  "playground's text family", "execution explorer", "Evidence", "artifacts", "docs")
+  — WCAG 2.5.8 inline-text exception class; recorded, not a defect.
+- Page errors: none (agent-browser errors empty). Console: no errors.
+- A11y tree (quickstart): the kv table exposes FULL table semantics under display:block —
+  `table` role with 8 `row` children, each `rowheader` + `cell` (e.g. rowheader
+  "Budget ceiling" / cell "$2.00 per run ..."). The five-step journey renders as an
+  ordered `list` with 5 `listitem [level=1]` + ListMarker "1.".."5." (the D7 fix:
+  ol.steps grid change preserved list semantics). Skip target, main landmark, nav
+  landmarks all present in the tree.
+
+## Surface 2 — /console/applications/keys (+ issue -> reveal journey) @ 1280x800
+
+- Document: no horizontal scroll (scrollWidth 1280 == clientWidth). 90 interactive
+  elements; 4 tables (kv 4-row transport-credential table, data 2-row credential list,
+  kv 2-row, data 6-row connections) — none overflow at desktop; a11y tree exposes
+  columnheader roles (Label / Credential identity / Scope / ... / Rotation / Actions)
+  and the honest empty state AS A CELL ("No credentials are issued for this application
+  scope ... Issue one below — the secret is shown exactly once, at creation.").
+- Issue form a11y wiring (D2/D5): textbox "Label" [required] carries
+  aria-describedby -> credential-label-help; combobox "Role scope" (member/owner/admin);
+  button "Issue credential".
+- Empty-submit gate: clicking "Issue credential" with an empty label does NOT leave the
+  page — the browser's native required validation holds (validity.valueMissing=true,
+  willValidate=true, form.noValidate=false). The server-rendered field-error path
+  (D3) is additionally pinned by the 36-test unit suite + lead smoke 29/29.
+- Issue -> reveal journey (mouse-equivalent drive): filled Label "browser-drive key 1",
+  selected Role scope "owner", submitted -> 303 to /console/applications/keys/issue.
+  Reveal page: h1 "Credential issued — the secret, shown once"; region "This is the
+  only time this secret is shown"; the copy affordance is a readonly mono text input
+  (value zeck-test-secret-00000001, visually-hidden label "The new secret (select and
+  copy)", aria-describedby -> secret-help); secret NOT in URL, NOT in title; credential
+  record renders as a kv table with rowheader/cell roles (Label / Credential identity /
+  Role scope / Permission scope ...). role="status" aria-live="polite" live region
+  present ("The credential was issued. The secret below is shown exactly once.").
+- Show-once doctrine (reload probe): reloading the reveal URL re-renders the honest
+  replay state — h1 "Credential issuance — replayed outcome", secret GONE from the DOM
+  (no #credential-secret input), status live region explains the idempotent replay and
+  names the DEP-011 show-once contract. Verified with a real reload.
+- Touch targets: all discrete controls >= 24x24 (issue form inputs/buttons full-size);
+  only inline prose links below 24px (h 19-22px) — WCAG 2.5.8 inline exception.
+- Observation (NOT a defect, no code change): the reveal copy-field is
+  `input[type=text][readonly]` without autocomplete="off" — readonly text fields are
+  skipped by Chromium autofill and are not password-manager material; the show-once +
+  esc()-escaping + readonly triad is pinned by the unit suite. Recorded here for the
+  Lead as a possible future belt-and-braces attribute.
+
+## Surface 3 — /console/playground/text (choose -> compose -> review -> run -> inspect) @ 1280x800
+
+- Document: no horizontal scroll (1280 == 1280); 87 interactive elements; 4 tables
+  (data availability 2-row, kv advertised contract 3-row, kv sandbox envelope 8-row,
+  kv example 4-row) — all fit at desktop; a11y tree exposes columnheader/rowheader/cell.
+- Composer (D9 verified in-browser): every field label renders at computed
+  font-weight 600 — the editable <label> fields (Application id, Compute environment,
+  Spend limit, task.doc, task.maxWords) AND the fixed-by-contract p.form-label
+  ("task.kind — fixed by the advertised contract") — one composed form, one weight.
+- Server-side validation drive (D2+D3 verified in-browser): submitted Spend limit "50"
+  -> the page re-renders with the field error "Sandbox runs are capped at $2.00 per
+  execution — enter a lower ceiling." (.field-error styling) AND the control gains
+  aria-describedby="pf-spend-error" pointing at that error (the D2 conditional wiring:
+  described-by appears exactly when the error exists). The GET form keeps the whole
+  review state in the URL (no-script foundation).
+- Journey (mouse-equivalent + semantic-locator drive): Spend limit corrected to "1" ->
+  "Review the sandbox run" -> review step renders ("Proposed sandbox run", "Run this
+  sandbox execution?", the composed request preview) -> "Run sandbox execution" (POST)
+  -> 303 redirect to /runs/00000000-0000-7000-9000-000000000013 with h1
+  "<id> Created" — the inspect step.
+- New-run detail (CREATED status): no horizontal scroll; navigation "Execution views"
+  (Result / Evidence / Activity / Inspection); kv status table exposes rowheader/cell
+  with the honest non-terminal state ("Terminal at — (still in progress)"); region
+  "Can you trust it?" with drill-down links; "Cancel this execution…" affordance present.
+- Harness observation (NOT a console defect): an agent-browser ref (@e24) resolved
+  against the error re-render did not submit on first click; re-driving via the
+  semantic locator (find role button --name) worked. Driver-side quirk, recorded for
+  honesty; the form itself submits correctly every time.
+- Touch targets: all discrete controls >= 24x24; only inline prose/breadcrumb links
+  below 24px height (19-22px) — WCAG 2.5.8 inline exception.
+
+## Surface 4 — run detail (settled run) + events tab @ 1280x800
+
+- /runs/<settled>?tab=activity&view=events: no horizontal scroll; the raw-events view
+  renders a 9-row data table (8 lifecycle events + settlement) with columnheaders
+  "# / Type / Event id / Occurred" and per-event cells (execution.created, authorize,
+  plan, queue, start, verify, ...completed) — full table semantics in the a11y tree.
+- /runs/<settled> (Result view): h1 "<id> Completed"; the Execution-views tab
+  navigation exposes aria-current="page" on Result (the current view), absent on the
+  others; kv status tables with rowheader/cell roles.
+
+## Surface 5 — cancel journey (bare run) @ 1280x800
+
+- /runs/<bare>?action=cancel renders the confirmation form: h2 "Cancel this
+  execution?", native POST form action /runs/<bare>/cancel, button "Cancel execution".
+- Submitting the POST -> 303 back to /runs/<bare> with h1 "<id> Cancelled" and the
+  status cell "Cancelled (CANCELLED)" — the full cancel journey driven end to end.
+
+## Surface 6 — /console/executions (explorer) @ 1280x800
+
+- No document horizontal scroll (scrollWidth 1280 == clientWidth 1280).
+- The 8-column runs table (Execution / Status / Workload family / Created / Terminal /
+  Recorded cost / Origin / Compare) renders 928px wide with scrollWidth 1005 >
+  clientWidth 928 -> scrollsInBox=true: the D1 fix observed live at DESKTOP — the wide
+  table scrolls within its own box, the document never widens.
+- Full table semantics in the a11y tree (columnheader + cell roles); the honest
+  recents disclosure states "The public API exposes no listing route yet" (DEP-012
+  boundary) right above the table.
+- Touch targets: all discrete controls >= 24x24; the per-row "Compare" links measure
+  69x18 ( BELOW the 24x24 minimum — see the D10 finding below); inline prose links
+  19-22px (WCAG 2.5.8 inline exception).
+
+## Surface 7 — /console/settings @ 1280x800
+
+- No horizontal scroll; no tables; only inline prose links below 24px; all discrete
+  controls (selects/Apply buttons) >= 24x24. Clean surface.
+
+## Surface 8 — /console/compare?a=<settled>&b=<cancelled> @ 1280x800
+
+- Reachable and rendering: 5 tables (side-by-side public facts 11-row with Axis /
+  Run a / Run b columnheaders; composed-task 4-row with Task field / Run a / Run b /
+  Compare; two 7-row kv explanation panels; machine-facts 5-row). No horizontal
+  scroll; all tables fit at desktop. Explanation headings + run-id links present.
+- Sub-24px: artifact link 102x18, run-id links 407x20 (heading text links); inline
+  prose class.
+
+## Responsive sweep — tablet 768x1024 (all 7 primary surfaces)
+
+- Document-level horizontal scroll: NONE on any surface (scrollWidth 768 ==
+  clientWidth 768 on quickstart, keys, playground, executions, run detail,
+  settings, compare).
+- Wide tables scroll IN-BOX at tablet: keys credential table 873 > 720;
+  playground availability 680 > 670; executions explorer 1005 > 720. Narrow
+  tables fit (no scroll). The D1 fix holds across the class.
+
+## Responsive sweep — mobile 375x667 (FIRST pass, pre-fix)
+
+- 6 of 7 surfaces clean (375 == 375, wide tables scroll in-box: keys 615/425 >
+  351, playground 680 > 301, explorer 1005 > 351, compare 453/428/439 > 351).
+- **D10 DEFECT FOUND**: /runs/<settled> (run detail) — docScrollW 404 >
+  clientW 375 (29px document-level horizontal overflow). Root cause (ancestor
+  walk): `.detail-grid` (display: grid, correctly 351px wide) sized its bare
+  `1fr` track to 392.438px — the auto-minimum track took the artifacts
+  table's min-content (mono digest sha256:browser-art + ISO timestamp
+  2026-09-17T15:53:19.359Z, unbreakable); the grid item div (min-width:auto)
+  and both tables then measured 392px in a 351px container. The D1 fix
+  covered the .app-shell grid items but NOT this INNER grid's track.
+
+## D10 fix (tokens.ts) + re-drive
+
+- Fix: `.detail-grid` base track `1fr` -> `minmax(0, 1fr)` and the <=1024px
+  collapse likewise (the >=1025px two-column rule already carried
+  `minmax(0, 2fr)` — the same 0-minimum doctrine).
+- Live prototype BEFORE committing (style injected in the driven page):
+  track 351px, item 351px, table 351px with scrollWidth 392 > clientWidth
+  351 -> in-box scroll; document 375 == 375.
+- Stack REBOOTED on the fixed CSS and re-driven: run detail @375 docScrollW
+  375 == clientW 375 (no document scroll); detail-grid track 351px; the
+  artifacts table 351px wide, scrollsInBox=true (392 > 351); the completeness
+  kv table 351px, fits.
+
+## D11 finding + fix
+
+- The explorer + playground run-history Compare links measured 69x18 — below
+  the WCAG 2.2 AA 2.5.8 24x24 minimum for a discrete action control (a lone
+  link in a table cell is NOT the inline-prose exception).
+- Fix: `a.row-action` (display:inline-block; min-width:24px; min-height:24px;
+  padding var(--space-1) var(--space-2); box-sizing:border-box) + the class on
+  both Compare call sites (pages.ts).
+- Re-driven: Compare targets now 85x32 on BOTH surfaces (3 links each);
+  document width unchanged (1280 == 1280 at desktop); focus ring still
+  "solid 2px rgb(11,98,196)" on the row-action links (direct focus probe);
+  tab order unchanged.
+
+## Final mobile sweep — 375x667 POST-FIX (12 surface views)
+
+- ZERO document-level horizontal scroll on every view: quickstart, keys,
+  keys/issue (reveal), playground, executions, run detail (result), run
+  detail activity, activity/events, evidence, inspection, settings, compare.
+- In-box table scroll everywhere it is needed: keys 615 > 351, playground
+  680 > 301, explorer 1013 > 351, artifacts 392 > 351, events 496 > 351,
+  evidence 585 > 351, compare 438/419 > 351.
+- Discrete controls at 375 (explorer): 47 controls, min height 44px, min
+  width 76px — every discrete control >= 24x24 (nav links grow taller at
+  mobile). Quickstart below-24px inventory = exactly the 8 inline prose links
+  (breadcrumb Home/Develop + in-sentence links, h 19-22px) — the 2.5.8
+  inline exception class, recorded not fixed.
+
+## No-script foundation (AC4) — client.js blocked in the driven browser
+
+- client.js network route aborted; verified genuinely blocked (Ctrl+K does
+  NOT open the command dialog — the enhancement is dead) while the page
+  renders fully: title/forms/links all present (4 forms, 7 details groups on
+  quickstart).
+- Native interactions re-driven with the script blocked: the Trust + Library
+  nav disclosures open via native summary clicks (details.open true); links
+  and forms are the same native elements the journeys already drove (the
+  playground compose/review/run and cancel journeys above were native GET/POST
+  form submissions throughout — no script involved).
+
+## Engine boundary (AC5)
+
+- Real Chromium driven: chrome 152.0.7977.64 headless via agent-browser 0.35.0.
+- WebKit + Firefox: NOT RUN — no WebKit/Firefox engine is installable in this
+  sandbox (recorded in deploy/evidence/dep-033.json with the Lead as owner).
+
+## Smoke-number correction (honest disclosure)
+
+- scripts/lead-smoke-dep033.ts carries exactly 28 check() calls and prints 28
+  PASS lines + "SMOKE OK" (verified by grep -c on the script source AND the
+  run output; script byte-identical since checkpoint 4 c47fd50). The inherited
+  records (checkpoint-4 commit message + the Lead's worklog) say "29/29" — an
+  off-by-one, most likely counting the SMOKE OK line. The evidence record
+  carries the exact 28/28 + SMOKE OK.

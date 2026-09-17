@@ -252,6 +252,7 @@ hr { border: 0; border-top: 1px solid var(--border-subtle); margin: var(--space-
   box-shadow: inset 2px 0 0 var(--focus-ring);
 }
 
+.app-header, .app-nav, .app-main, .app-footer { min-width: 0; }
 .app-main {
   grid-area: main;
   padding: var(--space-5);
@@ -300,9 +301,31 @@ table.data, table.kv {
   margin: var(--space-3) 0;
   font-size: 0.95rem;
 }
+/* DEP-033 (responsive hardening): wide data/kv tables scroll WITHIN their
+ * own box instead of widening the page grid — without this, a table whose
+ * min-content exceeds the viewport (the 5–8 column console tables measure
+ * 826–1092px intrinsic) stretches the .app-shell grid items (min-width:
+ * auto) and traps the whole document in horizontal scroll on mobile and
+ * tablet viewport classes. Table semantics survive display:block (the
+ * accessibility tree still exposes table/rowheader/cell — verified in the
+ * DEP-033 browser drive). */
+table.data, table.kv { display: block; overflow-x: auto; }
 th, td { text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-subtle); vertical-align: top; }
 th { color: var(--text-secondary); font-weight: 600; }
 table.data thead th { border-bottom: 2px solid var(--border-strong); }
+/* DEP-033 (D11 touch-target hardening): table-row action controls (the
+ * Compare column on the executions explorer + the playground run history)
+ * meet the 24x24 CSS-px minimum target size (WCAG 2.2 AA 2.5.8) — the bare
+ * inline link measured 69x18 in the DEP-033 browser drive. Inline prose
+ * links stay exempt (the 2.5.8 inline exception); this rule is for the
+ * lone-action-link-in-a-cell pattern only. */
+a.row-action {
+  display: inline-block;
+  min-width: 24px;
+  min-height: 24px;
+  padding: var(--space-1) var(--space-2);
+  box-sizing: border-box;
+}
 
 .badge {
   display: inline-flex;
@@ -466,6 +489,14 @@ table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.87
 .timeline .stage { font-weight: 600; }
 .timeline .stage-detail { color: var(--text-secondary); }
 
+/* DEP-033 (presentation hardening): the numbered step journeys (quickstart
+ * five steps, playground choose/compose/run/inspect) are single-paragraph
+ * list items — they must NOT reuse the .timeline time+stage two-column
+ * grid (which squeezed each step into the 9rem time column: 144px usable
+ * beside 784px dead space, measured in the DEP-033 browser drive). */
+ol.steps { display: grid; gap: var(--space-4); margin: var(--space-3) 0 var(--space-5); }
+ol.steps li > :last-child { margin-bottom: 0; }
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
@@ -489,17 +520,17 @@ table.spend-runs td:first-child { font-family: var(--font-mono); font-size: 0.87
   box-shadow: inset 0 -2px 0 var(--focus-ring);
 }
 
-details.why-panel, details.advanced {
+details.why-panel, details.advanced, details.disclosure {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   padding: var(--space-3) var(--space-4);
   margin: var(--space-4) 0;
 }
-details.advanced { background: var(--surface-sunken); }
-details.why-panel > summary, details.advanced > summary { font-weight: 600; cursor: pointer; }
-details.why-panel > summary::-webkit-details-marker, details.advanced > summary::-webkit-details-marker { display: none; }
-details.why-panel > summary::after, details.advanced > summary::after { content: " \\25be"; color: var(--text-muted); }
+details.advanced, details.disclosure { background: var(--surface-sunken); }
+details.why-panel > summary, details.advanced > summary, details.disclosure > summary { font-weight: 600; cursor: pointer; }
+details.why-panel > summary::-webkit-details-marker, details.advanced > summary::-webkit-details-marker, details.disclosure > summary::-webkit-details-marker { display: none; }
+details.why-panel > summary::after, details.advanced > summary::after, details.disclosure > summary::after { content: " \\25be"; color: var(--text-muted); }
 
 .state {
   border: 1px dashed var(--border-strong);
@@ -523,6 +554,12 @@ details.why-panel > summary::after, details.advanced > summary::after { content:
 form.flow { display: grid; gap: var(--space-4); max-width: 44rem; }
 .form-field { display: grid; gap: var(--space-1); }
 .form-field > label { font-weight: 600; }
+/* DEP-033 (presentation hardening): the composer's fixed-by-contract fields
+ * render their label as a <p class="form-label"> (the discriminator is not
+ * editable, so a form-control label element would be wrong) — it carries the
+ * SAME weight as the editable fields' labels so one composed form never
+ * reads as two different kinds of fields. */
+.form-field > .form-label { font-weight: 600; }
 .form-hint { color: var(--text-muted); font-size: 0.875rem; }
 .field-error { color: var(--status-error); font-size: 0.875rem; }
 .live-region { color: var(--status-error); font-weight: 600; }
@@ -530,6 +567,24 @@ form.flow { display: grid; gap: var(--space-4); max-width: 44rem; }
 
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
 .suggested { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+
+/* DEP-033 (presentation hardening): the show-once secret reveal surface
+ * (credentials) — the copy affordance is a readonly full-width mono field
+ * on a sunken surface, selectable and copyable with no script. */
+section.reveal .secret-reveal {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+section.reveal .secret-reveal input {
+  width: 100%;
+  font-family: var(--font-mono);
+  background: var(--surface-raised);
+}
 
 input, select, textarea, button { font: inherit; color: inherit; }
 input, select, textarea {
@@ -571,7 +626,14 @@ pre.raw {
   font-family: var(--font-mono);
   font-size: 0.85rem;
 }
-.detail-grid { display: grid; gap: var(--space-5); grid-template-columns: 1fr; align-items: start; }
+/* DEP-033 (D10 responsive hardening): the detail grid's bare 1fr track is
+ * an auto-minimum track — the run-detail artifacts table (mono digests +
+ * ISO timestamps, min-content ~392px) sized the track past the 351px mobile
+ * content width and re-created the D1 scroll-trap INSIDE main (404px document
+ * scrollWidth on the 375px viewport class, measured in the DEP-033 browser drive).
+ * minmax(0, 1fr) — the same 0-minimum the >=1025px two-column rule already
+ * carried — lets the track shrink so the D1 in-box table scroll takes over. */
+.detail-grid { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
 .runs-list { list-style: none; margin: 0; padding: 0; }
 .runs-list li { border-bottom: 1px solid var(--border-subtle); padding: var(--space-3) 0; }
 .runs-list .run-line { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
@@ -794,7 +856,7 @@ a.button-link.danger { color: var(--status-error); border-color: var(--status-er
   .detail-grid { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); }
 }
 @media (max-width: 1024px) {
-  .detail-grid { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: minmax(0, 1fr); }
   .app-nav { padding: var(--space-2) var(--space-3); }
   .app-header { padding: var(--space-3); }
 }
