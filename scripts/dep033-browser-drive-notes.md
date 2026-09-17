@@ -170,3 +170,92 @@ run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
   scroll; all tables fit at desktop. Explanation headings + run-id links present.
 - Sub-24px: artifact link 102x18, run-id links 407x20 (heading text links); inline
   prose class.
+
+## Responsive sweep — tablet 768x1024 (all 7 primary surfaces)
+
+- Document-level horizontal scroll: NONE on any surface (scrollWidth 768 ==
+  clientWidth 768 on quickstart, keys, playground, executions, run detail,
+  settings, compare).
+- Wide tables scroll IN-BOX at tablet: keys credential table 873 > 720;
+  playground availability 680 > 670; executions explorer 1005 > 720. Narrow
+  tables fit (no scroll). The D1 fix holds across the class.
+
+## Responsive sweep — mobile 375x667 (FIRST pass, pre-fix)
+
+- 6 of 7 surfaces clean (375 == 375, wide tables scroll in-box: keys 615/425 >
+  351, playground 680 > 301, explorer 1005 > 351, compare 453/428/439 > 351).
+- **D10 DEFECT FOUND**: /runs/<settled> (run detail) — docScrollW 404 >
+  clientW 375 (29px document-level horizontal overflow). Root cause (ancestor
+  walk): `.detail-grid` (display: grid, correctly 351px wide) sized its bare
+  `1fr` track to 392.438px — the auto-minimum track took the artifacts
+  table's min-content (mono digest sha256:browser-art + ISO timestamp
+  2026-09-17T15:53:19.359Z, unbreakable); the grid item div (min-width:auto)
+  and both tables then measured 392px in a 351px container. The D1 fix
+  covered the .app-shell grid items but NOT this INNER grid's track.
+
+## D10 fix (tokens.ts) + re-drive
+
+- Fix: `.detail-grid` base track `1fr` -> `minmax(0, 1fr)` and the <=1024px
+  collapse likewise (the >=1025px two-column rule already carried
+  `minmax(0, 2fr)` — the same 0-minimum doctrine).
+- Live prototype BEFORE committing (style injected in the driven page):
+  track 351px, item 351px, table 351px with scrollWidth 392 > clientWidth
+  351 -> in-box scroll; document 375 == 375.
+- Stack REBOOTED on the fixed CSS and re-driven: run detail @375 docScrollW
+  375 == clientW 375 (no document scroll); detail-grid track 351px; the
+  artifacts table 351px wide, scrollsInBox=true (392 > 351); the completeness
+  kv table 351px, fits.
+
+## D11 finding + fix
+
+- The explorer + playground run-history Compare links measured 69x18 — below
+  the WCAG 2.2 AA 2.5.8 24x24 minimum for a discrete action control (a lone
+  link in a table cell is NOT the inline-prose exception).
+- Fix: `a.row-action` (display:inline-block; min-width:24px; min-height:24px;
+  padding var(--space-1) var(--space-2); box-sizing:border-box) + the class on
+  both Compare call sites (pages.ts).
+- Re-driven: Compare targets now 85x32 on BOTH surfaces (3 links each);
+  document width unchanged (1280 == 1280 at desktop); focus ring still
+  "solid 2px rgb(11,98,196)" on the row-action links (direct focus probe);
+  tab order unchanged.
+
+## Final mobile sweep — 375x667 POST-FIX (12 surface views)
+
+- ZERO document-level horizontal scroll on every view: quickstart, keys,
+  keys/issue (reveal), playground, executions, run detail (result), run
+  detail activity, activity/events, evidence, inspection, settings, compare.
+- In-box table scroll everywhere it is needed: keys 615 > 351, playground
+  680 > 301, explorer 1013 > 351, artifacts 392 > 351, events 496 > 351,
+  evidence 585 > 351, compare 438/419 > 351.
+- Discrete controls at 375 (explorer): 47 controls, min height 44px, min
+  width 76px — every discrete control >= 24x24 (nav links grow taller at
+  mobile). Quickstart below-24px inventory = exactly the 8 inline prose links
+  (breadcrumb Home/Develop + in-sentence links, h 19-22px) — the 2.5.8
+  inline exception class, recorded not fixed.
+
+## No-script foundation (AC4) — client.js blocked in the driven browser
+
+- client.js network route aborted; verified genuinely blocked (Ctrl+K does
+  NOT open the command dialog — the enhancement is dead) while the page
+  renders fully: title/forms/links all present (4 forms, 7 details groups on
+  quickstart).
+- Native interactions re-driven with the script blocked: the Trust + Library
+  nav disclosures open via native summary clicks (details.open true); links
+  and forms are the same native elements the journeys already drove (the
+  playground compose/review/run and cancel journeys above were native GET/POST
+  form submissions throughout — no script involved).
+
+## Engine boundary (AC5)
+
+- Real Chromium driven: chrome 152.0.7977.64 headless via agent-browser 0.35.0.
+- WebKit + Firefox: NOT RUN — no WebKit/Firefox engine is installable in this
+  sandbox (recorded in deploy/evidence/dep-033.json with the Lead as owner).
+
+## Smoke-number correction (honest disclosure)
+
+- scripts/lead-smoke-dep033.ts carries exactly 28 check() calls and prints 28
+  PASS lines + "SMOKE OK" (verified by grep -c on the script source AND the
+  run output; script byte-identical since checkpoint 4 c47fd50). The inherited
+  records (checkpoint-4 commit message + the Lead's worklog) say "29/29" — an
+  off-by-one, most likely counting the SMOKE OK line. The evidence record
+  carries the exact 28/28 + SMOKE OK.
