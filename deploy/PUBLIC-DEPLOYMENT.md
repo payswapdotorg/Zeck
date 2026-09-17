@@ -1,8 +1,8 @@
-# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002)
+# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002 and DEP-003)
 
 **Status:** OPERATIONAL RUNBOOK (repository truth; provider consoles are evidence, never authority)
 **Parent:** `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0), `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`
-**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002).
+**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002) and the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003).
 
 This recipe is the DEP-001 deliverable for AC1 ("fresh operator can
 reproduce the target deployment from repository configuration"). Every
@@ -277,3 +277,232 @@ the DEP-014 platform surface. Pinned by
 credentials, idempotence, drift re-convergence, teardown guards,
 secret external-only hostile probes, fail-closed manifest validation,
 pure-manifest projection).
+
+## 9. The production verification chain (DEP-003)
+
+Everything above proves a plane can be BUILT and BOUND. The DEP-003
+chain proves a plane can be PROMOTED ON EVIDENCE: the exact-revision
+public-route smoke, the fail-closed health/authority readiness probes,
+the spend/quota guardrail evaluation and the deployment-identity
+verification compose into the promotion path the D-06 release surface
+governs — one release authority, one alert authority, no second gate
+vocabulary (the closed `release-policy.json` gate kinds are untouched;
+the identity verification is a pre-gate refusal + journaled evidence,
+not a new gate kind).
+
+### 9.1 The public-route production smoke at an exact revision
+
+```bash
+# local-boot mode (default): boots the REAL bootstrap host on an
+# ephemeral port, attests it, drains it on SIGTERM:
+bun run deploy:public-smoke -- --environment local [--allow-degraded]
+
+# --url mode (the production path): attest the ALREADY-DEPLOYED plane
+# that serves traffic, wherever it runs:
+bun run deploy:public-smoke -- --environment production --url https://api.example.com
+bun run deploy:public-smoke -- --environment preview --branch <branch> --url https://<preview-host>
+```
+
+One run attests, over real HTTP against the real plane:
+
+1. **TRANSPORT** — the plane answers at all;
+2. **IDENTITY at the exact revision** — `GET /identity` recomputes:
+   the Git SHA equals the checkout revision, the manifest digest and
+   topology digest equal the recomputed values, the provider topology
+   equals the `provider-tiers.json` concern map and the runtime
+   identity id re-derives (`verifyRuntimeDeploymentIdentity`);
+3. **HEALTH semantics** — §9.2 below;
+4. **EVERY public route's honest boundary** — the full route table,
+   not a sample: the executions/agents/economic-actions/
+   codebase-analysis surfaces (18 routes) must answer the honest 401
+   `AUTHENTICATION_FAILED` at the authenticate seam (the auth boundary
+   enforced, no capability fabricated); the credentials and
+   sandbox-governance surfaces wired to unbound authorities (7 routes)
+   must answer the honest 422 `CAPABILITY_UNAVAILABLE`; the public
+   sandbox data-policy artifact (1 route) must answer 200 with the
+   versioned artifact + digest. The report carries the counts
+   (`routeCoverage.probed / authBoundaryEnforced /
+   capabilityUnboundHonest / publicArtifactBound`) — 26 probed routes
+   plus `/health` and `/identity` attested separately = the complete
+   28-route public table.
+
+**Fail-closed semantics (a smoke never warns):**
+
+- A plane attesting the WRONG revision fails exit 1, naming the
+  exact-revision identity attest mismatch — even with `--allow-degraded`
+  (a degraded pass never extends to identity drift).
+- An UNREACHABLE plane fails exit 1 (`transportReachable: false`) —
+  never a warning, never a partial pass.
+- A plane whose `/health` answers 503 (an authoritative dependency
+  unattested) fails in strict mode; `--allow-degraded` converts it to
+  the EXPLICIT recorded boundary — the report's `healthCheck` carries
+  the `down-allowed-degraded` marker and `problems` stays empty. The
+  flag records the boundary; it never widens it.
+
+The JSON report (`mode`, `planeUrl`, `expectedRevision`,
+`attestation`, `routeCoverage`, `problems`) is the operator's evidence
+artifact; exit code is the gate.
+
+### 9.2 Fail-closed health and authority readiness
+
+`GET /health` of the deployed plane reports the control-plane /
+dependency distinction with honest facts:
+
+- `controlPlane: "ready"` — the transport answered; the control plane
+  is up regardless of dependency state.
+- The dependency set is EXACTLY the manifests' provider-map projection
+  for the environment class (database / object-store / coordination /
+  compute for local; the provider concern map for hosted classes) —
+  `expectedProbeConcerns`, never an invented label.
+- Each dependency carries the closed classification vocabulary
+  (`ready` / `degraded` / `unavailable`), its manifest-declared
+  authority role and, when degraded, its provider-declared degraded
+  mode.
+- **Fail-closed authority**: an AUTHORITATIVE dependency not ready ⇒
+  the whole plane answers 503 `down` (the relational authority is
+  never silently bypassed); every non-authoritative dependency ⇒ its
+  declared degraded mode (degraded-but-alive, never fabricated ready).
+- An UNKNOWN/failed probe is `unavailable` — never a permissive
+  default on missing telemetry.
+
+Deterministic boundary drill (no PostgreSQL required): point the
+environment's `ZECK_PG_ADMIN_URL` at a port with no listener (a
+reserved-then-closed port); the health probe's TCP connect is
+genuinely attempted and genuinely refused — the plane reports 503
+`down` with `relational-state: unavailable ("unreachable (fail
+closed)")` while the non-authoritative concerns degrade explicitly.
+This is exactly the pinned test
+(`tests/integration/deployment/plane-identity.test.ts`, real-process
+probes — no mocks of the probe path itself).
+
+### 9.3 Spend/quota guardrails — the composed evaluation
+
+`bun run deploy:release -- alerts --environment <class>` now emits the
+composed guardrail report (and `promote` evaluates the same
+composition before deciding):
+
+```json
+{
+  "alerts": [ ... ],
+  "critical": false,
+  "guardrails": {
+    "fenceDecisions":   [ ... ],
+    "thresholdsApplied": { "queue-backlog": { "warnAtPct": 80, "criticalAtPct": 95 }, ... },
+    "limitResolutions": [ { "guard": "queue-backlog", "limit": 1000, "source": "manifest" }, ... ],
+    "promotionBlocked": false,
+    "blockReasons": []
+  }
+}
+```
+
+**Where every number comes from (the manifest is the only limit
+carrier):** thresholds and default limits resolve from
+`deploy/manifests/quota-guards.json` — `queue-backlog` carries
+`defaultLimitBytes: 1000` (the manifest-declared default backlog
+bound, unit: pending envelopes; operator override
+`ZECK_QUEUE_BACKLOG_BOUND`), `database-size` documents its
+`defaultLimitBytes: 5368709120` (5 GiB; override
+`ZECK_DB_SIZE_LIMIT_BYTES`). Operator overrides sit ON TOP of the
+manifest row and must be well-formed: a MALFORMED override (non-
+positive, fractional, trailing garbage) ABORTS the evaluation
+fail-closed — never a silent substitution of the manifest default.
+A guard with no manifest row and no override (compute-claims: the
+compute-plane environment quota IS the limit) resolves
+authority-owned — nothing invented. The audit trail lands in
+`limitResolutions` (`operator-override` / `manifest` /
+`authority-owned`).
+
+**Ceiling refusal vs alert semantics — two different honest answers:**
+
+- The provider **spend fence** DENIES at the limit: a
+  provider-concern usage snapshot at/over its declared limit refuses
+  with the provider's declared degradation mode (relational-state ⇒
+  fail-closed `authority-unavailable`; async-transport ⇒ explicit
+  `dispatch-backlogged`). Silent paid overage is unrepresentable:
+  the default overage policy is fail-closed, and continuing past a
+  limit requires an explicit, RECORDED, BOUNDED overage approval —
+  the approval's own bound denies when reached (no blank checks).
+  Unknown usage denies (`usage-unknown`) — never a permissive
+  default.
+- The **alert thresholds** fire per the same manifest rows: WARNING
+  at `warnAtPct` (plan capacity), CRITICAL at `criticalAtPct` — and a
+  CRITICAL alert BLOCKS promotion (the D-06 semantics, one alert
+  authority). Both are proven to move with the manifest row (a
+  mutated row changes the evaluation — thresholds are never
+  tool-local constants).
+
+Honest boundary: `artifact-bytes` utilization is not measurable from
+the local authoritative stores (the object store's own meter is
+credential-gated) — the evaluation records the absence rather than
+fabricating a snapshot (NOT RUN in `deploy/evidence/dep-003.json`,
+owner: Lead credentialed re-run).
+
+### 9.4 Deployment identity: attest → verify → promote; rollback re-attests
+
+The promotion path consumes the exact-revision attestation (Git SHA +
+manifest digest + provider topology, `GET /identity`) as an INPUT:
+
+```bash
+# the plane serving traffic must ATTEST the candidate revision
+# BEFORE the promotion decides (hosting targets):
+bun run deploy:release -- promote --to staging --actor <you> --plane-url https://api.staging.example.com
+
+# after the governed rollback (pointer flip), re-attest the TARGET
+# release's revision (the operator repoints the plane, then re-runs):
+bun run deploy:release -- rollback --environment staging --to <releaseId> --actor <you> --plane-url https://api.staging.example.com
+```
+
+Semantics (both directions fail closed, never warn):
+
+- **Promote**: with `--plane-url`, the plane is attested BEFORE the
+  gate evaluation. An unreachable, schema-drifted, tampered or
+  wrong-revision plane REFUSES the promotion — a `refused` promotion
+  decision is journaled with the exact reason and the tool exits 1,
+  regardless of gate evidence (an unverified plane is not promotable).
+  A verified plane records the evidence in the journal and the stdout
+  document (`planeIdentity`: plane URL, attested revision, runtime
+  identity id). Without `--plane-url`, the recorded identity-audit
+  gate evidence (the ledger binding) remains the identity authority —
+  an honest note in the output, never a fabricated verification.
+- **Rollback**: the pointer flip touches `release_control`
+  exclusively (durable domain state untouched, §5); with
+  `--plane-url` the tool then re-attests the plane at the TARGET
+  release's revision. A plane still serving the FROM revision exits
+  non-zero with the exact honest instruction ("not yet repointed …
+  repoint it and re-run"); the rollback itself already happened, the
+  repoint is the operator's remaining step. The re-attestation never
+  touches domain authority: the identity document is
+  hosting-independent and the provider topology is manifest-declared
+  (invariant under repoint).
+- For `preview` targets, pass `--branch <branch>` so the attestation
+  expects the branch-scoped preview slug.
+
+The guard decisions and the attestation core are pinned by
+`tests/unit/deployment/promotion-identity.test.ts` (both directions)
+and `tests/integration/deployment/plane-identity.test.ts` (real plane
+processes, real HTTP).
+
+### 9.5 DEP-003 honest boundaries (what this record does NOT claim)
+
+- **Live-provider promotion rails were NOT RUN from the worker pod**
+  (no cloud credentials): no promote/rollback against a real hosted
+  production plane, no production-class `--url` smoke over the public
+  internet, no live provider-meter parity for the fence inputs, no
+  artifact-bytes measurement, no journaled end-to-end `--plane-url`
+  drill over the PostgreSQL release ledger, no health
+  ready-authority 200 path (no PostgreSQL server in the pod). Every
+  one of these is recorded NOT RUN with its owner in
+  `deploy/evidence/dep-003.json` — **owner: Lead credentialed
+  re-run** (this recipe's §3.2 + §9 with live credentials is that
+  re-run).
+- What IS verified without credentials: every mechanism above
+  against REAL local plane processes over real HTTP (real
+  subprocesses, real TCP connects — the identity core, the full
+  route-table smoke with its wrong-revision/unreachable negatives,
+  the deterministic authority-unavailable health boundary, the
+  guardrail negative paths over the real manifests, and the promote/
+  rollback guard decisions in both directions).
+- The full battery of record: governance OK, typecheck 0, lint
+  68w/8i/0e (baseline), 504 files / 8515 tests + 201 honest PG-gated
+  skips, `deploy:validate` exit 0 — exact numbers in
+  `deploy/evidence/dep-003.json`.
