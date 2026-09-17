@@ -7,7 +7,8 @@ access limitations. Frontier truth lives in
 `spec/platform-delivery-state/frontier-state.json`; this report is the human/
 agent-readable history behind it.
 
-Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
+Report refreshed at: main `95982e8` + the state reconciliation commit that follows it (2026-09-17,
+Tech Lead session C).
 
 ## Delivery ledger
 
@@ -24,6 +25,8 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-030 | P3-1 | 28cf509 | #134 | 7ad8ada | usage/economics/optimization dashboard (AC1-7); worker chat 9a796433 (wave-1), tarball sha256 `a9dc3e81…` verified at harvest; composition-only (zero new API routes — the preferred path; openapi/env-vars/route-count pins untouched and green); Lead independently reproduced the full battery (typecheck 0 / lint 68w-8i baseline / unit 340f-5956t / arch 139f-2230t+4skip / int 21f-269t+197skip / governance OK) + lead-smoke 11/11 (real API + real dashboard: honest-unavailable states naming the four missing contracts, verbatim optimization decisions, real quota envelope, facts.json parity); worker caught+fixed a real `$$` double-currency defect mid-smoke with a regression pin; merge note: DEP-014 sandbox-governance transport omits X-Zeck-Application (environments console live quota read degrades empty vs real API) — recorded for the hardening wave |
 | DEP-002 | P0-2 | 58a3df3 | #135 | 3856347 | environment/secret/sandbox-account provisioning automation (AC1-7); Task-tool subagent worker 2-a (the dispatch call returned context-deadline-exceeded but the worker completed in the background — commit 47ab2de by `DEP-002 worker`, worktree clean, evidence file self-recorded); Lead independently reproduced the full battery on the worktree (governance OK / typecheck 0 / lint 68w-8i baseline / unit 340f-5962t / full suite 500f-8461t+201 honest skips / deploy:validate valid=true with 3 sandbox accounts across 3 environments / provision --plan exit 0 with all five convergence steps PASS) + provision suite standalone 31/31 (AC1 plan-mode-no-credentials, AC2 hostile plaintext probes, AC3 idempotence+drift+teardown-guards, AC4 manifest-projected policy facts); honest NOT RUN boundaries for all live-provider steps with owners in deploy/evidence/dep-002.json; automatic merge over DEP-030-advanced main verified zero-overlap, full battery on the integration (501f/8486t) |
 | DEP-032 | P3-3 | d1faea0 | #136 | bd0bef8 | execution reproducibility-bundle export + self-host handoff (AC1-7); worker 2-c-resume (Task-tool continuation over the preserved uncommitted progress of the dead 03:28 UTC turn; 4 checkpoint commits: core 7777e92, lead-smoke 59252a9, browser-smoke stack 106bc2d, evidence b75d579); composition-only (zero new API routes); Lead pre-dispatch union-merge of pages.ts over DEP-030's usage routes (both route sets coexist — the predicted mechanical reconciliation); Lead independently reproduced the full battery (governance OK / typecheck 0 / lint 68w-8i / full suite 502f-8513t+201 skips — identical to worker evidence) + lead-smoke 18/18 PASS (real API + real dashboard: create→plan→dispatch→settle→export journey, bundle.facts HTTP-verified parity with facts.json, artifact rows references+digests only, hostile 404s) + live-stack endpoint probe (export view 200, bundle.json composed, unknown-id 404, self-host guide 200); honest NOT RUN: live-deployment reproduction, real-PG self-host path, live-provider ops, CI-on-branch — owners in deploy/evidence/dep-032.json |
+| DEP-003 | P0-3 | d1faea0 | #137 | 8dc7539 | production smoke, health, spend/quota guardrails and deployment identity (AC1-7) — the P0 deployment chain closes; worker lineage 3-a → 3-a-resume → 3-a-resume-2 (Task-tool continuations over turn deaths; every checkpoint committed — nothing lost); plane-identity.ts attestation core (real-HTTP fetch + recomputation verify; drift/tamper/wrong-revision/unreachable fail closed; identity-audit gate stays ledger-bound — AC5 verified 0 release-policy.json diff lines), guardrails.ts (manifest is the ONLY limit carrier; malformed operator overrides abort fail-closed), public-smoke.ts full public-route smoke at exact revision (--url mode for deployed planes; honest 401/422/503 boundary semantics; SIGTERM drain), release.ts promotion-identity wiring (verify-before-promote; rollback re-attestation), quota-guards.json additive queue-backlog row, PUBLIC-DEPLOYMENT.md §9 operator recipe, dep-003.json evidence (7 NOT RUN with owners / 15 verified); Lead independently reproduced the full battery at 319ce41 (governance OK / typecheck 0 / lint 68w-8i / deploy:validate valid=true / full suite 504f-8515t+201 skips — identical to worker evidence, anti-fabrication confirmed); honest NOT RUN: live-provider promotion rails, public-internet smoke, PG-gated release-cli drill, live provider meters — all owned by Lead credentialed re-run |
+| DEP-031 | P3-2 | 5660d9f | #138 | 95982e8 | playground compare mode — baseline vs strategy with execution explanation (AC1-7); worker lineage 3-b → 3-b-resume → 3-b-resume-2 (fresh dispatch died at context limit after the module; continuation-1 landed checkpoints 4-5 then died; tail worker completed evidence/battery/report — the Task-tool call even returned synchronously); compare.ts projection (side-by-side public facts, planning rationale VERBATIM from the event ledger, cross-family generic-axes honesty, missing-fact unavailable cells), pages.ts additive (Compare column + /console/compare + baseline launcher through the frozen create contract), 35-test unit suite, navigation pin sync (+2 — closes a pre-existing /console/executions pin gap), lead-smoke-dep031.ts (27 checks over real API + real dashboard); composition-only (zero new API routes; openapi + manifests byte-identical); Lead independently reproduced the full battery at ffb3725 (governance OK / typecheck 0 / lint 68w-8i / full suite 503f-8548t+201 skips — identical to worker evidence) + lead-smoke re-run 27/27 SMOKE OK; merge note: BASELINE_MISSING_CONTRACT named in-surface (a true plain-single-model baseline needs planning semantics the frozen create contract does not carry — launcher records lineage metadata only; widening is a Lead public-contract decision, never done here) |
 
 ## Absorbed items
 
@@ -33,18 +36,20 @@ Report refreshed at: main `96e5db4` (2026-09-18, Tech Lead session B).
 | DEP-022 | DEP-020 | docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md |
 | DEP-023 | DEP-020 | docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps |
 
-## Current frontier (main bd0bef8 after the DEP-032 merge, 2026-09-17)
+## Current frontier (main 95982e8 after the DEP-031 merge + state reconciliation, 2026-09-17)
 
-- delivered: DEP-001, DEP-002, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020, DEP-025,
-  DEP-030, DEP-032
-- in flight: DEP-003 (worker 3-a, Task-tool channel, worktree at base d1faea0; first commit
-  777cc06 — plane-identity attestation core + full public-route production smoke with
-  wrong-revision/unreachable fail-closed negatives; guardrails.ts + quota-guards additive rows
-  in progress)
-- eligible: DEP-031 (usage comparison — dispatching now at the post-DEP-032 head; the
-  explorer/playground overlap with DEP-032 is resolved since DEP-032 merged first)
-- blocked: DEP-033 ← DEP-031 only (030/032 delivered)
-- later authorized items awaiting dispatch gating: DEP-033, DEP-040..044
+- delivered: DEP-001, DEP-002, DEP-003, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020,
+  DEP-025, DEP-030, DEP-031, DEP-032 — the P0 deployment chain is COMPLETE (001 bootstrap →
+  002 provisioning → 003 production smoke/health/guardrails/identity) and the P3 console set is
+  complete except hardening
+- in flight: none
+- eligible: DEP-033 (accessibility/responsive/security/cross-browser hardening over the completed
+  console surface — dispatching at the post-reconciliation head)
+- blocked: DEP-040 ← DEP-033 (the P4 deployment-acceptance wave 040..044 follows the hardened
+  surface; 041/042/043 follow 040; 044 is the final release gate over the whole chain)
+- post-merge integration battery on main 95982e8: governance OK / typecheck 0 / lint 68w-8i /
+  deploy:validate valid=true / full suite 506f-8577t+201 skips, 0 failures (the union of both
+  deliveries — zero overlap, zero regressions)
 
 ## Dead-lane audit (2026-09-17, commit 3111950)
 
@@ -71,6 +76,10 @@ with full contract rigor.
 | 2026-09-17 | Lead packet | harness | Two mistyped full SHAs in worker packets (e49c36f…, 3111950…) — both caught; workers resolved the correct short-prefix commits; lesson: never hand-type full SHAs, always rev-parse | packets corrected at authoring; reconstruction used git-resolved SHAs |
 | 2026-09-17 | Lead review env | environmental | OOM-killed battery run corrupted node_modules/pg-protocol (3 db suites failing `Cannot find module './messages'`) | Tab cleanup + clean reinstall; all suites green; NOT a code defect (delivery unaffected) |
 | 2026-09-17 | 3 Task-tool dispatches | harness (call-level only) | Dispatch calls returned context-deadline-exceeded (3 parallel + 1 retry) but the subagents KEPT EXECUTING in the background — DEP-002 completed fully (commit 47ab2de), DEP-032 died mid-work at context limit | Channel verdict: call status is NOT worker status; Lead verifies by worktree state; continuation dispatches carry preserved-progress instructions |
+| 2026-09-17 | 3-a-resume / 3-b-resume turns | worker/harness | Both wave-3 continuation workers died at context limits mid-tail (3-a-resume after AC2 commit b851c74 with evidence/docs/battery pending; 3-b-resume after checkpoint-5 lead-smoke with evidence/battery pending); 3-a-resume's final worklog append was lost with its call result | Second continuations (3-a-resume-2, 3-b-resume-2) completed both tails cleanly — checkpoint-commit discipline again proven: every turn death lost ZERO committed work; lineage recorded in each evidence file |
+| 2026-09-17 | Lead + worker TodoWrite | harness (shared state) | The session-level TODO file (/home/z/TODO) is shared between the Lead session and Task-tool workers — the Lead's TodoWrite overwrote worker 3-a-resume's in-flight checklist mid-turn | Lesson: while workers are live, the Lead tracks state in the worklog (not TodoWrite); worker TODO lists are advisory only (both affected workers completed their scopes regardless) |
+| 2026-09-17 | DEP-030 evidence record | process gap | deploy/evidence/dep-030.json was never committed — DEP-030's merge (7ad8ada) carried only its 6 surface files; discovered by worker 3-b-resume-2 while hunting a pattern source | Lead authored dep-030.json from its own PR #134 review record (recordedBy: Tech Lead) in the same reconciliation commit — the verified numbers pre-existed in the delivery ledger; no fabrication |
+| 2026-09-17 | GitHub merge API | harness (transient) | First merge attempt of PR #137 returned HTTP 404 — the endpoint requires PUT, urllib defaults to POST when a body is present | Re-issued with method="PUT" per the VAL-048 precedent; merged 200; lesson recorded in session notes |
 
 ## Honest NOT RUN boundaries currently carried on main
 
@@ -87,7 +96,7 @@ with full contract rigor.
 
 ## Remaining roadmap
 
-DEP-003 (in flight, worker 3-a); DEP-031 (dispatching at the post-DEP-032 head);
-DEP-033 (last P3, gated on 031);
-DEP-040..044 (deployment acceptance — after the P3 wave; the DEP-040 live-provider validation needs operator-provided free-tier credentials, the recorded NOT RUN boundary of DEP-001);
-DEP-040..044 (deployment acceptance + release gate).
+DEP-033 (last P3 — hardening; dispatching at the post-reconciliation head);
+DEP-040..044 (deployment acceptance + release gate — after DEP-033; the DEP-040
+live-provider validation needs operator-provided free-tier credentials, the recorded
+NOT RUN boundary of DEP-001/003).

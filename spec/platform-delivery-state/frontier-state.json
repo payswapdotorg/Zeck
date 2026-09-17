@@ -5,6 +5,7 @@
   "delivered": [
     "DEP-001",
     "DEP-002",
+    "DEP-003",
     "DEP-010",
     "DEP-011",
     "DEP-012",
@@ -13,25 +14,18 @@
     "DEP-020",
     "DEP-025",
     "DEP-030",
+    "DEP-031",
     "DEP-032"
   ],
   "eligible": [
-    "DEP-031"
+    "DEP-033"
   ],
-  "inFlight": [
-    {
-      "item": "DEP-003",
-      "branch": "work/DEP-003-production-smoke",
-      "base": "d1faea0c8462555366f9dd2e6149698ee6132f8f",
-      "worker": "3-a",
-      "channel": "Task-tool subagent; first commit 777cc06 (plane-identity attestation + full public-route production smoke) landed; guardrails.ts in progress"
-    }
-  ],
+  "inFlight": [],
   "blocked": [
     {
-      "item": "DEP-033",
+      "item": "DEP-040",
       "on": [
-        "DEP-031"
+        "DEP-033"
       ]
     }
   ],
@@ -53,6 +47,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "7ad8ada6dceee07ed96e283fda700e32714d852e",
+  "currentBase": "95982e8438db71f7ec1ac4eedc97a1f605fa13ac",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }

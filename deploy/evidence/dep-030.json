@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-030",
+  "title": "Usage, economics and optimization dashboard — verification evidence record",
+  "recordedBy": "Tech Lead (session C, 2026-09-17) — reconstructed from the Lead's own PR #134 review record; the worker's delivery (chat 9a796433, tarball sha256 a9dc3e81… verified at harvest) predated the house evidence-file pattern that later orders (DEP-002/003/031/032) made explicit. Every number below was produced by the Lead's independent battery at review time and was already recorded verbatim in docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md (the DEP-030 ledger row) and the Lead worklog (2-merge-dep030); nothing is fabricated here.",
+  "environment": "Lead review environment over the applied worktree of branch work/DEP-030-usage-dashboard (head cf376b0, base 28cf509); merged as PR #134 (merge commit 7ad8ada)",
+  "date": "2026-09-17 (review) / 2026-09-17 (record reconstructed and committed)",
+  "doctrine": "Every check below was run for real by the Lead at review time. Live-provider boundaries and environment-gated checks are listed notRun with their owners.",
+  "notRun": [
+    {
+      "check": "Real-browser drive of the usage dashboard surface (engine-level rendering, focus/keyboard behavior)",
+      "reason": "The DEP-030 verification stack is the lead-smoke runner over the REAL dashboard server via real HTTP fetch; a real-browser drive was not part of the delivery (the DEP-031/032 evidence records carry the same boundary for their surfaces).",
+      "owner": "Lead — the DEP-033 hardening order owns keyboard/cross-browser verification across the completed console surface set, including this one."
+    },
+    {
+      "check": "Live-provider quota/usage reads (real provider dashboards and metering APIs)",
+      "reason": "No operator provider credentials in the review environment; the surface composes the public API's recorded facts only. Merge note from the review: the DEP-014 sandbox-governance transport omits X-Zeck-Application, so the environments console live quota read degrades empty vs the real API — recorded for the hardening wave.",
+      "owner": "Lead credentialed re-run (recorded NOT RUN boundary of the program)."
+    },
+    {
+      "check": "Branch CI (GitHub Actions on the delivery branch)",
+      "reason": "Workers do not open PRs; CI runs at merge time on main by the Lead's merge flow.",
+      "owner": "Lead merge + CI."
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Governance",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "OK at review time (work-order ledger consistent; inFlight/frontier reconciled by the Lead at the state commit c45ee24)."
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "0 errors."
+    },
+    {
+      "check": "Lint",
+      "command": "bun run lint",
+      "evidence": "68 warnings / 8 infos — the house baseline, no new violations."
+    },
+    {
+      "check": "Unit suite",
+      "command": "vitest run (unit scope)",
+      "evidence": "340 files / 5956 tests passing at the review worktree (includes the new usage-console.test.ts, 25 tests)."
+    },
+    {
+      "check": "Architecture suite",
+      "command": "vitest run (architecture scope)",
+      "evidence": "139 files / 2230 tests passing + 4 skips."
+    },
+    {
+      "check": "Integration suite",
+      "command": "vitest run (integration scope)",
+      "evidence": "21 files / 269 tests passing + 197 honest PG/credential-gated skips."
+    },
+    {
+      "check": "AC1-7 lead smoke over the REAL API + REAL dashboard",
+      "command": "bun scripts/lead-smoke-dep030.ts",
+      "evidence": "11/11 PASS — honest-unavailable states naming the four missing contracts, verbatim optimization decisions, real quota envelope, facts.json parity. The worker caught and fixed a real $$ double-currency defect mid-smoke with a regression pin before harvest."
+    },
+    {
+      "check": "Composition-only surface (zero new API routes — the preferred path)",
+      "command": "diff inspection of the delivery vs base",
+      "evidence": "apps/dashboard/usage.ts (905 lines, composed surface), surgical pages.ts (+12: import + 2 routes), shell.ts (+19 nav), navigation.test.ts pin sync, usage-console.test.ts (25 tests), scripts/lead-smoke-dep030.ts; openapi.json / env-vars manifest / route-count pins untouched and green."
+    }
+  ],
+  "notes": [
+    "Reconstruction provenance: this record was authored by the Lead after worker 3-b-resume-2 discovered the file's absence (2026-09-17). All numbers pre-existed in the delivery ledger and the Lead worklog; the record commits them to the evidence-file pattern the later orders follow.",
+    "The delivery is composition-only: every rendered fact comes from the public API's recorded facts; the surface creates no second economics or optimization authority."
+  ]
+}
