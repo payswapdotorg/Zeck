@@ -4,6 +4,7 @@
   "status": "active",
   "delivered": [
     "DEP-001",
+    "DEP-002",
     "DEP-010",
     "DEP-011",
     "DEP-012",
@@ -14,35 +15,22 @@
     "DEP-030"
   ],
   "eligible": [
+    "DEP-003",
     "DEP-031"
   ],
   "inFlight": [
     {
-      "item": "DEP-002",
-      "branch": "work/DEP-002-provisioning-automation",
-      "base": "28cf509ed99c4b7e61ec4e2de68b649381fc9334",
-      "worker": "2-a",
-      "chat": "f73f52f3 (3rd dispatch; peak-gated)"
-    },
-    {
       "item": "DEP-032",
       "branch": "work/DEP-032-export-bundle",
       "base": "28cf509ed99c4b7e61ec4e2de68b649381fc9334",
-      "worker": "2-c",
-      "chat": "cd655d30 (peak-gated)"
+      "worker": "2-c-resume",
+      "channel": "Task-tool subagent (direct worktree access); prior 2-c turn died 2026-09-17 03:28 UTC mid-implementation with uncommitted progress (export.ts/SELF-HOSTING.md/execution-export.test.ts + pages.ts/PRODUCTION/README/integration-recipe edits) preserved in the worktree"
     }
   ],
   "blocked": [
     {
-      "item": "DEP-003",
-      "on": [
-        "DEP-002"
-      ]
-    },
-    {
       "item": "DEP-033",
       "on": [
-        "DEP-030",
         "DEP-031",
         "DEP-032"
       ]
