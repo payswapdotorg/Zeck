@@ -19,9 +19,10 @@
  *    revision after the governed pointer flip — the re-attestation
  *    never touches domain authority: the identity document is
  *    hosting-independent and the provider topology is manifest-declared);
- *  - deploy/release.ts gate run identity-audit --plane-url (the live
- *    plane verification joins the recorded-binding verification as
- *    gate evidence).
+ *  - the identity-audit GATE stays ledger-bound by design (the recorded
+ *    binding is its evidence); the live-plane attestation enters the
+ *    promotion chain through the promote/rollback guards above — no
+ *    gate vocabulary change (DEP-003 AC5).
  *
  * Every fetch is a REAL HTTP round trip against a real plane process;
  * there is no mocked transport on this path.
