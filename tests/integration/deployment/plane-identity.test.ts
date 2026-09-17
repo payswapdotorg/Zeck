@@ -364,9 +364,9 @@ describe.skipIf(!HAS_GIT)(
         expect(strict.code).toBe(1);
         const strictReport = reportOf(strict);
         const strictProblems = strictReport.problems as string[];
-        expect(
-          strictProblems.some((problem) => problem.includes("GET /health answered 503")),
-        ).toBe(true);
+        expect(strictProblems.some((problem) => problem.includes("GET /health answered 503"))).toBe(
+          true,
+        );
 
         const degraded = runPublicSmoke([
           "--environment",
