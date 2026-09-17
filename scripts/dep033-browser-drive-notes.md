@@ -58,3 +58,39 @@ run-detail URL before driving. agent-browser 0.35.0 daemon + real Chromium
   ordered `list` with 5 `listitem [level=1]` + ListMarker "1.".."5." (the D7 fix:
   ol.steps grid change preserved list semantics). Skip target, main landmark, nav
   landmarks all present in the tree.
+
+## Surface 2 — /console/applications/keys (+ issue -> reveal journey) @ 1280x800
+
+- Document: no horizontal scroll (scrollWidth 1280 == clientWidth). 90 interactive
+  elements; 4 tables (kv 4-row transport-credential table, data 2-row credential list,
+  kv 2-row, data 6-row connections) — none overflow at desktop; a11y tree exposes
+  columnheader roles (Label / Credential identity / Scope / ... / Rotation / Actions)
+  and the honest empty state AS A CELL ("No credentials are issued for this application
+  scope ... Issue one below — the secret is shown exactly once, at creation.").
+- Issue form a11y wiring (D2/D5): textbox "Label" [required] carries
+  aria-describedby -> credential-label-help; combobox "Role scope" (member/owner/admin);
+  button "Issue credential".
+- Empty-submit gate: clicking "Issue credential" with an empty label does NOT leave the
+  page — the browser's native required validation holds (validity.valueMissing=true,
+  willValidate=true, form.noValidate=false). The server-rendered field-error path
+  (D3) is additionally pinned by the 36-test unit suite + lead smoke 29/29.
+- Issue -> reveal journey (mouse-equivalent drive): filled Label "browser-drive key 1",
+  selected Role scope "owner", submitted -> 303 to /console/applications/keys/issue.
+  Reveal page: h1 "Credential issued — the secret, shown once"; region "This is the
+  only time this secret is shown"; the copy affordance is a readonly mono text input
+  (value zeck-test-secret-00000001, visually-hidden label "The new secret (select and
+  copy)", aria-describedby -> secret-help); secret NOT in URL, NOT in title; credential
+  record renders as a kv table with rowheader/cell roles (Label / Credential identity /
+  Role scope / Permission scope ...). role="status" aria-live="polite" live region
+  present ("The credential was issued. The secret below is shown exactly once.").
+- Show-once doctrine (reload probe): reloading the reveal URL re-renders the honest
+  replay state — h1 "Credential issuance — replayed outcome", secret GONE from the DOM
+  (no #credential-secret input), status live region explains the idempotent replay and
+  names the DEP-011 show-once contract. Verified with a real reload.
+- Touch targets: all discrete controls >= 24x24 (issue form inputs/buttons full-size);
+  only inline prose links below 24px (h 19-22px) — WCAG 2.5.8 inline exception.
+- Observation (NOT a defect, no code change): the reveal copy-field is
+  `input[type=text][readonly]` without autocomplete="off" — readonly text fields are
+  skipped by Chromium autofill and are not password-manager material; the show-once +
+  esc()-escaping + readonly triad is pinned by the unit suite. Recorded here for the
+  Lead as a possible future belt-and-braces attribute.
