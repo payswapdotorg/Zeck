@@ -8,12 +8,13 @@
       "criticalAtPct": 95
     },
     "queue-backlog": {
-      "description": "Pending dispatch envelopes vs the backlog bound (bounded re-delivery pressure).",
+      "description": "Pending dispatch envelopes vs the backlog bound (bounded re-delivery pressure). defaultLimitBytes carries the manifest-declared default backlog bound for this guard (unit: pending envelopes — the loader's single default-limit channel, named for its first use; the operator override is ZECK_QUEUE_BACKLOG_BOUND). The tool never hard-codes a limit this manifest does not carry (DEP-003).",
       "warnAtPct": 80,
-      "criticalAtPct": 95
+      "criticalAtPct": 95,
+      "defaultLimitBytes": 1000
     },
     "database-size": {
-      "description": "pg_database_size of the authoritative store vs the declared size limit (provider plan ceiling declared by the operator; default 5 GiB).",
+      "description": "pg_database_size of the authoritative store vs the declared size limit (provider plan ceiling declared by the operator; the manifest-carried default is the defaultLimitBytes row — the operator override is ZECK_DB_SIZE_LIMIT_BYTES).",
       "warnAtPct": 80,
       "criticalAtPct": 95,
       "defaultLimitBytes": 5368709120

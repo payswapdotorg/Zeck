@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-003",
+  "title": "Production smoke, health, spend/quota guardrails and deployment identity — verification evidence record",
+  "recordedBy": "DEP-003 implementation worker (3-a + continuation turns 3-a-resume, 3-a-resume-2)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker); git worktree /home/z/zeck-w-dep003, branch work/DEP-003-production-smoke at base d1faea0",
+  "date": "2026-09-17",
+  "doctrine": "Every live-provider operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a live result. The production smoke, health boundary semantics, guardrail evaluation and identity attestation are fully verified against REAL local plane processes over real HTTP (real subprocesses, real TCP connects, no mocked transports); the live-hosted application of the same chain is the credentialed owner's boundary.",
+  "notRun": [
+    {
+      "check": "Live-provider promotion rails: promote/rollback with --plane-url against a real hosted production plane (Vercel-hosted deploy/api.ts + Neon authority) over the public internet",
+      "reason": "No cloud credentials and no live deployment in the worker pod (work-order-mandated honest boundary). The identity core is verified against real local plane processes over real HTTP, and the promote/rollback identity guard decisions carry unit tests in both directions; the live-hosted promotion is the credentialed re-run.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-003 sections)"
+    },
+    {
+      "check": "Production-class public smoke over the public internet (deploy:public-smoke --environment production --url https://<live-plane>)",
+      "reason": "No live deployed plane and no transport credential for one in the worker pod. The --url mode itself is verified end-to-end against real local planes (attest + full route coverage + negatives) — the mode is hosting-independent by construction (the identity document carries no host fields).",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-003 section 9.1)"
+    },
+    {
+      "check": "Journaled end-to-end promote/rollback --plane-url drill over the PostgreSQL release ledger (release-cli integration suite is ZECK_PG_TEST_URL-gated)",
+      "reason": "No PostgreSQL server in the worker pod (no server binaries, no Docker). The refusal journaling composes the unit-tested guard with the already-PG-gated release-cli suite; the composition is type-checked and code-reviewed but not driven end-to-end here.",
+      "owner": "Lead credentialed re-run (or any environment with a PostgreSQL 16+ server: bunx vitest run tests/integration/deployment/release-cli.test.ts plus the --plane-url drill of PUBLIC-DEPLOYMENT.md section 9.3)"
+    },
+    {
+      "check": "Live provider spend/quota meters (Neon / Cloudflare / Upstash dashboards and metering APIs) as quota-fence input parity",
+      "reason": "No cloud credentials in the worker pod. By design the fence evaluates the AUTHORITATIVE STORES (pg_database_size, dispatch-envelope counts) — never a provider dashboard; live provider-meter parity against those snapshots is the credentialed operator's re-verification.",
+      "owner": "Lead credentialed re-run (deploy/PUBLIC-DEPLOYMENT.md DEP-003 section 9.2)"
+    },
+    {
+      "check": "artifact-bytes guardrail utilization measurement (the object store's own meter is credential-gated)",
+      "reason": "Not measurable from the local authoritative stores by construction; the guardrail evaluation invents nothing for it (asserted by the projection test) and records the absence rather than fabricating a snapshot.",
+      "owner": "Lead credentialed re-run (R2 meter parity when the artifact store is live)"
+    },
+    {
+      "check": "Health 'ready-authority' 200 path against a live PostgreSQL authority (strict smoke with a reachable authority)",
+      "reason": "No PostgreSQL server in the worker pod. The fail-closed authority-unavailable boundary (503) is deterministically proven with a REAL dead endpoint (a reserved-then-closed port; the probe's TCP connect is genuinely attempted and refused); the 200 ready path requires the credentialed server.",
+      "owner": "Lead credentialed re-run (or any environment with a PostgreSQL 16+ server, per PUBLIC-DEPLOYMENT.md section 3.1)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Governance",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit)"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "68 warnings / 8 infos / 0 errors, exit 0 — the recorded baseline. The inherited work carried exactly 1 biome format error (tests/integration/deployment/plane-identity.test.ts expect() wrapping); fixed with biome --write at commit d2f79b0 (no baseline warnings touched); the affected suite re-run green after the fix."
+    },
+    {
+      "check": "Full test suite (unit + architecture + discrimination + integration)",
+      "command": "bun run test",
+      "evidence": "Test Files 504 passed | 147 skipped (651); Tests 8515 passed | 201 skipped (8716); 0 failures; 213.08s. Base d1faea0 was 501 files / 8486 tests; the +3 files / +29 tests are exactly the new deployment suites (plane-identity.test.ts 8 integration, guardrails.test.ts 14 unit, promotion-identity.test.ts 7 unit). The file/test-level skips are the honest PG/credential-gated suites (unchanged baseline behavior). Run at tree d2f79b0 (code identical to the final branch state; only this evidence JSON and the operator-recipe sections differ after)."
+    },
+    {
+      "check": "Deployment configuration gate",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0, valid=true (environments=4, providers=8, releaseGateKinds=14, quotaGuards=3, operationalThresholds=3, migrations=33, sandboxAccountEnvironments=3, sandboxAccounts=3)"
+    },
+    {
+      "check": "AC1 — full public-route production smoke at an exact revision, real process, --url mode",
+      "command": "tests/integration/deployment/plane-identity.test.ts (--url describe blocks)",
+      "evidence": "8/8 tests pass over REAL plane subprocesses on ephemeral ports: a booted plane at the checkout revision passes the full --url smoke with --allow-degraded (exit 0, problems=[], routeCoverage.probed>20); a plane booted at a WRONG revision (ZECK_DEPLOY_GIT_REVISION override) FAILS the smoke exit 1 naming the exact-revision identity attest; an unreachable plane (http://127.0.0.1:1) FAILS exit 1 with transportReachable=false — never a warning"
+    },
+    {
+      "check": "AC1 — route-table completeness of the probe set",
+      "command": "direct CLI run + route-table cross-check against src/api/routes/*",
+      "evidence": "routeCoverage: probed=26 = every public route beyond /health and /identity (18 auth-boundary 401 AUTHENTICATION_FAILED + 7 capability-unbound 422 CAPABILITY_UNAVAILABLE + 1 public-artifact 200 with digest); /health and /identity are attested separately by the same smoke; the openapi.json live-route-table pin (28 routes) stays green in the full suite"
+    },
+    {
+      "check": "AC1 — direct CLI run, local-boot mode (fresh subprocess, SIGTERM drain)",
+      "command": "bun run deploy:public-smoke -- --environment local --allow-degraded",
+      "evidence": "exit 0 at revision d2f79b0df1f7374e21301b9f69d3aab296ac1747: identityBound/identityVerified=true, healthStatus=503 healthCheck=down-allowed-degraded (the honest no-PG pod boundary), authBoundaryEnforced=true, host SIGTERM graceful exit 0; strict re-run without the flag: exit 1 fail-closed with the exact 503 problem text"
+    },
+    {
+      "check": "AC2 — health degradation semantics from real-process probes",
+      "command": "tests/integration/deployment/plane-identity.test.ts (health describe blocks)",
+      "evidence": "GET /health of a real plane reports controlPlane=ready + the dependency set EXACTLY equal to the manifests' provider-map projection (expectedProbeConcerns), the closed classification vocabulary (ready/degraded/unavailable), provider-declared authority roles and degraded modes, and fail-closed coherence (authoritative dependency not ready ⇒ whole plane 503 down); the deterministic authority-unavailable boundary: a configured PostgreSQL authority at a REAL dead endpoint (reserved-then-closed port; TCP connect genuinely attempted and refused) ⇒ plane 503 down, relational-state unavailable 'unreachable (fail closed)', non-authoritative concerns explicitly degraded with declared modes; the smoke honors both boundary modes against that exact plane (strict exit 1; --allow-degraded exit 0 with healthCheck=down-allowed-degraded)"
+    },
+    {
+      "check": "AC3 — spend/quota guardrail negative paths (manifest-carried thresholds)",
+      "command": "tests/unit/deployment/guardrails.test.ts",
+      "evidence": "14/14 tests pass over the REAL repository manifests: ceiling refusal both authority classes (database-size at 5 GiB denies quota-exhausted with authority-unavailable mode + CRITICAL alert blocks promotion; queue-backlog at the bound denies with dispatch-backlogged mode); alert thresholds fire per quota-guards.json rows (warn 80% / critical 95%) and a MUTATED manifest row changes the evaluation (thresholds are not tool-local constants); no silent paid overage (fail-closed default deny; explicit-opt-in without approval denies overage-not-approved naming 'silent paid overage'); a recorded overage approval is the only continuation, bounded by the approved amount; unknown usage denies fail-closed (usage-unknown); a MALFORMED operator limit override aborts (GuardLimitError, never a silent manifest substitution) while '1e3' parses to 1000 (the parseInt truncation hole closed); compute-claims stays authority-owned (null limit, nothing invented); the guard→concern projection maps exactly relational-state and async-transport"
+    },
+    {
+      "check": "AC3 — manifest limit carriers (the additive quota-guards.json rows)",
+      "command": "git diff d1faea0..HEAD -- deploy/manifests/quota-guards.json + bun run deploy:validate",
+      "evidence": "queue-backlog gained defaultLimitBytes=1000 (the manifest-declared default backlog bound; operator override ZECK_QUEUE_BACKLOG_BOUND), database-size documents its manifest-carried default (5368709120; override ZECK_DB_SIZE_LIMIT_BYTES) — additive rows only, warn/critical thresholds unchanged; deploy:validate quotaGuards=3 green; the release-path collection now resolves both bounds via resolveGuardLimit (no tool-local limit constants: a missing row + no override ⇒ no fabricated snapshot)"
+    },
+    {
+      "check": "AC4 — promotion identity verification, both directions",
+      "command": "tests/unit/deployment/promotion-identity.test.ts + tests/integration/deployment/plane-identity.test.ts (attestation core)",
+      "evidence": "7/7 unit tests: promote-path guard (no plane URL ⇒ allowed with the honest ledger-binding note; unverified plane ⇒ refused fail-closed; verified-but-wrong-revision ⇒ refused with the exact mismatch; verified-at-candidate ⇒ allowed with journal evidence carrying revision + runtime identity + digests) and rollback re-attestation (unverified after pointer flip ⇒ fail-closed with the repoint instruction; still-attesting-FROM-revision ⇒ honest not-yet-repointed failure; attesting-TARGET ⇒ re-attested); the attestation core itself is proven against real planes (verified at checkout revision; wrong-revision and unreachable fail closed, 8/8 integration)"
+    },
+    {
+      "check": "AC4 — the release-path wiring",
+      "command": "code review of deploy/release.ts commandPromote/commandRollback at d2f79b0",
+      "evidence": "promote --plane-url <url>: the plane is attested BEFORE the gate evaluation and an unverified/wrong-revision plane REFUSES the promotion with a journaled refused promotion decision + exit 1 (the refusal precedes gate evidence); a successful promotion records the planeIdentity evidence in the journal reason and the stdout document; rollback --plane-url re-attests the TARGET release's revision after the governed pointer flip and exits non-zero with the honest repoint instruction when the plane is not yet repointed — the re-attestation never touches domain authority (hosting-independent identity document, manifest-declared topology); the composed guardrail report (fence decisions + limit resolutions) joins the promote/alerts outputs; GuardLimitError propagates (malformed overrides abort, never silently swallowed)"
+    },
+    {
+      "check": "AC5 — no release-gate vocabulary widening",
+      "command": "git diff d1faea0..HEAD -- deploy/manifests/release-policy.json + sha256 comparison",
+      "evidence": "zero diff lines; sha256 of deploy/manifests/release-policy.json at HEAD == base d1faea0 (f1e45dd8cd1a875f…); 14 gate kinds unchanged (deploy:validate releaseGateKinds=14); the promotion-identity verification is a pre-gate refusal + journaled evidence, NOT a new gate kind — no merge note required"
+    },
+    {
+      "check": "Inherited-work independent re-verification (continuation turn 3-a-resume-2)",
+      "command": "bunx vitest run tests/unit/deployment/guardrails.test.ts tests/unit/deployment/promotion-identity.test.ts tests/integration/deployment/plane-identity.test.ts",
+      "evidence": "21 unit + 8 integration tests re-run green by the continuation worker BEFORE any edit of the inherited files (anti-fabrication: the inherited commits' claims reproduced independently); the only defect found in the sweep was the 1 biome format error fixed at d2f79b0"
+    }
+  ],
+  "notes": [
+    "The promotion-identity verification deliberately composes existing authorities: the attestation (DEP-001 GET /identity + verifyRuntimeDeploymentIdentity), the D-06 promotion gate/journal and the manifest-loaded quota policy — no second release, gate or alert authority was created (work-order objective). The closed release-gate vocabulary is untouched (AC5, byte-identical release-policy.json).",
+    "The queue-backlog defaultLimitBytes row uses the quota-guards loader's single default-limit channel (named for its first use — bytes) to carry a COUNT of pending dispatch envelopes; the unit is documented in the manifest row description and the operator override remains ZECK_QUEUE_BACKLOG_BOUND. If the Lead prefers a dedicated count-typed channel, that is a manifest-schema evolution decision, not a defect.",
+    "The artifact-bytes guardrail is the one quota-guards row with no local measurement path (the object store's own meter is credential-gated): the evaluation records the absence honestly (nothing projected, nothing invented) rather than fabricating a snapshot — the same honest-boundary doctrine as the live-provider rails.",
+    "The full battery ran at tree d2f79b0; the only subsequent changes are this evidence record and the additive PUBLIC-DEPLOYMENT.md DEP-003 sections (JSON/Markdown only, no executable surface).",
+    "Live-provider promotion rails without credentials record honest NOT RUN with owner (Lead credentialed re-run) — the work-order-mandated boundary, first entry above."
+  ]
+}
