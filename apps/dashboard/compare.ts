@@ -557,7 +557,9 @@ function artifactsCell(side: CompareSideFact): string {
         `<a href="/assets/artifacts/${encodeURIComponent(artifact.id)}?executionId=${encodeURIComponent(
           side.executionId,
         )}">${esc(artifact.id)}</a>${
-          artifact.digest === null ? "" : ` <span class="muted mono">${esc(artifact.digest)}</span>`
+          artifact.digest === null
+            ? ' <span class="muted">(no digest recorded)</span>'
+            : ` <span class="muted mono">${esc(artifact.digest)}</span>`
         }`,
     )
     .join("<br>");
