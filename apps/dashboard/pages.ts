@@ -189,6 +189,15 @@ import {
   WORKLOAD_FORM_KEYS,
 } from "./projection";
 import {
+  quotaDimensionLabel,
+  quotaProgressOf,
+  type SandboxGovernanceTransport,
+  type SandboxIdentityFact,
+  type SandboxQuotaFact,
+  type SyntheticDataPolicyFact,
+  sandboxGovernanceTransportFromEnvironment,
+} from "./sandbox-governance";
+import {
   type Appearance,
   type AppShellInput,
   appShell,
@@ -3689,14 +3698,17 @@ ${sections}`;
 async function environmentsConsolePage(
   client: ZeckClient,
   ctx: HttpContext,
+  sandboxGovernance: SandboxGovernanceTransport | null,
 ): Promise<HandlerResult> {
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
   const setCookies = recents.pruned ? [recentsCookieHeader(recents.survivingIds)] : undefined;
+  const governance = await sandboxGovernanceSections(sandboxGovernance, ctx);
   const content = `${pageHead({ title: "Environments", path: "/console/applications/environments" })}
 ${applicationsTabNav("environments")}
 <p>Environments recorded on executions this browser opened — the developer view of where sandbox runs execute. A disposable sandbox environment id (ZECK_ENVIRONMENT_ID, optional) can be attached per run; the playground's run form carries the same field.</p>
 ${environmentsSection(environmentFacts(recents.executions))}
+${governance}
 ${unavailableState(
   "Environment inventory and provisioning",
   "There is no environment inventory or provisioning route in the public API — environment facts here are derived live from real runs, and the compute authority owns environment lifecycle.",
@@ -3712,6 +3724,88 @@ ${unavailableState(
     ctx,
     { setCookies },
   );
+}
+
+/** The DEP-014 governance sections: quotas, identities, policy. */
+async function sandboxGovernanceSections(
+  transport: SandboxGovernanceTransport | null,
+  ctx: HttpContext,
+): Promise<string> {
+  if (transport === null) {
+    return unavailableState(
+      "Sandbox budgets, quotas and the data policy",
+      "The sandbox governance transport is not bound in this deployment (ZECK_API_URL / ZECK_TOKEN) — the quotas, expiration/reset and synthetic-data-policy surfaces render when the composition wires them. Nothing is fabricated in their place.",
+      "GET /sandbox/quotas, GET /sandbox/identities/:id, POST /sandbox/identities/:id/reset, GET /sandbox/data-policy",
+    );
+  }
+  let quotas: readonly SandboxQuotaFact[] = [];
+  let telemetryRealtime = false;
+  let policy: SyntheticDataPolicyFact | null = null;
+  try {
+    const quotaList = await transport.listQuotas("");
+    quotas = quotaList.quotas;
+    telemetryRealtime = quotaList.telemetry.realtime;
+  } catch {
+    quotas = [];
+  }
+  try {
+    policy = await transport.dataPolicy();
+  } catch {
+    policy = null;
+  }
+  const quotaRows =
+    quotas.length === 0
+      ? emptyState(
+          "No quotas configured",
+          "No sandbox quota records are visible to this scope — quotas appear here when the application configures them (per dimension: spend, wall-clock time, concurrent runs, artifact count/bytes).",
+        )
+      : `<table class="data">
+  <thead><tr><th scope="col">Dimension</th><th scope="col">Consumed</th><th scope="col">Limit</th><th scope="col">Window</th><th scope="col">Status</th><th scope="col">Use</th></tr></thead>
+  <tbody>${quotas
+    .map(
+      (quota) => `<tr>
+      <td>${esc(quotaDimensionLabel(quota.dimension))}</td>
+      <td class="mono">${esc(quota.consumed)}</td>
+      <td class="mono">${esc(quota.limit)}</td>
+      <td>${esc(quota.window)}</td>
+      <td>${esc(quota.status)}</td>
+      <td>${quotaProgressOf(quota)}%</td>
+    </tr>`,
+    )
+    .join("\n  ")}</tbody>
+</table>`;
+  const policyBlock =
+    policy === null
+      ? unavailableState(
+          "The synthetic-data policy",
+          "The policy route answered with an error — the versioned policy document renders here when the composition serves it.",
+          "GET /sandbox/data-policy",
+        )
+      : `<h3>Synthetic-data policy (version ${esc(policy.version)})</h3>
+<p class="mono">${esc(policy.digest)}</p>
+<p><strong>Permitted in sandboxes:</strong> ${policy.permittedClasses.map((c) => esc(c)).join(", ")}</p>
+<p><strong>Prohibited (fail-closed):</strong> ${policy.prohibitedClasses.map((c) => esc(c)).join(", ")}</p>
+<ul>${policy.enforcement.map((e) => `<li><strong>${esc(e.point)}:</strong> ${esc(e.behavior)}</li>`).join("")}</ul>
+<p class="muted">${esc(policy.violationRecording)}</p>`;
+  const resetHint =
+    ctx.query.get("reset") === "done"
+      ? '<p class="state-source" role="status">The sandbox identity was reset — a fresh successor identity was established; nothing carried forward.</p>'
+      : "";
+  return `<h2>Sandbox budgets and quotas</h2>
+${quotaRows}
+${
+  telemetryRealtime
+    ? ""
+    : unavailableState(
+        "Real-time consumption telemetry",
+        "Quota consumption updates on read — the public API exposes no real-time consumption stream.",
+        "a consumption-telemetry projection over GET /sandbox/quotas",
+      )
+}
+${resetHint}
+<h2>Synthetic-data policy</h2>
+${policyBlock}
+<p class="muted">Identity expiration and reset: a disposable sandbox identity carries a TTL; after expiry (or quota exhaustion) the reset operation establishes a fresh successor — idempotent, confirmable, and carrying nothing forward. Identity lifecycle facts render on the identity routes (GET /sandbox/identities/:id, POST /sandbox/identities/:id/reset).</p>`;
 }
 
 async function usagePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
@@ -6341,6 +6435,12 @@ export interface DashboardRoutesOptions {
    * state of its own either way.
    */
   readonly credentials?: CredentialConsoleTransport;
+  /**
+   * The sandbox-governance transport (DEP-014): the projection seam over
+   * the public sandbox governance routes. OPTIONAL — the same
+   * environment-derivation discipline as the credentials seam.
+   */
+  readonly sandboxGovernance?: SandboxGovernanceTransport;
 }
 
 /** Create the dashboard route table bound to one SDK client. */
@@ -6354,6 +6454,12 @@ export function createDashboardRoutes(
   // (null ⇒ the honest unavailable states, never a fabricated transport).
   const credentials =
     options.credentials !== undefined ? options.credentials : credentialTransportFromEnvironment();
+  // DEP-014: the sandbox governance transport — the same injectable/
+  // env-derived discipline (null ⇒ the honest unavailable states).
+  const sandboxGovernance =
+    options.sandboxGovernance !== undefined
+      ? options.sandboxGovernance
+      : sandboxGovernanceTransportFromEnvironment();
   const wrap = (
     method: "GET" | "POST",
     pattern: string,
@@ -6416,7 +6522,7 @@ export function createDashboardRoutes(
       credentialRevokeHandler(credentials, scope, ctx),
     ),
     wrap("GET", "/console/applications/environments", (ctx) =>
-      environmentsConsolePage(client, ctx),
+      environmentsConsolePage(client, ctx, sandboxGovernance),
     ),
     wrap("GET", "/console/applications/usage", (ctx) => usagePage(client, ctx)),
     wrap("GET", "/console/applications/:applicationId", (ctx) =>

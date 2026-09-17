@@ -21,3 +21,4 @@ export type {
   UpsertBudgetInput,
   UpsertFundingSettingsInput,
 } from "./budget-store";
+export type { ConsumeQuotaInput, QuotaStore, UpsertQuotaInput } from "./quota-store";

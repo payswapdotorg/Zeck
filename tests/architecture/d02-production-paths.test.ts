@@ -150,10 +150,10 @@ describe("the D-02 production-path boundaries (WORK-043)", () => {
     // The count stays pinned — every future migration is a reviewed,
     // disclosed extension of this expectation.
     expect(migrations[0]).toMatch(/^0001_/);
-    expect(migrations).toHaveLength(32); // +0032_audit_compliance (WORK-059 / D-08) +0033_application_credentials (DEP-011 — the reviewed, disclosed credential-lifecycle extension)
-    expect(migrations[migrations.length - 1]).toMatch(/^0033_application_credentials/); // DEP-011 (0032_audit_compliance is the last pre-DEP-011 migration)
-    expect(migrations[migrations.length - 2]).toMatch(/^0032_audit_compliance/); // DEP-011 shift
-    expect(migrations[migrations.length - 3]).toMatch(/^0031_isolation_profiles/); // DEP-011 shift
+    expect(migrations).toHaveLength(33); // +0033_application_credentials (DEP-011) +0034_sandbox_governance (DEP-014 — the reviewed, disclosed sandbox-quota/identity extension)
+    expect(migrations[migrations.length - 1]).toMatch(/^0034_sandbox_governance/); // DEP-014 (0033_application_credentials is the last pre-DEP-014 migration)
+    expect(migrations[migrations.length - 2]).toMatch(/^0033_application_credentials/); // DEP-014 shift
+    expect(migrations[migrations.length - 3]).toMatch(/^0032_audit_compliance/); // DEP-014 shift
     expect(migrations.map((name) => name.slice(0, 4))).not.toContain("0015");
   });
 

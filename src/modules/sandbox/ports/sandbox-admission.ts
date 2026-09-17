@@ -42,6 +42,13 @@ export interface SandboxAdmissionRequest {
   readonly hosts: readonly string[];
   /** Secret references the environment declares (empty when access none). */
   readonly secretRefs: readonly string[];
+  /**
+   * The DECLARED data classes of the work the sandbox would run
+   * (DEP-014): the synthetic-data-policy check enforces here — a
+   * declared class outside the permitted set refuses the admission
+   * fail-closed. Absent declarations are an honest empty set.
+   */
+  readonly declaredDataClasses?: readonly string[];
 }
 
 export type SandboxAdmissionDecision =

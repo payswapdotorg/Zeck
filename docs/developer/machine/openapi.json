@@ -4,7 +4,7 @@
     "title": "Zeck Public API",
     "version": "1.0.0",
     "summary": "The execution-centric, provider-neutral public API surface of AI Execution OS.",
-    "description": "Machine-readable contract of the public API transport surface. The ONE canonical wire source is src/shared/wire.ts (re-exported by sdk/index.ts); this document is a projection validated against the live route table by tests/unit/developer-docs/machine-schemas.test.ts. Core invariants: (1) Execution is THE primitive — there is no model-call or provider-call route; (2) provider/model identifiers cross only as opaque neutral strings inside route summaries; (3) no type carries secret material; (4) every scoped read/command carries the X-Zeck-Application header (creation carries applicationId in the body); (5) every POST requires an Idempotency-Key header; (6) unknown request keys are rejected fail-closed (closed contracts)."
+    "description": "Machine-readable contract of the public API transport surface. The ONE canonical wire source is src/shared/wire.ts (re-exported by sdk/index.ts); this document is a projection validated against the live route table by tests/unit/developer-docs/machine-schemas.test.ts. Core invariants: (1) Execution is THE primitive \u2014 there is no model-call or provider-call route; (2) provider/model identifiers cross only as opaque neutral strings inside route summaries; (3) no type carries secret material; (4) every scoped read/command carries the X-Zeck-Application header (creation carries applicationId in the body); (5) every POST requires an Idempotency-Key header; (6) unknown request keys are rejected fail-closed (closed contracts)."
   },
   "servers": [
     {
@@ -17,30 +17,62 @@
       }
     }
   ],
-  "security": [{ "bearerAuth": [] }],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "tags": [
-    { "name": "executions", "description": "The execution lifecycle surface (the platform primitive)." },
-    { "name": "agents", "description": "Read-only governed agent inventory projection." },
-    { "name": "economic-actions", "description": "Governed agentic economic-intent surface." },
-    { "name": "codebase-analysis", "description": "Advisory codebase opportunity analysis (execution-bound)." },
-    { "name": "health", "description": "Deployment readiness (control plane vs dependency facts)." },
-    { "name": "credentials", "description": "Scoped application transport-credential lifecycle (issue show-once, metadata-only listing, rotation, revocation)." }
+    {
+      "name": "executions",
+      "description": "The execution lifecycle surface (the platform primitive)."
+    },
+    {
+      "name": "agents",
+      "description": "Read-only governed agent inventory projection."
+    },
+    {
+      "name": "economic-actions",
+      "description": "Governed agentic economic-intent surface."
+    },
+    {
+      "name": "codebase-analysis",
+      "description": "Advisory codebase opportunity analysis (execution-bound)."
+    },
+    {
+      "name": "health",
+      "description": "Deployment readiness (control plane vs dependency facts)."
+    },
+    {
+      "name": "credentials",
+      "description": "Scoped application transport-credential lifecycle (issue show-once, metadata-only listing, rotation, revocation)."
+    },
+    {
+      "name": "sandbox-governance",
+      "description": "Sandbox budgets, quotas, expiration, reset and the synthetic-data policy (DEP-014)"
+    }
   ],
   "paths": {
     "/executions": {
       "post": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "createExecution",
         "summary": "Create an Execution (idempotent).",
-        "description": "The frozen create contract (API-001): a task + constraints — provider selection is FORBIDDEN (unknown keys rejected fail-closed; the vocabulary provider/providerId/model/modelId/rail/connectionId/connection/agent/agentId must never appear). The application selector travels in the body's applicationId; the response is the durable ExecutionReceipt. Same Idempotency-Key + same request fingerprint replays the durable outcome (replayed=true); same key + different fingerprint returns 409 IDEMPOTENCY_KEY_REUSED.",
+        "description": "The frozen create contract (API-001): a task + constraints \u2014 provider selection is FORBIDDEN (unknown keys rejected fail-closed; the vocabulary provider/providerId/model/modelId/rail/connectionId/connection/agent/agentId must never appear). The application selector travels in the body's applicationId; the response is the durable ExecutionReceipt. Same Idempotency-Key + same request fingerprint replays the durable outcome (replayed=true); same key + different fingerprint returns 409 IDEMPOTENCY_KEY_REUSED.",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ExecutionRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/ExecutionRequest"
+              }
             }
           }
         },
@@ -49,67 +81,106 @@
             "description": "The durable create/refresh outcome.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ExecutionReceipt" }
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionReceipt"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "402": { "$ref": "#/components/responses/BudgetExceeded" },
-          "403": { "$ref": "#/components/responses/PolicyDenied" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "402": {
+            "$ref": "#/components/responses/BudgetExceeded"
+          },
+          "403": {
+            "$ref": "#/components/responses/PolicyDenied"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
           "422": {
-            "description": "422 — CAPABILITY_UNAVAILABLE (a required capability is unavailable or the request is malformed) or NO_ELIGIBLE_ROUTE (no eligible execution route satisfied the task profile and constraints).",
+            "description": "422 \u2014 CAPABILITY_UNAVAILABLE (a required capability is unavailable or the request is malformed) or NO_ELIGIBLE_ROUTE (no eligible execution route satisfied the task profile and constraints).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/PublicError" }
+                "schema": {
+                  "$ref": "#/components/schemas/PublicError"
+                }
               }
             }
           },
-          "502": { "$ref": "#/components/responses/ProviderError" }
+          "502": {
+            "$ref": "#/components/responses/ProviderError"
+          }
         }
       }
     },
     "/executions/{id}": {
       "get": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "getExecution",
         "summary": "Read one Execution (scoped).",
-        "description": "Policy-visible execution metadata only. Requires the X-Zeck-Application header; the effective tenant/application scope is derived server-side from durable membership rows. A scope-checked miss is 404 — another application's execution is indistinguishable from a missing one.",
+        "description": "Policy-visible execution metadata only. Requires the X-Zeck-Application header; the effective tenant/application scope is derived server-side from durable membership rows. A scope-checked miss is 404 \u2014 another application's execution is indistinguishable from a missing one.",
         "parameters": [
-          { "$ref": "#/components/parameters/ExecutionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The execution record.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Execution" }
+                "schema": {
+                  "$ref": "#/components/schemas/Execution"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/executions/{id}/cancel": {
       "post": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "cancelExecution",
         "summary": "Cancel a non-terminal Execution (idempotent, scoped).",
         "description": "Cancellation goes THROUGH the execution lifecycle (the single write path): the authority validates the transition (non-terminal only) and appends the cancel envelope. Terminal executions return 409 INVALID_STATE_TRANSITION.",
         "parameters": [
-          { "$ref": "#/components/parameters/ExecutionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" },
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "type": "object", "additionalProperties": false }
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
             }
           }
         },
@@ -118,26 +189,42 @@
             "description": "The post-command receipt.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ExecutionReceipt" }
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionReceipt"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/InvalidStateTransition" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/InvalidStateTransition"
+          }
         }
       }
     },
     "/executions/{id}/events": {
       "get": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "listEvents",
         "summary": "List the execution's event ledger (scoped).",
-        "description": "The ordered, durable event ledger of the execution — lifecycle visibility, planning decisions, step facts. Payloads are scrubbed (secret-shaped keys redacted).",
+        "description": "The ordered, durable event ledger of the execution \u2014 lifecycle visibility, planning decisions, step facts. Payloads are scrubbed (secret-shaped keys redacted).",
         "parameters": [
-          { "$ref": "#/components/parameters/ExecutionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
@@ -146,51 +233,79 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/ExecutionEvent" }
+                  "items": {
+                    "$ref": "#/components/schemas/ExecutionEvent"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/executions/{id}/results": {
       "get": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "getResult",
         "summary": "The completed result package (scoped).",
-        "description": "The result package computed ONLY from authority reads: route summary (from the ledger's planning decisions), settled cost/usage facts (or their honest null absence — never a fabricated number), output artifacts (id + digest), verification evidence and honest warnings.",
+        "description": "The result package computed ONLY from authority reads: route summary (from the ledger's planning decisions), settled cost/usage facts (or their honest null absence \u2014 never a fabricated number), output artifacts (id + digest), verification evidence and honest warnings.",
         "parameters": [
-          { "$ref": "#/components/parameters/ExecutionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The result package.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/ExecutionResult" }
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionResult"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/executions/{id}/verification": {
       "get": {
-        "tags": ["executions"],
+        "tags": [
+          "executions"
+        ],
         "operationId": "listVerification",
         "summary": "List the execution's verification results (scoped).",
         "description": "The verification axis projection: every recorded criterion verdict with strategy, evaluator provenance, confidence and evidence references.",
         "parameters": [
-          { "$ref": "#/components/parameters/ExecutionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ExecutionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
@@ -199,25 +314,37 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/VerificationResult" }
+                  "items": {
+                    "$ref": "#/components/schemas/VerificationResult"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/agents": {
       "get": {
-        "tags": ["agents"],
+        "tags": [
+          "agents"
+        ],
         "operationId": "listAgents",
         "summary": "The application's agent inventory (scoped, read-only).",
-        "description": "The governed inventory projection: agent summaries with lifecycle status and active version. There is NO agent mutation route on the public surface — agent identity, versions and promotions change through their owning authorities.",
+        "description": "The governed inventory projection: agent summaries with lifecycle status and active version. There is NO agent mutation route on the public surface \u2014 agent identity, versions and promotions change through their owning authorities.",
         "parameters": [
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
@@ -226,48 +353,74 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/AgentSummary" }
+                  "items": {
+                    "$ref": "#/components/schemas/AgentSummary"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          }
         }
       }
     },
     "/agents/{id}": {
       "get": {
-        "tags": ["agents"],
+        "tags": [
+          "agents"
+        ],
         "operationId": "getAgent",
         "summary": "One agent's summary (scoped).",
         "parameters": [
-          { "$ref": "#/components/parameters/AgentId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/AgentId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The agent summary.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AgentSummary" }
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSummary"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/agents/{id}/versions": {
       "get": {
-        "tags": ["agents"],
+        "tags": [
+          "agents"
+        ],
         "operationId": "listAgentVersions",
         "summary": "The agent's versions (scoped).",
         "parameters": [
-          { "$ref": "#/components/parameters/AgentId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/AgentId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
@@ -276,56 +429,84 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/AgentVersion" }
+                  "items": {
+                    "$ref": "#/components/schemas/AgentVersion"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/agents/{id}/status": {
       "get": {
-        "tags": ["agents"],
+        "tags": [
+          "agents"
+        ],
         "operationId": "getAgentStatus",
         "summary": "The agent's full status view (scoped).",
         "description": "Agent summary + active version (with validation state) + latest promotion/rollback selection + all available versions.",
         "parameters": [
-          { "$ref": "#/components/parameters/AgentId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/AgentId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The status view.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AgentStatusView" }
+                "schema": {
+                  "$ref": "#/components/schemas/AgentStatusView"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/economic-actions": {
       "post": {
-        "tags": ["economic-actions"],
+        "tags": [
+          "economic-actions"
+        ],
         "operationId": "createEconomicAction",
         "summary": "Propose an economic action (idempotent).",
-        "description": "A bounded, capability-gated payment INTENT provenance-bound to an execution. Proposing is NEVER an authorization — the governed admission chain (policy, capability, budget) decides server-side. The recipient is an opaque external reference; there is no field where a raw payment credential could even appear.",
+        "description": "A bounded, capability-gated payment INTENT provenance-bound to an execution. Proposing is NEVER an authorization \u2014 the governed admission chain (policy, capability, budget) decides server-side. The recipient is an opaque external reference; there is no field where a raw payment credential could even appear.",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/EconomicActionRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/EconomicActionRequest"
+              }
             }
           }
         },
@@ -334,50 +515,82 @@
             "description": "The durable intent receipt.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EconomicActionReceipt" }
+                "schema": {
+                  "$ref": "#/components/schemas/EconomicActionReceipt"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "402": { "$ref": "#/components/responses/BudgetExceeded" },
-          "403": { "$ref": "#/components/responses/PolicyDenied" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
-          "422": { "$ref": "#/components/responses/CapabilityUnavailable" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "402": {
+            "$ref": "#/components/responses/BudgetExceeded"
+          },
+          "403": {
+            "$ref": "#/components/responses/PolicyDenied"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
         }
       }
     },
     "/economic-actions/{id}": {
       "get": {
-        "tags": ["economic-actions"],
+        "tags": [
+          "economic-actions"
+        ],
         "operationId": "getEconomicAction",
         "summary": "The durable intent record (scoped).",
         "parameters": [
-          { "$ref": "#/components/parameters/EconomicActionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/EconomicActionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The economic action record.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EconomicAction" }
+                "schema": {
+                  "$ref": "#/components/schemas/EconomicAction"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/economic-actions/{id}/events": {
       "get": {
-        "tags": ["economic-actions"],
+        "tags": [
+          "economic-actions"
+        ],
         "operationId": "listEconomicActionEvents",
         "summary": "The action's provenance event ledger (scoped).",
         "parameters": [
-          { "$ref": "#/components/parameters/EconomicActionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/EconomicActionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
@@ -386,56 +599,84 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/EconomicActionEvent" }
+                  "items": {
+                    "$ref": "#/components/schemas/EconomicActionEvent"
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/economic-actions/{id}/outcome": {
       "get": {
-        "tags": ["economic-actions"],
+        "tags": [
+          "economic-actions"
+        ],
         "operationId": "getEconomicActionOutcome",
         "summary": "Settlement and delivery as SEPARATE axes (scoped).",
-        "description": "Payment success != resource delivered != execution success — a settlement alone never proves delivery. Settlements are correlated EXTERNAL observations (evidence only); deliveries are decided by the verification authority.",
+        "description": "Payment success != resource delivered != execution success \u2014 a settlement alone never proves delivery. Settlements are correlated EXTERNAL observations (evidence only); deliveries are decided by the verification authority.",
         "parameters": [
-          { "$ref": "#/components/parameters/EconomicActionId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/EconomicActionId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The outcome (settlement + deliveries).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/EconomicActionOutcome" }
+                "schema": {
+                  "$ref": "#/components/schemas/EconomicActionOutcome"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/codebase-analysis": {
       "post": {
-        "tags": ["codebase-analysis"],
+        "tags": [
+          "codebase-analysis"
+        ],
         "operationId": "createCodebaseAnalysis",
         "summary": "Run an advisory codebase opportunity analysis (idempotent).",
-        "description": "Analysis is an Execution: policy admission precedes codebase access; the analysis is bound to a governing execution and completes through verification (the analysis digest binding). The subgraph is pre-validated against the closed execution-graph contract — malformed selections fail closed with 422 and leave NO row anywhere. Findings are ADVISORY (advisory/candidate/verified — no 'promoted' state exists on this surface).",
+        "description": "Analysis is an Execution: policy admission precedes codebase access; the analysis is bound to a governing execution and completes through verification (the analysis digest binding). The subgraph is pre-validated against the closed execution-graph contract \u2014 malformed selections fail closed with 422 and leave NO row anywhere. Findings are ADVISORY (advisory/candidate/verified \u2014 no 'promoted' state exists on this surface).",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CodebaseAnalysisRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CodebaseAnalysisRequest"
+              }
             }
           }
         },
@@ -444,56 +685,88 @@
             "description": "The advisory report (analysis + findings + prompts).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CodebaseAnalysisReport" }
+                "schema": {
+                  "$ref": "#/components/schemas/CodebaseAnalysisReport"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/PolicyDenied" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
-          "422": { "$ref": "#/components/responses/CapabilityUnavailable" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/PolicyDenied"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
         }
       }
     },
     "/codebase-analysis/{id}": {
       "get": {
-        "tags": ["codebase-analysis"],
+        "tags": [
+          "codebase-analysis"
+        ],
         "operationId": "getCodebaseAnalysis",
         "summary": "The advisory report (scoped).",
         "parameters": [
-          { "$ref": "#/components/parameters/AnalysisId" },
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/AnalysisId"
+          },
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The report (findings + prompts).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CodebaseAnalysisReport" }
+                "schema": {
+                  "$ref": "#/components/schemas/CodebaseAnalysisReport"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
     "/codebase-analysis/{id}/ratings": {
       "post": {
-        "tags": ["codebase-analysis"],
+        "tags": [
+          "codebase-analysis"
+        ],
         "operationId": "recordEvaluationRating",
         "summary": "Record a human evaluation rating (idempotent).",
-        "description": "Preference-only answers over closed vocabularies — a rating is NEVER a verification PASS. The route DERIVES the finding/revision/context binding; the caller cannot assert it. Closed vocabularies: questionKind (pair-preference | behavior-preservation | replacement-acceptability), answer (prefer-candidate | prefer-baseline | no-difference | insufficient-information).",
+        "description": "Preference-only answers over closed vocabularies \u2014 a rating is NEVER a verification PASS. The route DERIVES the finding/revision/context binding; the caller cannot assert it. Closed vocabularies: questionKind (pair-preference | behavior-preservation | replacement-acceptability), answer (prefer-candidate | prefer-baseline | no-difference | insufficient-information).",
         "parameters": [
-          { "$ref": "#/components/parameters/AnalysisId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/AnalysisId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CodebaseRatingRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CodebaseRatingRequest"
+              }
             }
           }
         },
@@ -502,34 +775,56 @@
             "description": "The immutable rating receipt.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CodebaseRatingReceipt" }
+                "schema": {
+                  "$ref": "#/components/schemas/CodebaseRatingReceipt"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
-          "422": { "$ref": "#/components/responses/CapabilityUnavailable" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
         }
       }
     },
     "/codebase-analysis/{id}/findings/{findingId}/transition": {
       "post": {
-        "tags": ["codebase-analysis"],
+        "tags": [
+          "codebase-analysis"
+        ],
         "operationId": "advanceFinding",
         "summary": "Evidence-gated finding state advance (idempotent).",
-        "description": "The single-step forward transition advisory -> candidate -> verified, gated on evidence (rating | verified-equivalence). No 'promoted' state exists on this surface — the promotion gate is external. Closed vocabularies: toState (advisory | candidate | verified), evidenceKind (rating | verified-equivalence).",
+        "description": "The single-step forward transition advisory -> candidate -> verified, gated on evidence (rating | verified-equivalence). No 'promoted' state exists on this surface \u2014 the promotion gate is external. Closed vocabularies: toState (advisory | candidate | verified), evidenceKind (rating | verified-equivalence).",
         "parameters": [
-          { "$ref": "#/components/parameters/AnalysisId" },
-          { "$ref": "#/components/parameters/FindingId" },
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/AnalysisId"
+          },
+          {
+            "$ref": "#/components/parameters/FindingId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CodebaseTransitionRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CodebaseTransitionRequest"
+              }
             }
           }
         },
@@ -538,21 +833,35 @@
             "description": "The transition receipt.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CodebaseFindingTransitionReceipt" }
+                "schema": {
+                  "$ref": "#/components/schemas/CodebaseFindingTransitionReceipt"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
-          "422": { "$ref": "#/components/responses/CapabilityUnavailable" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
         }
       }
     },
     "/health": {
       "get": {
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "operationId": "getHealth",
         "summary": "Deployment readiness (no auth).",
         "description": "Control-plane availability and dependency readiness are reported SEPARATELY. An authoritative dependency that is not ready makes the whole plane DOWN (503); non-authoristic dependencies degrade explicitly (200 with status 'degraded'). The response is scrubbed (secret-shaped keys and credential-shaped substrings never cross).",
@@ -562,7 +871,9 @@
             "description": "ready or degraded (with per-dependency facts).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
               }
             }
           },
@@ -570,7 +881,9 @@
             "description": "down (an authoritative dependency is not ready, or readiness is unattestable).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
               }
             }
           }
@@ -579,18 +892,24 @@
     },
     "/credentials": {
       "post": {
-        "tags": ["credentials"],
+        "tags": [
+          "credentials"
+        ],
         "operationId": "issueCredential",
         "summary": "Issue a scoped transport credential (show-once secret).",
-        "description": "Creates a credential through the auth module's credential authority. The secret material is returned EXACTLY ONCE — on this response when replayed=false; a replay of the same Idempotency-Key returns the metadata-only record (secret=null). The idempotency ledger's durable outcome never contains secret material, so no later route, log or render path can retrieve it. The request body carries the application selector; the effective tenant/application scope is derived server-side from durable membership rows. Unknown keys are rejected fail-closed.",
+        "description": "Creates a credential through the auth module's credential authority. The secret material is returned EXACTLY ONCE \u2014 on this response when replayed=false; a replay of the same Idempotency-Key returns the metadata-only record (secret=null). The idempotency ledger's durable outcome never contains secret material, so no later route, log or render path can retrieve it. The request body carries the application selector; the effective tenant/application scope is derived server-side from durable membership rows. Unknown keys are rejected fail-closed.",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CredentialIssueRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CredentialIssueRequest"
+              }
             }
           }
         },
@@ -599,61 +918,93 @@
             "description": "The durable issue outcome (show-once secret when this request created it).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CredentialIssueResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialIssueResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
           "422": {
-            "description": "422 — CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment / the authority is not wired in the composition).",
+            "description": "422 \u2014 CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment / the authority is not wired in the composition).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/PublicError" }
+                "schema": {
+                  "$ref": "#/components/schemas/PublicError"
+                }
               }
             }
           },
-          "502": { "$ref": "#/components/responses/ProviderError" }
+          "502": {
+            "$ref": "#/components/responses/ProviderError"
+          }
         }
       },
       "get": {
-        "tags": ["credentials"],
+        "tags": [
+          "credentials"
+        ],
         "operationId": "listCredentials",
         "summary": "List credentials (metadata only, scope-checked).",
         "description": "Every credential visible to the request's application scope: identity, label, role/permission scope, creation/rotation timestamps and status. The response carries NO secret material and no secret reference (metadata-only by construction). The issuance.enabled fact states the deployment's issuance capability honestly.",
         "parameters": [
-          { "$ref": "#/components/parameters/ZeckApplication" }
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
         ],
         "responses": {
           "200": {
             "description": "The metadata-only credential list.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CredentialListResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialListResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          }
         }
       }
     },
     "/credentials/{credentialId}/rotate": {
       "post": {
-        "tags": ["credentials"],
+        "tags": [
+          "credentials"
+        ],
         "operationId": "rotateCredential",
         "summary": "Rotate a credential (successor secret, show-once).",
         "description": "Issues a successor secret under the SAME credential identity and retires the predecessor (status=retired, rotatedAt set, supersededBy naming the successor). The successor secret is shown EXACTLY ONCE on this response when replayed=false; a replay returns the successor record with secret=null. Revoked credentials cannot rotate (409 INVALID_STATE_TRANSITION). Cross-tenant or cross-application targets fail TENANT_SCOPE_VIOLATION.",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" },
-          { "$ref": "#/components/parameters/CredentialId" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/CredentialId"
+          }
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
-              "schema": { "type": "object", "properties": {}, "additionalProperties": false }
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
             }
           }
         },
@@ -662,41 +1013,65 @@
             "description": "The successor record (show-once secret when this request executed the rotation).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CredentialIssueResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialIssueResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
           "422": {
-            "description": "422 — CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment).",
+            "description": "422 \u2014 CAPABILITY_UNAVAILABLE (malformed request, or issuance is not enabled for this deployment).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/PublicError" }
+                "schema": {
+                  "$ref": "#/components/schemas/PublicError"
+                }
               }
             }
           },
-          "502": { "$ref": "#/components/responses/ProviderError" }
+          "502": {
+            "$ref": "#/components/responses/ProviderError"
+          }
         }
       }
     },
     "/credentials/{credentialId}/revoke": {
       "post": {
-        "tags": ["credentials"],
+        "tags": [
+          "credentials"
+        ],
         "operationId": "revokeCredential",
         "summary": "Revoke a credential (immediate, idempotent).",
-        "description": "Transitions the credential identity's current record to status=revoked — immediate and idempotent: revoking an already-revoked credential converges to the same durable outcome (no error). Rotation and revocation are both reflected in the list.",
+        "description": "Transitions the credential identity's current record to status=revoked \u2014 immediate and idempotent: revoking an already-revoked credential converges to the same durable outcome (no error). Rotation and revocation are both reflected in the list.",
         "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" },
-          { "$ref": "#/components/parameters/CredentialId" }
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/CredentialId"
+          }
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
-              "schema": { "type": "object", "properties": {}, "additionalProperties": false }
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
             }
           }
         },
@@ -705,15 +1080,142 @@
             "description": "The revoked record (the durable outcome).",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/CredentialRevokeResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialRevokeResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/AuthenticationFailed" },
-          "403": { "$ref": "#/components/responses/TenantScopeViolation" },
-          "404": { "$ref": "#/components/responses/NotFound" },
-          "409": { "$ref": "#/components/responses/IdempotencyKeyReused" },
-          "502": { "$ref": "#/components/responses/ProviderError" }
+          "401": {
+            "$ref": "#/components/responses/AuthenticationFailed"
+          },
+          "403": {
+            "$ref": "#/components/responses/TenantScopeViolation"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/IdempotencyKeyReused"
+          },
+          "502": {
+            "$ref": "#/components/responses/ProviderError"
+          }
+        }
+      }
+    },
+    "/sandbox/quotas": {
+      "get": {
+        "summary": "List sandbox quota state for the caller's application scope",
+        "tags": [
+          "sandbox-governance"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The per-dimension quota records (limit, consumption, window, status) with the honest telemetry boundary"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
+        }
+      }
+    },
+    "/sandbox/identities/{identityId}": {
+      "get": {
+        "summary": "Read one disposable sandbox identity's honest expiration state",
+        "tags": [
+          "sandbox-governance"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          },
+          {
+            "$ref": "#/components/parameters/SandboxIdentityId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The identity record \u2014 post-expiry reads return the honest expired state, never a silent 404"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "No such identity visible to this scope"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
+        }
+      }
+    },
+    "/sandbox/identities/{identityId}/reset": {
+      "post": {
+        "summary": "Reset a disposable sandbox identity (idempotent, state-non-carrying)",
+        "tags": [
+          "sandbox-governance"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          },
+          {
+            "$ref": "#/components/parameters/SandboxIdentityId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "executionId": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The fresh successor identity; nothing carried forward; re-confirmation is a no-op success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "No such identity visible to this scope"
+          },
+          "422": {
+            "$ref": "#/components/responses/CapabilityUnavailable"
+          }
+        }
+      }
+    },
+    "/sandbox/data-policy": {
+      "get": {
+        "summary": "The versioned synthetic-data policy artifact, served verbatim",
+        "tags": [
+          "sandbox-governance"
+        ],
+        "responses": {
+          "200": {
+            "description": "The digest-carrying policy document (permitted/prohibited classes, enforcement points, violation-recording semantics)"
+          }
         }
       }
     }
@@ -723,7 +1225,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "A Zeck transport credential (developer-side variable ZECK_TOKEN) — never a provider API key."
+        "description": "A Zeck transport credential (developer-side variable ZECK_TOKEN) \u2014 never a provider API key."
       }
     },
     "parameters": {
@@ -731,140 +1233,190 @@
         "name": "idempotency-key",
         "in": "header",
         "required": true,
-        "schema": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
         "description": "Mandatory on every POST route. Same key + same request fingerprint replays the durable outcome; same key + different fingerprint returns 409."
       },
       "ZeckApplication": {
         "name": "x-zeck-application",
         "in": "header",
         "required": true,
-        "schema": { "type": "string", "minLength": 1 },
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
         "description": "The application-scope selector for every scoped read and governed command. The selector NAMES the application whose durable membership rows authorize the request; the effective scope is always derived server-side. A scoped request without it is rejected."
       },
       "ExecutionId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" }
+        "schema": {
+          "type": "string"
+        }
       },
       "AgentId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" }
+        "schema": {
+          "type": "string"
+        }
       },
       "EconomicActionId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" }
+        "schema": {
+          "type": "string"
+        }
       },
       "AnalysisId": {
         "name": "id",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" }
+        "schema": {
+          "type": "string"
+        }
       },
       "FindingId": {
         "name": "findingId",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" }
+        "schema": {
+          "type": "string"
+        }
       },
       "CredentialId": {
         "name": "credentialId",
         "in": "path",
         "required": true,
-        "schema": { "type": "string" },
+        "schema": {
+          "type": "string"
+        },
         "description": "The STABLE credential identity (shared across rotations; the list response names it)."
+      },
+      "SandboxIdentityId": {
+        "name": "identityId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The disposable sandbox identity id"
       }
     },
     "responses": {
       "AuthenticationFailed": {
-        "description": "401 — missing or invalid bearer credential (not retryable).",
+        "description": "401 \u2014 missing or invalid bearer credential (not retryable).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "AuthorizationDenied": {
-        "description": "403 — the authenticated actor is not permitted this operation (not retryable).",
+        "description": "403 \u2014 the authenticated actor is not permitted this operation (not retryable).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "TenantScopeViolation": {
-        "description": "403 — cross-tenant access denied (not retryable).",
+        "description": "403 \u2014 cross-tenant access denied (not retryable).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "PolicyDenied": {
-        "description": "403 — the policy authority denied the operation (not retryable).",
+        "description": "403 \u2014 the policy authority denied the operation (not retryable).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "BudgetExceeded": {
-        "description": "402 — a budget bound was exceeded (not retryable without a changed request).",
+        "description": "402 \u2014 a budget bound was exceeded (not retryable without a changed request).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "IdempotencyKeyReused": {
-        "description": "409 — the same key with a DIFFERENT request fingerprint (a client bug: surface it, never retry it).",
+        "description": "409 \u2014 the same key with a DIFFERENT request fingerprint (a client bug: surface it, never retry it).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "CapabilityUnavailable": {
-        "description": "422 — a required capability is unavailable, the request is malformed, or the scope-checked target is missing (404 mappings use this code with a 404 status).",
+        "description": "422 \u2014 a required capability is unavailable, the request is malformed, or the scope-checked target is missing (404 mappings use this code with a 404 status).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "NoEligibleRoute": {
-        "description": "422 — no eligible execution route satisfied the task profile and constraints.",
+        "description": "422 \u2014 no eligible execution route satisfied the task profile and constraints.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "ProviderError": {
-        "description": "502 — a provider-side failure (retryability follows the body's retryable field).",
+        "description": "502 \u2014 a provider-side failure (retryability follows the body's retryable field).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "InvalidStateTransition": {
-        "description": "409 — the lifecycle command is illegal for the current status (e.g. cancelling a terminal execution).",
+        "description": "409 \u2014 the lifecycle command is illegal for the current status (e.g. cancelling a terminal execution).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       },
       "NotFound": {
-        "description": "404 — the scope-checked target does not exist (indistinguishable from another application's target).",
+        "description": "404 \u2014 the scope-checked target does not exist (indistinguishable from another application's target).",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/PublicError" }
+            "schema": {
+              "$ref": "#/components/schemas/PublicError"
+            }
           }
         }
       }
@@ -873,7 +1425,7 @@
       "MicroUsd": {
         "type": "string",
         "pattern": "^[0-9]+$",
-        "description": "Integer micro-USD (1e-6 USD) string — the platform money convention. Floats are never accepted."
+        "description": "Integer micro-USD (1e-6 USD) string \u2014 the platform money convention. Floats are never accepted."
       },
       "ExecutionStatus": {
         "type": "string",
@@ -897,11 +1449,19 @@
       },
       "VerificationStatus": {
         "type": "string",
-        "enum": ["PASS", "FAIL", "INCONCLUSIVE"]
+        "enum": [
+          "PASS",
+          "FAIL",
+          "INCONCLUSIVE"
+        ]
       },
       "PublicError": {
         "type": "object",
-        "required": ["code", "message", "retryable"],
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
         "properties": {
           "code": {
             "type": "string",
@@ -925,8 +1485,12 @@
               "EXPIRED"
             ]
           },
-          "message": { "type": "string" },
-          "retryable": { "type": "boolean" },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
           "details": {
             "type": "object",
             "additionalProperties": true,
@@ -941,10 +1505,17 @@
       },
       "ExecutionRequest": {
         "type": "object",
-        "required": ["applicationId", "task"],
+        "required": [
+          "applicationId",
+          "task"
+        ],
         "properties": {
-          "applicationId": { "type": "string" },
-          "environmentId": { "type": "string" },
+          "applicationId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
           "task": {
             "type": "object",
             "additionalProperties": true,
@@ -952,25 +1523,36 @@
           },
           "inputArtifactRefs": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "constraints": {
             "type": "object",
             "properties": {
-              "maxCostMicroUsd": { "$ref": "#/components/schemas/MicroUsd" },
-              "maxLatencyMs": { "type": "number" },
-              "minQuality": { "type": "number" }
+              "maxCostMicroUsd": {
+                "$ref": "#/components/schemas/MicroUsd"
+              },
+              "maxLatencyMs": {
+                "type": "number"
+              },
+              "minQuality": {
+                "type": "number"
+              }
             },
             "additionalProperties": false
           },
-          "metadata": { "type": "object", "additionalProperties": true },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
           "userId": {
             "type": "string",
             "description": "End user the execution (and any spend) is attributed to."
           }
         },
         "additionalProperties": false,
-        "description": "The frozen create contract. The keys provider/providerId/model/modelId/rail/connectionId/connection/agent/agentId must NEVER appear — the server rejects them fail-closed and the SDK rejects them client-side."
+        "description": "The frozen create contract. The keys provider/providerId/model/modelId/rail/connectionId/connection/agent/agentId must NEVER appear \u2014 the server rejects them fail-closed and the SDK rejects them client-side."
       },
       "ExecutionReceipt": {
         "type": "object",
@@ -983,15 +1565,26 @@
           "lastEventSequence"
         ],
         "properties": {
-          "executionId": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/ExecutionStatus" },
-          "createdAt": { "type": "string", "format": "date-time" },
+          "executionId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "replayed": {
             "type": "boolean",
             "description": "True when the same idempotency key replayed a durable outcome."
           },
-          "lastEventSequence": { "type": "number" }
+          "lastEventSequence": {
+            "type": "number"
+          }
         },
         "additionalProperties": false
       },
@@ -1010,20 +1603,49 @@
           "terminalAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "environmentId": { "type": ["string", "null"] },
-          "status": { "$ref": "#/components/schemas/ExecutionStatus" },
-          "task": { "type": "object", "additionalProperties": true },
-          "constraints": {
-            "type": ["object", "null"],
+          "id": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          },
+          "task": {
+            "type": "object",
             "additionalProperties": true
           },
-          "metadata": { "type": "object", "additionalProperties": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" },
+          "constraints": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "terminalAt": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         },
@@ -1031,57 +1653,128 @@
       },
       "ExecutionEvent": {
         "type": "object",
-        "required": ["eventId", "executionId", "type", "sequence", "occurredAt", "payload"],
+        "required": [
+          "eventId",
+          "executionId",
+          "type",
+          "sequence",
+          "occurredAt",
+          "payload"
+        ],
         "properties": {
-          "eventId": { "type": "string" },
-          "executionId": { "type": "string" },
-          "type": { "type": "string" },
-          "sequence": { "type": "number" },
-          "occurredAt": { "type": "string", "format": "date-time" },
-          "payload": { "type": "object", "additionalProperties": true }
+          "eventId": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "additionalProperties": false
       },
       "CostSummary": {
         "type": "object",
-        "required": ["totalMicroUsd", "currency"],
+        "required": [
+          "totalMicroUsd",
+          "currency"
+        ],
         "properties": {
-          "totalMicroUsd": { "$ref": "#/components/schemas/MicroUsd" },
-          "currency": { "type": "string", "enum": ["usd"] }
+          "totalMicroUsd": {
+            "$ref": "#/components/schemas/MicroUsd"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "usd"
+            ]
+          }
         },
         "additionalProperties": false
       },
       "UsageSummary": {
         "type": "object",
-        "required": ["inputTokens", "outputTokens"],
+        "required": [
+          "inputTokens",
+          "outputTokens"
+        ],
         "properties": {
-          "inputTokens": { "type": "number" },
-          "outputTokens": { "type": "number" }
+          "inputTokens": {
+            "type": "number"
+          },
+          "outputTokens": {
+            "type": "number"
+          }
         },
         "additionalProperties": false
       },
       "RouteSummary": {
         "type": "object",
-        "required": ["provider", "model", "strategyClass", "modelCalls"],
+        "required": [
+          "provider",
+          "model",
+          "strategyClass",
+          "modelCalls"
+        ],
         "properties": {
-          "provider": { "type": ["string", "null"] },
-          "model": { "type": ["string", "null"] },
-          "strategyClass": { "type": ["string", "null"] },
-          "modelCalls": { "type": "number" }
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "strategyClass": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "modelCalls": {
+            "type": "number"
+          }
         },
         "additionalProperties": false,
-        "description": "Opaque neutral strings — never SDK types, never provider selection inputs."
+        "description": "Opaque neutral strings \u2014 never SDK types, never provider selection inputs."
       },
       "ArtifactReference": {
         "type": "object",
-        "required": ["id", "digest", "createdAt"],
+        "required": [
+          "id",
+          "digest",
+          "createdAt"
+        ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "digest": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Content digest (sha256 hex) when the platform recorded one."
           },
-          "createdAt": { "type": "string" }
+          "createdAt": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       },
@@ -1099,24 +1792,57 @@
           "recordedAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "executionId": { "type": "string" },
-          "criterionId": { "type": "string" },
-          "strategy": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/VerificationStatus" },
-          "confidence": { "type": ["number", "null"] },
+          "id": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "criterionId": {
+            "type": "string"
+          },
+          "strategy": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VerificationStatus"
+          },
+          "confidence": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
           "evaluator": {
             "type": "object",
-            "required": ["kind", "id", "version"],
+            "required": [
+              "kind",
+              "id",
+              "version"
+            ],
             "properties": {
-              "kind": { "type": "string" },
-              "id": { "type": "string" },
-              "version": { "type": "string" }
+              "kind": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
-          "evidenceRefs": { "type": "array", "items": { "type": "string" } },
-          "recordedAt": { "type": "string", "format": "date-time" }
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
@@ -1134,37 +1860,65 @@
           "terminalAt"
         ],
         "properties": {
-          "executionId": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/ExecutionStatus" },
+          "executionId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionStatus"
+          },
           "route": {
             "anyOf": [
-              { "$ref": "#/components/schemas/RouteSummary" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/RouteSummary"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "cost": {
             "anyOf": [
-              { "$ref": "#/components/schemas/CostSummary" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/CostSummary"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "usage": {
             "anyOf": [
-              { "$ref": "#/components/schemas/UsageSummary" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/UsageSummary"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "outputArtifacts": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/ArtifactReference" }
+            "items": {
+              "$ref": "#/components/schemas/ArtifactReference"
+            }
           },
           "verification": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/VerificationResult" }
+            "items": {
+              "$ref": "#/components/schemas/VerificationResult"
+            }
           },
-          "warnings": { "type": "array", "items": { "type": "string" } },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "terminalAt": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           }
         },
@@ -1172,7 +1926,11 @@
       },
       "AgentLifecycleStatus": {
         "type": "string",
-        "enum": ["active", "suspended", "retired"]
+        "enum": [
+          "active",
+          "suspended",
+          "retired"
+        ]
       },
       "AgentSummary": {
         "type": "object",
@@ -1188,21 +1946,54 @@
           "updatedAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "slug": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": ["string", "null"] },
-          "status": { "$ref": "#/components/schemas/AgentLifecycleStatus" },
-          "activeVersionId": { "type": ["string", "null"] },
-          "activeVersion": { "type": ["string", "null"] },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentLifecycleStatus"
+          },
+          "activeVersionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "activeVersion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
       "VersionValidationState": {
         "type": "string",
-        "enum": ["pending", "validated", "invalid"]
+        "enum": [
+          "pending",
+          "validated",
+          "invalid"
+        ]
       },
       "AgentVersion": {
         "type": "object",
@@ -1216,36 +2007,71 @@
           "createdAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "agentId": { "type": "string" },
-          "version": { "type": "string" },
-          "definitionDigest": { "type": "string" },
-          "validationState": { "$ref": "#/components/schemas/VersionValidationState" },
-          "validationNotes": { "type": ["string", "null"] },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "definitionDigest": {
+            "type": "string"
+          },
+          "validationState": {
+            "$ref": "#/components/schemas/VersionValidationState"
+          },
+          "validationNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
       "AgentStatusView": {
         "type": "object",
-        "required": ["agent", "activeVersion", "latestSelection", "availableVersions"],
+        "required": [
+          "agent",
+          "activeVersion",
+          "latestSelection",
+          "availableVersions"
+        ],
         "properties": {
-          "agent": { "$ref": "#/components/schemas/AgentSummary" },
+          "agent": {
+            "$ref": "#/components/schemas/AgentSummary"
+          },
           "activeVersion": {
             "anyOf": [
-              { "$ref": "#/components/schemas/AgentVersion" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/AgentVersion"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "latestSelection": {
             "anyOf": [
-              { "$ref": "#/components/schemas/AgentPromotionStatus" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/AgentPromotionStatus"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "availableVersions": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/AgentVersion" }
+            "items": {
+              "$ref": "#/components/schemas/AgentVersion"
+            }
           }
         },
         "additionalProperties": false
@@ -1261,12 +2087,32 @@
           "selectedAt"
         ],
         "properties": {
-          "selectionId": { "type": "string" },
-          "kind": { "type": "string", "enum": ["promotion", "rollback"] },
-          "selectedVersionId": { "type": "string" },
-          "rollbackOf": { "type": ["string", "null"] },
-          "selectedBy": { "type": "string" },
-          "selectedAt": { "type": "string", "format": "date-time" }
+          "selectionId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "promotion",
+              "rollback"
+            ]
+          },
+          "selectedVersionId": {
+            "type": "string"
+          },
+          "rollbackOf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "selectedBy": {
+            "type": "string"
+          },
+          "selectedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
@@ -1294,18 +2140,29 @@
           "expiresAt"
         ],
         "properties": {
-          "applicationId": { "type": "string" },
+          "applicationId": {
+            "type": "string"
+          },
           "executionId": {
             "type": "string",
             "description": "The logical execution this economic action is provenance-bound to."
           },
-          "purpose": { "type": "string" },
+          "purpose": {
+            "type": "string"
+          },
           "recipient": {
             "type": "object",
-            "required": ["kind", "id"],
+            "required": [
+              "kind",
+              "id"
+            ],
             "properties": {
-              "kind": { "type": "string" },
-              "id": { "type": "string" }
+              "kind": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
             },
             "additionalProperties": false,
             "description": "An opaque external recipient/seller reference (never a credential)."
@@ -1314,42 +2171,87 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["kind", "microUsd"],
+                "required": [
+                  "kind",
+                  "microUsd"
+                ],
                 "properties": {
-                  "kind": { "type": "string", "enum": ["exact"] },
-                  "microUsd": { "$ref": "#/components/schemas/MicroUsd" }
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "exact"
+                    ]
+                  },
+                  "microUsd": {
+                    "$ref": "#/components/schemas/MicroUsd"
+                  }
                 },
                 "additionalProperties": false
               },
               {
                 "type": "object",
-                "required": ["kind", "minMicroUsd", "maxMicroUsd"],
+                "required": [
+                  "kind",
+                  "minMicroUsd",
+                  "maxMicroUsd"
+                ],
                 "properties": {
-                  "kind": { "type": "string", "enum": ["range"] },
-                  "minMicroUsd": { "$ref": "#/components/schemas/MicroUsd" },
-                  "maxMicroUsd": { "$ref": "#/components/schemas/MicroUsd" }
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "range"
+                    ]
+                  },
+                  "minMicroUsd": {
+                    "$ref": "#/components/schemas/MicroUsd"
+                  },
+                  "maxMicroUsd": {
+                    "$ref": "#/components/schemas/MicroUsd"
+                  }
                 },
                 "additionalProperties": false
               }
             ]
           },
-          "currency": { "type": "string" },
-          "expiresAt": { "type": "string", "format": "date-time" },
+          "currency": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "requiredCapabilities": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["kind", "name"],
+              "required": [
+                "kind",
+                "name"
+              ],
               "properties": {
-                "kind": { "type": "string" },
-                "name": { "type": "string" },
-                "minVersion": { "type": ["string", "null"] }
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "minVersion": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
               },
               "additionalProperties": false
             }
           },
-          "railPreference": { "type": "string" },
-          "metadata": { "type": "object", "additionalProperties": true }
+          "railPreference": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "additionalProperties": false
       },
@@ -1364,12 +2266,25 @@
           "replayed"
         ],
         "properties": {
-          "economicActionId": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "executionId": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/EconomicActionStatus" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "replayed": { "type": "boolean" }
+          "economicActionId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EconomicActionStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       },
@@ -1393,32 +2308,76 @@
           "updatedAt"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "executionId": { "type": "string" },
-          "proposedBy": { "type": "string" },
-          "purpose": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "proposedBy": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
           "recipient": {
             "type": "object",
-            "required": ["kind", "id"],
+            "required": [
+              "kind",
+              "id"
+            ],
             "properties": {
-              "kind": { "type": "string" },
-              "id": { "type": "string" }
+              "kind": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
-          "amount": { "type": "object", "additionalProperties": true },
-          "currency": { "type": "string" },
-          "expiresAt": { "type": "string", "format": "date-time" },
+          "amount": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "requiredCapabilities": {
             "type": "array",
-            "items": { "type": "object", "additionalProperties": true }
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
           },
-          "railPreference": { "type": ["string", "null"] },
-          "metadata": { "type": "object", "additionalProperties": true },
-          "status": { "$ref": "#/components/schemas/EconomicActionStatus" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "railPreference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/EconomicActionStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
@@ -1434,13 +2393,29 @@
           "payload"
         ],
         "properties": {
-          "eventId": { "type": "string" },
-          "economicActionId": { "type": "string" },
-          "sequence": { "type": "number" },
-          "type": { "type": "string" },
-          "cause": { "type": "string" },
-          "occurredAt": { "type": "string", "format": "date-time" },
-          "payload": { "type": "object", "additionalProperties": true }
+          "eventId": {
+            "type": "string"
+          },
+          "economicActionId": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "cause": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "additionalProperties": false
       },
@@ -1455,19 +2430,33 @@
           "deliveries"
         ],
         "properties": {
-          "economicActionId": { "type": "string" },
-          "executionId": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "status": { "$ref": "#/components/schemas/EconomicActionStatus" },
+          "economicActionId": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EconomicActionStatus"
+          },
           "settlement": {
             "anyOf": [
-              { "$ref": "#/components/schemas/EconomicSettlement" },
-              { "type": "null" }
+              {
+                "$ref": "#/components/schemas/EconomicSettlement"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "deliveries": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/EconomicDelivery" }
+            "items": {
+              "$ref": "#/components/schemas/EconomicDelivery"
+            }
           }
         },
         "additionalProperties": false
@@ -1485,42 +2474,94 @@
           "evidenceDigest"
         ],
         "properties": {
-          "id": { "type": "string" },
-          "railId": { "type": "string" },
-          "railTransactionRef": { "type": "string" },
-          "status": { "type": "string", "enum": ["observed", "confirmed", "failed"] },
-          "settledAmountMicroUsd": { "$ref": "#/components/schemas/MicroUsd" },
-          "currency": { "type": "string" },
-          "observedAt": { "type": "string", "format": "date-time" },
-          "evidenceDigest": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "railId": {
+            "type": "string"
+          },
+          "railTransactionRef": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "confirmed",
+              "failed"
+            ]
+          },
+          "settledAmountMicroUsd": {
+            "$ref": "#/components/schemas/MicroUsd"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "evidenceDigest": {
+            "type": "string"
+          }
         },
         "additionalProperties": false,
-        "description": "A correlated EXTERNAL settlement observation (evidence only — never a Zeck money-movement truth source)."
+        "description": "A correlated EXTERNAL settlement observation (evidence only \u2014 never a Zeck money-movement truth source)."
       },
       "EconomicDelivery": {
         "type": "object",
-        "required": ["id", "kind", "digest", "contentRef", "observedAt"],
+        "required": [
+          "id",
+          "kind",
+          "digest",
+          "contentRef",
+          "observedAt"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "kind": { "type": "string" },
-          "digest": { "type": "string" },
-          "contentRef": { "type": "string" },
-          "observedAt": { "type": "string", "format": "date-time" }
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "contentRef": {
+            "type": "string"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false,
-        "description": "Delivery EVIDENCE — the verification authority alone decides delivery."
+        "description": "Delivery EVIDENCE \u2014 the verification authority alone decides delivery."
       },
       "CodebaseAnalysisRequest": {
         "type": "object",
-        "required": ["applicationId", "source", "subgraph"],
+        "required": [
+          "applicationId",
+          "source",
+          "subgraph"
+        ],
         "properties": {
-          "applicationId": { "type": "string" },
+          "applicationId": {
+            "type": "string"
+          },
           "source": {
             "type": "object",
-            "required": ["repository", "revision"],
+            "required": [
+              "repository",
+              "revision"
+            ],
             "properties": {
-              "repository": { "type": "string" },
-              "revision": { "type": "string" }
+              "repository": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
@@ -1532,8 +2573,12 @@
           "friction": {
             "type": "object",
             "properties": {
-              "userFrictionThreshold": { "type": "number" },
-              "maxPrompts": { "type": "number" }
+              "userFrictionThreshold": {
+                "type": "number"
+              },
+              "maxPrompts": {
+                "type": "number"
+              }
             },
             "additionalProperties": false
           }
@@ -1542,16 +2587,26 @@
       },
       "CodebaseAnalysisReport": {
         "type": "object",
-        "required": ["analysis", "findings", "prompts"],
+        "required": [
+          "analysis",
+          "findings",
+          "prompts"
+        ],
         "properties": {
-          "analysis": { "$ref": "#/components/schemas/CodebaseAnalysis" },
+          "analysis": {
+            "$ref": "#/components/schemas/CodebaseAnalysis"
+          },
           "findings": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/CodebaseFinding" }
+            "items": {
+              "$ref": "#/components/schemas/CodebaseFinding"
+            }
           },
           "prompts": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/CodebasePrompt" }
+            "items": {
+              "$ref": "#/components/schemas/CodebasePrompt"
+            }
           }
         },
         "additionalProperties": false
@@ -1572,17 +2627,40 @@
           "replayed"
         ],
         "properties": {
-          "analysisId": { "type": "string" },
-          "applicationId": { "type": "string" },
-          "executionId": { "type": "string" },
-          "repository": { "type": "string" },
-          "revision": { "type": "string" },
-          "analysisVersion": { "type": "number" },
-          "findingCount": { "type": "number" },
-          "promptCount": { "type": "number" },
-          "digest": { "type": "string" },
-          "recordedAt": { "type": "string", "format": "date-time" },
-          "replayed": { "type": "boolean" }
+          "analysisId": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": "string"
+          },
+          "repository": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "analysisVersion": {
+            "type": "number"
+          },
+          "findingCount": {
+            "type": "number"
+          },
+          "promptCount": {
+            "type": "number"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       },
@@ -1618,31 +2696,76 @@
           "recordedAt"
         ],
         "properties": {
-          "findingId": { "type": "string" },
-          "analysisId": { "type": "string" },
-          "class": { "$ref": "#/components/schemas/CodebaseOpportunityClass" },
+          "findingId": {
+            "type": "string"
+          },
+          "analysisId": {
+            "type": "string"
+          },
+          "class": {
+            "$ref": "#/components/schemas/CodebaseOpportunityClass"
+          },
           "state": {
             "type": "string",
-            "enum": ["advisory", "candidate", "verified"]
+            "enum": [
+              "advisory",
+              "candidate",
+              "verified"
+            ]
           },
-          "targetNodeIds": { "type": "array", "items": { "type": "string" } },
-          "reasonCodes": { "type": "array", "items": { "type": "string" } },
-          "evidenceRefs": { "type": "array", "items": { "type": "string" } },
+          "targetNodeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reasonCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "provenance": {
             "type": "object",
-            "required": ["repository", "revision", "targets"],
+            "required": [
+              "repository",
+              "revision",
+              "targets"
+            ],
             "properties": {
-              "repository": { "type": "string" },
-              "revision": { "type": "string" },
+              "repository": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "string"
+              },
               "targets": {
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": ["nodeId", "file"],
+                  "required": [
+                    "nodeId",
+                    "file"
+                  ],
                   "properties": {
-                    "nodeId": { "type": "string" },
-                    "file": { "type": "string" },
-                    "symbol": { "type": ["string", "null"] }
+                    "nodeId": {
+                      "type": "string"
+                    },
+                    "file": {
+                      "type": "string"
+                    },
+                    "symbol": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
                   },
                   "additionalProperties": false
                 }
@@ -1652,49 +2775,113 @@
           },
           "confidence": {
             "type": "object",
-            "required": ["level", "population", "basis"],
+            "required": [
+              "level",
+              "population",
+              "basis"
+            ],
             "properties": {
-              "level": { "type": "string" },
-              "population": { "type": "number" },
-              "basis": { "type": "string" }
+              "level": {
+                "type": "string"
+              },
+              "population": {
+                "type": "number"
+              },
+              "basis": {
+                "type": "string"
+              }
             },
             "additionalProperties": false
           },
           "impact": {
             "type": "object",
-            "required": ["basis"],
+            "required": [
+              "basis"
+            ],
             "properties": {
-              "currentMicroUsd": { "type": ["string", "null"] },
-              "candidateMicroUsd": { "type": ["string", "null"] },
-              "expectedSavingsMicroUsd": { "type": ["string", "null"] },
+              "currentMicroUsd": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "candidateMicroUsd": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expectedSavingsMicroUsd": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "basis": {
                 "type": "string",
-                "enum": ["measured", "estimated", "unknown"]
+                "enum": [
+                  "measured",
+                  "estimated",
+                  "unknown"
+                ]
               },
-              "currentMs": { "type": ["number", "null"] },
-              "candidateMs": { "type": ["number", "null"] }
+              "currentMs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "candidateMs": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
             },
             "additionalProperties": false
           },
           "deterministicEquivalence": {
             "type": "object",
-            "required": ["potential", "basis"],
+            "required": [
+              "potential",
+              "basis"
+            ],
             "properties": {
-              "potential": { "type": "string" },
-              "basis": { "type": "array", "items": { "type": "string" } }
+              "potential": {
+                "type": "string"
+              },
+              "basis": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "additionalProperties": false
           },
           "recommendation": {
             "type": "object",
-            "required": ["strategy", "validationSteps"],
+            "required": [
+              "strategy",
+              "validationSteps"
+            ],
             "properties": {
-              "strategy": { "type": "string" },
-              "validationSteps": { "type": "array", "items": { "type": "string" } }
+              "strategy": {
+                "type": "string"
+              },
+              "validationSteps": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
             },
             "additionalProperties": false
           },
-          "recordedAt": { "type": "string", "format": "date-time" }
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
@@ -1711,14 +2898,34 @@
           "emittedAt"
         ],
         "properties": {
-          "promptId": { "type": "string" },
-          "findingId": { "type": "string" },
-          "questionKind": { "type": "string" },
-          "question": { "type": "string" },
-          "expectedInformationGain": { "type": "number" },
-          "userFrictionThreshold": { "type": "number" },
-          "basis": { "type": "array", "items": { "type": "string" } },
-          "emittedAt": { "type": "string", "format": "date-time" }
+          "promptId": {
+            "type": "string"
+          },
+          "findingId": {
+            "type": "string"
+          },
+          "questionKind": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "expectedInformationGain": {
+            "type": "number"
+          },
+          "userFrictionThreshold": {
+            "type": "number"
+          },
+          "basis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "emittedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         },
         "additionalProperties": false
       },
@@ -1733,11 +2940,27 @@
           "evidenceRefs"
         ],
         "properties": {
-          "applicationId": { "type": "string" },
-          "findingId": { "type": "string" },
-          "counterpartFindingId": { "type": ["string", "null"] },
-          "promptId": { "type": ["string", "null"] },
-          "rater": { "type": "string" },
+          "applicationId": {
+            "type": "string"
+          },
+          "findingId": {
+            "type": "string"
+          },
+          "counterpartFindingId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "promptId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rater": {
+            "type": "string"
+          },
           "questionKind": {
             "type": "string",
             "enum": [
@@ -1755,94 +2978,190 @@
               "insufficient-information"
             ]
           },
-          "confidence": { "type": "number" },
-          "rationale": { "type": "string" },
+          "confidence": {
+            "type": "number"
+          },
+          "rationale": {
+            "type": "string"
+          },
           "evidenceRefs": {
             "type": "array",
             "minItems": 1,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "submittedVia": { "type": "string" }
+          "submittedVia": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       },
       "CodebaseRatingReceipt": {
         "type": "object",
-        "required": ["ratingId", "findingId", "replayed", "answer"],
+        "required": [
+          "ratingId",
+          "findingId",
+          "replayed",
+          "answer"
+        ],
         "properties": {
-          "ratingId": { "type": "string" },
-          "findingId": { "type": "string" },
-          "replayed": { "type": "boolean" },
+          "ratingId": {
+            "type": "string"
+          },
+          "findingId": {
+            "type": "string"
+          },
+          "replayed": {
+            "type": "boolean"
+          },
           "answer": {
             "type": "string",
-            "description": "The recorded answer (preference vocabulary — never a verification PASS)."
+            "description": "The recorded answer (preference vocabulary \u2014 never a verification PASS)."
           }
         },
         "additionalProperties": false
       },
       "CodebaseTransitionRequest": {
         "type": "object",
-        "required": ["applicationId", "toState", "evidenceKind", "evidenceRefs"],
+        "required": [
+          "applicationId",
+          "toState",
+          "evidenceKind",
+          "evidenceRefs"
+        ],
         "properties": {
-          "applicationId": { "type": "string" },
+          "applicationId": {
+            "type": "string"
+          },
           "toState": {
             "type": "string",
-            "enum": ["advisory", "candidate", "verified"]
+            "enum": [
+              "advisory",
+              "candidate",
+              "verified"
+            ]
           },
           "evidenceKind": {
             "type": "string",
-            "enum": ["rating", "verified-equivalence"]
+            "enum": [
+              "rating",
+              "verified-equivalence"
+            ]
           },
           "evidenceRefs": {
             "type": "array",
             "minItems": 1,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
           },
-          "verifiedEquivalence": { "type": "object", "additionalProperties": true }
+          "verifiedEquivalence": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "additionalProperties": false
       },
       "CodebaseFindingTransitionReceipt": {
         "type": "object",
-        "required": ["transitionId", "findingId", "fromState", "toState", "replayed"],
+        "required": [
+          "transitionId",
+          "findingId",
+          "fromState",
+          "toState",
+          "replayed"
+        ],
         "properties": {
-          "transitionId": { "type": "string" },
-          "findingId": { "type": "string" },
+          "transitionId": {
+            "type": "string"
+          },
+          "findingId": {
+            "type": "string"
+          },
           "fromState": {
             "type": "string",
-            "enum": ["advisory", "candidate", "verified"]
+            "enum": [
+              "advisory",
+              "candidate",
+              "verified"
+            ]
           },
           "toState": {
             "type": "string",
-            "enum": ["advisory", "candidate", "verified"]
+            "enum": [
+              "advisory",
+              "candidate",
+              "verified"
+            ]
           },
-          "replayed": { "type": "boolean" }
+          "replayed": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       },
       "HealthResponse": {
         "type": "object",
-        "required": ["status", "controlPlane", "dependencies"],
+        "required": [
+          "status",
+          "controlPlane",
+          "dependencies"
+        ],
         "properties": {
-          "status": { "type": "string", "enum": ["ready", "degraded", "down"] },
-          "controlPlane": { "type": "string", "enum": ["ready"] },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "degraded",
+              "down"
+            ]
+          },
+          "controlPlane": {
+            "type": "string",
+            "enum": [
+              "ready"
+            ]
+          },
           "dependencies": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name", "authority", "status"],
+              "required": [
+                "name",
+                "authority",
+                "status"
+              ],
               "properties": {
-                "name": { "type": "string" },
+                "name": {
+                  "type": "string"
+                },
                 "authority": {
                   "type": "string",
-                  "enum": ["authoritative", "non-authoritative"]
+                  "enum": [
+                    "authoritative",
+                    "non-authoritative"
+                  ]
                 },
                 "status": {
                   "type": "string",
-                  "enum": ["ready", "degraded", "unavailable"]
+                  "enum": [
+                    "ready",
+                    "degraded",
+                    "unavailable"
+                  ]
                 },
-                "degradedMode": { "type": "string" },
-                "detail": { "type": ["string", "null"] }
+                "degradedMode": {
+                  "type": "string"
+                },
+                "detail": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
               },
               "additionalProperties": false
             }
@@ -1864,80 +3183,200 @@
           "payload"
         ],
         "properties": {
-          "schemaVersion": { "type": "number" },
-          "executionId": { "type": "string" },
+          "schemaVersion": {
+            "type": "number"
+          },
+          "executionId": {
+            "type": "string"
+          },
           "eventId": {
             "type": "string",
             "description": "Durable event identity (the receiver's dedupe key)."
           },
-          "type": { "type": "string" },
-          "sequence": { "type": "number" },
+          "type": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          },
           "attempt": {
             "type": "number",
             "description": "The delivery attempt number (1 = first attempt)."
           },
-          "occurredAt": { "type": "string", "format": "date-time" },
-          "deliveredAt": { "type": "string", "format": "date-time" },
-          "payload": { "type": "object", "additionalProperties": true }
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          }
         },
         "additionalProperties": false,
         "description": "The signed webhook envelope (delivery surface, not an HTTP route): signed with HMAC-SHA256 hex over the canonical basis in the x-zeck-signature header; event id in x-zeck-event-id."
       },
       "CredentialStatus": {
         "type": "string",
-        "enum": ["active", "retired", "revoked"],
+        "enum": [
+          "active",
+          "retired",
+          "revoked"
+        ],
         "description": "The credential lifecycle: active (usable), retired (superseded by a rotation successor), revoked (terminal; immediate and idempotent)."
       },
       "CredentialRecord": {
         "type": "object",
-        "description": "Metadata-only credential projection. NO field carries secret material or a secret reference — by construction there is no field where either could appear.",
-        "required": ["id", "credentialId", "applicationId", "label", "role", "status", "createdAt", "rotatedAt", "supersededBy", "permissions"],
+        "description": "Metadata-only credential projection. NO field carries secret material or a secret reference \u2014 by construction there is no field where either could appear.",
+        "required": [
+          "id",
+          "credentialId",
+          "applicationId",
+          "label",
+          "role",
+          "status",
+          "createdAt",
+          "rotatedAt",
+          "supersededBy",
+          "permissions"
+        ],
         "properties": {
-          "id": { "type": "string", "description": "Row id of this record (one per issued secret binding)." },
-          "credentialId": { "type": "string", "description": "The STABLE credential identity — shared across rotations." },
-          "applicationId": { "type": "string" },
-          "label": { "type": "string", "description": "Operator-facing label (validated shape; never secret material)." },
-          "role": { "type": "string", "enum": ["owner", "admin", "member"], "description": "The house role whose permission set scopes this credential." },
-          "status": { "$ref": "#/components/schemas/CredentialStatus" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "rotatedAt": { "type": ["string", "null"], "format": "date-time", "description": "Set on the predecessor when its rotation successor was issued." },
-          "supersededBy": { "type": ["string", "null"], "description": "The successor record id after rotation (lineage fact)." },
-          "permissions": { "type": "array", "items": { "type": "string" }, "description": "The permission scope the authority derives from the role." }
+          "id": {
+            "type": "string",
+            "description": "Row id of this record (one per issued secret binding)."
+          },
+          "credentialId": {
+            "type": "string",
+            "description": "The STABLE credential identity \u2014 shared across rotations."
+          },
+          "applicationId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Operator-facing label (validated shape; never secret material)."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ],
+            "description": "The house role whose permission set scopes this credential."
+          },
+          "status": {
+            "$ref": "#/components/schemas/CredentialStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rotatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Set on the predecessor when its rotation successor was issued."
+          },
+          "supersededBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The successor record id after rotation (lineage fact)."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The permission scope the authority derives from the role."
+          }
         },
         "additionalProperties": false
       },
       "CredentialIssueRequest": {
         "type": "object",
-        "description": "The closed create contract: applicationId, label and role only — unknown keys are rejected fail-closed.",
-        "required": ["applicationId", "label", "role"],
+        "description": "The closed create contract: applicationId, label and role only \u2014 unknown keys are rejected fail-closed.",
+        "required": [
+          "applicationId",
+          "label",
+          "role"
+        ],
         "properties": {
-          "applicationId": { "type": "string" },
-          "label": { "type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$" },
-          "role": { "type": "string", "enum": ["owner", "admin", "member"] }
+          "applicationId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "admin",
+              "member"
+            ]
+          }
         },
         "additionalProperties": false
       },
       "CredentialIssueResponse": {
         "type": "object",
         "description": "Issue/rotate outcome. The show-once contract: secret is present ONLY when replayed is false (the request that durably created the credential); a replay of the same idempotency key returns the metadata-only record with secret=null, and no other route can retrieve it.",
-        "required": ["credential", "secret", "replayed"],
+        "required": [
+          "credential",
+          "secret",
+          "replayed"
+        ],
         "properties": {
-          "credential": { "$ref": "#/components/schemas/CredentialRecord" },
-          "secret": { "type": ["string", "null"], "description": "Show-once secret material: present exactly once, on the response to the request that durably created it; null on every replay and every other route." },
-          "replayed": { "type": "boolean" }
+          "credential": {
+            "$ref": "#/components/schemas/CredentialRecord"
+          },
+          "secret": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Show-once secret material: present exactly once, on the response to the request that durably created it; null on every replay and every other route."
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       },
       "CredentialListResponse": {
         "type": "object",
-        "required": ["credentials", "issuance"],
+        "required": [
+          "credentials",
+          "issuance"
+        ],
         "properties": {
-          "credentials": { "type": "array", "items": { "$ref": "#/components/schemas/CredentialRecord" } },
+          "credentials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CredentialRecord"
+            }
+          },
           "issuance": {
             "type": "object",
-            "required": ["enabled"],
+            "required": [
+              "enabled"
+            ],
             "properties": {
-              "enabled": { "type": "boolean", "description": "The deployment's issuance capability fact — false when the composition's secret store cannot hold issued credentials (the honest gate the console renders)." }
+              "enabled": {
+                "type": "boolean",
+                "description": "The deployment's issuance capability fact \u2014 false when the composition's secret store cannot hold issued credentials (the honest gate the console renders)."
+              }
             },
             "additionalProperties": false
           }
@@ -1946,10 +3385,17 @@
       },
       "CredentialRevokeResponse": {
         "type": "object",
-        "required": ["credential", "replayed"],
+        "required": [
+          "credential",
+          "replayed"
+        ],
         "properties": {
-          "credential": { "$ref": "#/components/schemas/CredentialRecord" },
-          "replayed": { "type": "boolean" }
+          "credential": {
+            "$ref": "#/components/schemas/CredentialRecord"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       }

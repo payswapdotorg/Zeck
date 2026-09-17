@@ -35,6 +35,8 @@ import {
   fakeCredentialService,
   fakeEconomicsService,
   fakeExecutionsService,
+  fakeQuotaService,
+  fakeSandboxIdentityService,
   fakeScopeResolver,
 } from "./lib/public-surface-fakes";
 
@@ -180,6 +182,8 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
       agents: fakeAgentRegistry(),
       economics: fakeEconomicsService(),
       credentials: fakeCredentialService(),
+      quotas: fakeQuotaService(),
+      identities: fakeSandboxIdentityService(),
       scopeResolver: fakeScopeResolver(),
       authenticate: fakeAuthenticate(),
       listAgentIdsOfApplication: async () => [],
@@ -203,6 +207,9 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "GET /executions/:id/results",
         "GET /executions/:id/verification",
         "GET /health",
+        "GET /sandbox/data-policy",
+        "GET /sandbox/identities/:identityId",
+        "GET /sandbox/quotas",
         "POST /codebase-analysis",
         "POST /codebase-analysis/:id/findings/:findingId/transition",
         "POST /codebase-analysis/:id/ratings",
@@ -212,6 +219,7 @@ describe("architecture: the public API transport boundary (WORK-015)", () => {
         "POST /economic-actions",
         "POST /executions",
         "POST /executions/:id/cancel",
+        "POST /sandbox/identities/:identityId/reset",
       ].sort(),
     );
     // The forbidden internal-authority surface is absent.

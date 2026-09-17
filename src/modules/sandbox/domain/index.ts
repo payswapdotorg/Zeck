@@ -6,4 +6,6 @@
 export * from "./environment";
 export * from "./isolation";
 export * from "./sandbox";
+export * from "./sandbox-identity";
+export * from "./synthetic-data-policy";
 export * from "./workload";
