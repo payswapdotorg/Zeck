@@ -544,10 +544,16 @@ async function execGate(
       readonly stdout?: string;
       readonly message: string;
     };
-    const summary = (failure.stdout ?? "").trim().split("\n")[0]?.slice(0, 200) ?? "";
+    // EVIDENCE QUALITY (the evidence-over-claims doctrine): a failing
+    // suite prints its failure summary at the END of stdout — the head
+    // carries only the banner. Keep the TAIL (the failing test names
+    // and assertion deltas) so the recorded gate evidence names the
+    // actual failure instead of the run banner.
+    const tail = (failure.stdout ?? "").trim().split("\n").slice(-24).join("\n");
+    const summary = tail.slice(0, 1600);
     return {
       status: "failed",
-      evidence: `exit ${String(failure.code ?? "?")}; ${command} ${args.join(" ")}; ${summary || failure.message.slice(0, 160)}`,
+      evidence: `exit ${String(failure.code ?? "?")}; ${command} ${args.join(" ")};\n${summary || failure.message.slice(0, 160)}`,
     };
   }
 }
