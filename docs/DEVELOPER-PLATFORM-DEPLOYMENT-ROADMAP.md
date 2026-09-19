@@ -95,7 +95,7 @@ Home
 
 ### Phase P4 — deployment acceptance
 
-- **DEP-040** — End-to-end public deployment validation.
+- **DEP-040** — End-to-end public deployment validation. *(status: delivered on `work/DEP-040-deployment-validation` at base 34e80bf — the e2e driver `deploy/e2e-validate.ts` + `deploy/evidence/dep-040.json`; awaiting the Lead's review/merge; the live-provider rails stay the Lead's credentialed re-run per the recorded boundary)*
 - **DEP-041** — Fresh-developer integration trial.
 - **DEP-042** — Fresh-agent integration trial.
 - **DEP-043** — Production readiness, rollback and provider-exit drill.

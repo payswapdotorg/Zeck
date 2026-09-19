@@ -506,3 +506,71 @@ processes, real HTTP).
   68w/8i/0e (baseline), 504 files / 8515 tests + 201 honest PG-gated
   skips, `deploy:validate` exit 0 — exact numbers in
   `deploy/evidence/dep-003.json`.
+
+## 10. The end-to-end validation driver (DEP-040)
+
+Everything above is delivered as a COMPOSABLE chain; DEP-040 proves the
+chain as an operator would run it — one driver, real subprocesses, real
+HTTP, real local rails:
+
+```bash
+# the driver's own config (battery-separated from ZECK_PG_TEST_URL):
+# a credential-less local PostgreSQL admin URL (17.11 verified; 16+ floor)
+export ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres
+bun deploy/e2e-validate.ts
+```
+
+The driver composes the operator order of this recipe — validate →
+bootstrap → provision → migrate → identity → public-smoke → guardrails
+(`deploy:release alerts`) → release (record → gate → promote/rollback
+with the pre-promotion plane attestation) → teardown — recording each
+step's REAL exit status, timing and output digest, and refusing on any
+deviation (a failure anywhere fails the validation — never a warning).
+
+What the one driver run proves over the real local rails (the report
+carries each fact; `deploy/evidence/dep-040.json` is the evidence of
+record):
+
+- **Idempotent convergence**: bootstrap (create-or-skip → already
+  converged), provision (create → already-converged), migrate
+  (applies the shipped set → applies nothing) — the exact §3.1
+  sequence against a real PostgreSQL server;
+- **The strict ready-authority smoke**: `/health` 200 with the
+  authority attested (the fail-closed authority would answer 503),
+  the FULL public route table (26 probed = 18 honest 401 + 7 honest
+  422 + 1 public artifact) at the exact revision, identity attested
+  before AND after the chain (byte-identical document);
+- **The hostile negatives, each REFUSED with its exact reason**: a
+  wrong-revision plane, an unreachable plane, a dead authority (a
+  genuinely refused TCP connect → 503 down; `--allow-degraded`
+  records the explicit pass), a TAMPERED plane (a git archive of HEAD
+  plus ONE well-formed `variables.json` row — the tampered tree still
+  passes `deploy:validate`, and the identity recompute REFUSES it),
+  a malformed guardrail override (abort, never a silent substitution),
+  at-limit spend (DENY `quota-exhausted` with the declared
+  degradation mode; CRITICAL blocks promotion), a mutated manifest
+  limit row (the fence moves with the manifest), and the
+  classification-guarded teardown refusals;
+- **The promote path both directions**: refused on
+  wrong-revision/unreachable/tampered planes; verified + activated on
+  the real one; **rollback re-attestation both directions**: the
+  pre-repoint refusal carries the exact repoint instruction, the
+  post-repoint run verifies the target revision;
+- **The real teardown**: the provisioned records removed, the
+  computed `zeck_local` dropped (verified gone by round trip), the
+  dead-PG drop failing closed.
+
+PLANE-BOOT DISCIPLINE: the driver never proceeds on a bare `/health`
+200 — it waits for the plane's BOOT DOCUMENT on stdout (the JSON
+`deploy/api.ts` prints once the listener is bound). A health probe can
+win against the boot document by a tick; the boot document is the
+later, authoritative barrier. The integration suite pins this with
+three consecutive full driver runs (`tests/integration/deployment/
+e2e-driver.test.ts` — the 2-of-3 flaky class cannot hide).
+
+Credential honesty (unchanged doctrine): the live-provider rails are
+recorded NOT RUN with their owner in the driver's own report and in
+`deploy/evidence/dep-040.json`; the PG-backed rails ran for real
+against the local PostgreSQL server above. The driver REFUSES a
+`ZECK_PG_ADMIN_URL` carrying URL-embedded credentials (the same
+pattern the architecture secret-scan pins over `deploy/**`).
