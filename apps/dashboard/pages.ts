@@ -1882,6 +1882,12 @@ ${resultSurface({
   // platform recorded a policy denial on this run's event stream — the
   // controlling rule in the platform's own words, never re-resolved here.
   const denial = policyDenialOf(events);
+  // DEP-041 C1: the run surface the guided journeys land on carries the same
+  // machine-parity + reproducibility links its sibling explorer renders —
+  // the export path the developer docs document (SELF-HOSTING.md) must be
+  // reachable from THIS page, not only through the console nav.
+  const id = encodeURIComponent(execution.id);
+  const parityLine = `<p class="muted">Machine parity: <a href="/console/executions/${id}/facts.json">the composed public facts as verbatim JSON</a> · reproducibility: <a href="/console/executions/${id}/export">export the bundle</a> (the same facts plus the reproduction recipe) · full explorer: <a href="/console/executions/${id}">the six-view execution detail</a>.</p>`;
   const content = `${head}
 ${header}
 ${workloadBlock}
@@ -1889,7 +1895,8 @@ ${denial === null ? "" : blockedExplanation(denial)}
 ${modalities}
 ${whyPanel({ execution, result, events })}
 ${tabNav(execution.id, tab)}
-${panel}`;
+${panel}
+${parityLine}`;
   return page(
     {
       title: `Zeck — ${executionTitle(execution.task, execution.id)}`,

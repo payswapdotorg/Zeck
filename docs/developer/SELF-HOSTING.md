@@ -65,6 +65,26 @@ What this proves, honestly:
   without one it fails closed — `--allow-degraded` records the explicit
   degraded pass rather than a silent one.
 
+**The honest boundary of the documented local path:** the bootstrap host
+binds the deployment seams (identity, readiness, transport) and
+intentionally leaves the domain authorities unbound — every
+authenticated route answers the platform's honest
+`401 AUTHENTICATION_FAILED` / `422 CAPABILITY_UNAVAILABLE`, never a
+fabricated success. Obtaining a working credential and completing
+executions therefore requires either a deployed environment (the
+operator path, §3.2 of the operator recipe) or a locally composed
+full-journey plane: `scripts/fresh-developer-trial-dep041.ts` (the
+DEP-041 fresh-developer trial substrate) boots the real console
+composition — the public API server, the credential authority (issue →
+show-once), the governed execution lifecycle over in-memory stores, and
+the developer console — on loopback ports 3978/3979, binding the local
+environment class's declared sandbox identity (`local-developer` in
+`deploy/manifests/sandbox-accounts.json`). Provider-gated completion
+stays honestly NOT RUN without operator credentials
+([AVAILABILITY.md](AVAILABILITY.md)); the trial's worker path settles
+executions through the platform's own governed transition commands with
+the settlement envelope recorded in the ledger.
+
 With a local PostgreSQL 16+ you can converge the full local
 environment (synthetic-only by manifest policy):
 
