@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-041",
+  "title": "Fresh-developer integration trial — journey record, findings, fixes and verification evidence record",
+  "recordedBy": "DEP-041 implementation worker (single session; the persona drive, the fixes, the regression pin and this record are one lineage)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker, no public internet egress beyond the anonymous git clone); git worktree /home/z/my-project/Zeck, branch work/DEP-041-fresh-developer-trial at base 34e80bfba569ea5752b710d3414172c2af3cef65 (origin/main HEAD — the dispatch packet's pinned base 39806c15f3c7192fd3fcb043a310a2061836774a is NOT REACHABLE in the public clone; see harness finding H1 in notes)",
+  "date": "2026-09-19",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The persona used ONLY public surfaces (README.md, docs/developer/**, the console at its served URL, the public API contract, the integration examples); internals were read only AFTER a finding was recorded through the persona's public-surface experience, for classification and fix.",
+  "substrate": {
+    "trialPlane": "REAL locally-booted console composition (the repository's established real-process pattern, scripts/browser-stack-dep033.ts lineage): REAL createApiServer over REAL module services (executions, credentials, quotas) with in-memory stores + REAL createDashboard + REAL runtime deployment identity (manifest digest + provider-tiers ledger + git revision), loopback ports 3978 (API) / 3979 (console)",
+    "documentedLocalPath": "deploy/api.ts booted as a REAL SUBPROCESS (the SELF-HOSTING.md / PUBLIC-DEPLOYMENT.md §3.1 recipe, port 3987) — the persona reproduces its honest unbound boundary (GET /health 503 fail-closed without a PG authority; GET /identity attests the exact revision; POST /executions → 401 AUTHENTICATION_FAILED)",
+    "workerPath": "a settler drives every created execution through the REAL execution service's governed transitions (authorize → plan → queue → start → verify → pass) plus the settlement ledger event (costMicroUsd 4125, usage {inputTokens 2100, outputTokens 340}, one artifact with digest) — the platform-side completion a bound worker + provider rail performs on a hosted plane; live provider completion itself is honest NOT RUN",
+    "sandboxAccountCrossCheck": "the persona's actor binds the local environment class's declared disposable identity (deploy/manifests/sandbox-accounts.json: 'local-developer'); the persona discovered the docs-side discovery gap (F3) BEFORE the cross-check, per the persona discipline"
+  },
+  "notRun": [
+    {
+      "check": "Live provider completion rails (real model/tool/media completions through OPENROUTER_API_KEY / QWEN_API_KEY / …)",
+      "reason": "No operator provider credentials exist in the worker pod — the recorded NOT RUN boundary of DEP-001/003 and AVAILABILITY.md. The trial's executions settle through the platform's own governed transition commands with the settlement envelope recorded in the ledger (the worker-path seam), never a fabricated provider result.",
+      "owner": "Lead credentialed re-run (the hosted-plane trial with authorized rails)"
+    },
+    {
+      "check": "The public-internet variant of the journey against a hosted deployment",
+      "reason": "No public hosted Zeck URL exists in the sandbox. The trial ran against a REAL locally-booted plane serving the same public contract (real processes, real HTTP); the hosted variant is the Lead credentialed boundary.",
+      "owner": "Lead credentialed re-run (deploy a preview plane per PUBLIC-DEPLOYMENT.md §3.2 and re-drive the journey)"
+    },
+    {
+      "check": "Secret-verifying authenticate on a hosted plane (bearer verification against the platform secret store)",
+      "reason": "The local composition binds the transport authenticate seam to the credential authority's issued-material set (tracked at issuance by the composition wiring — the deployment-side binding of the write-only secret store) plus the console's deployment binding; hosted secret verification (the production binding) was not exercisable locally.",
+      "owner": "Lead credentialed re-run on the hosted plane"
+    },
+    {
+      "check": "PostgreSQL-backed composition and the PG-gated integration suites",
+      "reason": "No PostgreSQL server exists in the worker pod; the integration suites skip cleanly without ZECK_PG_TEST_URL (skip counts recorded in the battery entries below). The known base defects DEFECT-A (audit-schema 0032 forward-pin) and DEFECT-B (bootstrap-smoke/release-cli zeck_local fixture race) are PG-gated and could NOT appear in this environment — not re-investigated, not fixed, per the dispatch packet.",
+      "owner": "Lead (owns the DEFECT-A/B fix dispatch and the credentialed PG re-run)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    },
+    {
+      "check": "Real-browser (rendered engine) drive of the trial journey",
+      "reason": "The trial drives the console through real HTTP (parsed served HTML, native form submissions, cookie-carried recents) — the same surface a browser requests — but no rendered engine was driven in this order. The DEP-033 delivery already drove the console surfaces in real Chromium (focus/tab-order/a11y/responsive), and this order adds no new console chrome beyond one muted prose line.",
+      "owner": "Lead (reference the DEP-033 drive; re-drive only if the C1 parity line's rendering needs visual verification)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "AC4 baseline — the persona journey driven end to end against a fresh REAL plane, PRE-fix (the defect-finding drive of record)",
+      "command": "bun scripts/fresh-developer-trial-dep041.ts (base docs/console files restored for the baseline re-drive; journey log persisted to deploy/evidence/dep-041-journey-baseline.json)",
+      "evidence": "35 steps across the 10 legs — 28 pass / 7 finding-steps / 0 friction-outcome steps / 0 not-run; 5 distinct findings surfaced (F1, F2, F3, F4, C1); 5 friction events. Leg timings: discover 40 ms, authenticate 341 ms, application-create 2 ms, environment 6 ms, first-execution 1454 ms (guided playground run + the composed quickstart subprocess exit 0 in ~1033 ms), results/evidence 17 ms, costs 7 ms, validation-library 422 ms (catalog 46 experiments, 8 console-rerunnable candidates, 1 experiment page opened, rerun execution COMPLETED), export/self-host 9 ms, production path 0 ms. Total journey wall time ~2.3 s (excludes the operator-side plane bring-up the orchestrator performed)."
+    },
+    {
+      "check": "AC4 verification — the SAME journey re-driven POST-fix against a fresh plane (the corrected instructions re-driven + the fixed console surface)",
+      "command": "bun scripts/fresh-developer-trial-dep041.ts (journey log persisted to deploy/evidence/dep-041-journey.json)",
+      "evidence": "35 steps — 33 pass / 2 finding-steps / 0 friction-outcome steps / 0 not-run; 2 findings surfaced (F1, F4 — both Lead-owned merge notes, honestly still open); 2 friction events. The fixed findings F2/F3/C1 no longer surface: QUICKSTART.md's local-endpoint guidance is honest (bootstrap plane 8787 named, the 3000 default qualified), SELF-HOSTING.md discloses the unbound domain-authority boundary and names the trial substrate (the persona EXPECTS the 401 and reads it as the documented boundary), AUTH.md documents the declared sandbox-identity source, and the /runs/<id> detail links the export bundle + facts.json + explorer."
+    },
+    {
+      "check": "AC2 — every friction event recorded with where/what/expected/observed/location/reproduction",
+      "command": "the journey logs' steps[] + findingsSurfaced[] arrays (machine-readable)",
+      "evidence": "Baseline drive: 5 friction events (one per distinct finding) — F1 README discoverability dead-end (leg 1), F2 the documented local endpoint dead-end + the 401 authenticate dead-end (legs 1-2, one finding re-observed on two legs — counted once), F3 the sandbox-identity discovery dead-end (leg 2), F4 the application-create honest-unavailable surprise (leg 3), C1 the export-path navigation gap on the run surface (leg 5). Verification drive: 2 friction events (F1, F4 — the two Lead-owned merge notes that remain open on this surface set)."
+    },
+    {
+      "check": "AC3/AC6 — the console defect C1 fixed in apps/dashboard/** with a fail-before regression pin",
+      "command": "bunx vitest run tests/unit/dashboard/run-detail-parity-links.test.ts",
+      "evidence": "4/4 tests PASS on the fixed markup; FAIL-BEFORE verified by restoring the base pages.ts (git show 34e80bf:apps/dashboard/pages.ts) — 4/4 tests FAIL on the pre-fix markup (the parity line did not exist), then re-verified 4/4 PASS after restoring the fix. The pin covers: the three links (facts.json, export, explorer detail) on every tab, hostile-id percent-encoding with no markup reflection, and the machine-parity vocabulary."
+    },
+    {
+      "check": "AC3 — the docs defects F2/F3 fixed in docs/developer/** with a recorded docs-verification (the corrected instructions re-driven)",
+      "command": "the verification journey drive (bun scripts/fresh-developer-trial-dep041.ts post-fix) re-driving the exact corrected instructions",
+      "evidence": "QUICKSTART.md §0 now names the bootstrap plane's real port and qualifies the CLI default (step 1.4 passes against the machine: no Zeck composition serves 3000, exactly as documented); SELF-HOSTING.md's developer path discloses the unbound domain-authority boundary and names the full-journey trial substrate (step 2.1 passes; step 2.4's 401 reproduction reads as the documented boundary); AUTH.md documents the declared sandbox-identity source (step 2.10 passes). The docs-links battery (tests/unit/developer-docs/docs-links.test.ts) stays green on the edited files — verified in the unit battery below."
+    },
+    {
+      "check": "AC1 — the full journey completes end to end through the public surface with zero maintainer intervention, or every blocker is a recorded finding",
+      "command": "the two journey drives (baseline + verification)",
+      "evidence": "Every leg completed. The two blockers that prevent a literal zero-finding run are recorded findings with classification and Lead merge notes: F4 (application create — no public API route; the console states the honest boundary) and F1 (README discoverability — no developer-kit entry link). The authenticate leg completes through the public surface (console keys issue → show-once reveal → bearer use; wrong-token → honest 401). The first-execution leg completes both paths (guided playground form POST → 303 → run detail → COMPLETED; composed examples/quickstart.ts subprocess exit 0 with created/terminal/events/replay lines)."
+    },
+    {
+      "check": "AC5 — honest boundaries with owners, never assumed-pass",
+      "command": "the notRun registry above",
+      "evidence": "6 NOT RUN boundaries with owners (live provider rails, hosted-plane variant, secret-verifying authenticate, PG-backed composition + the DEFECT-A/B acknowledgment, CI on branch, real-browser drive). Zero live provider cost consumed."
+    },
+    {
+      "check": "AC4 — the trial re-run against a FRESH plane after the full battery (reproducibility)",
+      "command": "bun scripts/fresh-developer-trial-dep041.ts (third full journey drive, new composition, new subprocess)",
+      "evidence": "35 steps — 33 pass / 2 finding-steps (F1, F4) / 0 friction-outcome steps / 0 not-run; 2 findings surfaced; 2 friction events — the identical outcome of the verification drive. The journey log persisted at deploy/evidence/dep-041-journey.json is this battery-stage re-run's log."
+    },
+    {
+      "check": "Battery — install + typecheck + lint (baseline-exact, zero new violations)",
+      "command": "bun install && bun run typecheck && bun run lint",
+      "evidence": "bun install: 116 packages (1033 ms, first bring-up; idempotent thereafter). typecheck: exit 0 (tsc --noEmit). lint: 68 warnings / 8 infos / 0 errors, exit 0 — the recorded house baseline EXACTLY; the only diagnostic on any file this order touched is the PRE-EXISTING apps/dashboard/pages.ts:207 noUnusedImports warning (untouched by this order); the new test file and the pages.ts parity line contribute zero new violations (the formatter wrapped the new test's long lines and one unused type import was removed before the checkpoint)."
+    },
+    {
+      "check": "Battery — unit suite",
+      "command": "bun run test:unit",
+      "evidence": "Test Files 347 passed (347); Tests 6115 passed (6115); 0 failures; 94.66 s. Delta over the base's post-DEP-033 unit set: +1 file (tests/unit/dashboard/run-detail-parity-links.test.ts) and +4 tests (the C1 regression pins), all passing."
+    },
+    {
+      "check": "Battery — architecture + discrimination suites",
+      "command": "bun run test:architecture",
+      "evidence": "Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 0 failures; 48.90 s — identical to the base's recorded architecture battery (139f-2230t+4 skips)."
+    },
+    {
+      "check": "Battery — integration suites (PG-gated skip behavior)",
+      "command": "bun run test:integration",
+      "evidence": "Test Files 22 passed | 146 skipped (168); Tests 277 passed | 197 skipped (474); 0 failures; 61.18 s. The skips are the unchanged PG/credential-gated baseline behavior without ZECK_PG_TEST_URL (no PostgreSQL server in the pod); the known base defects DEFECT-A/DEFECT-B are inside those skipped suites and did not — could not — appear (see notRun)."
+    },
+    {
+      "check": "Battery — the full suite",
+      "command": "bun run test",
+      "evidence": "Test Files 508 passed | 147 skipped (655); Tests 8622 passed | 201 skipped (8823); 0 failures; 203.06 s. Delta over the base's post-DEP-033 full-suite record (507f/8618t, 654 files / 8819 tests): +1 file and +4 tests — exactly this order's regression pin; the 147 file-level and 201 test-level skips are the unchanged PG/credential-gated baseline."
+    },
+    {
+      "check": "Battery — governance + deployment configuration gate",
+      "command": "python3 scripts/governance-check.py && bun run deploy:validate",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[] (exit 0). deploy:validate: valid=true (exit 0; sandboxAccountEnvironments 3, sandboxAccounts 3, providerTierEntries 8, providerRedundancyProfiles 4)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "leg": "1 (discover)",
+      "classification": "docs",
+      "title": "README.md has no developer-documentation entry link (discoverability gap)",
+      "reproduction": "read README.md top to bottom; grep -n 'docs/developer\\|QUICKSTART' README.md → no matches; the stranger's entry surfaces target implementation agents and Tech Leads; the persona finds docs/developer/ only by directory exploration",
+      "disposition": "MERGE NOTE (README.md is outside this order's allowed fix surfaces docs/developer/** + apps/dashboard/**): add a 'Start here as a developer integrating Zeck' section linking docs/developer/README.md → QUICKSTART.md"
+    },
+    {
+      "id": "F2",
+      "leg": "1-2 (discover + authenticate)",
+      "classification": "docs",
+      "title": "the documented local endpoint had no serving Zeck composition and no local credential path was documented (the bootstrap plane's unbound boundary was undisclosed)",
+      "reproduction": "QUICKSTART.md §0 claimed 'local compositions default to http://127.0.0.1:3000' (nothing Zeck serves there: probe /identity → non-Zeck document in this environment, connection refused on a clean host); AUTH.md §'Where the values come from' repeated it; the only documented local boot (SELF-HOSTING.md → PUBLIC-DEPLOYMENT.md §3.1) serves the bootstrap host at 8787 whose authenticated routes answer 401 AUTHENTICATION_FAILED ('no transport credential is bound in the bootstrap deployment composition')",
+      "disposition": "FIXED in docs/developer/** (QUICKSTART.md §0 honest local-endpoint row; AUTH.md 'Where the values come from' rewritten with the bootstrap-plane boundary + the trial-substrate composition; SELF-HOSTING.md gains 'The honest boundary of the documented local path' disclosing the unbound authorities and naming scripts/fresh-developer-trial-dep041.ts). Docs-verification: the corrected instructions re-driven — journey steps 1.4 / 2.1 / 2.4 / 2.10 pass post-fix; docs-links battery green."
+    },
+    {
+      "id": "F3",
+      "leg": "2 (authenticate)",
+      "classification": "docs",
+      "title": "the manifest-declared local sandbox identity was not discoverable through the public docs",
+      "reproduction": "grep -ri 'sandbox account\\|sandbox-accounts' docs/developer/ → no matches, while deploy/manifests/sandbox-accounts.json declares the local class's disposable identity (id 'local-developer', synthetic-data policy, quota envelope, expiry semantics)",
+      "disposition": "FIXED in docs/developer/AUTH.md ('The local sandbox identity' value source pointing at deploy/manifests/sandbox-accounts.json). Docs-verification: journey step 2.10 passes post-fix (the persona discovers the declared identity through the docs)."
+    },
+    {
+      "id": "F4",
+      "leg": "3 (application create)",
+      "classification": "zeck",
+      "title": "application creation/inventory is not exposed by the public API (honest unavailable) — the journey's 'create an application' leg cannot complete through the public surface",
+      "reproduction": "GET /console/applications renders the honest unavailable state ('There is no application inventory or creation route in the public API — the application authority owns application lifecycle'); machine/openapi.json carries no application-create route; the frozen create contract only carries the per-request applicationId selector",
+      "disposition": "MERGE NOTE for the Lead (a public-contract widening decision — never a worker's unilateral src/ change): either expose an application-lifecycle route set or document the application authority's out-of-band provisioning path as THE path in docs/developer/AUTH.md"
+    },
+    {
+      "id": "C1",
+      "leg": "5 (first execution — the landing surface)",
+      "classification": "console",
+      "title": "the run-detail surface the playground redirects to lacked the export/machine-parity links its sibling explorer rendered",
+      "reproduction": "POST /console/playground/text → 303 → GET /runs/<id>: the page rendered Result/Evidence/Activity but no /console/executions/<id>/export link and no facts.json link; SELF-HOSTING.md documents the export path only at /console/executions/<id>/export; the persona had to re-find the run through the console nav's explorer to reach the documented reproducibility surface",
+      "disposition": "FIXED in apps/dashboard/pages.ts (the /runs/:executionId detail gains the machine-parity line: facts.json + export the bundle + the six-view explorer link — the same links the console explorer renders; hostile ids percent-encoded). Regression pin: tests/unit/dashboard/run-detail-parity-links.test.ts, 4/4 with fail-before verified 4/4 on base."
+    },
+    {
+      "id": "H1",
+      "leg": "0 (substrate)",
+      "classification": "harness",
+      "title": "the dispatch packet's pinned base SHA is unreachable and its DEP-040 premise is false at the public main HEAD",
+      "reproduction": "git clone https://github.com/payswapdotorg/Zeck.git && git rev-parse 39806c15f3c7192fd3fcb043a310a2061836774a^{commit} → 'unknown revision'; origin/main HEAD is 34e80bfba569ea5752b710d3414172c2af3cef65 whose ledger states DEP-040 is eligible-but-not-merged (no deploy/e2e-validate.ts, no deploy/evidence/dep-040.json, no PUBLIC-DEPLOYMENT.md §10 on this base)",
+      "disposition": "RECORDED + adapted (the packet's own fallback rule applied: based on origin/main HEAD, exact SHA recorded); the DEP-040-referenced plane bring-up was replaced by deploy/api.ts directly (the documented local path) + the repository's established real-process console composition. MERGE NOTE: re-dispatch packets should pin rev-parse-verified SHAs (the ledger's own 2026-09-17 lesson)."
+    }
+  ],
+  "frictionEventCount": {
+    "baselineDrive": 5,
+    "verificationDrive": 2
+  },
+  "notes": [
+    "MERGE NOTES FOR THE LEAD (src/ and out-of-surface defects — never fixed by a worker): (1) F4 — the application-lifecycle public-contract decision; (2) F1 — the README.md developer-kit entry link (README.md is outside this order's fix surfaces); (3) H1 — the unreachable pinned base SHA in the dispatch packet (this order based on 34e80bf and records it); (4) the console-home 'Executions' tile and the quickstart page's step-4 'execution explorer' link both point at /runs while the DEP-012 explorer lives at /console/executions — two execution-explorer surfaces with different capability levels (the C1 fix cross-links them from the run detail; consolidating the nav is a Lead UX decision, recorded not fixed).",
+    "SURFACE DELTA: scripts/fresh-developer-trial-dep041.ts (new — the reproducible journey driver), deploy/evidence/dep-041.json (this record), deploy/evidence/dep-041-journey-baseline.json + deploy/evidence/dep-041-journey.json (new — the machine-readable journey logs of the two drives), docs/developer/{QUICKSTART,AUTH,SELF-HOSTING}.md (the F2/F3 docs fixes), apps/dashboard/pages.ts (the C1 parity line — 8 added lines), tests/unit/dashboard/run-detail-parity-links.test.ts (new — the C1 regression pin). No src/, no spec/platform-delivery-state/, no sdk/, no examples/ changes. openapi.json and every deploy/ manifest byte-identical to base (the route table is untouched — pages.ts composition only).",
+    "KNOWN BASE DEFECTS (per the dispatch packet): DEFECT-A (audit-schema 0032 forward-pin) and DEFECT-B (bootstrap-smoke/release-cli zeck_local fixture race) are PG-gated and did NOT — and could NOT — appear in this pod (no PostgreSQL server; the integration suites skip cleanly without ZECK_PG_TEST_URL). Not re-investigated, not fixed, per the packet.",
+    "ZERO LIVE COST CONSUMED: no provider credentials exist in the pod; every execution in the trial settled through the platform's own governed transition commands with the settlement envelope recorded in the ledger (the worker-path seam). No fabricated provider result exists anywhere in this record.",
+    "The battery entries in verifiedLocally are this session's own single measured runs (typecheck exit 0; lint 68w/8i/0e; unit 347f/6115t; architecture 139f/2230t+4 skips; integration 22f/277t with the PG-gated skips; full suite 508f/8622t+201 skips, 0 failures; governance OK 60 WOs; deploy:validate valid=true; the trial re-run identical) — never assembled from different runs."
+  ]
+}

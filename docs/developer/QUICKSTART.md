@@ -11,7 +11,7 @@ walks it step by step.
 
 | Need | Where it comes from |
 |---|---|
-| A Zeck API endpoint (`ZECK_API_URL`) | Your sandbox deployment's base URL (the console/deployment surfaces expose it; local compositions default to `http://127.0.0.1:3000`). |
+| A Zeck API endpoint (`ZECK_API_URL`) | Your sandbox deployment's base URL (the console/deployment surfaces expose it). For local verification the repository boots the bootstrap public API plane at `http://127.0.0.1:8787` — [SELF-HOSTING.md](SELF-HOSTING.md) states exactly what that plane serves and how to run a full-journey local composition. The CLI's default (`http://127.0.0.1:3000`) applies only where YOU have composed a control plane to serve there: the repository ships no server on that port. |
 | A Zeck transport credential (`ZECK_TOKEN`) | The platform's credential surface for your application — a **Zeck** credential, **never a provider API key** (see [AUTH.md](AUTH.md)). |
 | An application id (`ZECK_APPLICATION_ID`) | The application your executions belong to (see [AUTH.md](AUTH.md)). |
 

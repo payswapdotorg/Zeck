@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-041",
+  "runStamp": "2026-09-19T07-42-18-220Z",
+  "substrate": {
+    "apiBase": "http://127.0.0.1:3978",
+    "consoleBase": "http://127.0.0.1:3979",
+    "bootstrapProbeBase": "http://127.0.0.1:3987",
+    "composition": "REAL createApiServer over REAL module services (executions/credentials/quotas, in-memory stores) + REAL createDashboard + REAL runtime deployment identity; worker-path settler drives governed transitions + settlement ledger event",
+    "sandboxAccountCrossCheck": {
+      "manifestPath": "deploy/manifests/sandbox-accounts.json",
+      "localAccountId": "local-developer",
+      "personaActorId": "00000000-0000-7000-8000-000000000142"
+    }
+  },
+  "baseRevision": "b53b74044008b34d1382d1c427054d148e1ca988",
+  "legs": [
+    {
+      "leg": "1",
+      "title": "discover (README → docs/developer/)",
+      "ms": 35
+    },
+    {
+      "leg": "2",
+      "title": "authenticate (documented local path → trial-plane credential)",
+      "ms": 348
+    },
+    {
+      "leg": "3",
+      "title": "application create (public surface)",
+      "ms": 3
+    },
+    {
+      "leg": "4",
+      "title": "environment/sandbox config",
+      "ms": 5
+    },
+    {
+      "leg": "5",
+      "title": "first execution (guided + composed)",
+      "ms": 1455
+    },
+    {
+      "leg": "6",
+      "title": "results/evidence inspection",
+      "ms": 19
+    },
+    {
+      "leg": "7",
+      "title": "costs",
+      "ms": 7
+    },
+    {
+      "leg": "8",
+      "title": "validation library discovery + rerun",
+      "ms": 422
+    },
+    {
+      "leg": "9",
+      "title": "export/self-host handoff",
+      "ms": 9
+    },
+    {
+      "leg": "10",
+      "title": "production-migration docs path",
+      "ms": 1
+    }
+  ],
+  "steps": [
+    {
+      "leg": "1",
+      "step": "1.1",
+      "action": "read README.md as a stranger; look for the developer documentation entry path",
+      "expectation": "README links docs/developer/** (the public integration kit)",
+      "observed": "README.md carries NO link into docs/developer/** (its 'Start here' sections target implementation agents and Tech Leads; the 'Current delivery program' section mentions the console without linking the kit) — the persona finds docs/developer/ only by directory exploration",
+      "outcome": "finding",
+      "findingId": "F1",
+      "ms": 0
+    },
+    {
+      "leg": "1",
+      "step": "1.2",
+      "action": "open docs/developer/README.md (found by directory exploration after F1)",
+      "expectation": "the public integration-kit index exists with a QUICKSTART entry",
+      "observed": "docs/developer/README.md exists; 'Start here → QUICKSTART.md' present",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "1",
+      "step": "1.3",
+      "action": "link-sweep the persona reading set (10 docs)",
+      "expectation": "every internal doc link resolves to a real file",
+      "observed": "all links resolve across the 10-doc reading set",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "1",
+      "step": "1.4",
+      "action": "check QUICKSTART.md's local endpoint guidance against the machine",
+      "expectation": "the docs state a real, served local endpoint (or an honestly qualified default)",
+      "observed": "QUICKSTART.md names the CLI default (127.0.0.1:3000) honestly — composed-yourself, with the repository's real local plane (the bootstrap host) and its port stated; no Zeck composition serves 3000 here, exactly as documented",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.1",
+      "action": "read SELF-HOSTING.md's developer path (the documented local verification sequence) and its boundary disclosure",
+      "expectation": "the local boot recipe is documented AND states what the bootstrap plane honestly does not serve (with the full-journey local alternative named)",
+      "observed": "SELF-HOSTING.md documents bun run deploy:api -- --environment local (bootstrap host, 127.0.0.1:8787), discloses the unbound domain-authority boundary, and names the full-journey trial substrate",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.2",
+      "action": "boot the documented local plane: bun deploy/api.ts --environment local (REAL subprocess, port 3987)",
+      "expectation": "the bootstrap host listens and answers GET /health",
+      "observed": "bootstrap host listening on http://127.0.0.1:3987 (GET /health → 503 — the honest fail-closed readiness state without a PostgreSQL authority)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.3",
+      "action": "GET /identity on the documented local plane; compare gitRevision to git rev-parse HEAD",
+      "expectation": "the exact-revision attestation matches the checkout",
+      "observed": "identity.gitRevision=b53b74044008b34d1382d1c427054d148e1ca988 (HEAD b53b74044008)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.4",
+      "action": "POST /executions on the documented local plane with a bearer credential",
+      "expectation": "the documented local-plane boundary reproduces exactly (the persona knows what to expect)",
+      "observed": "401 AUTHENTICATION_FAILED — 'no transport credential is bound in the bootstrap deployment composition (the identity/console work ' — the exact boundary SELF-HOSTING.md discloses for the bootstrap plane; the docs' full-journey local alternative is named",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.5",
+      "action": "SIGTERM the bootstrap host (boundary reproduced; proceeding on the trial plane)",
+      "expectation": "clean drain",
+      "observed": "bootstrap host terminated",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.6",
+      "action": "open the console's API keys & credentials page (the public credential surface)",
+      "expectation": "the keys page renders with the issue journey",
+      "observed": "GET /console/applications/keys → 200",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.7",
+      "action": "POST the issue form (label fresh-developer-trial); read the show-once reveal",
+      "expectation": "HTTP 303 → reveal page; the secret is shown exactly once",
+      "observed": "credential issued; show-once secret captured (69 chars, prefix zeck-m…)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.8",
+      "action": "verify the credential: GET /agents with a wrong bearer, then with the issued secret",
+      "expectation": "wrong → 401 AUTHENTICATION_FAILED; issued → 200",
+      "observed": "wrong → HTTP 401; issued → HTTP 200",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "2",
+      "step": "2.10",
+      "action": "look for the local sandbox identity in the docs (AUTH.md 'Where the values come from')",
+      "expectation": "the declared local sandbox identity is discoverable through public docs",
+      "observed": "AUTH.md documents the declared sandbox-identity source",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "3",
+      "step": "3.1",
+      "action": "open /console/applications looking for the application-creation journey",
+      "expectation": "the console offers application creation (or states its honest boundary)",
+      "observed": "the console renders the honest unavailable state: 'There is no application inventory or creation route in the public API — the application authority owns application lifecycle'",
+      "outcome": "finding",
+      "findingId": "F4",
+      "ms": 0
+    },
+    {
+      "leg": "3",
+      "step": "3.2",
+      "action": "read the console quickstart page's scope disclosure; adopt the application scope",
+      "expectation": "the console discloses its bound application scope",
+      "observed": "console bound to application 00000000-0000-7000-8000-000000000141",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "4",
+      "step": "4.1",
+      "action": "open /console/applications/environments (the sandbox-environment console view)",
+      "expectation": "environment classes, data policy and limits are disclosed",
+      "observed": "the environments console renders with disposable/synthetic-class disclosures and the honest not-exposed states",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "4",
+      "step": "4.2",
+      "action": "read SANDBOX.md's environment selector contract",
+      "expectation": "ZECK_ENVIRONMENT_ID is documented optional (deployment default without it)",
+      "observed": "SANDBOX.md documents the optional environment selector; the persona proceeds on the deployment default",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "4",
+      "step": "4.3",
+      "action": "open /console/providers (the honest availability catalog)",
+      "expectation": "provider availability facts are disclosed (including NOT RUN boundaries)",
+      "observed": "the providers & capabilities catalog renders with the honest availability facts",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "5",
+      "step": "5.1",
+      "action": "follow the quickstart's primary action to /console/playground/text",
+      "expectation": "the guided playground page renders the composer",
+      "observed": "GET /console/playground/text → 200",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "5",
+      "step": "5.2",
+      "action": "compose the run from the served defaults and POST the guided form",
+      "expectation": "HTTP 303 → the run detail for the created execution",
+      "observed": "guided run created: 00000000-0000-7000-9000-000000000001",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "5",
+      "step": "5.3",
+      "action": "open the run detail the playground redirected to; look for the reproducibility/export path the docs promise",
+      "expectation": "the landing surface links the export bundle + machine facts (SELF-HOSTING.md documents /console/executions/<id>/export)",
+      "observed": "the run detail links the export bundle",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "5",
+      "step": "5.4",
+      "action": "poll GET /executions/<id> (the documented lifecycle pattern) to a terminal status",
+      "expectation": "the guided run reaches COMPLETED with a settled ledger",
+      "observed": "terminal status COMPLETED; ledger carries 8 events",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "5",
+      "step": "5.5",
+      "action": "run `bun run examples/quickstart.ts` with the persona's env (ZECK_API_URL/TOKEN/APPLICATION_ID)",
+      "expectation": "the composed example completes: create → poll → result → events → replay",
+      "observed": "exit 0 in 1032 ms; created=true, terminal-COMPLETED=true, events=true, replay=true (00000000-0000-7000-9000-000000000011)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "6",
+      "step": "6.1",
+      "action": "open /console/executions (the execution explorer list)",
+      "expectation": "the guided run appears in the explorer",
+      "observed": "the guided run is listed",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "6",
+      "step": "6.2",
+      "action": "open the explorer's six-view detail (result default, activity/events, evidence)",
+      "expectation": "every view renders",
+      "observed": "result=200, activity/events=200, evidence=200",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "6",
+      "step": "6.3",
+      "action": "read the machine twin /console/executions/<id>/facts.json",
+      "expectation": "verbatim JSON facts match the run",
+      "observed": "facts.json parity: id=true, status=COMPLETED, cost=4125",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "6",
+      "step": "6.4",
+      "action": "GET /executions/<id>/results with the persona credential",
+      "expectation": "the honest result package: COMPLETED, settled cost, verification rows, artifact digests",
+      "observed": "status=COMPLETED, cost=4125, verification=1, artifacts=1",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "6",
+      "step": "6.5",
+      "action": "GET /executions/<id>/verification (the evidence axis)",
+      "expectation": "verification verdicts with criterion/strategy/provenance",
+      "observed": "1 verification row(s)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "7",
+      "step": "7.1",
+      "action": "open /console/usage (the usage/economics console) + its machine twin",
+      "expectation": "per-run spend facts render; the aggregate boundary is honest",
+      "observed": "usage=200 (run facts present), facts.json=200",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "7",
+      "step": "7.2",
+      "action": "read the run's settled cost through the public API",
+      "expectation": "cost appears only from settled ledger facts (never fabricated)",
+      "observed": "cost.totalMicroUsd=4125",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "8",
+      "step": "8.1",
+      "action": "open /console/validation (the Validation Lab) + api/catalog.json (the machine list step)",
+      "expectation": "the library's definitions are discoverable",
+      "observed": "lab=200, catalog=200 (46 experiments)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "8",
+      "step": "8.2",
+      "action": "rerun VAL-010 through the served review + commitment forms (POST /console/validation/VAL-010/run)",
+      "expectation": "HTTP 303 → a NEW governed execution that settles",
+      "observed": "rerun execution 00000000-0000-7000-9000-000000000021 → COMPLETED (8 console-rerunnable candidate(s) in the catalog; 1 experiment page(s) opened)",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "9",
+      "step": "9.1",
+      "action": "open /console/executions/<id>/export + bundle.json (the reproducibility bundle)",
+      "expectation": "the bundle carries the verbatim facts, digests, the reproduction recipe and explicit boundaries",
+      "observed": "bundle parity: executionId=true, status=COMPLETED, cost=4125, recipe=present, boundaries=5",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "9",
+      "step": "9.2",
+      "action": "follow the bundle's handoff to SELF-HOSTING.md (the 'run it yourself' path)",
+      "expectation": "the reproduction recipe path is documented and its links resolve",
+      "observed": "SELF-HOSTING.md's reproduction section present; links resolve",
+      "outcome": "pass",
+      "ms": 0
+    },
+    {
+      "leg": "10",
+      "step": "10.1",
+      "action": "read PRODUCTION.md (the production-migration path)",
+      "expectation": "promotion, secrets and quota posture documented; links resolve",
+      "observed": "PRODUCTION.md documents the governed promotion path; all links resolve",
+      "outcome": "pass",
+      "ms": 0
+    }
+  ],
+  "findingsSurfaced": [
+    {
+      "id": "F1",
+      "leg": "1",
+      "classification": "docs",
+      "title": "README.md has no developer-documentation entry link (discoverability gap)",
+      "reproduction": "read README.md top to bottom; grep -n 'docs/developer\\|QUICKSTART' README.md → no matches; the stranger's only entry surfaces are agent/Lead-oriented"
+    },
+    {
+      "id": "F4",
+      "leg": "3",
+      "classification": "zeck",
+      "title": "application creation/inventory is not exposed by the public API (honest unavailable) — the journey's 'create an application' leg cannot complete through the public surface",
+      "reproduction": "GET /console/applications → the unavailable state naming 'the application authority through the public API'; machine/openapi.json carries no application-create route (the frozen create contract only carries per-request applicationId selection)"
+    }
+  ],
+  "frictionEvents": 2
+}

@@ -24,8 +24,24 @@ The loader every example uses: `examples/lib/env.ts`.
    operator-side secret model are documented in
    [PRODUCTION.md](PRODUCTION.md) and owned by `deploy/` (DEP-001).
 2. **A local composition** — a locally composed control plane exposes
-   the same public API (the default base URL `http://127.0.0.1:3000`
-   matches the CLI's default).
+   the same public API. The repository's documented local boot
+   ([SELF-HOSTING.md](SELF-HOSTING.md) → `deploy/PUBLIC-DEPLOYMENT.md`
+   §3.1) serves the bootstrap plane at `http://127.0.0.1:8787` with the
+   domain authorities honestly unbound — authenticated routes answer
+   `401 AUTHENTICATION_FAILED` / `422 CAPABILITY_UNAVAILABLE`, never a
+   fabricated success, and no credential is bound there by design. A
+   full-journey local composition (the public API server, the credential
+   authority's issue → show-once flow, governed executions over
+   in-memory stores, and the developer console) is reproducible with
+   `scripts/fresh-developer-trial-dep041.ts` (the DEP-041
+   fresh-developer trial substrate; loopback ports 3978/3979).
+3. **The local sandbox identity** — the disposable identity a local or
+   preview plane binds is not a secret: `deploy/manifests/sandbox-accounts.json`
+   declares the per-environment-class sandbox-account record set (the
+   `local-developer` account for the local class: synthetic-data policy,
+   quota envelope, expiry semantics). The credential VALUE is still
+   issued through the platform's credential surface — never a provider
+   key, never committed.
 
 > The developer console surfaces (application creation UI, API-key UX)
 > are a separate delivery (DEP-010/DEP-011). This page documents the
