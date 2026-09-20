@@ -97,9 +97,11 @@ const DEFAULT_DATA_ROOT = join(
  * are operator account credentials for the credentialed application
  * path (deploy/PUBLIC-DEPLOYMENT.md), not runtime configuration: the
  * runtime secrets stay zeck-secret:// references materialized
- * externally.
+ * externally. Exported for deploy/preflight.ts (PPR-002 step 1:
+ * account/credential preflight) so the preflight and the provision
+ * plan share ONE mapping — never two lists that can drift.
  */
-const RESOURCE_KIND_CREDENTIAL_VARIABLES: Readonly<Record<string, string>> = {
+export const RESOURCE_KIND_CREDENTIAL_VARIABLES: Readonly<Record<string, string>> = {
   "neon-project": "NEON_API_KEY",
   "neon-branch": "NEON_API_KEY",
   "r2-bucket": "CLOUDFLARE_API_TOKEN",
@@ -334,7 +336,8 @@ function collectFilesUnder(dir: string): string[] {
 // Live-provider steps (presence-gated, never values)
 // ---------------------------------------------------------------------------
 
-function credentialPresent(
+/** Credential PRESENCE (never the value) of one account-plane variable. */
+export function credentialPresent(
   env: Readonly<Record<string, string | undefined>>,
   variable: string,
 ): boolean {

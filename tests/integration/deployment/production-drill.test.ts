@@ -118,7 +118,16 @@ describe.skipIf(DRILL_PG_URL.length === 0 || !HAS_GIT)(
       expect(totals.stepsFailed).toBe(0);
       expect(totals.positivesPlanned).toBe(totals.positivesPassed);
       expect(totals.negativesTotal).toBe(totals.negativesRefused);
-      expect(totals.negativesTotal).toBeGreaterThanOrEqual(13);
+      // The rollback prerepoint refusal is the 13th negative when the
+      // drills run (manifest-stable revisions — the DEP-043 case); on
+      // a manifest-refresh branch (PPR-002's ledger refresh is the
+      // first) the drill's documented honest skip replaces it: 12
+      // negatives plus the skipped-drills step pinned below.
+      if (report.rollbackTargetRevision === undefined) {
+        expect(totals.negativesTotal).toBeGreaterThanOrEqual(12);
+      } else {
+        expect(totals.negativesTotal).toBeGreaterThanOrEqual(13);
+      }
       expect(totals.durationMs).toBeGreaterThan(0);
 
       // The exact-revision preflight.
@@ -146,17 +155,41 @@ describe.skipIf(DRILL_PG_URL.length === 0 || !HAS_GIT)(
       expect(String(stepOf(report, "d1-promote-tampered-refused").refusalReason)).toContain(
         "does not recompute",
       );
-      const prerepoint = stepOf(report, "d1-rollback-prerepoint-refused");
-      expect(prerepoint.ok).toBe(true);
-      expect(String(prerepoint.refusalReason)).toContain("post-rollback re-attestation failed");
-      expect(String(prerepoint.refusalReason)).toContain("repoint");
-      const postpoint = stepOf(report, "d1-rollback-postpoint-verified");
-      expect(postpoint.ok).toBe(true);
-      expect((postpoint.facts as Record<string, unknown>).skipped).toBeUndefined();
-      const postAttestation = facts.postRepointAttestation as Record<string, unknown>;
-      expect(postAttestation.verified).toBe(true);
-      expect(postAttestation.attestedRevision).toBe(report.rollbackTargetRevision);
-      expect(String(report.rollbackTargetRevision)).toMatch(/^[0-9a-f]{40}$/);
+      // Rollback both-directions re-attestation. On a manifest-stable
+      // checkout the drills run in full (the DEP-043 case); on a
+      // branch whose HEAD legitimately changes deploy/manifests (the
+      // PPR-002 provider-ledger refresh is the first such case) the
+      // drill records its documented honest skip instead — no
+      // ancestor carries byte-identical manifests, and fabricating
+      // one is unrepresentable. Both outcomes are pinned here; the
+      // full-drill assertions are unchanged from DEP-043.
+      const rollbackTarget = report.rollbackTargetRevision as string | undefined;
+      if (rollbackTarget !== undefined && /^[0-9a-f]{40}$/.test(rollbackTarget)) {
+        const prerepoint = stepOf(report, "d1-rollback-prerepoint-refused");
+        expect(prerepoint.ok).toBe(true);
+        expect(String(prerepoint.refusalReason)).toContain("post-rollback re-attestation failed");
+        expect(String(prerepoint.refusalReason)).toContain("repoint");
+        const postpoint = stepOf(report, "d1-rollback-postpoint-verified");
+        expect(postpoint.ok).toBe(true);
+        expect((postpoint.facts as Record<string, unknown>).skipped).toBeUndefined();
+        const postAttestation = facts.postRepointAttestation as Record<string, unknown>;
+        expect(postAttestation.verified).toBe(true);
+        expect(postAttestation.attestedRevision).toBe(report.rollbackTargetRevision);
+        expect(String(report.rollbackTargetRevision)).toMatch(/^[0-9a-f]{40}$/);
+      } else {
+        // The honest-skip contract: the drill records the skipped
+        // rollback drills as an ok step with the exact reason, and
+        // omits rollbackTargetRevision (nothing is fabricated).
+        expect(report.rollbackTargetRevision).toBeUndefined();
+        const skipped = stepOf(report, "d1-rollback-drills");
+        expect(skipped.ok).toBe(true);
+        const skippedFacts = skipped.facts as Record<string, unknown>;
+        expect(skippedFacts.skipped).toBe(true);
+        expect(String(skippedFacts.reason)).toContain(
+          "no ancestor revision with byte-identical deploy/manifests",
+        );
+        expect(String(skippedFacts.reason)).toContain("differ only by revision");
+      }
 
       // --- DRILL 2: the backup/restore round-trip + digests ----------
       const roundTrip = facts.roundTrip as Record<string, unknown>;

@@ -24,8 +24,9 @@ deploy/
     resources.json           resource inventory per environment + naming constraints
     secret-references.json   environment-scoped zeck-secret:// reference inventory
     variables.json           the non-secret environment variable contract
-    provider-tiers.json      DEP-001: free-tier-first provider topology ledger (limits/terms/degradation/upgrade-exit)
+    provider-tiers.json      DEP-001: free-tier-first provider topology ledger (limits/terms/degradation/upgrade-exit); PPR-002 refresh asOf 2026-09-20 with per-entry asOf/source/verification
   lib.ts                     shared tooling plumbing (root resolution, secret scan)
+  preflight.ts               PPR-002: account/credential preflight + provider-tier fact reconciliation (the head of the credentialed sequence)
   validate.ts                configuration validation gate (15 rule families)
   bootstrap.ts               idempotent local convergence; provider plans
   provision.ts               DEP-002: environment/secret/sandbox-account provisioning (plan + converge)
@@ -277,15 +278,22 @@ compositions.
 (`deploy/manifests/provider-tiers.json`): every providers.json
 provider records the tier selected under the roadmap doctrine order
 (free tier → usage-based/no-minimum → low fixed-cost → paid where
-required), the CURRENT limits/terms as operational constraints (with an
-`asOf` date and the honest `recorded-not-live-verified` status — the
-DEP-001 worker pod had no cloud credentials), the exhaustion/outage
+required), the CURRENT limits/terms as operational constraints (each
+entry carrying its own `asOf` date, `source` — the provider's public
+documentation URL, or the repository contract path for
+repository-defined entries — and the honest
+`recorded-not-live-verified` status; the PPR-002 refresh of
+2026-09-20 is the current baseline, and the DEP-001/PPR-002 worker
+pods had no cloud credentials), the exhaustion/outage
 degradation path (which must EQUAL the providers.json declared
 degradation mode — the ledger never invents degradation stories), and
 the explicit upgrade/exit note (the authoritative concern on a free
 tier MUST carry the production upgrade path; Vercel Hobby carries the
-non-commercial-terms restriction as a recorded limit). `deploy:validate`
-rule 14 loads it fail-closed.
+non-commercial-terms restriction as a recorded limit, and the preview
+environment records the matching `commercialBoundary` annotation).
+`deploy:validate` rule 14 loads it fail-closed; `bun
+deploy/preflight.ts` reconciles it per-entry at the head of the
+credentialed sequence (PUBLIC-DEPLOYMENT.md §12).
 
 **The quota/spend fence** (`src/platform/deployment/quota-fence.ts`):
 the provider-neutral decision point for AC5. Usage at/over a declared

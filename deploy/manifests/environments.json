@@ -21,7 +21,7 @@
     },
     "preview": {
       "class": "disposable",
-      "description": "Isolated per-branch preview deployment. Synthetic or explicitly disposable data only. Preview resources are never implicitly promoted.",
+      "description": "Isolated per-branch preview deployment on the PPR-002 free-tier-first plane: Neon Free as the authoritative PostgreSQL (per-branch database branch), Cloudflare R2 free allowances for non-authoritative artifact bytes, Cloudflare Queues/Workflows Workers Free allowances as the non-authoritative dispatch transport and durable orchestration, Upstash Redis Free for non-authoritative ephemeral coordination, the self-hosted governed container runner as the execution substrate, and Vercel Hobby as experience delivery where its personal/non-commercial terms permit. Synthetic or explicitly disposable data only. Preview resources are never implicitly promoted, and the free-tier allowances are never operational dependencies (every concern keeps its manifest-declared degradation mode and upgrade/exit path).",
       "dataPolicy": "synthetic-only",
       "teardownAllowed": true,
       "credentialScope": "preview-isolated",
@@ -29,6 +29,7 @@
       "connectivity": {
         "internalPaths": ["tunnel"]
       },
+      "commercialBoundary": "Vercel Hobby preview delivery is the non-commercial preview rail only; commercial production requires a commercially permitted plan (e.g. Vercel Pro) or an alternate host, plus the paid-tier upgrades recorded in the provider-tiers ledger (the authoritative relational concern must not remain on a free tier for commercial production).",
       "promotion": {
         "nextPhase": "staging",
         "requires": ["ci-gates", "preview-smoke"]
