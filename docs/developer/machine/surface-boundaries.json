@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "description": "The machine-surface boundary declaration: platform surfaces a coding agent CANNOT reach through this machine contract, declared explicitly so the boundary is discoverable instead of a silent dead-end (the DEP-042 fresh-agent trial's honest-unavailable registry, mirroring AVAILABILITY.md's disclosure rules for the human docs). The openapi.json route table remains the machine contract of record; every surface listed here is honestly NOT on it in this base — a machine agent records these as unavailable and proceeds, never guessing. Validated by the DEP-042 journey driver (scripts/fresh-agent-trial-dep042.ts legs 4/8/9 read this declaration).",
+  "doctrine": "A gap is recorded as a gap, never a silent pass. Each boundary names the surface, its machine status, where it lives today, and the owning decision (a public-contract widening is always a Lead-level decision — never a worker's unilateral route addition).",
+  "boundaries": [
+    {
+      "surface": "application-lifecycle",
+      "machineStatus": "not-exposed (authority-side, out-of-band)",
+      "path": "The application authority provisions application identities out-of-band (the target deployment's operator/console); the machine contract carries only the per-request applicationId selector (ZECK_APPLICATION_ID) the operator provides. There is no application-create or application-inventory route in openapi.json, and none is implied.",
+      "owner": "Lead public-contract decision (expose an application-lifecycle route set, or keep the out-of-band path as THE path — recorded as the DEP-041 F4 / DEP-042 AF4 merge note)"
+    },
+    {
+      "surface": "validation-library",
+      "machineStatus": "console-plane only (unavailable on the machine contract)",
+      "path": "The Validation Library (experiment definitions, historical evidence, governed rerun) lives on the console plane at /console/validation with its machine-readable catalog at /console/validation/api/catalog.json — a browser-session surface outside this machine contract. There is no /validation route in openapi.json and no validation example in examples-manifest.json.",
+      "owner": "Lead public-contract decision (expose a machine-readable library list/rerun route set, or keep the boundary declared here)"
+    },
+    {
+      "surface": "execution-export",
+      "machineStatus": "console-plane only (unavailable on the machine contract)",
+      "path": "The execution reproducibility-bundle export lives on the console plane at /console/executions/{id}/export with the bundle at /console/executions/{id}/export/bundle.json — outside this machine contract. The closest machine surface is the result package at GET /executions/{id}/results. There is no export route in openapi.json and no export example in examples-manifest.json.",
+      "owner": "Lead public-contract decision (expose a machine export route, or keep the boundary declared here)"
+    }
+  ]
+}

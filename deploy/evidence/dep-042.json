@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-042",
+  "title": "Fresh-agent integration trial — machine-surface journey, findings, fixes and verification evidence record",
+  "recordedBy": "DEP-042 implementation worker (single session; the persona drives, the fixes, the re-driven verification and this record are one lineage)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server, no Docker, no public internet egress beyond the anonymous git clone); git worktree /home/z/my-project/Zeck, branch work/DEP-042-fresh-agent-trial at base e50fe7e54b094d676c68ff878e7fda3ec095f5c3 (the dispatch packet's pinned base — verified by git rev-parse before branching)",
+  "date": "2026-09-19",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The persona consumed ONLY the machine surface — AGENTS.md at the repository root, docs/developer/machine/** (openapi.json, capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json, surface-boundaries.json post-fix), the public API wire surface, and the SDK where the machine artifacts point at it. No human-oriented docs, no console browsing, no src/ reading to figure out contracts (src/ was read only AFTER a finding was recorded through the persona's machine-surface experience, for classification and fix). The driver builds every wire request from openapi.json's DECLARED parameters and executes every examples-manifest entry exactly as its manifest row prints it.",
+  "substrate": {
+    "trialPlane": "REAL locally-booted plane: REAL createApiServer over REAL module services (executions, credentials, quotas, sandbox identities, economics — in-memory stores) + REAL runtime deployment identity (manifest digest + provider-tiers ledger + git revision), loopback port 4078; the persona's connection values arrive exactly as integration-recipe.json's prerequisites state (operator-provided), then the persona issues its OWN credential through the public POST /credentials route and drives the whole journey with it",
+    "workerPath": "a settler drives every created execution through the REAL execution service's governed transitions (authorize → plan → queue → start → verify → pass) plus the settlement ledger event (costMicroUsd 4125, usage {inputTokens 2100, outputTokens 340}, one artifact with digest) — the platform-side completion a bound worker + provider rail performs on a hosted plane; live provider completion itself is honest NOT RUN",
+    "credentialBinding": "the deployment-side transport verification view tracks issued material at issuance AND at rotation/revocation (rotate retires the predecessor's material, revoke removes it — the write-only secret store's reference table + record status); wrong or retired material → 401"
+  },
+  "notRun": [
+    {
+      "check": "Live provider completion rails (real model/tool/media completions through OPENROUTER_API_KEY / QWEN_API_KEY / OPENAI_API_KEY / BYTEPLUS_ARK_API_KEY / SEEDANCE_API_KEY / ZECK_3D_API_KEY)",
+      "reason": "No operator provider credentials exist in the worker pod — the recorded NOT RUN boundary of DEP-001/003 and AVAILABILITY.md. Every execution settled through the platform's own governed transition commands with the settlement envelope recorded in the ledger (the worker-path seam), never a fabricated provider result.",
+      "owner": "Lead credentialed re-run (the hosted-plane trial with authorized rails)"
+    },
+    {
+      "check": "The public-internet variant of the journey against a hosted deployment",
+      "reason": "No public hosted Zeck URL exists in the sandbox. The trial ran against a REAL locally-booted plane serving the same public contract (real processes, real HTTP); the hosted variant is the Lead credentialed boundary.",
+      "owner": "Lead credentialed re-run (deploy a preview plane per PUBLIC-DEPLOYMENT.md §3.2 and re-drive the journey)"
+    },
+    {
+      "check": "Validation Library list + rerun through a machine-readable surface",
+      "reason": "No /validation route exists in openapi.json and no validation example in examples-manifest.json (the DEP-025 surface is console-plane at /console/validation). Post-fix the boundary is DECLARED machine-side in docs/developer/machine/surface-boundaries.json (the persona records it honestly unavailable); the persona discipline forbids console browsing, so the rerun itself cannot run. The finding AF8 and its disposition are the deliverable.",
+      "owner": "Lead public-contract decision (expose a machine-readable library list/rerun route set, or keep the boundary declared machine-side)"
+    },
+    {
+      "check": "Execution reproducibility-bundle export through a machine-readable surface",
+      "reason": "No export route exists in openapi.json and no export example in examples-manifest.json (the DEP-032 surface is console-plane at /console/executions/<id>/export). Post-fix the boundary is DECLARED machine-side in surface-boundaries.json; the closest machine surface (GET /executions/<id>/results) was driven for real instead.",
+      "owner": "Lead public-contract decision (expose a machine export route, or keep the boundary declared machine-side)"
+    },
+    {
+      "check": "PostgreSQL-backed composition and the PG-gated integration suites",
+      "reason": "No PostgreSQL server exists in the worker pod; the integration suites skip cleanly without ZECK_PG_TEST_URL (skip counts recorded in the battery entries). The known base defects DEFECT-A (audit-schema 0032 forward-pin) and DEFECT-B (bootstrap-smoke/release-cli zeck_local fixture race) are PG-gated and could NOT appear in this environment — not re-investigated, not fixed, per the dispatch packet.",
+      "owner": "Lead (owns the DEFECT-A/B fix dispatch and the credentialed PG re-run)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "AC1/AC4 baseline — the fresh-AGENT persona journey driven end to end against a fresh REAL plane, PRE-fix (the defect-finding drive of record)",
+      "command": "bun scripts/fresh-agent-trial-dep042.ts baseline (base machine manifests restored for the drive; journey log persisted to deploy/evidence/dep-042-journey-baseline.json)",
+      "evidence": "39 steps across the 10 legs — 28 pass / 7 finding / 4 not-run; 7 distinct findings surfaced (AF1, AF3f, AF4, AF6b, AF6d, AF8, AF9); 7 friction events. Leg timings (ms): discovery 2, contract-reading 39, authenticate 20, application 1, sandbox-config 3, executions 31456 (the wire drive + 27 literal example subprocesses), results/evidence 4, validation-library 1, export 1, boundaries 1."
+    },
+    {
+      "check": "AC1/AC4 verification — the SAME journey re-driven POST-fix against a fresh plane (the fixed machine surface re-driven; the fail-before/pass-after pin)",
+      "command": "bun scripts/fresh-agent-trial-dep042.ts (journey log persisted to deploy/evidence/dep-042-journey.json)",
+      "evidence": "39 steps — 33 pass / 2 finding / 4 not-run; 2 findings surfaced (AF1, AF6d — both Lead-owned merge notes, honestly still open); 2 friction events. The five fixed findings no longer surface: AF3f (the rotate/revoke requests built from the NOW-documented ZeckApplication parameter complete the full lifecycle: rotate 200 → old secret 401 → new secret 200 → revoke 200 → revoked secret 401), AF6b (the closed vocabularies now carry their enums in openapi.json — purpose/recipient.kind/currency/requiredCapabilities[].kind), AF4/AF8/AF9 (the application-lifecycle, validation-library and execution-export boundaries are declared machine-side in surface-boundaries.json, referenced by the integration-recipe invariant)."
+    },
+    {
+      "check": "AC2 — literal example execution: every examples-manifest entry executed exactly as its manifest row prints it",
+      "command": "the driver's leg 6 (bun run <manifest path> with the manifest-declared env vars; the provider credential NAMES explicitly absent from the spawn environment)",
+      "evidence": "27 examples: 15 ran-as-written (exit 0 — the 14 spawned runnable examples printing the create → poll → result → evidence → replay spine, plus the webhook receiver driven per its documented run shape: unsigned → 401 'invalid signature', validly-signed → 202 'applied', redelivery → 202 'replay acknowledged') / 11 not-run-gated (each printed its provider-gated banner and completed its code path with the named contract: QWEN_API_KEY ×3, OPENROUTER_API_KEY ×3, OPENAI_API_KEY, ZECK_3D_API_KEY, rail-boundary ×3 — live provider completion stays the recorded NOT RUN boundary) / 1 finding (economic-actions — AF6d below). Every gated example's exit was 0 with the boundary banner; zero hidden-assumption failures beyond the recorded AF6d."
+    },
+    {
+      "check": "AC3 — finding AF3f FIXED in docs/developer/machine/openapi.json with the re-driven journey as the regression pin",
+      "command": "the two drives' step 3.7 (the request built from the route's DECLARED parameters at each drive)",
+      "evidence": "FAIL-BEFORE: openapi.json declared POST /credentials/{credentialId}/rotate + /revoke with only IdempotencyKey + CredentialId — the persona's documented-parameter request (no x-zeck-application header) was REFUSED 422 CAPABILITY_UNAVAILABLE 'credential commands require the X-Zeck-Application header' (the same-document inconsistency: /executions/{id}/cancel and /sandbox/identities/{id}/reset DO declare the ZeckApplication parameter). FIX: the ZeckApplication parameter ref added to both routes. PASS-AFTER: the verification drive's step 3.7 passes — the persona sends the now-documented header and the full credential lifecycle completes (rotate 200, old 401, new 200, revoke 200, revoked 401)."
+    },
+    {
+      "check": "AC3 — finding AF6b FIXED in docs/developer/machine/openapi.json with the re-driven journey as the regression pin",
+      "command": "the two drives' step 6.4b (the persona reads the EconomicActionRequest schema for the fields the wire's rejection enforced)",
+      "evidence": "FAIL-BEFORE: purpose/recipient.kind/currency/requiredCapabilities[].kind were documented as free strings while the wire rejects out-of-vocabulary values (the runnable economic-actions example itself was refused: 'purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind is outside the closed vocabulary'). FIX: the closed enums added to EconomicActionRequest and EconomicAction (purpose: purchase|payment|transfer|refund|charge|machine-resource; recipient.kind: seller|merchant|provider|wallet|account; currency: usd|eur|gbp|jpy|cad|aud|chf; requiredCapabilities[].kind: model|tool|algorithm|data|runtime|human). PASS-AFTER: the verification drive's step 6.4b passes — every vocabulary is learnable from the manifest. The machine-schemas unit battery (73 tests incl. the openapi reconciliation) stays green on the edited file."
+    },
+    {
+      "check": "AC3 — findings AF4/AF8/AF9 boundary declaration FIXED machine-side (docs/developer/machine/surface-boundaries.json, new) with the re-driven journey as the regression pin",
+      "command": "the two drives' steps 4.1 / 8.1 / 9.1 (the persona searches the machine contract for the application-lifecycle, validation-library and export surfaces)",
+      "evidence": "FAIL-BEFORE: no application-lifecycle route and no machine-side documentation of the out-of-band provisioning path; no /validation route, example or recipe mention (the DEP-025 library invisible to a machine agent); no export route or example (the DEP-032 bundle invisible). FIX: surface-boundaries.json declares the three boundaries (surface, machineStatus, path, owner) and the integration-recipe's invariant set now states that the openapi route table is the machine contract of record with non-exposed surfaces declared there (step 9 carries the artifact). PASS-AFTER: the verification drive's steps 4.1 / 8.1 / 9.1 pass — the persona reads the declaration and records the honest unavailable states; steps 8.2 / 9.2 / 10.x carry the NOT RUN boundaries with owners."
+    },
+    {
+      "check": "AC5 — the wire-parity probes verified the error taxonomy for real (deterministic statuses through the public routes)",
+      "command": "the driver's steps 3.2 / 3.6 / 5.3 / 7.4",
+      "evidence": "wrong bearer → 401 AUTHENTICATION_FAILED retryable=false; same idempotency key + different request → 409 IDEMPOTENCY_KEY_REUSED; unknown sandbox identity → 404 (indistinguishable-from-missing; this route's 404 body carries AUTHORIZATION_DENIED while the executions routes' scope-checked misses carry CAPABILITY_UNAVAILABLE — both documented 404 shapes, the openapi pins neither body code for this route, recorded as an observation, no violation claimed); cancel on a COMPLETED execution → 409 INVALID_STATE_TRANSITION. The show-once credential contract verified end to end: issue 201 (secret present, replayed false) → replay 201 (secret null, replayed true)."
+    },
+    {
+      "check": "Battery — install + typecheck + lint (baseline-exact, zero new violations)",
+      "command": "bun install && bun run typecheck && bun run lint",
+      "evidence": "bun install: 116 packages (1184 ms, first bring-up; idempotent thereafter). typecheck: exit 0 (tsc --noEmit), 0 errors. lint: 68 warnings / 8 infos / 0 errors, exit 0 — the recorded house baseline EXACTLY; the only file-level diagnostics this order's surfaces could contribute were the two emitted journey logs' format errors, fixed with biome --write before this run (the driver's header documents the post-drive format step); scripts/fresh-agent-trial-dep042.ts and docs/developer/machine/** contribute ZERO diagnostics."
+    },
+    {
+      "check": "Battery — unit suite",
+      "command": "bun run test:unit",
+      "evidence": "Test Files 348 passed (348); Tests 6135 passed (6135); 0 failures; 98.66 s. The base e50fe7e unit set (DEP-040's +1 file/+20 tests and DEP-041's +1 file/+4 tests over the 34e80bf lineage) — this order adds no test files (the manifest fixes' regression pins are the re-driven journey drives; the machine-schemas/docs-links/secret-scan/examples-end-to-end batteries over the edited manifests all green inside this run)."
+    },
+    {
+      "check": "Battery — architecture + discrimination suites",
+      "command": "bun run test:architecture",
+      "evidence": "Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 0 failures; 51.13 s — identical to the recorded base architecture battery (139f-2230t+4 skips; the skips are the PG-gated budgets-overspend discrimination suite without ZECK_PG_TEST_URL)."
+    },
+    {
+      "check": "Battery — integration suites (PG-gated skip behavior, the house convention)",
+      "command": "bun run test:integration",
+      "evidence": "Test Files 23 passed | 146 skipped (169); Tests 279 passed | 200 skipped (479); 0 failures; 61.55 s. The skips are the unchanged PG/credential-gated baseline behavior without ZECK_PG_TEST_URL (no PostgreSQL server in the pod); the known base defects DEFECT-A/DEFECT-B are inside those skipped suites and did not — could not — appear (see notRun)."
+    },
+    {
+      "check": "Battery — the full suite",
+      "command": "bun run test",
+      "evidence": "Test Files 510 passed | 147 skipped (657); Tests 8644 passed | 204 skipped (8848); 0 failures; 207.92 s — exactly the expected base e50fe7e full-suite state (DEP-040's integration e2e-driver file + DEP-041's parity-link pin over the 34e80bf lineage: 510 files / 8848 tests); the 147 file-level and 204 test-level skips are the unchanged PG/credential-gated baseline; this order adds zero test files."
+    },
+    {
+      "check": "Battery — governance + deployment configuration gate",
+      "command": "python3 scripts/governance-check.py && bun run deploy:validate",
+      "evidence": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[] (exit 0). deploy:validate: valid=true, problems=[] (exit 0; providerTierVerification 'recorded-not-live-verified' — the honest vocabulary; sandboxAccountEnvironments 3, sandboxAccounts 3)."
+    },
+    {
+      "check": "AC4 — the trial re-run against a FRESH plane after the full battery (reproducibility)",
+      "command": "bun scripts/fresh-agent-trial-dep042.ts (third full journey drive, new composition, new subprocesses)",
+      "evidence": "39 steps — 33 pass / 2 finding / 4 not-run; 2 findings surfaced (AF1, AF6d); 2 friction events; examples 15 ran-as-written / 11 not-run-gated / 1 finding — the IDENTICAL outcome of the verification drive. The journey log persisted at deploy/evidence/dep-042-journey.json is this battery-stage re-run's log (formatted with biome --write per the driver's documented step)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "AF1",
+      "leg": "1 (discovery)",
+      "classification": "docs",
+      "title": "AGENTS.md (the repository-root agent entry point) does not reference the machine-contract surface — a fresh coding agent cannot discover docs/developer/machine/** from the canonical entry",
+      "reproduction": "read AGENTS.md top to bottom: it is the INTERNAL program contract (the architect/Tech Lead/implementer recovery sequence — AI_CONTINUATION.md, docs/LLM-*, spec/*); grep -n 'docs/developer\\|machine/' AGENTS.md → no matches; README.md equally carries no developer-kit entry (the DEP-041 F1 merge note, still open); the persona reaches the machine manifests only by repository directory exploration",
+      "disposition": "MERGE NOTE (AGENTS.md and README.md are outside this order's fix surface docs/developer/machine/**): add a machine-contract entry ('Integrating Zeck as a coding agent? The machine contract lives at docs/developer/machine/ — start with integration-recipe.json') to AGENTS.md's head and/or the README"
+    },
+    {
+      "id": "AF3f",
+      "leg": "3 (authenticate — the credential lifecycle)",
+      "classification": "machine-manifest",
+      "title": "openapi.json omitted the required x-zeck-application parameter on POST /credentials/{credentialId}/rotate and /revoke — a request built exactly from the documented parameters was refused 422",
+      "reproduction": "POST /credentials/{id}/rotate with EXACTLY the documented parameters (IdempotencyKey, CredentialId) + bearer + empty body → 422 CAPABILITY_UNAVAILABLE 'credential commands require the X-Zeck-Application header' (src/api/routes/credentials.ts: applicationScopeOf(request, 'credential commands')); POST /executions/{id}/cancel and POST /sandbox/identities/{id}/reset DO declare the ZeckApplication parameter — the same-document inconsistency a machine agent cannot resolve without guessing an undocumented header",
+      "disposition": "FIXED in docs/developer/machine/openapi.json (the ZeckApplication parameter ref added to both routes). Pin: the verification journey drive's step 3.7 passes (fail-before 422 recorded in the baseline drive's step 3.7); the machine-schemas openapi reconciliation battery stays green."
+    },
+    {
+      "id": "AF4",
+      "leg": "4 (application create)",
+      "classification": "zeck",
+      "title": "application creation/inventory is not exposed by the public API and the out-of-band provisioning path was undocumented machine-side — the journey's application-create leg cannot complete through the machine surface",
+      "reproduction": "the openapi route table carries no /applications route (27 paths; the frozen create contract carries only the per-request applicationId selector); pre-fix no machine artifact documented how an application comes into existence — the DEP-041 F4 boundary re-observed through the machine surface",
+      "disposition": "BOUNDARY DECLARED machine-side (surface-boundaries.json: application-lifecycle, authority-side out-of-band, ZECK_APPLICATION_ID from the operator) — the persona now records the honest unavailable state; the ROUTE decision stays a MERGE NOTE for the Lead (expose an application-lifecycle route set or keep the out-of-band path as THE path — never a worker's unilateral src/ change)"
+    },
+    {
+      "id": "AF6b",
+      "leg": "6 (executions — the economic-action family)",
+      "classification": "machine-manifest",
+      "title": "openapi.json documented the economic-action closed vocabularies as free strings — the wire's vocabulary constraints were undiscoverable through the machine contract",
+      "reproduction": "components.schemas.EconomicActionRequest: purpose/recipient.kind/currency/requiredCapabilities[].kind were {\"type\":\"string\"} with NO enum; POST /economic-actions with an out-of-vocabulary value → 422 'economic action draft rejected: purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind is outside the closed vocabulary' (the vocabulary lives in src/modules/economics/domain/vocabulary.ts, never in the manifest)",
+      "disposition": "FIXED in docs/developer/machine/openapi.json (the closed enums added to EconomicActionRequest AND EconomicAction). Pin: the verification journey drive's step 6.4b passes (fail-before recorded in the baseline drive); the machine-schemas battery stays green."
+    },
+    {
+      "id": "AF6d",
+      "leg": "6 (executions — the literal example run)",
+      "classification": "docs",
+      "title": "the runnable examples/economic-actions.ts fails when executed exactly as its manifest row prints it (two out-of-vocabulary values)",
+      "reproduction": "bun run examples/economic-actions.ts with the manifest envVars → exit 1: 'economic action draft rejected: purpose: purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind: recipient.kind is outside the closed vocabulary' — the example carries purpose 'purchase dataset access (example)' (vocabulary: purchase|payment|transfer|refund|charge|machine-resource) and recipient { kind: 'external-account' } (vocabulary: seller|merchant|provider|wallet|account); the api-world test uses the in-vocabulary 'purchase'/'merchant' shapes, so the defect was invisible to the house batteries",
+      "disposition": "MERGE NOTE (examples/** is outside this order's fix surface): two one-line fixes in examples/economic-actions.ts — purpose 'purchase' and recipient kind 'merchant' (or 'provider'); re-drive with the driver's leg 6 to confirm exit 0"
+    },
+    {
+      "id": "AF8",
+      "leg": "8 (validation library)",
+      "classification": "machine-manifest",
+      "title": "the Validation Library (list + rerun) was not discoverable through the machine surface — no openapi route, no manifest example, no recipe step named it",
+      "reproduction": "grep -i validation docs/developer/machine/openapi.json → only agent-version validationState schema fields, no /validation route; no validation entry in examples-manifest.json; integration-recipe.json's 9 steps never mentioned the library; the surface lives only on the console plane (/console/validation + api/catalog.json — outside the machine persona's discipline)",
+      "disposition": "BOUNDARY DECLARED machine-side (surface-boundaries.json: validation-library, console-plane only) + MERGE NOTE for the route decision (expose a machine-readable library list/rerun route set or keep the boundary declared — the Lead's public-contract call)"
+    },
+    {
+      "id": "AF9",
+      "leg": "9 (export path)",
+      "classification": "machine-manifest",
+      "title": "the execution reproducibility-bundle export path was not discoverable through the machine surface — no openapi route, no manifest example",
+      "reproduction": "no /export or /bundle route in openapi.json (27 paths; the closest machine surface is GET /executions/{id}/results, which the trial drove for real); no export example in examples-manifest.json; the DEP-032 surface lives only on the console plane (/console/executions/<id>/export + bundle.json)",
+      "disposition": "BOUNDARY DECLARED machine-side (surface-boundaries.json: execution-export, console-plane only) + MERGE NOTE for the route decision (expose a machine export route or keep the boundary declared — the Lead's public-contract call)"
+    }
+  ],
+  "frictionEventCount": {
+    "baselineDrive": 7,
+    "verificationDrive": 2
+  },
+  "notes": [
+    "MERGE NOTES FOR THE LEAD (src/ and out-of-surface defects — never fixed by a worker): (1) AF1 — the AGENTS.md/README.md machine-contract entry link (both outside this order's fix surface); (2) AF6d — examples/economic-actions.ts's two out-of-vocabulary values (examples/** outside the fix surface; two one-line fixes); (3) AF4/AF8/AF9 route decisions — the application-lifecycle / validation-library / execution-export widening calls (the boundary declarations are in surface-boundaries.json; widening would be a Lead public-contract decision); (4) the sandbox-identity route's 404 body carries AUTHORIZATION_DENIED while the executions routes' scope-checked 404s carry CAPABILITY_UNAVAILABLE — both documented 404 shapes (the openapi pins neither body code on that route); recorded as an observation, no violation claimed; unifying the vocabulary is a Lead call.",
+    "SURFACE DELTA: scripts/fresh-agent-trial-dep042.ts (new — the reproducible journey driver), deploy/evidence/dep-042.json (this record), deploy/evidence/dep-042-journey-baseline.json + deploy/evidence/dep-042-journey.json (new — the machine-readable journey logs of the two drives), docs/developer/machine/openapi.json (the AF3f parameter fix + the AF6b closed-vocabulary enums), docs/developer/machine/integration-recipe.json (the surface-boundaries artifact on step 9 + the machine-contract-of-record invariant), docs/developer/machine/surface-boundaries.json (new — the AF4/AF8/AF9 boundary declaration manifest). No src/, no spec/platform-delivery-state/, no sdk/, no examples/, no apps/dashboard/ changes.",
+    "KNOWN BASE DEFECTS (per the dispatch packet): DEFECT-A (audit-schema 0032 forward-pin) and DEFECT-B (bootstrap-smoke/release-cli zeck_local fixture race) are PG-gated and did NOT — and could NOT — appear in this pod (no PostgreSQL server; the integration suites skip cleanly without ZECK_PG_TEST_URL). Not re-investigated, not fixed, per the packet.",
+    "ZERO LIVE COST CONSUMED: no provider credentials exist in the pod; every execution in the trial settled through the platform's own governed transition commands with the settlement envelope recorded in the ledger (the worker-path seam). No fabricated provider result exists anywhere in this record.",
+    "The battery entries in verifiedLocally are this session's own single measured runs (typecheck exit 0; lint 68w/8i/0e exit 0; unit 348f/6135t; architecture 139f/2230t+4 skips; integration 23f/279t+200 skips; full suite 510f/8644t+204 skips; governance OK; deploy:validate valid=true; the trial re-run identical to the verification drive) — never assembled from different runs.",
+    "The journey-log format note: the driver's JSON.stringify output is formatted with biome --write after each recorded drive (the driver's header documents the step) so the delivery artifacts carry the house format."
+  ]
+}
