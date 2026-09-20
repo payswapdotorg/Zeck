@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-003",
+  "title": "Public user-journey simulation and acceptance harness — verification evidence record",
+  "recordedBy": "PPR-003 implementation worker (this session)",
+  "environment": "sandboxed worker pod (no cloud credentials, no PostgreSQL server); git worktree /home/z/my-project/Zeck, branch work/PPR-003-journey-harness at base 0c57491b586719a34c245c4df0109c34e4c2a6f5 (the guide's pinned main head, verified present and branched from directly)",
+  "date": "2026-09-20",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The harness executes the 12 journeys over real HTTP against a REAL locally-booted Zeck plane (deploy/api.ts, the deploy chain's local mode, with the documented no-PG degradation: /health answers the honest fail-closed 503 down with controlPlane ready under the run's explicit degraded allowance). The 22-family capability matrix is derived from the repository's machine manifests. Every fact in the runner comes from the repository's own verification authorities (deploy/plane-identity.ts, deploy/lib.ts, deploy/e2e-validate.ts's boot-document detector, docs/developer/machine/*.json) — the harness adds NO new authority. The final acceptance run against the real public URL is the Lead's post-deployment boundary (the harness is parameterized by --url + the exact expected revision for exactly that run).",
+  "notRun": [
+    {
+      "check": "The final acceptance run against the real public Zeck URL (the deployed PPR-002 preview) at its exact revision — all 12 journeys, the full capability-matrix disclosure probes and the credentialed sandbox path over the public internet",
+      "reason": "The public URL does not exist at harness-delivery time (PPR-002's live provisioning is the Lead's credentialed run, in parallel with this work order). The harness itself is proven end to end against a real local Zeck plane (below) and the repository's machine manifests; the Lead points it at the deployed URL the moment the preview is live.",
+      "owner": "Lead post-deployment run"
+    },
+    {
+      "check": "Credentialed journey steps (guided sandbox start, first text execution lifecycle, inspection, evidence/cost receipt, reproducibility bundle export) without transport credentials",
+      "reason": "The harness accepts ZECK_JOURNEY_TOKEN + ZECK_JOURNEY_APPLICATION_ID; without them every credentialed step records the honest not-run state with its owner. The unauthenticated boundaries ARE asserted on every run (the honest 401 AUTHENTICATION_FAILED on POST /executions, the 422 CAPABILITY_UNAVAILABLE governance seams).",
+      "owner": "Lead credentialed re-run (transport credential for the public preview)"
+    },
+    {
+      "check": "Live provider rails for provider-gated workload families (live voice/image/video/vision/3D/browser/computer-use rows)",
+      "reason": "No provider credentials exist in this environment; a provider-gated family is never reported as live success without the required access — the harness asserts the honest disclosure, never the completion (docs/developer/AVAILABILITY.md).",
+      "owner": "Lead credentialed re-run (provider rails)"
+    },
+    {
+      "check": "A real browser session's console-error capture and interactive keyboard/focus traversal",
+      "reason": "The harness is an HTTP/DOM-level acceptance harness (the repository's own assertion grammar). It records the HTTP-observable proxies (resource integrity over every referenced script/style/image, structural keyboard/focus affordances, the responsive plan, reduced motion); the interactive browser pass is the Lead's post-deployment verification.",
+      "owner": "Lead post-deployment browser pass (a real browser session; the harness's HTTP-observable proxies are recorded in every run)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Architecture + discrimination battery",
+      "command": "bun run test:architecture",
+      "evidence": "exit 0 — Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 52.8s. The skip is the PG-gated budgets-overspend discrimination suite (no ZECK_PG_TEST_URL in this pod — the same house-convention skip set every recorded battery carries); zero new diagnostics on any surface the architecture pins"
+    },
+    {
+      "check": "Integration battery (house convention — the standard PG suites skip-and-count exactly as every recorded battery; no ZECK_PG_TEST_URL in this pod)",
+      "command": "bun run test:integration",
+      "evidence": "exit 0 — Test Files 25 passed | 146 skipped (171); Tests 290 passed | 203 skipped (493); 63.6s. tests/integration/journey/harness-e2e.test.ts ran green inside this battery (9/9 — the local-plane proof + the three hostile negatives, driven as real subprocesses)"
+    },
+    {
+      "check": "The full suite — the plain Lead-reproducible run (no env vars)",
+      "command": "bun run test",
+      "evidence": "exit 0 — Test Files 514 passed | 147 skipped (661); Tests 8706 passed | 207 skipped (8913); 206.9s; 0 failures. This work order's additions run inside it: tests/unit/journey/harness-contract.test.ts (30 tests) and tests/integration/journey/harness-e2e.test.ts (9 tests)"
+    },
+    {
+      "check": "Governance check",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+    },
+    {
+      "check": "deploy:validate at the delivery head",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0 — valid=true, problems=[] (4 environments / 8 providers / 33 migrations / 3 sandbox accounts; providerTierVerification stays 'recorded-not-live-verified' — the honest vocabulary)"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit), 0 errors at the branch head"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "exit 0 — 68 warnings / 8 infos / 0 errors, the recorded base baseline exactly (verified against the stashed base tree: 68 warnings / 8 infos / 0 errors); the new harness files carry zero diagnostics (biome check tests/journey tests/unit/journey tests/integration/journey → 'No fixes applied', clean)"
+    },
+    {
+      "check": "Unit suite",
+      "command": "bun run test:unit",
+      "evidence": "Test Files 350 passed (350); Tests 6186 passed (6186); 0 failures; 94.9s. The work order's own addition is tests/unit/journey/harness-contract.test.ts (+1 file, +30 tests — the 12-journey order pin, the 22-family matrix contract with the four mapped facts per family, the route-probe table cross-checked against docs/developer/machine/openapi.json with the honest expectation counts 18/7/1, the findings contract, the secret-safety discipline, the preflight refusals, the NOT RUN registry owners, the DOM structural helpers)"
+    },
+    {
+      "check": "The harness's local-plane proof run (AC: the runner, the matrix, the fail-closed identity gate and the report writer with REAL HTTP)",
+      "command": "bun tests/journey/run.ts --self-proof --report <file> (the recorded FINAL run at the delivery commit 805db52)",
+      "evidence": "exit 0 — 12 journeys, 28 steps: 11 passed / 0 failed / 17 not-run (each with its reason and owner); findings 0; identity gate VERIFIED (the local deploy/api.ts plane attested the checkout's exact revision — the delivery commit 805db52ab470f20dcca45ecbe0da6bd20e44dcda, runtime identity 5b1272d64d78125b); duration 79ms (measured; earlier runs at the pre-commit tree: 71–76ms). The honest bootstrap-plane facts recorded verbatim: GET / answers 404 application/json (no HTML landing on the API plane — recorded not-run with the owner, never a failure); /health answers the no-PG degradation (503 down, controlPlane ready, under the explicit degraded allowance); /identity 200 verified; the 26-route sweep 18×401 AUTHENTICATION_FAILED + 7×422 CAPABILITY_UNAVAILABLE + 1×200 public artifact; all 22 family console routes answered non-HTML → matrix target probes honestly not-served (familiesNotServed=22, familiesWithServedDisclosure=0, familiesDisclosureFailed=0); matrix integrity clean (22 rows, every example path existing, gates as env var NAMES or the NOT RUN no-rail vocabulary). The acceptance gates map honestly: reachable/revision/health/identity/agent-integration/route-boundaries/trust = pass; first-sandbox-execution, 22-family discoverability, inspection, compare, export = not-run (their owners recorded)."
+    },
+    {
+      "check": "The fail-closed identity gate proof (hostile negative: wrong-revision target)",
+      "command": "the harness's wrong-revision drill (a REAL deploy/api.ts plane booted with ZECK_DEPLOY_GIT_REVISION=bbbb… — 40 hex)",
+      "evidence": "REFUSED AS DESIGNED — the gate refused the whole run before any journey asserted: blockedSteps=12/12, executedSteps=0, exit 1, the exact reason 'identity revision bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb does not match the expected revision 805db52ab470f20dcca45ecbe0da6bd20e44dcda' (the recorded FINAL run at the delivery commit; the drill's expected revision is always the checkout HEAD the harness runs from); the refusal is recorded as a blocker finding with defect class identity-drift"
+    },
+    {
+      "check": "The unreachable-target negative (findings recorded, never a crash)",
+      "command": "the harness's unreachable drill (a reserved-then-closed port — a real refused connect)",
+      "evidence": "RECORDED AS DESIGNED — exit 1 with a well-formed 12-journey report; the reachability blocker finding fired; the gate refusal carries the exact transport reason ('the deployed plane at http://127.0.0.1:<port> is unreachable (fail closed): Unable to connect…')"
+    },
+    {
+      "check": "The secret-leak negative (the secret-safety dimension fires, redacted)",
+      "command": "the harness's secret-leak drill (a local fixture HTTP server serving a page with a RUNTIME-BUILT secret-shaped value — no literal pattern exists in the harness's own source)",
+      "evidence": "FIRED AS DESIGNED — the secret-exposure blocker finding fired with the redacted shape marker (pattern name + 'sk-…(28 chars)'); the harness's own output contains the redacted form only (outputClean=true, redactedEvidence=true)"
+    }
+  ],
+  "notes": [
+    "MERGE NOTES for the Lead — the exact invocation for the post-deployment acceptance run, from a checkout of the deployed revision: bun tests/journey/run.ts --url https://<the-public-preview-url> --environment production --report deploy/evidence/ppr-003-live.json (add ZECK_JOURNEY_TOKEN + ZECK_JOURNEY_APPLICATION_ID for the credentialed sandbox path; the expected revision defaults to the checkout's HEAD, or pin it with --expected-revision <40-hex>). Exit 0 = every executed step passed; the gates[] array maps each program acceptance gate to pass | not-run | fail with its evidence pointer.",
+    "The local plane is the bootstrap composition by design (the deploy chain's local mode): it serves the public API route table with the honest 401/422 boundaries and NO HTML experience. The experience-surface steps therefore record not-run with their owner on the local run — the honest fact, never a fabricated pass; against the deployed public preview (which PPR-002 provisions) the same steps run for real. This is the deployment boundary the work order defines: nothing is assumed-pass.",
+    "The console's structural assertions (keyboard/focus, responsive plan, reduced motion, navigation, availability disclosure) are deliberately layout-independent: skip link, main landmark, primary nav, aria-current, viewport meta, the 640px/1024px media-query classes, prefers-reduced-motion, and the mandated state vocabulary (available / runnable / provider-gated / requires access / not run) — so the harness survives PPR-001's console reorganization (running in parallel) by construction.",
+    "No PostgreSQL server exists in this pod (no psql/initdb binaries, no /usr/lib/postgresql): the work order's pre-authorized no-PG degradation applies. A provisioned run (ZECK_PG_ADMIN_URL, or the deployed preview's Neon authority) records the ready/degraded health states through the same step.",
+    "Defects found by the harness against ITS OWN surfaces during development: two harness-class corrections (the secret-leak drill initially audited the fixture page without folding the dimension failures into findings — fixed by routing the drill through the production raiseDimensionFindings path; the matrix-integrity rule initially required every provider-gated family to carry a gatedBy credential, which the manifest honestly omits for the no-rail families realtime-voice/browser-use/computer-use whose gates are 'no authorized rail at all' — the rule now encodes the manifest's own vocabulary: gatedBy OR the NOT RUN availability string). NO defect in src/, deploy/ tools, apps/dashboard/, sdk/ or examples/ was found or fixed by this work order.",
+    "Surface delta (new files only, nothing outside the owned surfaces touched): tests/journey/{README.md,types.ts,defect-classes.ts,http.ts,dom.ts,secret-safety.ts,identity-gate.ts,capability-matrix.ts,route-probes.ts,context.ts,journeys.ts,runner.ts,local-plane.ts,negatives.ts,run.ts}, tests/unit/journey/harness-contract.test.ts, tests/integration/journey/harness-e2e.test.ts, deploy/evidence/ppr-003.json (this record).",
+    "Zero live cost consumed: no live-provider operation was executed from this environment (the notRun registry is the recorded boundary).",
+    "Final-state provenance of the recorded runs: the recorded FINAL self-proof executed at commit 805db52ab470f20dcca45ecbe0da6bd20e44dcda (the delivery squash); the final amended commit differs from it ONLY in this record's own text — no file the harness, the plane or any battery step reads changed between the two (the amend touches deploy/evidence/ppr-003.json alone). Same pattern as the DEP-040 record's own delivery note."
+  ]
+}
