@@ -44,6 +44,6 @@
     }
   ],
   "maxConcurrentWorkers": 3,
-  "currentBase": "6f3472973027d7872d395e8abb0b2b983d96b536",
+  "currentBase": "de18d4a30b803de65e723c8bb2aab86815c13141",
   "rule": "eligible means dependencies are complete, declared surfaces are conflict-safe, the item is not in flight, and the dispatch base is the current governed main head"
 }
