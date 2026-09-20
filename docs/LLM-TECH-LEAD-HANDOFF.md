@@ -2,7 +2,7 @@
 
 **Repository:** `payswapdotorg/Zeck`  
 **Canonical remote:** `payswapdotorg/Zeck`  
-**Current main at handoff:** `faa024247546e61d6e52465b1929188230f0feb6`  
+**Current main at handoff:** fetch live `main` at recovery; this handoff was reviewed against the 2026-09-20 post-release baseline.  
 **Handoff date:** 2026-09-20  
 **Role:** Successor LLM Tech Lead / Orchestrator / Reviewer / Deployment Verifier  
 **Max workers:** 3
