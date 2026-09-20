@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-001",
+  "title": "Discovery-first console and ShareNet-inspired visual refinement — verification evidence record",
+  "recordedBy": "PPR-001 implementation worker (session ppr-001, chat 5cbe2fe1, GLM-5.3 Full-Stack, dispatched from inside the replay console by the Tech Lead) through CHECKPOINT #1, then completed by the Tech Lead: the worker turn died mid-battery (pod recycled by the platform after checkpoint #1; battery steps 1-3 and the full implementation were already committed and tarball-harvested byte-verified), and the Lead re-ran the ENTIRE battery on the integration branch against the real PostgreSQL rail before opening the PR. Every number below is from the Lead's own runs on work/PPR-001-discovery-console.",
+  "environment": "Lead integration station /home/z/Zeck at base 0c57491 (governed main head at dispatch); real PostgreSQL 16.4 rail 127.0.0.1:55432 (embedded, trust) via ZECK_PG_TEST_URL for architecture + integration + full suite; worker pod contributed the implementation + checkpoint battery (typecheck/lint/unit) before death",
+  "date": "2026-09-20",
+  "doctrine": "Every operation that could not run is listed NOT RUN with its owner. Nothing in this record is assumed, templated or fabricated; every value comes from a command that actually ran. Historical validation evidence was not rewritten.",
+  "notRun": [
+    {
+      "boundary": "live public URL journeys (browser-level journey acceptance on a deployed Zeck)",
+      "reason": "No public Zeck URL exists yet — PPR-002's live provisioning is the Lead's credentialed run, happening after this merge; PPR-003's harness then runs the 12 journeys against it",
+      "owner": "Lead post-deployment run (PPR-003 harness)"
+    },
+    {
+      "boundary": "real viewport rendering on physical desktop/tablet/mobile hardware",
+      "reason": "Evidence is DOM/CSS-level (viewport classes, nav variant selection, media queries, safe-area padding, reduced-motion gate) as the repository convention dictates; no device farm is available",
+      "owner": "PPR-003 harness (device dimension) when the public preview is live"
+    },
+    {
+      "boundary": "screen-reader narration on real assistive technology",
+      "reason": "Keyboard/focus/order and aria-current/landmark semantics are pinned by tests; actual SR audio rendering is not observable in this environment",
+      "owner": "accepted boundary (recorded); can be revisited if an accessibility correction WO is ever authorized"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "step": "bun install",
+      "result": "OK (116 packages)"
+    },
+    {
+      "step": "bun run typecheck",
+      "result": "exit 0, zero errors"
+    },
+    {
+      "step": "bun run lint",
+      "result": "exit 0 — 68 warnings + 8 infos (the exact recorded repository baseline; zero new)"
+    },
+    {
+      "step": "bun run test:unit",
+      "result": "350 files / 6183 tests passed / 0 skipped (worker checkpoint recorded the identical 350f/6183t — the checkpoint numbers were true)"
+    },
+    {
+      "step": "bun run test:architecture (real PG rail :55432)",
+      "result": "140 files / 2240 tests passed / 0 skipped"
+    },
+    {
+      "step": "bun run test:integration (real PG rail :55432)",
+      "result": "1292 tests: 1265 passed / 26 skipped (drill-rail suites skip by design without ZECK_DRILL_PG_ADMIN_URL) / 1 failed — the PRE-EXISTING audit-schema '0032 applies forward cleanly' failure, reproduced IDENTICALLY on the clean base 0c57491 (not introduced by this order; see notes)"
+    },
+    {
+      "step": "bun run test (full suite, real PG rail :55432)",
+      "result": "9715 tests: 9688 passed / 26 skipped / 1 failed — the same pre-existing audit-schema failure only; every dashboard pin green"
+    },
+    {
+      "step": "python3 scripts/governance-check.py",
+      "result": "Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]"
+    },
+    {
+      "step": "bun run deploy:validate",
+      "result": "valid=true, problems=[]"
+    },
+    {
+      "step": "route/discoverability matrix (all 22 workload families)",
+      "result": "catalogCounts: 11 available / 6 requires-access / 2 provider-gated / 3 not-run = 22 — projected PURELY from capability-manifest.json fields (runnable / providerAccess / disclosureRules); rendered as a console surface (/console/catalog) and pinned by tests/unit/dashboard/discovery-console.test.ts (22 tests)"
+    },
+    {
+      "step": "responsive/keyboard/reduced-motion evidence",
+      "result": "mobile bottom navigation rendered in every page DOM with aria-current active treatment (CSS selects the variant per viewport class, fixed positioning, safe-area padding, >=44px touch targets); body-height reservation prevents overlay; the existing global reduced-motion gate continues to cover all new surfaces; pinned by navigation.test.ts + discovery-console.test.ts"
+    },
+    {
+      "step": "public-contract integrity",
+      "result": "route table 88 -> 91 (+3 GET discovery routes: /console/catalog, /console/start, /trust/limits; ZERO new POST/mutation routes — the guided start rides the EXISTING /console/playground/text review->POST flow); openapi.json + surface-boundaries.json untouched (git diff clean for both)"
+    }
+  ],
+  "notes": [
+    "DELIVERY PATH (recorded truthfully): worker session ppr-001 (chat 5cbe2fe1) implemented the full surface and completed CHECKPOINT #1 (commit + tarball + sha256 + worklog, byte-verified harvest: sha256 26dc7baedebf2e1ee468c8d74499af8b2a3fcb531b297f9112fdd160fa5f55a9, 131124 bytes, 11 files); the turn then died mid-battery when the platform recycled the pod ('sandbox is inactive'); the Lead integrated the checkpoint commit and re-ran the complete battery above on the real PG rail. No worker claim was trusted without the Lead's own re-run.",
+    "SURFACE DELTA: apps/dashboard/{discovery.ts (NEW), console.ts, components.ts, shell.ts, tokens.ts, pages.ts}; tests/unit/dashboard/{discovery-console.test.ts (NEW), navigation.test.ts, console-surfaces.test.ts, console-hardening.test.ts}; tests/integration/dashboard/discovery-journeys.test.ts (NEW); deploy/evidence/ppr-001.json (this record). No changes under src/**, sdk/**, examples/**, docs/developer/**, spec/**, deploy/** (except this evidence file).",
+    "DEFECT FOUND AND FIXED BY THE WORKER (D10 defect class, reproduction recorded): CSS comments ('renders only at the mobile width', 'what Zeck does' — the latter contains 'at Zeck') tripped the pinned no-stack-trace guard over inlined page HTML; both reworded; guard-check script persisted at scripts/ppr001-guard-check.ts in the worker pod (not part of the shipped surface); journeys re-run green after the fix.",
+    "PRE-EXISTING DEFECT (not this order's surface; reproduced on clean base 0c57491): tests/integration/postgres/audit-schema.test.ts '0032 applies forward cleanly on the existing authority' asserts forward.applied === [v31 isolation_profiles, v32 audit_compliance], but the shipped migration set now also carries 0033_application_credentials and 0034_sandbox_governance, so the forward run applies FOUR migrations and the assertion fails. The failure predates this branch (identical on base), was masked in recent batteries because the PG integration suites were skipped in the house-convention integration run, and is INPUT FOR THE NEXT SMALLEST-VALID CORRECTION WORK ORDER (update the convergence assertion to the current shipped head or derive it from loadMigrations). Classification: test-harness staleness, severity minor, no product code affected.",
+    "FLAKE (recorded, matches the Task-56 base DEFECT-A fixture race precedent): tests/integration/postgres/realtime-sessions.test.ts 'CONCURRENT reattach: first writer wins' failed ONCE under full-suite load, passes standalone on both base and this branch (23/23 both) — timing-sensitive concurrency assertion, not deterministic, unrelated to this order's surface.",
+    "MERGE NOTES FOR THE LEAD: (1) the audit-schema convergence assertion fix is the leading candidate for the first post-release correction WO; (2) the discovery-first home PRESERVES the 'Your work' composer and all existing console pins — nothing user-facing was removed, only re-ordered under progressive disclosure; (3) /trust/limits links the governing surfaces (policy/spend/sandbox/verification) without creating a second authority — the enforced envelope remains the machine manifests.",
+    "Zero live cost consumed; no cloud credentials were used or needed for this order."
+  ]
+}
