@@ -36,9 +36,9 @@ The first authorized wave is PPR-001/PPR-002/PPR-003, with a maximum of three co
 
 The previous Developer Platform narrative beginning at the next heading is retained as historical delivery record and must not be treated as current authority.
 
-## Current program: Developer Platform Deployment (live as of 2026-09-17)
+## Historical program: Developer Platform Deployment (closed; retained as delivery record)
 
-The ACTIVE program is the **Zeck Developer Platform Deployment Program**
+The former active program was the **Zeck Developer Platform Deployment Program**
 (`docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`, DEP-001..DEP-044). The
 earlier D-08/E1.1/validation sections below are HISTORICAL RECORD — the
 validation program VAL-001..052 executed and its evidence is immutable;
