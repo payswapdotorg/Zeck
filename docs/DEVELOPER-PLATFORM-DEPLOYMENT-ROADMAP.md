@@ -95,11 +95,11 @@ Home
 
 ### Phase P4 — deployment acceptance
 
-- **DEP-040** — End-to-end public deployment validation. *(status: delivered on `work/DEP-040-deployment-validation` at base 34e80bf — the e2e driver `deploy/e2e-validate.ts` + `deploy/evidence/dep-040.json`; awaiting the Lead's review/merge; the live-provider rails stay the Lead's credentialed re-run per the recorded boundary)*
-- **DEP-041** — Fresh-developer integration trial.
-- **DEP-042** — Fresh-agent integration trial.
-- **DEP-043** — Production readiness, rollback and provider-exit drill.
-- **DEP-044** — Final deployment report and release gate.
+- **DEP-040** — End-to-end public deployment validation. *(status: delivered on `work/DEP-040-deployment-validation` at base 34e80bf, merged PR #140 / 9acbfece — the e2e driver `deploy/e2e-validate.ts` + `deploy/evidence/dep-040.json`; the live-provider rails stay the Lead's credentialed re-run per the recorded boundary)*
+- **DEP-041** — Fresh-developer integration trial. *(status: delivered, merged PR #141 / c8eb89d8 — `deploy/evidence/dep-041.json` + the two journey logs; F2/F3/C1 fixed + re-driven, F1/F4 Lead-owned merge notes)*
+- **DEP-042** — Fresh-agent integration trial. *(status: delivered, merged PR #142 / d23c7c19 — `deploy/evidence/dep-042.json` + the two journey logs; AF3f/AF6b fixed + re-driven, the AF4/AF8/AF9 boundaries declared machine-side, AF1/AF6d Lead-owned merge notes)*
+- **DEP-043** — Production readiness, rollback and provider-exit drill. *(status: delivered, merged PR #143 / b784d38e — `deploy/evidence/dep-043.json`; DEFECT-C fixed within deploy/ boundaries; every live exit half honest NOT RUN with the Lead owner)*
+- **DEP-044** — Final deployment report and release gate. *(status: delivered on `work/DEP-044-final-report-gate` at base 4486c05a — the gate verdict assembly `deploy/evidence/dep-044.json` (every completion-gate criterion's verdict + evidence pointer, the taxonomy, the free-tier posture, the 30-boundary honest NOT RUN ledger) + the final report sections + this status annotation; the reproduction run re-driven at the exact final revision (23 recorded steps — one doc-recipe finding GF-1 with a one-line Lead-owned closure, the recovery chain green end to end); the gate DECISION itself stays the Lead's judgment in the state reconciliation)*
 
 ## Validation Library requirements
 

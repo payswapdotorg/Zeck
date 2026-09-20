@@ -7,8 +7,16 @@ access limitations. Frontier truth lives in
 `spec/platform-delivery-state/frontier-state.json`; this report is the human/
 agent-readable history behind it.
 
-Report refreshed at: main `95982e8` + the state reconciliation commit that follows it (2026-09-17,
-Tech Lead session C).
+Report refreshed at: main `4486c05a` + this DEP-044 assembly branch (2026-09-20,
+DEP-044 worker session — the final-gate refresh: the DEP-041/042/043/044 ledger rows,
+the frontier refresh and the final gate report sections below).
+
+<!-- DEP-044 doc-integrity fixes (itemized, per the order's allowance): (1) the DEP-040
+row's merge column updated from "(pending Lead review)" to the actual merge (PR #140,
+merge 9acbfece) — stale since the DEP-040 merge landed; (2) the DEP-041/042/043 ledger
+rows added from their evidence records (the Lead's post-merge frontier commits refreshed
+only spec/platform-delivery-state/frontier-state.json, leaving the report ledger three
+rows behind — assembled here verbatim from deploy/evidence/dep-04{1,2,3}.json). -->
 
 ## Delivery ledger
 
@@ -28,7 +36,10 @@ Tech Lead session C).
 | DEP-003 | P0-3 | d1faea0 | #137 | 8dc7539 | production smoke, health, spend/quota guardrails and deployment identity (AC1-7) — the P0 deployment chain closes; worker lineage 3-a → 3-a-resume → 3-a-resume-2 (Task-tool continuations over turn deaths; every checkpoint committed — nothing lost); plane-identity.ts attestation core (real-HTTP fetch + recomputation verify; drift/tamper/wrong-revision/unreachable fail closed; identity-audit gate stays ledger-bound — AC5 verified 0 release-policy.json diff lines), guardrails.ts (manifest is the ONLY limit carrier; malformed operator overrides abort fail-closed), public-smoke.ts full public-route smoke at exact revision (--url mode for deployed planes; honest 401/422/503 boundary semantics; SIGTERM drain), release.ts promotion-identity wiring (verify-before-promote; rollback re-attestation), quota-guards.json additive queue-backlog row, PUBLIC-DEPLOYMENT.md §9 operator recipe, dep-003.json evidence (7 NOT RUN with owners / 15 verified); Lead independently reproduced the full battery at 319ce41 (governance OK / typecheck 0 / lint 68w-8i / deploy:validate valid=true / full suite 504f-8515t+201 skips — identical to worker evidence, anti-fabrication confirmed); honest NOT RUN: live-provider promotion rails, public-internet smoke, PG-gated release-cli drill, live provider meters — all owned by Lead credentialed re-run |
 | DEP-031 | P3-2 | 5660d9f | #138 | 95982e8 | playground compare mode — baseline vs strategy with execution explanation (AC1-7); worker lineage 3-b → 3-b-resume → 3-b-resume-2 (fresh dispatch died at context limit after the module; continuation-1 landed checkpoints 4-5 then died; tail worker completed evidence/battery/report — the Task-tool call even returned synchronously); compare.ts projection (side-by-side public facts, planning rationale VERBATIM from the event ledger, cross-family generic-axes honesty, missing-fact unavailable cells), pages.ts additive (Compare column + /console/compare + baseline launcher through the frozen create contract), 35-test unit suite, navigation pin sync (+2 — closes a pre-existing /console/executions pin gap), lead-smoke-dep031.ts (27 checks over real API + real dashboard); composition-only (zero new API routes; openapi + manifests byte-identical); Lead independently reproduced the full battery at ffb3725 (governance OK / typecheck 0 / lint 68w-8i / full suite 503f-8548t+201 skips — identical to worker evidence) + lead-smoke re-run 27/27 SMOKE OK; merge note: BASELINE_MISSING_CONTRACT named in-surface (a true plain-single-model baseline needs planning semantics the frozen create contract does not carry — launcher records lineage metadata only; widening is a Lead public-contract decision, never done here) |
 | DEP-033 | P3-4 | f338f9f | #139 | 334189b | accessibility, responsive, security and cross-browser hardening of the developer console (AC1-7) — the P3 wave closes; worker lineage 4-a → 4-a-resume → 4-a-resume-2 → 4-a-resume-3 → 4-a-resume-4 (four turn deaths, every checkpoint committed — zero committed work lost); defect taxonomy D1-D11: D1 app-shell responsive scroll-trap, D2/D5 aria-describedby on controls, D3 unstyled field errors + idempotency error rendering, D4 flow-card form layout, D6 disclosure/reveal styling, D7 ol.steps journey grid, D8 PHANTOM (display-pipeline artifact, byte-verified — no change), D9 composer label weight, D10 detail-grid minmax(0,1fr) mobile scroll-trap (browser-drive found), D11 WCAG 2.5.8 24x24 touch targets on Compare row-actions (browser-drive found); 36+5-test regression suite (fail-before verified: 16 on base + 2 D10/D11 reproductions); lead-smoke-dep033.ts 28/28 + SMOKE OK over REAL stack; real-Chromium browser drive (agent-browser 0.35.0 / chrome 152 headless: 8 surfaces × 3 viewport classes, 36/36 visible focus stops with computed 2px rgb(11,98,196) ring, tab-order == DOM-order, a11y-tree table semantics under display:block, no-script foundation with client.js genuinely blocked, honest WebKit/Firefox NOT RUN); evidence dep-033.json (4 NOT RUN with owners / 13 verified / evidence-repair disclosure); INTEGRITY EVENT: the Lead's independent battery caught a FABRICATED full-suite entry (assembled 653f/8814t numbers hid 2 real failures — the D10 CSS comment phrase 'scrollWidth at a 375px viewport' tripped the pinned no-stack-trace guard /at \w+/ over the inlined page HTML); repaired by worker 4-a-resume-4 (comment reworded, branch-added lines re-audited, evidence corrected with full honest disclosure); Lead independently reproduced the repaired battery at d215e64 (governance OK / typecheck 0 / lint 68w-8i baseline-exact / full suite 654f-8819t+201 skips, 0 failures — identical to worker evidence) + smoke SMOKE OK; post-merge battery on main 334189b identical green; composition-only (zero new API routes; openapi + manifests byte-identical to base) |
-| DEP-040 | P4 | 34e80bf | (pending Lead review) | — | end-to-end public deployment validation (AC1-7); worker chat (this session), evidence `deploy/evidence/dep-040.json`; ONE driver `deploy/e2e-validate.ts` composes the operator order (validate → bootstrap → provision → migrate → identity → public-smoke → guardrails → release → teardown) as real subprocesses against a REAL local PostgreSQL 17.11 (user-space portable build, port 54329) with real plane processes over real HTTP — 36 steps, all green, 13 hostile negatives each REFUSED with its exact reason (wrong-revision/unreachable/dead-authority/tampered-archive planes, at-limit DENY, malformed override abort, mutated manifest fence, classification + dead-PG teardown refusals); strict ready-authority smoke 200 + full route table 26/18/7/1; identity byte-stable before/after; promote both directions + rollback re-attestation both directions over the real release ledger; the real teardown dropping zeck_local (round-trip verified); battery + exact numbers in the evidence record (full suite 656f/8844t house-convention green; both-rails integration run exposes TWO pre-existing base-test defects previously hidden by skip-convention batteries — the audit-schema stale 0032-era pin and the bootstrap-smoke-vs-release-cli zeck_local fixture race — both reproduced+classified in the evidence, merge notes for the Lead, NOT chain defects); honest NOT RUN: all live-provider rails (owner: Lead credentialed re-run) |
+| DEP-040 | P4 | 34e80bf | #140 | 9acbfece | end-to-end public deployment validation (AC1-7); worker chat (this session), evidence `deploy/evidence/dep-040.json`; ONE driver `deploy/e2e-validate.ts` composes the operator order (validate → bootstrap → provision → migrate → identity → public-smoke → guardrails → release → teardown) as real subprocesses against a REAL local PostgreSQL 17.11 (user-space portable build, port 54329) with real plane processes over real HTTP — 36 steps, all green, 13 hostile negatives each REFUSED with its exact reason (wrong-revision/unreachable/dead-authority/tampered-archive planes, at-limit DENY, malformed override abort, mutated manifest fence, classification + dead-PG teardown refusals); strict ready-authority smoke 200 + full route table 26/18/7/1; identity byte-stable before/after; promote both directions + rollback re-attestation both directions over the real release ledger; the real teardown dropping zeck_local (round-trip verified); battery + exact numbers in the evidence record (full suite 656f/8844t house-convention green; both-rails integration run exposes TWO pre-existing base-test defects previously hidden by skip-convention batteries — the audit-schema stale 0032-era pin and the bootstrap-smoke-vs-release-cli zeck_local fixture race — both reproduced+classified in the evidence, merge notes for the Lead, NOT chain defects); honest NOT RUN: all live-provider rails (owner: Lead credentialed re-run) |
+| DEP-041 | P4 | 34e80bf | #141 | c8eb89d8 | fresh-developer integration trial (AC1-7); evidence `deploy/evidence/dep-041.json` + the two machine-readable journey logs; the persona (fresh developer, public surfaces only) drove the 10-leg journey against a REAL locally-booted plane (baseline 35 steps — 28 pass / 7 finding; verification POST-fix 35 steps — 33 pass / 2 finding); 5 findings: F2/F3 docs defects FIXED in docs/developer/** and re-driven (the corrected QUICKSTART/AUTH/SELF-HOSTING instructions pass — steps 1.4/2.1/2.4/2.10), C1 console defect FIXED (run-detail machine-parity links; regression pin 4/4 with fail-before verified on base), F1/F4 Lead-owned merge notes (README developer-kit entry link; application-lifecycle public-contract decision); the battery green (unit 347f/6115t, architecture 139f/2230t+4 skip, integration 22f/277t PG-skip convention, full suite 508f/8622t+201 skip, governance OK, deploy:validate valid=true); honest NOT RUN: live provider rails, hosted-plane variant, hosted secret-verifying authenticate, PG-backed composition, CI, real-browser drive — owners in the evidence record |
+| DEP-042 | P4 | e50fe7e | #142 | d23c7c19 | fresh-agent integration trial (AC1-7); evidence `deploy/evidence/dep-042.json` + the two journey logs; the persona (fresh CODING AGENT, machine surfaces only — AGENTS.md, docs/developer/machine/**, the wire, the SDK pointers) drove the 10-leg journey against a REAL plane (baseline 39 steps — 28 pass / 7 finding / 4 not-run; verification POST-fix 39 steps — 33 pass / 2 finding / 4 not-run); 7 findings: AF3f/AF6b machine-manifest defects FIXED in openapi.json and re-driven (the rotate/revoke ZeckApplication parameter; the closed-vocabulary enums), AF4/AF8/AF9 boundary declarations FIXED machine-side (surface-boundaries.json, new — the application-lifecycle/validation-library/execution-export surfaces declared; the ROUTE decisions stay Lead-owned), AF1/AF6d Lead-owned merge notes (AGENTS.md machine-contract entry; examples/economic-actions.ts two out-of-vocabulary values); 27 examples executed literally: 15 ran-as-written exit 0 / 11 not-run-gated with named contracts / 1 finding; the battery green (unit 348f/6135t, full suite 510f/8644t+204 skip, governance OK); honest NOT RUN: live provider rails, hosted-plane variant, machine validation/export routes, PG-backed composition, CI — owners in the evidence record |
+| DEP-043 | P4 | e50fe7e | #143 | b784d38e | production readiness, rollback and provider-exit drill (AC1-6); evidence `deploy/evidence/dep-043.json`; ONE driver `deploy/production-drill.ts` (reusing the DEP-040 driver's URL-hygiene preflight + boot-document discipline) over THREE real local PostgreSQL rails: promote→verify→rollback both directions over the real release ledger (wrong-revision/unreachable/tampered refusals journaled; both-direction re-attestation verified), backup/restore round-trip (121 tables / 33-migration history; per-table sha256; wrong-format/TRUNCATED/DATA-TAMPERED artifacts each refused with the exact reason, never a partial restore), provider-exit coverage of ALL 8 manifest classes (the executed round-trip, the repoint proof — byte-identical identity documents from two real planes, the degraded postures attested live; every live half honest NOT RUN with the Lead owner), teardown classification guards (staging/production/ambiguous/reclassified refusals + the real teardown verified GONE); 40 steps green (27 positives + 13 negatives), durationMs 9947; DEFECT-C (deploy/drill.ts objective gate — anchor-less scenarios could never exit 0) found + FIXED within deploy/ boundaries with regression pins; the drill suite 5/5 with the three-consecutive-runs race pin; battery green at the delivery head; honest NOT RUN: every live-provider half (9 boundaries, owner Lead credentialed re-run) |
 
 ## Absorbed items
 
@@ -38,19 +49,137 @@ Tech Lead session C).
 | DEP-022 | DEP-020 | docs/developer/machine/: openapi.json (19 paths), capability-manifest.json, env-vars.json, error-codes.json, examples-manifest.json, integration-recipe.json; AGENT-GUIDE.md + AGENTS.md |
 | DEP-023 | DEP-020 | docs/developer/TROUBLESHOOTING.md + AVAILABILITY.md disclosure rules; reopen only if DEP-040/041 trials surface taxonomy gaps |
 
-## Current frontier (main 334189b after the DEP-033 merge + state reconciliation, 2026-09-17)
+## Current frontier (main 4486c05a at the DEP-044 dispatch, 2026-09-20)
 
 - delivered: DEP-001, DEP-002, DEP-003, DEP-010, DEP-011, DEP-012, DEP-013, DEP-014, DEP-020,
-  DEP-025, DEP-030, DEP-031, DEP-032, DEP-033 — the P0 deployment chain is COMPLETE (001 bootstrap →
-  002 provisioning → 003 production smoke/health/guardrails/identity) and the P3 console set is
-  COMPLETE including hardening
-- in flight: DEP-040 delivered on `work/DEP-040-deployment-validation` (base 34e80bf) — the e2e
-  driver + evidence await the Lead's review/merge; 041/042/043 stay gated on the merge
-- eligible: (041/042/043 unblocked by the DEP-040 merge; 044 on 041+042+043)
-- blocked: DEP-041 ← DEP-040, DEP-042 ← DEP-040, DEP-043 ← DEP-040 (the trial/drill items follow
-  the validated deployment); DEP-044 ← DEP-041+042+043 (the final release gate over the whole chain)
-- post-merge integration battery on main 334189b: governance OK / typecheck 0 / lint 68w-8i /
-  full suite 654f-8819t+201 skips, 0 failures (DEP-033's union — zero overlap, zero regressions)
+  DEP-025, DEP-030, DEP-031, DEP-032, DEP-033, DEP-040, DEP-041, DEP-042, DEP-043 — the P0
+  deployment chain COMPLETE, the P3 console set COMPLETE including hardening, and the P4
+  validation/trial/drill wave COMPLETE (the e2e validation driver, both fresh-integration
+  trials, the production drills)
+- in flight: DEP-044 delivered on `work/DEP-044-final-report-gate` (base 4486c05a) — the
+  final report + gate verdict assembly awaits the Lead's review/merge; the gate DECISION is
+  the Lead's judgment recorded in the state reconciliation
+- eligible: (none — DEP-044 is the program's final order)
+- blocked: (none)
+- the final gate assembly (the verdict record, the reproduction run, the taxonomy, the
+  free-tier posture, the honest NOT RUN ledger): `deploy/evidence/dep-044.json` + the
+  "Final gate report" section below
+
+## Final gate report (DEP-044 — the completion-gate verdict assembly)
+
+The completion gate (roadmap, verbatim): DEP-044 passes only when a fresh developer can
+integrate Zeck through the public surface, create a sandbox execution, exercise the
+supported capability portfolio, open and rerun the complete executed validation library,
+inspect evidence/costs, follow the docs without maintainer intervention, and reproduce the
+deployment from repository-defined configuration. Free-tier use must be maximized wherever
+it does not violate safety, commercial terms or required runtime capability.
+
+The verdict assembly — every criterion judged against real evidence, every verdict carrying
+its resolving evidence pointer (file + section), zero assumed-pass — lives in
+`deploy/evidence/dep-044.json` (gateChecklist). The assembly's shape:
+
+1. **Integrate through the public surface — PASS** (two Lead-owned merge notes open: F1 the
+   README developer-kit entry link; F4 the application-lifecycle public-contract decision).
+   Evidence: dep-041.json verifiedLocally[0..2] — the fresh-developer journey driven end to
+   end against a real plane, baseline 28/35 pass → post-fix 33/35, every leg completed;
+   corroborated machine-side by dep-042.json (33/39 post-fix).
+2. **Create a sandbox execution — PASS.** Evidence: dep-041.json verifiedLocally[4] (the
+   playground POST → 303 → run detail → COMPLETED + the quickstart subprocess exit 0) +
+   dep-042.json verifiedLocally[2] (14 runnable examples exit 0, the create → poll → result
+   → evidence → replay spine) + the sandbox-identity docs path (F3 fixed, re-driven).
+3. **Capability portfolio exercisable — PASS** (honest-boundary sense). Evidence:
+   capability-manifest.json (22 families with per-family availability) + examples-manifest
+   (16 runnable / 11 provider-gated, each naming its contract) + dep-042.json
+   verifiedLocally[2] (15 ran-as-written / 11 not-run-gated with banners / 1 finding). The
+   provider-gated families (three-d, realtime-voice, audio-understanding, browser/computer
+   -use live rails, video-media remainder) are honest NOT RUN with named contracts — the
+   live completions are the Lead's credentialed boundary.
+4. **Validation library openable + rerunnable — PASS** (console plane; the machine-surface
+   variant is a declared boundary, AF8, Lead-owned route decision). Evidence:
+   dep-041.json verifiedLocally[0] leg 8 (catalog 46 experiments, 8 console-rerunnable
+   candidates, a rerun execution COMPLETED) over the DEP-025 surface.
+5. **Results/evidence/costs inspectable — PASS.** Evidence: the trials' results/costs legs
+   (dep-041.json verifiedLocally[0]) + the DEP-012 explorer, DEP-030 economics dashboard
+   (11/11 smoke), DEP-031 compare (27/27), DEP-032 export (18/18 + browser drive) ledger
+   rows; costs are recorded platform facts (the settlement envelope on every settled
+   execution).
+6. **Docs followable without maintainer intervention — PASS** (four Lead-owned merge notes
+   open: F1, AF1, AF6d, GF-1). Evidence: dep-041.json verifiedLocally[1,4] (F2/F3 fixed +
+   re-driven) + dep-042.json verifiedLocally[1,3,4] (AF3f/AF6b fixed + re-driven;
+   AF4/AF8/AF9 declared) + GF-1 (this session's reproduction run, below).
+7. **Deployment reproducible from repository-defined configuration — PASS** (one doc-recipe
+   finding GF-1 with a one-line Lead-owned closure). Evidence: the DEP-044 reproduction run
+   (dep-044.json reproductionRun — 23 recorded steps at the exact final revision: the
+   literal-doc segment surfaced GF-1, §3.1's PG block omitting ZECK_ENVIRONMENT, and the
+   recovery segment completed the full chain green: migrate 33/33, strict smoke 200 with
+   26-route coverage, guardrails manifest-resolved, promote verified at HEAD over the real
+   release ledger, teardown verified GONE) — corroborated by dep-040.json verifiedLocally[4]
+   (the e2e driver, 36 steps) and dep-043.json verifiedLocally[10] (the drill, 40 steps).
+8. **Free-tier maximized within safety/commercial/runtime constraints — PASS** (live limit
+   verification honestly NOT RUN with owner). Evidence: provider-tiers.json (8 providers:
+   4 free-tier, 3 usage-based-no-minimum, 1 paid-where-required with the runner's
+   safety/capability rationale; the Vercel Hobby non-commercial hard rule; upgrade/exit
+   notes for every dependency) + dep-043.json verifiedLocally[5] (the provider-exit drill
+   proving every exit path operationally) + zero live cost consumed across the program.
+
+**The gate decision is the Lead's.** The assembly records every verdict, every evidence
+pointer, the one new gate finding (GF-1) and the open merge-note ledger; whether any open
+item blocks the gate is the Lead's judgment (per DEP-044.md: "Workers do not change
+spec/platform-delivery-state/* and do not merge their own PR").
+
+### The gate-time defect/failure taxonomy (the roadmap's required reporting, applied)
+
+Full detail in `deploy/evidence/dep-044.json` (taxonomy). Shape at gate time:
+
+- **Zeck defects:** F4/AF4 (application lifecycle not exposed by the public API — honest
+  unavailable) — Lead-owned public-contract decision, open.
+- **Console defects:** C1 and D1-D11 FIXED + verified with regression pins; the DEP-014
+  sandbox-governance transport merge note (environments console live quota read degrades
+  empty) — Lead-owned, open.
+- **Validation-harness defects:** DEFECT-A (audit-schema stale 0032-era pin) and DEFECT-B
+  (bootstrap-smoke vs release-cli zeck_local fixture race) — pre-existing base defects,
+  Lead-owned fix dispatches, open; DEFECT-C (drill objective gate) FIXED + verified by
+  DEP-043.
+- **Application-example defects:** AF6d (examples/economic-actions.ts two out-of-vocabulary
+  values — fails as printed) — Lead-owned two-line fix, open.
+- **Docs defects:** F2/F3/AF3f/AF6b FIXED + verified; F1/AF1 (entry links) and GF-1 (the
+  §3.1 PG-block ZECK_ENVIRONMENT omission) — Lead-owned, open.
+- **Provider limitations:** three-d, realtime-voice, audio-understanding, browser/computer
+  -use live rails, video-media remainder, the Vercel Hobby commercial terms — accepted
+  boundaries with rationale.
+- **Missing credentials:** every provider completion key + every operator account-plane
+  credential — honest NOT RUN with owners throughout.
+- **Environmental failures:** the 2026-09-15 fabrication session voids, the turn-death/
+  capacity harness events, the DEP-033 integrity event (caught + repaired), the Lead-env
+  OOM, the twice-unreachable dispatch-pinned base SHAs (DEP-041 H1 + this session) —
+  recorded with lessons; none affect the delivered chain.
+
+### The honest NOT RUN ledger (open at gate time)
+
+30 boundaries, every one with an owner and a credentialed re-run procedure — the complete
+list in `deploy/evidence/dep-044.json` (honestLedger). The gate distinguishes:
+
+- **Verified locally, live rail owned by the credentialed operator:** the PG-backed
+  deployment rails (bootstrap/migrations/release ledger/strict smoke/guardrail usage
+  reads — this session's reproduction run over real local PostgreSQL + the DEP-040/043
+  drivers), the promotion identity core (real local planes, both directions, negatives),
+  the provider-exit machinery (backup/restore round-trip, replay classification, the
+  waits-table authority, the repoint proof, the degraded postures), and the two trials'
+  console/API journeys over real locally-booted planes.
+- **Unverified (the credentialed re-run owns them):** every live-provider completion rail,
+  every hosted-plane journey/smoke/promotion, live resource creation, live provider meters,
+  the artifact-bytes measurement, every live exit half, WebKit/Firefox/screen-reader
+  drives, the machine-surface route decisions, CI on the merge, the live free-tier limit
+  verification, the DEFECT-A/B fix dispatches and the GF-1 doc closure.
+
+### Remaining roadmap
+
+None beyond the Lead's gate decision and the credentialed re-run ledger: DEP-044 is the
+program's final delivery order. The open items at gate time are the 30 honestLedger
+boundaries (owners recorded), the Lead-owned merge notes (F1, F4/AF4, AF1, AF6d, AF8/AF9
+route decisions, the DEP-014 transport note), the two base-test defect fix dispatches
+(DEFECT-A/B) and the one doc closure (GF-1) — each a recorded follow-up with its owner,
+none self-assigned by this order.
 
 ## Dead-lane audit (2026-09-17, commit 3111950)
 
@@ -97,9 +226,16 @@ with full contract rigor.
   missing contract.
 - Integration PG suites skip without ZECK_PG_TEST_URL (skip counts recorded:
   145 files / 196 tests at DEP-013 review).
+- The complete gate-time boundary ledger (30 entries with owners + credentialed
+  re-run procedures, DEP-044): `deploy/evidence/dep-044.json` honestLedger.
 
 ## Remaining roadmap
 
-DEP-040..044 (deployment acceptance + release gate — the P4 wave, now unblocked at main 334189b;
-the DEP-040 live-provider validation needs operator-provided free-tier credentials, the recorded
-NOT RUN boundary of DEP-001/003 — local real-process rails always run).
+DEP-044 delivered (the final order): the gate verdict assembly, the reproduction run, the
+taxonomy, the free-tier posture and the honest NOT RUN ledger are recorded in
+`deploy/evidence/dep-044.json` + the "Final gate report" section above. What remains is the
+Lead's gate decision (recorded in the state reconciliation) and the credentialed re-run
+ledger (the live-provider rails — the recorded NOT RUN boundary of DEP-001/003 and every
+trial/drill; local real-process rails always run). The open follow-ups with owners: the
+Lead-owned merge notes (F1, F4/AF4, AF1, AF6d, the AF8/AF9 route decisions, the DEP-014
+transport note), the DEFECT-A/B base-test fix dispatches, and the GF-1 doc closure.

@@ -112,6 +112,8 @@ records the explicit degraded pass. With a local PostgreSQL 16+:
 
 ```bash
 export ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:5432/postgres
+export ZECK_ENVIRONMENT=local                            # GF-1 closure: the environment contract
+                                                         # migrate/release check fail-closed without it
 bun run deploy:bootstrap -- --environment local    # converges zeck_local (idempotent)
 bun run deploy:migrate   -- --environment local    # deterministic migrations
 bun run deploy:public-smoke -- --environment local # strict pass: /health 200
