@@ -1,3 +1,5 @@
+> **SUPERSEDED as of 2026-09-20.** The original Developer Platform delivery program is complete. The current successor authority is `docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md` and `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`. This file remains historical evidence for DEP-001..DEP-044.
+
 # Zeck Developer Platform Delivery — LLM Tech Lead Contract
 
 **Role:** LLM Tech Lead / deployment orchestrator
