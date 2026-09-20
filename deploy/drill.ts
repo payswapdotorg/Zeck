@@ -1670,18 +1670,36 @@ async function main(): Promise<void> {
   }
 
   const effectiveLossAt = haLossAt ?? startedAt;
+  // DEP-043 defect fix (within deploy/'s own boundaries — see
+  // deploy/evidence/dep-043.json, defect DEFECT-C): the durability-
+  // anchored scenarios (queue-recovery, artifact-exit,
+  // worker-evacuation) previously ran the D-07 objective evaluation
+  // with NO recovery-point anchor (lastConsistentPointAt null → rpoMs
+  // null), which evaluateDrillAgainstTarget counts as a breach — so
+  // those commands exited 1 on EVERY run (all phases green,
+  // recovered:true, exit 1: the contradictory gate the DEP-043 drill
+  // surfaced by actually driving the documented provider-exit paths).
+  // Their recovery point is the authority's durable state at drill
+  // start — RPO 0 by durability: the dispatch envelopes, the artifact
+  // digests and the worker claims ARE the authority's durable state —
+  // the SAME anchor class authority-loss uses (the backup-creation
+  // instant).
+  const durabilityAnchored =
+    command === "authority-loss" ||
+    command === "queue-recovery" ||
+    command === "artifact-exit" ||
+    command === "worker-evacuation";
   const report = await runRecoveryDrill(
     {
       scenarioId: command,
       environment,
       revision,
       lossAt: effectiveLossAt,
-      lastConsistentPointAt:
-        command === "authority-loss"
-          ? startedAt
-          : command === "authority-failover"
-            ? haRpoAnchor
-            : null,
+      lastConsistentPointAt: durabilityAnchored
+        ? startedAt
+        : command === "authority-failover"
+          ? haRpoAnchor
+          : null,
       phases,
     },
     { now: () => new Date() },
