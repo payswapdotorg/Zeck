@@ -990,6 +990,9 @@
         "description": "Issues a successor secret under the SAME credential identity and retires the predecessor (status=retired, rotatedAt set, supersededBy naming the successor). The successor secret is shown EXACTLY ONCE on this response when replayed=false; a replay returns the successor record with secret=null. Revoked credentials cannot rotate (409 INVALID_STATE_TRANSITION). Cross-tenant or cross-application targets fail TENANT_SCOPE_VIOLATION.",
         "parameters": [
           {
+            "$ref": "#/components/parameters/ZeckApplication"
+          },
+          {
             "$ref": "#/components/parameters/IdempotencyKey"
           },
           {
@@ -1056,6 +1059,9 @@
         "summary": "Revoke a credential (immediate, idempotent).",
         "description": "Transitions the credential identity's current record to status=revoked \u2014 immediate and idempotent: revoking an already-revoked credential converges to the same durable outcome (no error). Rotation and revocation are both reflected in the list.",
         "parameters": [
+          {
+            "$ref": "#/components/parameters/ZeckApplication"
+          },
           {
             "$ref": "#/components/parameters/IdempotencyKey"
           },
@@ -2197,7 +2203,15 @@
             "description": "The logical execution this economic action is provenance-bound to."
           },
           "purpose": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "purchase",
+              "payment",
+              "transfer",
+              "refund",
+              "charge",
+              "machine-resource"
+            ]
           },
           "recipient": {
             "type": "object",
@@ -2207,7 +2221,14 @@
             ],
             "properties": {
               "kind": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "seller",
+                  "merchant",
+                  "provider",
+                  "wallet",
+                  "account"
+                ]
               },
               "id": {
                 "type": "string"
@@ -2263,7 +2284,16 @@
             ]
           },
           "currency": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "usd",
+              "eur",
+              "gbp",
+              "jpy",
+              "cad",
+              "aud",
+              "chf"
+            ]
           },
           "expiresAt": {
             "type": "string",
@@ -2279,7 +2309,15 @@
               ],
               "properties": {
                 "kind": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "model",
+                    "tool",
+                    "algorithm",
+                    "data",
+                    "runtime",
+                    "human"
+                  ]
                 },
                 "name": {
                   "type": "string"
@@ -2370,7 +2408,15 @@
             "type": "string"
           },
           "purpose": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "purchase",
+              "payment",
+              "transfer",
+              "refund",
+              "charge",
+              "machine-resource"
+            ]
           },
           "recipient": {
             "type": "object",
@@ -2380,7 +2426,14 @@
             ],
             "properties": {
               "kind": {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "seller",
+                  "merchant",
+                  "provider",
+                  "wallet",
+                  "account"
+                ]
               },
               "id": {
                 "type": "string"
@@ -2393,7 +2446,16 @@
             "additionalProperties": true
           },
           "currency": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "usd",
+              "eur",
+              "gbp",
+              "jpy",
+              "cad",
+              "aud",
+              "chf"
+            ]
           },
           "expiresAt": {
             "type": "string",

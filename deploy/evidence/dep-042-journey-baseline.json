@@ -1,0 +1,680 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-042",
+  "drive": "baseline (pre-fix)",
+  "runStamp": "2026-09-20T06-15-03-295Z",
+  "persona": "fresh CODING AGENT — consumes ONLY AGENTS.md (repo root), docs/developer/machine/**, the public API wire surface, and the SDK where the machine artifacts point (no human docs, no console, no src/ contract reading)",
+  "substrate": {
+    "apiBase": "http://127.0.0.1:4078",
+    "composition": "REAL createApiServer over REAL module services (executions/credentials/quotas/sandbox-identities/economics, in-memory stores) + REAL runtime deployment identity (manifest digest + provider-tiers ledger + git revision); worker-path settler drives governed transitions + settlement ledger event (costMicroUsd 4125, usage {inputTokens 2100, outputTokens 340}, one artifact with digest) — the platform-side completion a bound worker + provider rail performs on a hosted plane; live provider completion honest NOT RUN",
+    "connectionValues": "the operator-provided bootstrap credential (the recipe's prerequisites) + the persona's OWN credential issued through the public POST /credentials route"
+  },
+  "baseRevision": "e50fe7e54b094d676c68ff878e7fda3ec095f5c3",
+  "legs": [
+    {
+      "leg": "1",
+      "title": "agent discovery (AGENTS.md entry → the machine manifests)",
+      "ms": 2
+    },
+    {
+      "leg": "2",
+      "title": "machine-contract reading (openapi / capability / env-vars / error-codes / examples / recipe)",
+      "ms": 42
+    },
+    {
+      "leg": "3",
+      "title": "authenticate (operator values → the public credential route)",
+      "ms": 16
+    },
+    {
+      "leg": "4",
+      "title": "application create (the machine-contract view)",
+      "ms": 1
+    },
+    {
+      "leg": "5",
+      "title": "sandbox config (the machine-documented sandbox routes)",
+      "ms": 4
+    },
+    {
+      "leg": "6",
+      "title": "executions across the capability portfolio (wire drive + literal examples)",
+      "ms": 31415
+    },
+    {
+      "leg": "7",
+      "title": "results / evidence / cost retrieval",
+      "ms": 3
+    },
+    {
+      "leg": "8",
+      "title": "validation library list + rerun (the machine-contract view)",
+      "ms": 1
+    },
+    {
+      "leg": "9",
+      "title": "export path (the reproducibility bundle, machine-contract view)",
+      "ms": 1
+    },
+    {
+      "leg": "10",
+      "title": "honest boundaries (the not-run registry of the trial)",
+      "ms": 0
+    }
+  ],
+  "steps": [
+    {
+      "leg": "1",
+      "step": "1.1",
+      "action": "read AGENTS.md at the repository root (the coding-agent entry point); look for the machine-contract surface",
+      "expectation": "AGENTS.md leads an integrating agent to docs/developer/machine/** (the machine manifests)",
+      "observed": "AGENTS.md is the INTERNAL program contract (architect/Tech Lead/implementer recovery sequence: AI_CONTINUATION.md, LLM-* handoffs, spec/*) and carries NO reference to docs/developer/machine/** — a fresh integrating agent's discovery dead-ends at the root; the persona reaches the machine manifests only by repository directory exploration",
+      "outcome": "finding",
+      "findingId": "AF1"
+    },
+    {
+      "leg": "1",
+      "step": "1.2",
+      "action": "open the machine-contract surface: 6 manifests under docs/developer/machine/ (found by directory exploration)",
+      "expectation": "every manifest exists and parses as JSON with schemaVersion 1",
+      "observed": "all 6 machine manifests parse (schemaVersion 1)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "1",
+      "step": "1.3",
+      "action": "resolve every path the manifest web references (example files, family examples, recipe artifacts)",
+      "expectation": "every referenced file exists in the repository",
+      "observed": "every manifest-referenced path resolves",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.1",
+      "action": "read openapi.json — the ONE canonical wire contract (paths, security scheme, header parameters)",
+      "expectation": "the route table, bearerAuth scheme and the x-zeck-application / idempotency-key header contracts are declared",
+      "observed": "openapi.json declares 27 paths / 28 route entries, bearerAuth security, the required x-zeck-application scoped-read header and the mandatory POST idempotency-key",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.2",
+      "action": "read error-codes.json — the canonical error taxonomy and its deterministic status mapping",
+      "expectation": "the taxonomy covers the public error vocabulary with deterministic statuses (401 AUTHENTICATION_FAILED never-retry, 409 IDEMPOTENCY_KEY_REUSED, …)",
+      "observed": "error-codes.json declares 17 codes with deterministic statuses; the persona's wire-parity probes (401/409/422/404) will verify the mapping for real",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.3",
+      "action": "read env-vars.json — the three required connection values + the optional selector; probe the CLI's documented default URL against the machine",
+      "expectation": "the three required variables are declared; the persona knows where the values come from (the target deployment's operator)",
+      "observed": "ZECK_API_URL / ZECK_TOKEN / ZECK_APPLICATION_ID required, ZECK_ENVIRONMENT_ID optional; CLI-default claim present — probe: a NON-Zeck service answers on 127.0.0.1:3000 in this environment (GET /identity returns a non-Zeck document) — the CLI default targets no Zeck composition here; environment-specific observation, recorded not interpreted as a platform claim",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.4",
+      "action": "read capability-manifest.json — the seeded capabilities, the 22 workload families and the honest availability classification",
+      "expectation": "22 families with the runnable/provider-gated split and named gates",
+      "observed": "capability-manifest declares 22 families — 11 runnable / 11 provider-gated (gates: QWEN_API_KEY, (rail boundary), OPENROUTER_API_KEY, OPENAI_API_KEY, ZECK_3D_API_KEY)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.5",
+      "action": "read examples-manifest.json and reconcile it with the capability manifest's family classifications",
+      "expectation": "27 examples; every family's canonical example carries the same classification in both manifests",
+      "observed": "27 examples reconcile with the 22 families (classification parity holds; 16 runnable / 11 provider-gated)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "2",
+      "step": "2.6",
+      "action": "read integration-recipe.json — the deterministic agent integration recipe",
+      "expectation": "the 9 steps are sequential and the prerequisites name the three connection values",
+      "observed": "integration-recipe carries 9 sequential steps; prerequisites: Bun, the repository, and ZECK_API_URL / ZECK_TOKEN / ZECK_APPLICATION_ID from the target deployment's operator",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.1",
+      "action": "obtain the three connection values from the target deployment's operator (recipe step 3; environment only — never flags, never files)",
+      "expectation": "ZECK_API_URL, ZECK_TOKEN and ZECK_APPLICATION_ID are set from operator-provided material",
+      "observed": "connection identity present: api=http://127.0.0.1:4078, application=00000000-0000-7000-8000-000000000142, token=<operator bootstrap credential, 69 chars, never logged>",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.2",
+      "action": "verify the failure semantics first: GET /agents with a wrong bearer credential",
+      "expectation": "401 AUTHENTICATION_FAILED, retryable=false — the error-codes.json deterministic mapping, verified on the wire",
+      "observed": "HTTP 401 {code AUTHENTICATION_FAILED, retryable false, message 'invalid credential'} — the taxonomy mapping holds on the wire",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.3",
+      "action": "issue the persona's OWN credential through the public route: POST /credentials {applicationId, label, role} + Idempotency-Key (the openapi contract)",
+      "expectation": "201 with the show-once secret present and replayed=false (the credential metadata never carries the secret again)",
+      "observed": "HTTP 201 — credential 00000000-0000-7000-c000-000000000001 issued (status active); show-once secret captured (69 chars, value never logged)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.4",
+      "action": "verify the issued credential: GET /agents with the persona secret + X-Zeck-Application",
+      "expectation": "HTTP 200 (an empty inventory is the documented normal state for a fresh application)",
+      "observed": "HTTP 200 — 0 agent(s) (the agents authority projects the inventory; empty is normal)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.5",
+      "action": "replay the SAME issue request (same idempotency key, same body): the show-once contract",
+      "expectation": "replayed=true with secret=null — the durable outcome replays, the secret never crosses twice",
+      "observed": "HTTP 201 replayed=true, secret=null — the show-once discipline holds",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.6",
+      "action": "probe the collision discipline: same idempotency key with a DIFFERENT request body",
+      "expectation": "409 IDEMPOTENCY_KEY_REUSED — the deterministic mapping the taxonomy documents, verified on the wire",
+      "observed": "HTTP 409 IDEMPOTENCY_KEY_REUSED (a client bug surfaced as designed, never retried)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "3",
+      "step": "3.7",
+      "action": "drive the credential lifecycle: rotate then revoke, each request built from the route's DECLARED openapi parameters (the persona never guesses undocumented headers)",
+      "expectation": "the openapi-documented rotate/revoke routes behave exactly as documented",
+      "observed": "rotate → HTTP 422 {{\"code\":\"CAPABILITY_UNAVAILABLE\",\"message\":\"credential commands require the X-Zeck-Application header (the application whose scope}; revoke → HTTP 422 {{\"code\":\"CAPABILITY_UNAVAILABLE\",\"message\":\"credential commands require the X-Zeck-Application header (the application whose scope}; old secret → 200; new secret → n/a; revoked secret → n/a — the wire REFUSES the documented-parameter request: the route requires the x-zeck-application header the openapi does not document on it",
+      "outcome": "finding",
+      "findingId": "AF3f"
+    },
+    {
+      "leg": "4",
+      "step": "4.1",
+      "action": "search the machine contract (openapi paths, examples-manifest, recipe) for the application-creation surface",
+      "expectation": "an application-create path exists OR the boundary is documented machine-side",
+      "observed": "the openapi route table carries NO application-lifecycle route (the frozen create contract carries the per-request applicationId selector only) — and NO machine artifact documents how an application comes into existence: the persona cannot learn the provisioning path from the machine surface (the operator-provided ZECK_APPLICATION_ID is the only documented source)",
+      "outcome": "finding",
+      "findingId": "AF4"
+    },
+    {
+      "leg": "4",
+      "step": "4.2",
+      "action": "adopt the operator-provided application scope (ZECK_APPLICATION_ID — the scope the membership rows authorize)",
+      "expectation": "the scoped reads and governed commands accept the application scope",
+      "observed": "application scope 00000000-0000-7000-8000-000000000142 adopted; every scoped call carries X-Zeck-Application per the openapi parameter contract",
+      "outcome": "pass"
+    },
+    {
+      "leg": "5",
+      "step": "5.1",
+      "action": "read the sandbox quota envelope: GET /sandbox/quotas with the application scope",
+      "expectation": "the configured dimensions render with the honest telemetry boundary",
+      "observed": "HTTP 200 — 1 dimension row(s) (sandbox-concurrency=5); telemetry.realtime=false (the honest boundary)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "5",
+      "step": "5.2",
+      "action": "read the synthetic-data policy artifact: GET /sandbox/data-policy",
+      "expectation": "the versioned, digest-carrying governed document serves verbatim",
+      "observed": "HTTP 200 — version 1, digest sha256:368368f43c78c18a… (the governed artifact, never a local copy)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "5",
+      "step": "5.3",
+      "action": "probe the sandbox-identity read with an unknown id (the scope-checked miss semantics)",
+      "expectation": "HTTP 404 — indistinguishable-from-missing, exactly as the openapi documents the route's 404",
+      "observed": "HTTP 404 {code AUTHORIZATION_DENIED} — the honest miss (recorded: this route's 404 body carries AUTHORIZATION_DENIED while the executions routes' scope-checked misses carry CAPABILITY_UNAVAILABLE — both are documented 404 shapes; the openapi pins neither body code for this route, so no contract violation is claimed)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "6",
+      "step": "6.1",
+      "action": "create an execution through the wire contract: POST /executions {applicationId, task, constraints} + Idempotency-Key",
+      "expectation": "201 with the execution receipt (executionId, status, replayed=false)",
+      "observed": "HTTP 201 — execution 00000000-0000-7000-9000-000000000002 (status CREATED, replayed=false)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "6",
+      "step": "6.2",
+      "action": "poll GET /executions/<id> to a terminal status (the documented lifecycle pattern — the wire exposes no push channel)",
+      "expectation": "the execution reaches COMPLETED with a settled ledger",
+      "observed": "terminal status COMPLETED; the ledger carries 8 event(s)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "6",
+      "step": "6.3",
+      "action": "replay the SAME create (same key + same fingerprint)",
+      "expectation": "the durable outcome replays: replayed=true, same executionId",
+      "observed": "HTTP 201 replayed=true — the durable outcome, not a second execution",
+      "outcome": "pass"
+    },
+    {
+      "leg": "6",
+      "step": "6.4",
+      "action": "execute every runnable examples-manifest entry LITERALLY: bun run <manifest path> with the manifest-declared env vars (15 entries; the webhook receiver follows separately)",
+      "expectation": "every runnable example completes as written (exit 0) with zero hidden assumptions",
+      "observed": "literal-execution failures: examples/economic-actions.ts: exit 1 — stderr/stdout tail: essage\":\"economic action draft rejected: purpose: purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind: recipient.kind is outside the closed vocabulary\",\"retryable\":false} | ",
+      "outcome": "finding",
+      "findingId": "AF6d"
+    },
+    {
+      "leg": "6",
+      "step": "6.4b",
+      "action": "root-cause the failed create through the machine contract: read openapi.json's EconomicActionRequest schema for the fields the wire's rejection enforced",
+      "expectation": "every closed-vocabulary field the economics authority enforces carries its enum in the openapi schema (the machine agent can learn the vocabulary from the manifest)",
+      "observed": "openapi.json documents purpose, recipient.kind, currency, requiredCapabilities[].kind as FREE STRINGS while the wire rejects out-of-vocabulary values — the closed vocabularies (purpose: purchase|payment|transfer|refund|charge|machine-resource; recipient.kind: seller|merchant|provider|wallet|account; currency: usd|eur|gbp|jpy|cad|aud|chf; requiredCapabilities[].kind: model|tool|algorithm|data|runtime|human) are undiscoverable through the machine contract — the persona cannot know them without hitting the wire's refusal",
+      "outcome": "finding",
+      "findingId": "AF6b"
+    },
+    {
+      "leg": "6",
+      "step": "6.5",
+      "action": "run the webhook-receiver example as its manifest row + header document it (ZECK_WEBHOOK_SECRET + ZECK_WEBHOOK_PORT, the receiver listening on /webhooks/zeck): deliver an UNSIGNED event, a VALIDLY-SIGNED event, then a redelivery",
+      "expectation": "unsigned → 401 (never trusted); valid signature → 202 applied; redelivery → 202 replay-acknowledged without re-application",
+      "observed": "receiver booted (its own documented run line printed); unsigned → 401 'invalid signature'; signed → 202 'applied (eventId …)'; redelivery → 202 'replay acknowledged' — verify-before-trusting + exactly-once both hold",
+      "outcome": "pass"
+    },
+    {
+      "leg": "6",
+      "step": "6.6",
+      "action": "execute every provider-gated examples-manifest entry as written (core env only — the provider credential NAMES are explicitly absent): 11 entries",
+      "expectation": "each prints its recorded availability boundary and completes its code path; provider COMPLETION stays honest NOT RUN",
+      "observed": "11/11 provider-gated examples ran their code path with the gated banner printed (the named contracts: QWEN_API_KEY, (rail boundary), OPENROUTER_API_KEY, OPENAI_API_KEY, ZECK_3D_API_KEY); live provider completion is the recorded NOT RUN boundary",
+      "outcome": "pass"
+    },
+    {
+      "leg": "7",
+      "step": "7.1",
+      "action": "retrieve the result package: GET /executions/<id>/results",
+      "expectation": "the honest end-state: COMPLETED, settled integer-micro-USD cost, rail-reported usage, artifact digests, verification rows",
+      "observed": "HTTP 200 — status COMPLETED, cost 4125 micro-USD (usd), usage 2100/340 tokens, 1 artifact(s) (digest sha256:dep042-000002), 1 verification row(s), 0 warning(s)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "7",
+      "step": "7.2",
+      "action": "retrieve the evidence trail: GET /executions/<id>/events",
+      "expectation": "the ordered, gapless event ledger (lifecycle visibility)",
+      "observed": "HTTP 200 — 8 event(s), sequences 1..8 gapless (execution.created → execution.authorize → execution.plan → execution.queue → execution.start → execution.verify…)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "7",
+      "step": "7.3",
+      "action": "retrieve the verification axis: GET /executions/<id>/verification",
+      "expectation": "the evidence verdicts with criterion/strategy/status",
+      "observed": "HTTP 200 — 1 row(s): cites-sources = PASS (strategy rubric)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "7",
+      "step": "7.4",
+      "action": "probe the lifecycle-command boundary: POST /executions/<id>/cancel on the COMPLETED execution",
+      "expectation": "409 INVALID_STATE_TRANSITION — the deterministic mapping the taxonomy documents (only non-terminal executions accept cancel)",
+      "observed": "HTTP 409 INVALID_STATE_TRANSITION — the state machine's refusal is exact",
+      "outcome": "pass"
+    },
+    {
+      "leg": "8",
+      "step": "8.1",
+      "action": "search the machine contract for the Validation Library surface (openapi routes, examples-manifest entries, integration-recipe steps)",
+      "expectation": "a machine-readable list/rerun path exists OR the boundary is declared machine-side",
+      "observed": "NO validation-library surface exists anywhere in the machine contract: openapi.json carries no /validation route, examples-manifest.json carries no validation example, integration-recipe.json never mentions the library — the Validation Library (DEP-025's definition catalog + governed rerun) is invisible to a machine agent; the persona cannot list the library, let alone rerun an experiment, without the console",
+      "outcome": "finding",
+      "findingId": "AF8"
+    },
+    {
+      "leg": "8",
+      "step": "8.2",
+      "action": "the validation-library list + rerun leg",
+      "expectation": "the leg completes OR its boundary is recorded with an owner",
+      "observed": "NOT RUN — the Validation Library rerun is a console-plane surface in this base (no machine route); the persona records the honest boundary. Owner: Lead (either expose a machine-readable library list/rerun route set or keep the boundary declared machine-side)",
+      "outcome": "not-run"
+    },
+    {
+      "leg": "9",
+      "step": "9.1",
+      "action": "search the machine contract for the execution reproducibility-bundle export surface (openapi routes, examples-manifest entries)",
+      "expectation": "a machine-readable export path exists OR the boundary is declared machine-side",
+      "observed": "NO export surface exists anywhere in the machine contract: openapi.json carries no /export route (the result package at GET /executions/<id>/results is the closest machine surface), examples-manifest.json carries no export example — the reproducibility bundle (DEP-032's export path) is invisible to a machine agent",
+      "outcome": "finding",
+      "findingId": "AF9"
+    },
+    {
+      "leg": "9",
+      "step": "9.2",
+      "action": "the export-path leg (retrieving the reproducibility bundle through the machine surface)",
+      "expectation": "the leg completes OR its boundary is recorded with an owner",
+      "observed": "NOT RUN — the reproducibility-bundle export is a console-plane surface in this base (no machine route); the persona records the honest boundary. Owner: Lead (expose a machine export route or keep the boundary declared machine-side)",
+      "outcome": "not-run"
+    },
+    {
+      "leg": "10",
+      "step": "10.1",
+      "action": "compile the provider-gated families' named contracts from the capability manifest",
+      "expectation": "every gated family names its gate (credential env var NAME or rail boundary)",
+      "observed": "11 provider-gated families → QWEN_API_KEY (3: voice, image-generation, video-media); (rail boundary — no authorized rail) (3: realtime-voice, browser-use, computer-use); OPENROUTER_API_KEY (3: image-recognition, vlm, multimodal); OPENAI_API_KEY (1: audio-understanding); ZECK_3D_API_KEY (1: three-d)",
+      "outcome": "pass"
+    },
+    {
+      "leg": "10",
+      "step": "10.2",
+      "action": "the live-provider completion rails (real model/tool/media completions through OPENROUTER_API_KEY / QWEN_API_KEY / …)",
+      "expectation": "the boundary is recorded honestly — never a fabricated provider result",
+      "observed": "NOT RUN — no operator provider credentials exist in this environment; every execution settled through the platform's own governed transition commands with the settlement envelope recorded in the ledger (the worker-path seam). Zero live provider cost consumed. Owner: Lead credentialed re-run (the hosted-plane trial with authorized rails)",
+      "outcome": "not-run"
+    },
+    {
+      "leg": "10",
+      "step": "10.3",
+      "action": "the public-internet variant of the journey against a hosted deployment",
+      "expectation": "the boundary is recorded honestly",
+      "observed": "NOT RUN — no public hosted Zeck URL exists in this environment; the trial ran against a REAL locally-booted plane serving the same public contract (real processes, real HTTP). Owner: Lead credentialed re-run (deploy a preview plane per PUBLIC-DEPLOYMENT.md §3.2 and re-drive the journey)",
+      "outcome": "not-run"
+    }
+  ],
+  "findingsSurfaced": [
+    {
+      "id": "AF1",
+      "leg": "1",
+      "classification": "docs",
+      "title": "AGENTS.md (the repository-root agent entry point) does not reference the machine-contract surface — a fresh coding agent cannot discover docs/developer/machine/** from the canonical entry",
+      "reproduction": "read AGENTS.md top to bottom; grep -n 'docs/developer\\|machine/' AGENTS.md → no matches (its recovery sequence targets internal program agents: AI_CONTINUATION.md, docs/LLM-*, spec/*); README.md equally carries no developer-kit entry (the DEP-041 F1 merge note, still open); the persona finds docs/developer/machine/ only by directory exploration"
+    },
+    {
+      "id": "AF3f",
+      "leg": "3",
+      "classification": "machine-manifest",
+      "title": "openapi.json omits the required x-zeck-application parameter on POST /credentials/{credentialId}/rotate and /revoke — a request built exactly from the documented parameters is refused 422",
+      "reproduction": "POST /credentials/{id}/rotate with EXACTLY the documented parameters (IdempotencyKey, CredentialId) + bearer + Idempotency-Key + empty body → HTTP 422 CAPABILITY_UNAVAILABLE 'credential commands require the X-Zeck-Application header (the application whose scope authorizes the request)' — the route requires the x-zeck-application header (src/api/routes/credentials.ts: applicationScopeOf(request, \"credential commands\")) that openapi.json does not declare on it; POST /executions/{id}/cancel and POST /sandbox/identities/{id}/reset DO declare the ZeckApplication parameter — the same-document inconsistency a machine agent cannot resolve without guessing"
+    },
+    {
+      "id": "AF4",
+      "leg": "4",
+      "classification": "zeck",
+      "title": "application creation/inventory is not exposed by the public API and the out-of-band provisioning path is undocumented machine-side — the journey's application-create leg cannot complete through the machine surface",
+      "reproduction": "grep '^  /applications' docs/developer/machine/openapi.json → no matches (27 paths, none application-lifecycle); the ExecutionRequest schema carries only the per-request applicationId; integration-recipe.json's prerequisites say the values come 'from the target deployment's operator/console' without naming the provisioning authority — the machine agent cannot discover how an application is created (the DEP-041 F4 boundary, re-observed through the machine surface)"
+    },
+    {
+      "id": "AF6d",
+      "leg": "6",
+      "classification": "docs",
+      "title": "a runnable examples-manifest entry failed when executed exactly as the manifest prints it",
+      "reproduction": "examples/economic-actions.ts: exit 1 — stderr/stdout tail: essage\":\"economic action draft rejected: purpose: purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind: recipient.kind is outside the closed vocabulary\",\"retryable\":false} | "
+    },
+    {
+      "id": "AF6b",
+      "leg": "6",
+      "classification": "machine-manifest",
+      "title": "openapi.json documents the economic-action closed vocabularies as free strings — the wire's vocabulary constraints are undiscoverable through the machine contract",
+      "reproduction": "read docs/developer/machine/openapi.json components.schemas.EconomicActionRequest: purpose/recipient.kind/currency/requiredCapabilities[].kind are {\"type\":\"string\"} with NO enum; POST /economic-actions with an out-of-vocabulary value → 422 'economic action draft rejected: … purpose must be one of purchase, payment, transfer, refund, charge, machine-resource; recipient.kind is outside the closed vocabulary' (the vocabulary lives in src/modules/economics/domain/vocabulary.ts, never in the machine manifest) — the runnable examples/economic-actions.ts itself carries two out-of-vocabulary values (purpose 'purchase dataset access (example)', recipient.kind 'external-account') and fails when run as written"
+    },
+    {
+      "id": "AF8",
+      "leg": "8",
+      "classification": "machine-manifest",
+      "title": "the Validation Library (list + rerun) is not discoverable through the machine surface — no openapi route, no manifest example, no recipe step names it",
+      "reproduction": "grep -i validation docs/developer/machine/openapi.json → only agent-version validationState schema fields, no /validation route; grep -i validation docs/developer/machine/examples-manifest.json → no entry; integration-recipe.json's 9 steps never mention the library; the surface lives only on the console plane (/console/validation + api/catalog.json — outside the machine persona's discipline)"
+    },
+    {
+      "id": "AF9",
+      "leg": "9",
+      "classification": "machine-manifest",
+      "title": "the execution reproducibility-bundle export path is not discoverable through the machine surface — no openapi route, no manifest example",
+      "reproduction": "grep -iE 'export|bundle' docs/developer/machine/openapi.json → no route matches (27 paths, none export); grep -iE 'export|bundle|reproduc' docs/developer/machine/examples-manifest.json → no entry; the surface lives only on the console plane (/console/executions/<id>/export + bundle.json — outside the machine persona's discipline)"
+    }
+  ],
+  "frictionEvents": 7,
+  "exampleExecution": {
+    "tally": {
+      "ranAsWritten": 15,
+      "notRunGated": 11,
+      "findings": 1
+    },
+    "runs": [
+      {
+        "name": "quickstart",
+        "path": "examples/quickstart.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1031,
+        "markers": [
+          "terminal status: COMPLETED",
+          "replayed=false",
+          "event ledger: 8 event(s)",
+          "verification evidence: 1 result(s)"
+        ]
+      },
+      {
+        "name": "text-summarization",
+        "path": "examples/text-summarization.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1027,
+        "markers": []
+      },
+      {
+        "name": "structured-invoice-extraction",
+        "path": "examples/structured-invoice-extraction.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1027,
+        "markers": []
+      },
+      {
+        "name": "rag-grounded-answers",
+        "path": "examples/rag-grounded-answers.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": []
+      },
+      {
+        "name": "tool-augmented-lookup",
+        "path": "examples/tool-augmented-lookup.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": []
+      },
+      {
+        "name": "workflow-orchestration",
+        "path": "examples/workflow-orchestration.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1027,
+        "markers": []
+      },
+      {
+        "name": "long-running-batch",
+        "path": "examples/long-running-batch.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 2028,
+        "markers": []
+      },
+      {
+        "name": "human-review-gate",
+        "path": "examples/human-review-gate.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": []
+      },
+      {
+        "name": "customer-service-triage",
+        "path": "examples/customer-service-triage.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": []
+      },
+      {
+        "name": "research-synthesis",
+        "path": "examples/research-synthesis.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1026,
+        "markers": []
+      },
+      {
+        "name": "coding-assistant",
+        "path": "examples/coding-assistant.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": []
+      },
+      {
+        "name": "operations-runbook",
+        "path": "examples/operations-runbook.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1028,
+        "markers": []
+      },
+      {
+        "name": "agent-inventory",
+        "path": "examples/agent-inventory.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 22,
+        "markers": ["agent inventory: 0 agent(s)"]
+      },
+      {
+        "name": "economic-actions",
+        "path": "examples/economic-actions.ts",
+        "classification": "runnable",
+        "exitCode": 1,
+        "ms": 1025,
+        "markers": []
+      },
+      {
+        "name": "error-handling",
+        "path": "examples/error-handling.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 1030,
+        "markers": [
+          "replayed=true",
+          "ZeckApiError 401 AUTHENTICATION_FAILED",
+          "key collision observed"
+        ]
+      },
+      {
+        "name": "webhook-receiver",
+        "path": "examples/webhook-receiver.ts",
+        "classification": "runnable",
+        "exitCode": 0,
+        "ms": 0,
+        "markers": ["unsigned→401", "signed→202", "replay→202"]
+      },
+      {
+        "name": "voice-transcription",
+        "path": "examples/voice-transcription.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1030,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "QWEN_API_KEY"
+      },
+      {
+        "name": "realtime-voice-session",
+        "path": "examples/realtime-voice-session.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1034,
+        "markers": ["provider-gated workload banner printed"]
+      },
+      {
+        "name": "image-generation",
+        "path": "examples/image-generation.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1027,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "QWEN_API_KEY"
+      },
+      {
+        "name": "video-generation",
+        "path": "examples/video-generation.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 5028,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "QWEN_API_KEY"
+      },
+      {
+        "name": "image-recognition",
+        "path": "examples/image-recognition.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1028,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "OPENROUTER_API_KEY"
+      },
+      {
+        "name": "vlm-image-qa",
+        "path": "examples/vlm-image-qa.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "OPENROUTER_API_KEY"
+      },
+      {
+        "name": "audio-understanding",
+        "path": "examples/audio-understanding.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1027,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "OPENAI_API_KEY"
+      },
+      {
+        "name": "multimodal-transformation",
+        "path": "examples/multimodal-transformation.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1028,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "OPENROUTER_API_KEY"
+      },
+      {
+        "name": "three-d-generation",
+        "path": "examples/three-d-generation.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1031,
+        "markers": ["provider-gated workload banner printed"],
+        "gatedBy": "ZECK_3D_API_KEY"
+      },
+      {
+        "name": "browser-use-agent",
+        "path": "examples/browser-use-agent.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1029,
+        "markers": ["provider-gated workload banner printed"]
+      },
+      {
+        "name": "computer-use-agent",
+        "path": "examples/computer-use-agent.ts",
+        "classification": "provider-gated",
+        "exitCode": 0,
+        "ms": 1030,
+        "markers": ["provider-gated workload banner printed"]
+      }
+    ]
+  }
+}

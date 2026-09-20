@@ -63,7 +63,7 @@
       "step": 9,
       "id": "production-path",
       "action": "When moving beyond sandbox: follow the promotion ladder, secret management and quota guidance (cross-linked to the deployment surfaces); to run a deployment yourself, follow the self-host handoff guide.",
-      "artifacts": ["docs/developer/PRODUCTION.md", "docs/developer/SELF-HOSTING.md", "docs/developer/SANDBOX.md", "deploy/README.md", "deploy/manifests/environments.json"]
+      "artifacts": ["docs/developer/PRODUCTION.md", "docs/developer/SELF-HOSTING.md", "docs/developer/SANDBOX.md", "deploy/README.md", "deploy/manifests/environments.json", "docs/developer/machine/surface-boundaries.json"]
     }
   ],
   "invariants": [
@@ -72,6 +72,7 @@
     "Money is integer micro-USD strings; floats never cross.",
     "Every POST carries an Idempotency-Key; every scoped read/command carries X-Zeck-Application.",
     "No secret value appears in any example, doc or machine artifact (names only).",
-    "Availability is disclosed honestly: runnable vs provider-gated, with NOT RUN boundaries recorded."
+    "Availability is disclosed honestly: runnable vs provider-gated, with NOT RUN boundaries recorded.",
+    "The openapi.json route table is the machine contract of record: platform surfaces that are NOT on it (application lifecycle, Validation Library, execution export) are declared in docs/developer/machine/surface-boundaries.json — a machine agent records them as honestly unavailable, never a silent dead-end."
   ]
 }
