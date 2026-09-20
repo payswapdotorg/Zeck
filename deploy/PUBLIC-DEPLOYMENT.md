@@ -1,8 +1,8 @@
-# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002 and DEP-003)
+# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002, DEP-003 and DEP-043)
 
 **Status:** OPERATIONAL RUNBOOK (repository truth; provider consoles are evidence, never authority)
 **Parent:** `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0), `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`
-**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002) and the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003).
+**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002), the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003), the end-to-end validation driver (§10, DEP-040) and the production operations drills: promote/rollback both directions, backup/restore round-trip, provider exit and teardown classification guards (§11, DEP-043).
 
 This recipe is the DEP-001 deliverable for AC1 ("fresh operator can
 reproduce the target deployment from repository configuration"). Every
@@ -574,3 +574,95 @@ recorded NOT RUN with their owner in the driver's own report and in
 against the local PostgreSQL server above. The driver REFUSES a
 `ZECK_PG_ADMIN_URL` carrying URL-embedded credentials (the same
 pattern the architecture secret-scan pins over `deploy/**`).
+
+## 11. The production drill (DEP-043 — promote/rollback, backup/restore, provider exit, teardown guards)
+
+The DEP-040 chain proves a plane can be BUILT, BOUND and PROMOTED ON
+EVIDENCE. DEP-043 drills the production OPERATIONS story — the four
+drills an operator runs when things change or go wrong — through ONE
+driver over the SAME local rails, reusing the DEP-040 driver's
+URL-hygiene preflight and boot-document discipline:
+
+```bash
+# the drill's own config (a DEDICATED instance: the drill's final
+# teardown segment DROPS the computed zeck_local database):
+export ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54333/postgres
+bun deploy/production-drill.ts
+```
+
+The driver composes the rail bring-up (validate → bootstrap →
+provision → migrate) and then the four drills, recording each step's
+REAL exit status, timing and output digest (any failure anywhere
+fails the drill — never a warning; `deploy/evidence/dep-043.json` is
+the evidence of record):
+
+1. **PROMOTE→VERIFY→ROLLBACK** (§9.4 re-proven in the drill context):
+   promotions to wrong-revision / unreachable / TAMPERED planes
+   (a git archive of HEAD plus ONE well-formed `variables.json` row)
+   each REFUSE with their exact fail-closed reason and a journaled
+   `allowed:false` decision; the promotion to the verified plane
+   succeeds with the attestation journaled; the governed rollback
+   re-attests the TARGET revision after the pointer flip — the
+   pre-repoint refusal carries the exact repoint instruction, the
+   post-repoint run (a real plane booted from a manifest-identical
+   ancestor worktree) verifies the target revision. Both directions
+   proven.
+2. **BACKUP/RESTORE ROUND-TRIP**: the authoritative store's logical
+   backup (§2's relational-state exit path) restores into a fresh
+   disposable target with per-table sha256 digest verification (the
+   restore's own re-read + re-hash + row-count self-verification,
+   plus the driver's before/after digest-stability comparison). The
+   partial-failure behavior is fail-closed and tested: a
+   wrong-format, a TRUNCATED and a DATA-TAMPERED artifact each REFUSE
+   at restore with the exact reason — never a partial restore (the
+   truncated refusal provably creates no recovery target).
+3. **PROVIDER-EXIT** (every manifest provider class, §2): the
+   relational-state exit is the executed round-trip above
+   (provider-neutral adapter); the async-transport exit runs
+   `deploy:drill queue-recovery`'s replay-plan classification against
+   the real authority (the republish half honestly not-run in the
+   tool's own registry); the durable-orchestration exit runs
+   `deploy:workflow`'s authority-side machinery (the waits table is
+   the authority; compaction + the recovery scan re-arm — synthetic
+   provider configuration, zero provider calls on the empty
+   substrate); the artifact-bytes exit's own fail-closed configuration
+   gate is driven (never a fabricated PASS); the experience-delivery
+   exit is proven by the REPOINT (two real planes on distinct
+   endpoints attesting byte-identical identity documents through the
+   same authority — no hosting coordinates in the document); the
+   ephemeral-coordination / execution-compute / observability-export
+   postures are attested live from the plane's `/health` (degraded
+   -but-alive with the declared modes). The domain authority is
+   proven UNTOUCHED by the whole exit segment (per-table digest
+   fingerprint before/after). Every live half is recorded NOT RUN
+   with its owner.
+4. **TEARDOWN CLASSIFICATION GUARDS** (defensive re-check): staging
+   and production refuse (classification, not operator intent); an
+   AMBIGUOUS classification (a class/teardown-policy contradiction in
+   `environments.json`) refuses at manifest load BEFORE any
+   destruction; a reclassified-persistent environment refuses at the
+   guard itself; the local PG drop fails closed against a dead
+   authority; the REAL teardown removes exactly the computed
+   resources (round-trip verified GONE).
+
+The drill surfaced and fixed one deploy-tooling defect within
+`deploy/`'s own boundaries (the full report is in the evidence
+record): the D-07 objective gate made `deploy:drill queue-recovery`
+(and `artifact-exit`/`worker-evacuation`) exit 1 on EVERY run — all
+phases green, `recovered:true`, exit 1 — because the anchor-less
+scenarios evaluated RPO without a recovery-point anchor. The
+durability-anchored scenarios now carry the drill-start anchor (RPO 0
+by durability: the envelopes, artifact digests and worker claims ARE
+the authority's durable state), the same anchor class `authority-loss`
+uses.
+
+PLANE-BOOT DISCIPLINE (unchanged): the drill driver waits for the
+plane's BOOT DOCUMENT, never a bare `/health` 200 — pinned by three
+consecutive full drill runs in
+`tests/integration/deployment/production-drill.test.ts`.
+
+Credential honesty (unchanged doctrine): the live-provider halves are
+recorded NOT RUN with their owner in the driver's own report and in
+`deploy/evidence/dep-043.json`; the PG-backed rails ran for real
+against the local PostgreSQL server above. The driver REFUSES a
+`ZECK_PG_ADMIN_URL` carrying URL-embedded credentials.
