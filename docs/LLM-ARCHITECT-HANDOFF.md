@@ -12,15 +12,17 @@
 
 - Core architecture: **v1.0**, frozen after approval.
 - Deployment/runtime architecture: **D1.0**, approved and subordinate to v1.0.
-- Execution Intelligence Architecture: **E1.0**, approved by ACR-003/ADR-0019.
-- Economic Execution Intelligence: **E1.1**, approved by ACR-004/ADR-0020 and subordinate to v1.0/E1.0.
-- UX v2: complete through WORK-041.
-- Deployment phases D-00 through D-06: complete.
-- Current authorized deployment phase: **D-07 / WORK-048 — resilience, disaster recovery and provider exit**.
-- Canonical issue: **#13**.
-- Current frontier remains `eligible=["WORK-048"]`, `inFlight=[]`, `blocked=[]` until D-07 is actually started/completed and state is updated by the Architect.
+- Execution Intelligence Architecture: **E1.0**, approved and subordinate to v1.0.
+- Economic Execution Intelligence: **E1.1**, approved and subordinate to v1.0/E1.0.
+- Deployment roadmap D-00 through D-08: **complete**.
+- E1.1 implementation WORK-048 through WORK-056: **complete**.
+- Validation program VAL-001 through VAL-052: **complete**.
+- Developer Platform DEP-001 through DEP-044: **complete**, including the 8/8 DEP-044 release-gate verdict.
+- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`.
+- Current post-release frontier is `PPR-001/PPR-002/PPR-003`, with a maximum of three concurrent workers.
+- The exact `main` SHA must always be fetched at recovery time.
 
-The exact `main` SHA must always be fetched at recovery time. Never treat the SHA in this file as current authority.
+Historical sections below remain useful evidence but do not override the current post-release state.
 
 ## Mission
 
