@@ -101,6 +101,17 @@ import {
 } from "./credentials";
 import { advancedDisclosure } from "./disclosure";
 import {
+  catalogSection,
+  discoveryCatalogGrid,
+  discoveryEntries,
+  discoveryHero,
+  discoverySafeStartSection,
+  familyAvailabilityChip,
+  guidedStartSteps,
+  routeMatrixSection,
+  trustLimitsSection,
+} from "./discovery";
+import {
   type ExplorerFacts,
   type ExplorerRunFact,
   explorerFactsOf,
@@ -432,6 +443,16 @@ function homeOutcomeForm(idempotencyKey: string): string {
 ${suggestedActions()}`;
 }
 
+/**
+ * PPR-001 — the discovery-first home: the first screen answers, in
+ * order, what Zeck does (hero), what workloads exist and what is
+ * available right now (the 22-family grid with honest states), and how
+ * to try safely (the sandbox envelope) — with the guided sandbox start
+ * as the ONE dominant primary action. The outcome composer and the
+ * "Now" projection surface (attention / active / recent / lookup)
+ * follow underneath, preserved exactly (the work surface is promoted,
+ * not re-engineered; discovery is added in front of it).
+ */
 async function homePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
   const recents = await readRecentExecutions(client, ids);
@@ -444,8 +465,18 @@ async function homePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerRe
   const content = `${pageHead({
     title: "Home",
     path: "/",
-    primaryActionHtml: '<a class="button-link primary" href="/build/execution">Start new work</a>',
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/start">Start the guided sandbox</a>',
   })}
+${discoveryHero()}
+${discoveryCatalogGrid()}
+${discoverySafeStartSection()}
+<section class="discovery-section" aria-labelledby="discovery-go-deeper">
+  <h2 id="discovery-go-deeper">Go deeper</h2>
+  ${discoveryEntries()}
+</section>
+<h2>Your work</h2>
+<p class="muted">Describe an outcome and Zeck plans, executes and verifies it under policy — or <a href="/console/start">take the guided sandbox path first</a>.</p>
 ${homeOutcomeForm(`dash-${crypto.randomUUID()}`)}
 <h2>Needs your attention</h2>
 ${
@@ -1893,7 +1924,7 @@ ${header}
 ${workloadBlock}
 ${denial === null ? "" : blockedExplanation(denial)}
 ${modalities}
-${whyPanel({ execution, result, events })}
+${whyPanel({ execution, result, events, open: tab === "result" })}
 ${tabNav(execution.id, tab)}
 ${panel}
 ${parityLine}`;
@@ -3269,10 +3300,20 @@ async function consoleHomePage(scope: string, ctx: HttpContext): Promise<Handler
     title: "Developer console",
     path: "/console",
     primaryActionHtml:
-      '<a class="button-link primary" href="/console/playground">Open the playground</a>',
+      '<a class="button-link primary" href="/console/start">Start the guided sandbox</a>',
   })}
 <p>${scopeLine}</p>
 <div class="tiles">
+  <section class="tile">
+    <h3><a href="/console/start">Guided start</a></h3>
+    <p>The safety envelope first — quotas, identity, expiry/reset, the synthetic-data policy — then one text execution end to end.</p>
+    <p class="muted">Live — the guided first-run path.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/catalog">Capability catalog</a></h3>
+    <p>All 22 workload families with their honest availability states — the discovery-first catalog.</p>
+    <p class="muted">Live — projected from the machine capability manifest.</p>
+  </section>
   <section class="tile">
     <h3><a href="/console/quickstart">Quickstart</a></h3>
     <p>The five-step guided path to a first sandbox execution and its evidence.</p>
@@ -3287,6 +3328,21 @@ async function consoleHomePage(scope: string, ctx: HttpContext): Promise<Handler
     <h3><a href="/console/playground">Playground</a></h3>
     <p>Guided sandbox runs for every workload family — synthetic data, hard limits, honest availability.</p>
     <p class="muted">Live — every run goes through the governed public API; live completion depends on the deployment's authorized rails.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/validation">Validation Lab</a></h3>
+    <p>The executed validation program — every experiment, its evidence and safe reruns.</p>
+    <p class="muted">Live — projected from repository truth.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/trust/limits">Trust &amp; Limits</a></h3>
+    <p>Policy, spend, the sandbox envelope and verification — the consolidated entry.</p>
+    <p class="muted">Live — links to the governing surfaces.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/console/docs/AGENT-GUIDE.md">For agents</a></h3>
+    <p>The agent integration guide plus the machine-readable contract layer.</p>
+    <p class="muted">Live — the public integration kit, verbatim.</p>
   </section>
   <section class="tile">
     <h3><a href="/runs">Executions</a></h3>
@@ -3362,6 +3418,126 @@ async function quickstartPage(scope: string, ctx: HttpContext): Promise<HandlerR
 ${sandboxLimitsSection()}`;
   return page(
     { title: "Zeck — Quickstart", activePath: "/console/quickstart", mainContent: content },
+    ctx,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PPR-001 — the discovery surfaces: the 22-family capability catalog, the
+// guided safe sandbox start and the consolidated Trust & Limits entry.
+// Every fact below is projected from the machine manifests through the
+// console projection (console.ts / discovery.ts) or linked from the
+// existing governing surfaces — no second authority is introduced.
+// ---------------------------------------------------------------------------
+
+/** The 22-family capability catalog (PPR-001 required surface). */
+function catalogPage(ctx: HttpContext): HandlerResult {
+  const content = `${pageHead({
+    title: "Capability catalog",
+    path: "/console/catalog",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/start">Start the guided sandbox</a>',
+  })}
+<p>Every workload family the platform supports, with its honest availability state in one place — the first-stop discovery surface for what Zeck can do right now. The catalog is projected live from the machine capability manifest (the same artifact the validation program validates), so the console can never drift from it: the derived state (Available, Requires access, Provider-gated, NOT RUN) is a presentation of the manifest's own recorded fields, and the recorded availability sentence renders verbatim beside it.</p>
+${catalogSection()}
+${advancedDisclosure(
+  "The discovery matrix — where every family is discoverable",
+  `<p class="muted">All 22 families, their discovery location, their guided-run location and their honest state — the same matrix the PPR-001 evidence record carries.</p>
+${routeMatrixSection()}`,
+)}
+<h2>Where these facts come from</h2>
+<p>The machine capability manifest records each family's classification, gate (credential env-var NAME only, never a value) and availability sentence, reconciled against the validation corpus; the provider-level table and the disclosure rules live in <a href="/console/docs/AVAILABILITY.md">AVAILABILITY.md</a>, and the executed program behind every claim is inspectable in the <a href="/console/validation">Validation Lab</a>. A recorded gap stays a gap — never a silent pass.</p>
+<p class="muted">Continue discovery: <a href="/console/providers">providers &amp; capabilities</a> · <a href="/console/playground">the guided playground</a> (compose a run for any family) · <a href="/console/docs/AGENT-GUIDE.md">the agent integration guide</a>.</p>`;
+  return page(
+    { title: "Zeck — Capability catalog", activePath: "/console/catalog", mainContent: content },
+    ctx,
+  );
+}
+
+/**
+ * The guided safe sandbox start (PPR-001 required surface): the safety
+ * envelope — quotas, identity, expiry/reset, the synthetic-data policy
+ * and the console's hard sandbox limits — renders BEFORE the first
+ * execution, then the text-family composer carries the first run end to
+ * end through the EXISTING playground flow (GET review → governed POST
+ * → the run page). No new mutation path is introduced.
+ */
+async function guidedStartPage(
+  scope: string,
+  transport: SandboxGovernanceTransport | null,
+  ctx: HttpContext,
+): Promise<HandlerResult> {
+  const family = familyOf("text");
+  if (family === null) {
+    const content = `${pageHead({ title: "Guided sandbox start", path: "/console/start" })}
+${errorState(
+  "The text family is not recorded in the capability manifest",
+  "The guided start composes the manifest's recorded text family; the manifest this console projects carries no such family. The full catalog lists every family that does exist.",
+  "docs/developer/machine/capability-manifest.json",
+)}
+<p><a href="/console/catalog">Open the capability catalog</a></p>`;
+    return page(
+      { title: "Zeck — Guided sandbox start", activePath: "/console/start", mainContent: content },
+      ctx,
+    );
+  }
+  const idempotencyKey = `dash-${crypto.randomUUID()}`;
+  const defaults = defaultTaskFormValuesOf(family);
+  const values: Record<string, string> = {
+    applicationId: scope,
+    environmentId: "",
+    spendLimitDollars: "",
+    ...defaults,
+  };
+  const content = `${pageHead({
+    title: "Guided sandbox start",
+    path: "/console/start",
+    primaryActionHtml: '<a class="button-link" href="/console/catalog">Browse all 22 families</a>',
+  })}
+<p>One guided path from zero to an inspectable sandbox execution. The safety envelope renders first — you see every boundary before anything runs — then the composed synthetic text task executes end to end through the same governed public contract every production execution rides.</p>
+${guidedStartSteps()}
+<h2>The safety envelope, before the run</h2>
+${sandboxLimitsSection()}
+${await sandboxGovernanceSections(transport, ctx)}
+<h2>The task the first run carries</h2>
+<p class="muted">The manifest's recorded synthetic task shape for the text family — summarization over a synthetic quarterly report, editable within the recorded envelope below.</p>
+${playgroundTaskTable(family)}
+<h2>Compose the first run</h2>
+<p class="muted">${
+    scope.length > 0
+      ? `The application scope is prefilled with this console's bound scope (<span class="mono">${esc(scope)}</span>) — the governed scope the run and any spend belong to.`
+      : "The application scope field asks for the governed scope the run and any spend belong to — the same field every create surface carries; nothing else is needed before the first run."
+  } Review shows the exact request before it is submitted.</p>
+${playgroundComposerForm(family, values, {}, idempotencyKey)}
+<p class="muted">After the run lands, the result page opens with the full <strong>How Zeck did it</strong> hierarchy — understood task, plan, policy permission, route and verification — and the <a href="/console/validation">Validation Lab</a> shows the executed program behind the platform's claims.</p>`;
+  return page(
+    { title: "Zeck — Guided sandbox start", activePath: "/console/start", mainContent: content },
+    ctx,
+  );
+}
+
+/**
+ * The consolidated Trust & Limits entry (PPR-001 required surface): the
+ * one place policy, spend, the sandbox envelope and verification are
+ * discovered together. It LINKS the governing surfaces — it never
+ * re-decides a policy, re-computes a budget, re-states a quota or
+ * re-runs a verification (no second authority).
+ */
+function trustLimitsPage(ctx: HttpContext): HandlerResult {
+  const content = `${pageHead({
+    title: "Trust & Limits",
+    path: "/trust/limits",
+    primaryActionHtml:
+      '<a class="button-link primary" href="/console/start">Try it safely first</a>',
+  })}
+<p>The consolidated view of what governs every execution: the rules that admit work, the money that bounds it, the sandbox that isolates it and the verification that stands behind the result. Each entry opens the surface that OWNS its facts — policy, budgets, sandbox governance and verification stay exactly where the platform holds them, and this page adds no second authority.</p>
+${trustLimitsSection()}
+<h2>The sandbox envelope this console enforces</h2>
+<p class="muted">The hard limits every guided run from this console carries — the same envelope the guided start shows before the first run.</p>
+${sandboxLimitsSection()}
+<p class="muted">Related: <a href="/console/usage">usage &amp; economics</a> · <a href="/attention">the attention surface</a> (decisions and failed work that need you) · <a href="/console/docs/SANDBOX.md">the sandbox documentation</a>.</p>`;
+  return page(
+    { title: "Zeck — Trust & Limits", activePath: "/trust/limits", mainContent: content },
     ctx,
   );
 }
@@ -3912,13 +4088,14 @@ ${unavailableState(
 /** The catalog rows: every family the machine capability manifest records. */
 function playgroundFamilyRows(): string {
   return `<table class="data">
-  <thead><tr><th scope="col">Family</th><th scope="col">Classification</th><th scope="col">Recorded availability</th><th scope="col">Corpus tasks</th><th scope="col">Example</th></tr></thead>
+  <thead><tr><th scope="col">Family</th><th scope="col">Availability state</th><th scope="col">Classification</th><th scope="col">Recorded availability</th><th scope="col">Corpus tasks</th><th scope="col">Example</th></tr></thead>
   <tbody>${consoleFamilies()
     .map(
       (family) => `<tr>
       <td><a href="/console/playground/${encodeURIComponent(family.family)}">${esc(
         family.family,
       )}</a></td>
+      <td>${familyAvailabilityChip(family)}</td>
       <td>${classificationChip(family.classification)}</td>
       <td>${esc(family.availability)}</td>
       <td>${String(corpusTaskCountOf(family.family))}</td>
@@ -3948,7 +4125,7 @@ async function playgroundPage(ctx: HttpContext): Promise<HandlerResult> {
 </ol>
 <h2>Families</h2>
 ${playgroundFamilyRows()}
-<p class="muted">${split.runnable.length} families classify runnable (the integration path is live for any deployment exposing the public API); ${split.providerGated.length} classify provider-gated (completion requires provider capabilities that may be gated or absent — the gate is about the deployment's rails, never about your code). Families whose required capability has no candidate provider rail render an honest NOT RUN state on their page — never hidden, never faked.</p>
+<p class="muted">${split.runnable.length} families classify runnable (the integration path is live for any deployment exposing the public API); ${split.providerGated.length} classify provider-gated (completion requires provider capabilities that may be gated or absent — the gate is about the deployment's rails, never about your code). Families whose required capability has no candidate provider rail render an honest NOT RUN state on their page — never hidden, never faked. The <a href="/console/catalog">discovery-first capability catalog</a> carries every family's derived availability state in one place.</p>
 ${sandboxLimitsSection()}`;
   return page(
     { title: "Zeck — Playground", activePath: "/console/playground", mainContent: content },
@@ -6630,6 +6807,7 @@ export function createDashboardRoutes(
     wrap("GET", "/admin/environments", (ctx) => environmentsPage(client, ctx)),
     wrap("GET", "/admin/audit", (ctx) => auditPage(client, ctx)),
     wrap("GET", "/trust/evidence", (ctx) => trustEvidencePage(client, ctx)),
+    wrap("GET", "/trust/limits", (ctx) => trustLimitsPage(ctx)),
     wrap("GET", "/trust/lineage", (ctx) => trustLineagePage(client, ctx)),
     wrap("GET", "/command", (ctx) => commandPage(client, ctx)),
     wrap("GET", "/attention", (ctx) => attentionPage(client, ctx)),
@@ -6639,6 +6817,12 @@ export function createDashboardRoutes(
     // ones: keys/environments/usage must win over :applicationId.
     wrap("GET", "/console", (ctx) => consoleHomePage(scope, ctx)),
     wrap("GET", "/console/quickstart", (ctx) => quickstartPage(scope, ctx)),
+    // PPR-001 — the discovery surfaces: the 22-family capability catalog
+    // and the guided safe sandbox start (the safety envelope renders
+    // BEFORE the first execution; the run itself rides the EXISTING
+    // playground GET-review/POST flow — no new mutation path).
+    wrap("GET", "/console/catalog", (ctx) => catalogPage(ctx)),
+    wrap("GET", "/console/start", (ctx) => guidedStartPage(scope, sandboxGovernance, ctx)),
     wrap("GET", "/console/applications", (ctx) => applicationsPage(client, scope, ctx)),
     wrap("GET", "/console/applications/keys", (ctx) => credentialsPage(credentials, scope, ctx)),
     // DEP-011: the credential lifecycle's governed POSTs (issue → show-once

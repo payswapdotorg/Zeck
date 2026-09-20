@@ -784,7 +784,7 @@ dialog.sheet form.dialog-actions { display: flex; flex-wrap: wrap; gap: var(--sp
 /* --- Breadcrumb + page-title treatment (v2 §2, spec §2): contextual
  * orientation above the one h1, with room for one dominant primary
  * action. */
-.page-head { display: grid; gap: var(--space-2); margin-bottom: var(--space-4); }
+.page-head { display: grid; gap: var(--space-2); margin-bottom: var(--space-5); }
 .breadcrumb { font-size: 0.875rem; }
 .breadcrumb ol { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; align-items: baseline; }
 .breadcrumb li { display: flex; gap: var(--space-2); align-items: baseline; }
@@ -832,6 +832,120 @@ a.button-link.danger { color: var(--status-error); border-color: var(--status-er
 .confirmation .form-actions { margin-top: var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
 .confirmation button.primary { background: var(--status-error); border-color: var(--status-error); color: #ffffff; }
 
+/* ===========================================================================
+ * PPR-001 — discovery-first console + ShareNet-inspired visual refinement
+ * (interaction grammar only: generous whitespace, calm neutral surfaces,
+ * one dominant action, state-first hierarchy, quiet persistent navigation,
+ * mobile bottom navigation, active-item treatment, progressive disclosure,
+ * restrained semantic status color, reduced-motion support — which the
+ * existing global motion gate already honors).
+ * =========================================================================== */
+
+/* --- The discovery hero: the what-Zeck-does statement + the ONE dominant action. */
+.discovery-hero {
+  padding: var(--space-6) var(--space-6);
+  margin-bottom: var(--space-6);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+.discovery-hero .hero-kicker {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.discovery-hero h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.625rem;
+  line-height: 1.3;
+  max-width: 40rem;
+}
+.discovery-hero .hero-lead {
+  margin: 0 0 var(--space-5);
+  color: var(--text-secondary);
+  max-width: 46rem;
+}
+.discovery-hero .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+}
+/* The one dominant action: the guided sandbox start (larger, heavier,
+ * calm — everything else on the page stays a quiet link). */
+a.button-link.hero-cta {
+  padding: var(--space-3) var(--space-5);
+  font-weight: 600;
+}
+a.button-link.hero-cta .muted {
+  display: block;
+  font-weight: 400;
+  font-size: 0.875rem;
+  margin-top: var(--space-1);
+}
+.discovery-hero .hero-facts {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-6);
+  margin: 0;
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+.discovery-hero .hero-facts li {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* --- The discovery sections (generous vertical rhythm between the
+ * first-screen answers; calm neutral surfaces, no new color). */
+.discovery-section { margin: var(--space-6) 0; }
+.discovery-section > h2 { margin: 0 0 var(--space-2); }
+.discovery-section > p { max-width: 46rem; }
+
+/* --- The 22-family availability grid (state/outcome-first: the family
+ * name and its honest state chip on one calm row). */
+.availability-grid {
+  list-style: none;
+  margin: var(--space-3) 0 var(--space-4);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2) var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.availability-grid li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  padding: var(--space-2) var(--space-3);
+}
+.availability-grid li > a { flex: 1 1 auto; min-width: 0; font-weight: 600; text-decoration: none; }
+.availability-grid li > a:hover { text-decoration: underline; }
+.availability-grid li .chip { flex: none; }
+
+/* --- Restrained semantic availability states (symbol + text in the
+ * markup — color is the secondary signal, never the only one). */
+.chip.state-available { color: var(--status-ok); border-color: var(--status-ok); background: var(--success-bg); }
+.chip.state-requires-access { color: var(--status-info); border-color: var(--status-info); }
+.chip.state-provider-gated { color: var(--status-warn); border-color: var(--status-warn); background: var(--warning-bg); }
+.chip.state-not-run { color: var(--text-secondary); border-color: var(--border-strong); background: var(--surface-sunken); }
+
+/* --- The mobile bottom navigation bar (the mobile nav variant). Hidden
+ * on the tablet/desktop classes; the fixed bar renders only for the
+ * mobile width, with touch-safe padding and the same active-item
+ * treatment as the desktop sidebar. */
+.mobile-nav { display: none; }
+
 @media (min-width: 1025px) {
   .app-shell {
     grid-template-columns: var(--sidebar-width) 1fr;
@@ -866,6 +980,43 @@ a.button-link.danger { color: var(--status-error); border-color: var(--status-er
   .command-bar { flex-basis: 100%; }
   h1 { font-size: 1.25rem; }
   .timeline li { grid-template-columns: 1fr; gap: var(--space-1); }
+  /* PPR-001: the mobile bottom navigation variant renders here — the
+   * quiet persistent primary bar (fixed, touch-safe, active-item
+   * treatment); the page body reserves the bar's height so no content
+   * hides behind it. */
+  .mobile-nav {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    background: var(--surface-raised);
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--space-1) max(var(--space-2), env(safe-area-inset-left)) max(var(--space-2), env(safe-area-inset-bottom)) max(var(--space-2), env(safe-area-inset-right));
+  }
+  .mobile-nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
+  .mobile-nav ul li { flex: 1 1 0; min-width: 0; }
+  .mobile-nav ul li a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--touch-target);
+    padding: var(--space-2) var(--space-1);
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+  }
+  .mobile-nav ul li a[aria-current="page"] {
+    color: var(--text-primary);
+    background: var(--surface-sunken);
+    box-shadow: inset 0 -2px 0 var(--focus-ring);
+  }
+  body { padding-bottom: calc(var(--touch-target) + var(--space-4)); }
+  .discovery-hero { padding: var(--space-4) var(--space-4); }
+  .discovery-hero h2 { font-size: 1.375rem; }
   .app-nav > a, .app-nav summary, .app-nav ul li a,
   .app-header button, .app-header input, .app-header select,
   .app-main button, .app-main input, .app-main select, .app-main textarea, .app-main summary,
