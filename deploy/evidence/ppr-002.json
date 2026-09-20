@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-002",
+  "title": "Live free-tier-first public preview deployment — repository-side work: provider ledger refresh + topology support + preflight (verification evidence record)",
+  "recordedBy": "PPR-002 implementation worker (this session)",
+  "environment": "sandboxed worker pod (no cloud credentials); git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-002-public-preview-deployment, base 0c57491b586719a34c245c4df0109c34e4c2a6f5 (verified with git rev-parse before branching). TWO REAL local PostgreSQL 16.13 servers (CognyHub portable user-space binaries, sha256-verified download, trust auth for loopback, credential-less URLs): 127.0.0.1:54329 — the driver rail (ZECK_PG_ADMIN_URL / ZECK_E2E_PG_ADMIN_URL / ZECK_DRILL_PG_ADMIN_URL) — and 127.0.0.1:54331 — the standard battery rail (ZECK_PG_TEST_URL; 16 because tests/integration/postgres/pg-database-port.test.ts pins the server major at 16) — so every PG-backed rail runs FOR REAL; every live-provider rail is honestly NOT RUN with its owner below.",
+  "date": "2026-09-20",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The operator's live credentials (Vercel, Neon, Cloudflare R2/Queues/Workflows, Upstash) exist only on the Tech Lead's machine — this work order's deliverable is everything the repository needs so the Lead's credentialed run is a single clean execution: the refreshed provider-tier ledger (asOf 2026-09-20, per-entry asOf/source/verification), the free-tier preview topology support in the manifest set, the preflight tool heading the provisioning order, the honest-skip test contract for manifest-refresh branches, and this evidence record. Zero live cost consumed.",
+  "requiredFactReconciliation": {
+    "baseline": "docs/POST-RELEASE-PRODUCTIZATION-PLAN.md PPR-002 deployment plan (2026-09-20 baseline to record)",
+    "entries": [
+      {
+        "fact": "Vercel Hobby $0 personal/non-commercial; commercial production needs a permitted paid plan",
+        "recorded": "deploy/manifests/provider-tiers.json vercel entry: price limit \"$0 (Hobby) for personal/non-commercial use\", commercial-use limit \"PROHIBITED — personal/non-commercial development and preview only\", terms naming Vercel Pro/alternate host",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts (commercial boundary test: price contains $0, terms contain non-commercial); deploy/manifests/environments.json preview commercialBoundary annotation"
+      },
+      {
+        "fact": "Neon Free 100 projects / 100 CU-hours / 0.5 GB storage / 10 branches per project",
+        "recorded": "deploy/manifests/provider-tiers.json neon entry limits: projects/compute/storage/branches",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts (Neon refreshed-baseline test pinning all four values)"
+      },
+      {
+        "fact": "Cloudflare Workers Free 100k requests/day + 10 ms CPU",
+        "recorded": "deploy/manifests/provider-tiers.json cloudflare-queues entry limit workers-platform-allowance (the queue consumer runs on Workers Free)",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts (Queues/Workflows Workers-Free test)"
+      },
+      {
+        "fact": "R2 Free 10 GB-month storage / 1M Class A / 10M Class B / free egress",
+        "recorded": "deploy/manifests/provider-tiers.json cloudflare-r2 entry limits (unchanged values, re-recorded with per-entry asOf/source/verification)",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts (per-entry fields test)"
+      },
+      {
+        "fact": "Queues on Workers Free 10k ops/day + 24h free retention",
+        "recorded": "deploy/manifests/provider-tiers.json cloudflare-queues entry: tierClass provider-free-tier (moved from usage-based-no-minimum), tierName \"Cloudflare Queues on Workers Free\", limits operations/message-retention",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts + tests/unit/deployment/runtime-identity.test.ts (tier-class pin moved with the recorded fact)"
+      },
+      {
+        "fact": "Workflows on Workers Free 100k requests/day / 3k steps/day / 1 GB-month storage",
+        "recorded": "deploy/manifests/provider-tiers.json cloudflare-workflows entry: tierClass provider-free-tier (moved from usage-based-no-minimum), tierName \"Cloudflare Workflows on Workers Free\", limits requests/steps/storage",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts + tests/unit/deployment/runtime-identity.test.ts"
+      },
+      {
+        "fact": "Upstash Redis Free 256 MB / 10 GB monthly bandwidth / 500K monthly commands",
+        "recorded": "deploy/manifests/provider-tiers.json upstash-redis entry limits: max-data-size/commands/bandwidth (commands changed from 10,000/day to 500,000/month; bandwidth added)",
+        "evidence": "tests/unit/deployment/provider-tiers.test.ts (Upstash refreshed-baseline test)"
+      }
+    ],
+    "exhaustionDegradationUpgradeExitPreserved": "every tier entry keeps its exhaustionBehavior.mode equal to the providers.json declared degradation mode and its upgradeExit note — pinned by the DEP-001 block of tests/unit/deployment/provider-tiers.test.ts (unchanged, all green)",
+    "verificationStatus": "recorded-not-live-verified (top level and every entry) — the Lead's credentialed re-run re-verifies each fact against its per-entry source and upgrades the status; drift is an operational ledger update, never a silent assumption"
+  },
+  "notRun": [
+    {
+      "check": "live verification of the recorded provider free-tier facts against the provider consoles/quota APIs (Vercel, Neon, Cloudflare R2/Queues/Workflows, Upstash)",
+      "reason": "No cloud credentials exist in the worker pod. The ledger records per-entry sources (the providers' public pricing/limits pages at the 2026-09-20 baseline); the preflight surfaces exactly this boundary with its owner.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "live-provider resource creation (Neon project/branch, R2 bucket, Cloudflare Queues/Workflows, Upstash, Vercel project) and the preview deployment itself (public URL, DNS, TLS)",
+      "reason": "Account-plane work gated on credential PRESENCE (never values); the preflight and the provision plan record every provider step not-run with this owner. The repository side (deterministic names, plan rows, secret-reference scaffold, CI variable skeleton) is complete and verified locally.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "public-internet smoke of the deployed preview plane (deploy:public-smoke --environment preview --url https://<preview-host>) and the /health + /identity verification of the live plane",
+      "reason": "No live deployed plane exists in the worker pod. The --url mode, the exact-revision identity attest, the fail-closed health semantics and the full route-table coverage are verified over real local plane processes (see the verifiedLocally battery entries).",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "first sandbox execution on the deployed preview plane (a real user's first governed execution)",
+      "reason": "Requires the live plane with bound capabilities; the repository side (sandbox-account records projection, the public data-policy artifact route, the honest capability-unbound boundaries) is verified locally.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "browser journey acceptance against the deployed URL (the PPR-003 harness: discover/capability/sandbox/start/inspect/validate/compare/export/trust/agent/production, desktop/tablet/mobile + a11y variants)",
+      "reason": "PPR-003 owns the harness and it runs against the live URL; no live URL exists in the worker pod.",
+      "owner": "Lead credentialed re-run (with PPR-003)"
+    },
+    {
+      "check": "live provider spend/quota meter parity (Neon / Cloudflare / Upstash dashboards and metering APIs) as quota-fence input",
+      "reason": "No cloud credentials in the worker pod. The fence evaluates the authoritative stores locally (the driver's guardrails segment ran for real against the local PostgreSQL); live provider-meter parity is the credentialed operator's re-verification.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "the full both-directions rollback re-attestation drills at THIS delivery revision (e2e driver + production drill)",
+      "reason": "The drills require a second revision with byte-identical deploy/manifests; this delivery legitimately changes the manifests (the PPR-002 ledger refresh is the first work order to do so), so no such ancestor exists. The drivers record their documented honest skip (skipped: true with the exact reason) instead of fabricating one — both outcomes are now pinned by the extended integration tests, and BOTH drivers still ran their full chains three consecutive times each on this branch (exit 0, valid=true, every negative refused). The full rollback drills re-engage on the next manifest-stable revision.",
+      "owner": "the Lead's next manifest-stable delivery (the drivers' documented honest-skip path)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Install",
+      "command": "bun install",
+      "evidence": "exit 0 — 116 packages installed [1119ms] at the branch working tree"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit), 0 errors at the delivery head (re-run after every later edit, including the stage-2 test-contract fix — still exit 0, silent). One intermediate run early in stage 1 surfaced 4 TS2532 errors in the new preflight unit test (noUncheckedIndexedAccess on synthetic-ledger mutations) — fixed with the repository's established first-element guard pattern before the first recorded run."
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "exit 0 — 68 warnings / 8 infos / 0 errors: the recorded house baseline exactly (DEP-040 recorded the identical 68w/8i/0e). The 3 formatter errors biome initially reported on the new files (import organization) were fixed with `bunx biome check --write` on exactly the touched files before the first recorded run; re-run at the delivery state after the stage-2 edits: still 68w/8i/0e, exit 0, zero diagnostics on any touched file."
+    },
+    {
+      "check": "Unit suite",
+      "command": "bun run test:unit",
+      "evidence": "exit 0 — Test Files 350 passed (350); Tests 6186 passed (6186); 0 failures; ~100s. Base 0c57491 measured in a clean detached worktree with the shared node_modules: 349 files / 6156 tests — the delta is exactly this work order's additions: +1 file (tests/unit/deployment/preflight.test.ts, 23 tests) and +7 tests in the extended tests/unit/deployment/provider-tiers.test.ts PPR-002 block."
+    },
+    {
+      "check": "The preflight CLI over the real checkout (the new PPR-002 provisioning steps 1-2)",
+      "command": "bun deploy/preflight.ts --environment preview; bun deploy/preflight.ts --environment local; the hostile negative: the same local invocation with ZECK_PG_ADMIN_URL set to a credential-carrying postgres URL (scheme://user:password@host — the exact hostile probe pinned by tests/integration/deployment/preflight-cli.test.ts)",
+      "evidence": "preview: exit 0, passed=true, configurationGate.passed=true, 6 not-run credential rows (vercel-project/neon-branch/r2-bucket/cf-queue/cf-workflow/upstash-redis) each with owner \"Lead credentialed re-run\" + 1 local-self-hosted row (container-runner), tierReconciliation ledgerAsOf=2026-09-20 with 8 entries and zero problems, commercialBoundary carried from providers.json. local: exit 0, 4 local-self-hosted rows, 0 not-run. Hostile negative (credential-carrying admin URL): exit 1, passed=false, the problem names ZECK_PG_ADMIN_URL and the credential value is never rendered anywhere in the report."
+    },
+    {
+      "check": "Architecture + discrimination battery — house convention (no rails)",
+      "command": "bun run test:architecture",
+      "evidence": "exit 0 — Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 51.5s. The skip is the PG-gated budgets-overspend discrimination suite (no ZECK_PG_TEST_URL in the house convention). Zero new diagnostics on any deploy/ surface (the d02 B5 URL-credential scan covers the new deploy/preflight.ts — clean)."
+    },
+    {
+      "check": "Architecture + discrimination battery — the real 16.13 rail (nothing skips)",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bun run test:architecture",
+      "evidence": "exit 0 — Test Files 140 passed (140); Tests 2240 passed (2240); 0 failures, 0 skipped; 57.8s."
+    },
+    {
+      "check": "Integration battery — house convention (the driver's rail set; the standard PG suites skip-and-count exactly as every recorded battery)",
+      "command": "bun run test:integration",
+      "evidence": "exit 0 — Test Files 25 passed | 146 skipped (171); Tests 284 passed | 203 skipped (487); 63.1s. tests/integration/deployment/preflight-cli.test.ts ran green ungated inside this battery (3/3) and standalone (3/3, 228ms)."
+    },
+    {
+      "check": "Integration battery — BOTH real rails (the honest full-parallel truth)",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres ZECK_E2E_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres bun run test:integration",
+      "evidence": "exit 1 — Test Files 1 failed | 169 passed | 1 skipped (171); Tests 1 failed | 1264 passed | 23 skipped (1288); ~394s. The single failure is the PRE-EXISTING base defect DEP-040 recorded as its DEFECT-A (outside this work order's writable surface, reproduced identically): tests/integration/postgres/audit-schema.test.ts '0032 applies forward cleanly' pins forward.applied == [v31 isolation_profiles, v32 audit_compliance] from a 0030-converged base while the shipped set now also carries 0033_application_credentials + 0034_sandbox_governance, so the real result is [31,32,33,34] and the test fails on ANY real server — hidden while the suites ran as skips. Suggested one-line fix stays the Lead's call (extend the expected list). The DEP-040 DEFECT-B fixture race (bootstrap-smoke ⇄ release-cli sharing zeck_local under file parallelism) did NOT reproduce in this environment: both files ran green in BOTH railed runs here — recorded as timing-dependent, not claimed fixed. An intermediate railed run earlier in stage 2 (before the DEFECT-1 totals-pin fix below) additionally failed tests/integration/deployment/e2e-driver.test.ts run-1 on the negativesTotal pin — fixed within this work order (see notes), after which the file ran 5/5 green inside the battery."
+    },
+    {
+      "check": "The DEP-040 end-to-end driver — the LOCAL-RAIL DRIVER RUN of record (every step a real subprocess, real plane processes, real HTTP, real PostgreSQL 16.13)",
+      "command": "ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres bun deploy/e2e-validate.ts",
+      "evidence": "exit 0, valid=true, problems=[] at revision e7c3622 (the branch HEAD at run time; the final delivery head differs from it only in this record's own text and the two DEFECT-1 test-file fixes — no file the driver reads changed between the two) — totals 32 steps planned / 32 passed / 0 failed: 20 positives passed + 12 negatives each REFUSED with its exact reason, durationMs 9165. The operator order composed: validate (valid=true) → bootstrap (zeck_local created; second run already-converged) → provision (plan + converge; the tool's own 6 live-provider not-run rows with the Lead owner) → migrate (33 shipped migrations) → identity (byte-identical before/after — identityStability.stableAcrossChain=true) → public-smoke (strict ready-authority pass: /health 200, identityVerified=true, route coverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200, problems=[]) → guardrails (baseline under-threshold; the at-limit DENY, malformed-override abort and mutated-manifest sensitivity all refused as specified) → release (record/gate/promote with the pre-promotion plane attestation; the wrong-revision/unreachable/tampered promote refusals) → teardown (classification refusals + the real local teardown; zeck_local verified dropped). THE HONEST SKIP (the PPR-002 case): rollbackTargetRevision is absent and the step release-rollback-drills is recorded with skipped:true and the exact reason 'no ancestor revision with byte-identical deploy/manifests exists for the rollback target (the drill requires a revision pair whose identity documents differ only by revision)' — the consolidate of the rollback drills this branch cannot run, fabricated revisions being unrepresentable. The driver's notRun registry carries 6 boundaries with owners; facts.liveCostConsumed = 'zero (no live-provider operation was executed from this environment)'."
+    },
+    {
+      "check": "The e2e-driver integration contract (three consecutive full runs + the ungated preflight negatives)",
+      "command": "ZECK_E2E_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres bunx vitest run tests/integration/deployment/e2e-driver.test.ts",
+      "evidence": "5/5 tests pass: the full-driver-fact test (totals, revision equality, route counts 26/18/7/1, byte-identical identity before/after, the dead-port facts, the promote refusals, the verified promotion, the honest-skip step pinned with its exact reason + rollbackTargetRevision asserted undefined, the guardrail facts, the teardown facts, the notRun registry, the tool's live-provider registry) + the plane-boot race pin: THREE consecutive full driver runs each exit 0 + valid=true (~9s each — the driver waits for the plane's BOOT DOCUMENT, never a bare /health 200) + the two ungated preflight negatives (no ZECK_PG_ADMIN_URL → exit 2 with the exact reason; a credential-carrying URL → exit 2 URL-hygiene refusal). The file also ran green WITHIN the full railed integration battery."
+    },
+    {
+      "check": "The DEP-043 production drill over the same local rails (the honest-skip path on a manifest-refresh branch)",
+      "command": "ZECK_DRILL_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres bunx vitest run tests/integration/deployment/production-drill.test.ts",
+      "evidence": "5/5 tests pass, exit 0 — the full drill-fact test (all four drills: promote→verify→rollback with the honest-skip branch pinned, backup/restore round-trip with digest verification, provider-exit postures, teardown classification guards) + THREE consecutive full drill runs each exit 0 + valid=true (~9s each). The rollback both-directions sub-drill records the documented honest skip at this revision (see the driver entry above); every other drill ran in full."
+    },
+    {
+      "check": "The full suite — house convention, the plain Lead-reproducible run (no env vars)",
+      "command": "bun run test",
+      "evidence": "exit 0 — Test Files 514 passed | 147 skipped (661); Tests 8700 passed | 207 skipped (8907); 0 failures; 209.2s. Base 0c57491 measured in a clean detached worktree: 512 passed | 147 skipped (659) files and 8667 passed | 207 skipped (8874) tests — the delta is exactly this work order's additions: +2 files (tests/unit/deployment/preflight.test.ts, tests/integration/deployment/preflight-cli.test.ts) and +33 tests (23 + 7 + 3), all passed."
+    },
+    {
+      "check": "Governance check",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+    },
+    {
+      "check": "deploy:validate at the delivery head",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0 — valid=true, problems=[] (4 environments / 8 providers / 12 resource kinds / 82 variables / 33 migrations / 8 provider-tier entries / providerTierVerification stays 'recorded-not-live-verified' — the honest vocabulary / 3 sandbox accounts / 14 release gate kinds / 3 quota guards)"
+    }
+  ],
+  "notes": [
+    "TOPOLOGY DELTA (what changed vs the 2026-09-16 ledger): every entry now carries per-entry asOf/source/verification; Neon limits concretized to 100 projects / 100 CU-hours / 0.5 GB / 10 branches per project (was bounded prose); Cloudflare Queues moved from doctrine position 2 (usage-based) to position 1 (provider-free-tier, Workers Free allowance: 10,000 ops/day + 24h free retention, platform allowance 100k req/day + 10ms CPU recorded on the entry); Cloudflare Workflows likewise moved to position 1 (100k requests/day, 3k steps/day, 1 GB-month); Upstash commands changed from 10,000/day to 500,000/month with 10 GB monthly bandwidth added; Vercel gained the explicit $0 price limit (commercial-use PROHIBITED unchanged); R2/runner/OTLP values unchanged, re-recorded with per-entry fields. All exhaustion/degradation/upgrade/exit behavior preserved.",
+    "DEFECT-1 (found and fixed within the work order's boundaries — tests/integration/deployment/e2e-driver.test.ts + production-drill.test.ts): BOTH driver integration tests hard-required the non-skipped rollback both-directions drills in TWO places each — (a) stepOf on the drill steps + skipped toBeUndefined + rollbackTargetRevision 40-hex, and (b) the totals pin negativesTotal >= 13. Reproduction: run either file with rails on a branch whose HEAD legitimately changes deploy/manifests — (a) throws 'the driver report carries the step release-rollback-prerepoint-refused' because the drivers correctly record their documented honest-skip step instead; (b) fails 'expected 12 to be greater than or equal to 13' because the skipped rollback segment consolidates its steps (the prerepoint refusal — the 13th negative — is replaced by the skip). Both reproduced live in this session's first railed run (the (b) form on e2e-driver run 1 of 3). Root cause: a pre-existing test-contract gap, NOT a driver defect — the drivers (DEP-040/DEP-043) implement the honest-skip path for exactly this case, but the tests pinned only the drill-present outcome; the gap was invisible while every recorded delivery kept deploy/manifests byte-identical to base (DEP-040's own merge notes say so explicitly). Classification: test-contract defect in the deploy test surface. Fix: both tests branch on rollbackTargetRevision — when present (manifest-stable revisions) the ORIGINAL full both-directions assertions AND the >= 13 totals pin run unchanged; when absent the honest-skip step is pinned with its exact reason, rollbackTargetRevision is asserted undefined, and the totals pin accepts 12. Regression pin: the extended assertions themselves; on manifest-stable checkouts the full path is still strictly required.",
+    "PRE-EXISTING BASE DEFECT (NOT fixed here — outside this work order's writable surface, reported for the Lead): tests/integration/postgres/audit-schema.test.ts '0032 applies forward cleanly' pins forward.applied == [v31, v32] while the shipped migration set carries 0033_application_credentials + 0034_sandbox_governance, so the real result on any real server is [31,32,33,34] — reproduced identically to DEP-040's DEFECT-A record (1 failed test of 10 in the file; deterministic). Suggested one-line fix (Lead's call): extend the expected list with the two later rows. The DEP-040 DEFECT-B fixture race (bootstrap-smoke ⇄ release-cli sharing the zeck_local fixture on one ZECK_PG_TEST_URL server under vitest file parallelism) did NOT reproduce in this environment — both files green in both railed runs — recorded as timing-dependent, not claimed fixed.",
+    "ENVIRONMENT FACTS (recorded for the Lead): (1) this worker pod blocks the `ln -s` shell command ('Creating symbolic links is not allowed') while the bun runtime's symlink(2) succeeds — the drivers' symlinkSync(node_modules) paths (tamper-drill archives, rollback base worktrees) run fine under bun; shell-level symlink provisioning would need bun. No chain code was changed for this. (2) No system PostgreSQL exists in the pod; the rails are CognyHub portable PostgreSQL 16.13 user-space builds (sha256-verified against the published digest: bb8dba9ca0f04e5cc6e21a13a41a3f111e030ef6c3b41a872e32c6f9e5a39331), trust auth for loopback, credential-less URLs — mirroring the DEP-040 portable-binary precedent (theseus-rs binaries in that pod; the public theseus-rs repo was not resolvable from this pod, so the sha256-verified CognyHub build of the same pinned major was used). The rails stand in for the Neon rail LOCALLY only — not a live-provider verification and not recorded as one.",
+    "Merge notes for the Lead — the exact credentialed run sequence (operator order): (1) bun deploy/preflight.ts --environment preview --branch <branch>; (2) re-verify each ledger entry against its per-entry source, upgrade verification to live-verified, drift → update the ledger and keep bun run deploy:validate green; (3) ZECK_ENVIRONMENT=preview bun run deploy:provision -- --environment preview --branch <branch>; (4) create the provider resources with the deterministic names in the order Neon project/branch → migrations (deploy:migrate) → R2 bucket → cf-queue → cf-workflow → Upstash → governed runner; (5) run deploy/api.ts on Vercel's Bun runtime (Hobby, non-commercial) or an alternate host; (6) bun run deploy:identity -- --environment preview --branch <branch>; (7) bun run deploy:public-smoke -- --environment preview --branch <branch> --url https://<preview-host>; (8) bun run deploy:release -- record --environment preview (gate/promote as governed); (9) first sandbox execution on the live plane; (10) validation rerun (bun run test at the deployed revision); (11) browser journey acceptance (the PPR-003 harness).",
+    "Surface delta: new files deploy/preflight.ts, tests/unit/deployment/preflight.test.ts, tests/integration/deployment/preflight-cli.test.ts, deploy/evidence/ppr-002.json (this record); modified deploy/manifests/provider-tiers.json, deploy/manifests/environments.json, deploy/provision.ts (export-only change: the credential mapping + presence helper shared with the preflight), deploy/PUBLIC-DEPLOYMENT.md (§2 table + §3.2 step 0 + §12), deploy/README.md (layout + ledger paragraph), tests/unit/deployment/provider-tiers.test.ts (PPR-002 block), tests/unit/deployment/runtime-identity.test.ts (tier-class pin moved with the refreshed fact), tests/integration/deployment/e2e-driver.test.ts + tests/integration/deployment/production-drill.test.ts (DEFECT-1 fix). No src/**, apps/dashboard/**, sdk/**, examples/**, docs/developer/** or spec/** file touched; no package.json script added (the preflight runs as `bun deploy/preflight.ts`, following the DEP-040 precedent).",
+    "Zero live cost consumed: no live-provider operation was executed from this environment (the notRun registry is the recorded boundary)."
+  ]
+}

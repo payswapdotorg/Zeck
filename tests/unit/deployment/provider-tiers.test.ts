@@ -21,9 +21,21 @@
  *    degradation mode, an empty limits array, a bad asOf date and an
  *    unknown verification status are each rejected with the exact
  *    problem.
+ *
+ * Proves the PPR-002 refresh contract (2026-09-20 baseline):
+ *  - every entry carries its own asOf, source (public documentation
+ *    URL, or repository contract path for repository-defined entries)
+ *    and verification status;
+ *  - the refreshed free-tier facts are recorded (Neon 100 projects /
+ *    100 CU-hours / 0.5 GB / 10 branches; Queues + Workflows on the
+ *    Workers Free allowances at doctrine position 1; Upstash 256 MB /
+ *    500K monthly commands / 10 GB monthly bandwidth; Vercel $0 with
+ *    the commercial-use restriction);
+ *  - the commercial boundary is recorded on the delivery tier and
+ *    the preview environment manifest.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
@@ -265,5 +277,108 @@ describe("the ledger fails closed on synthetic mutations", () => {
       }),
     );
     expect(problems.join("\n")).toContain("disagrees with providers.json");
+  });
+});
+
+describe("the PPR-002 refresh contract (2026-09-20 baseline)", () => {
+  interface RawTierEntry {
+    readonly provider: string;
+    readonly asOf?: unknown;
+    readonly source?: unknown;
+    readonly verification?: unknown;
+  }
+
+  function rawTiers(): RawTierEntry[] {
+    const document = JSON.parse(realLedgerSource()) as { tiers: RawTierEntry[] };
+    return document.tiers;
+  }
+
+  test("every entry carries its own asOf, source and verification status", () => {
+    for (const entry of rawTiers()) {
+      expect(typeof entry.asOf).toBe("string");
+      expect(entry.asOf).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(entry.asOf).toBe("2026-09-20");
+      expect(typeof entry.source).toBe("string");
+      expect((entry.source as string).length).toBeGreaterThan(0);
+      expect(["live-verified", "recorded-not-live-verified"]).toContain(entry.verification);
+    }
+  });
+
+  test("external providers cite public documentation URLs; repository-defined entries cite repository contracts", () => {
+    const repositoryRoot = resolve(REPO_ROOT);
+    for (const entry of rawTiers()) {
+      const source = String(entry.source);
+      if (entry.provider === "zeck-container-runner" || entry.provider === "otel-export") {
+        expect(source).not.toMatch(/^https?:\/\//);
+        expect(existsSync(join(repositoryRoot, source))).toBe(true);
+      } else {
+        expect(source).toMatch(/^https?:\/\//);
+      }
+    }
+  });
+
+  test("Neon Free records the refreshed baseline: 100 projects / 100 CU-hours / 0.5 GB / 10 branches", () => {
+    const ledger = parseLedger(realLedgerSource());
+    const neon = tierOfProvider(ledger, "neon");
+    expect(neon?.selectedTier.tierClass).toBe("provider-free-tier");
+    const metrics = new Map(neon?.limits.map((limit) => [limit.metric, limit.value]));
+    expect(metrics.get("projects")).toContain("100");
+    expect(metrics.get("compute")).toContain("100 CU-hours");
+    expect(metrics.get("storage")).toContain("0.5 GB");
+    expect(metrics.get("branches")).toContain("10 branches");
+  });
+
+  test("Queues and Workflows ride the Workers Free allowances (doctrine position 1)", () => {
+    const ledger = parseLedger(realLedgerSource());
+    const queues = tierOfProvider(ledger, "cloudflare-queues");
+    expect(queues?.selectedTier.tierClass).toBe("provider-free-tier");
+    expect(queues?.selectedTier.tierName).toContain("Workers Free");
+    const queueMetrics = new Map(queues?.limits.map((limit) => [limit.metric, limit.value]));
+    expect(queueMetrics.get("operations")).toContain("10,000");
+    expect(queueMetrics.get("message-retention")).toContain("24 hours");
+
+    const workflows = tierOfProvider(ledger, "cloudflare-workflows");
+    expect(workflows?.selectedTier.tierClass).toBe("provider-free-tier");
+    expect(workflows?.selectedTier.tierName).toContain("Workers Free");
+    const workflowMetrics = new Map(workflows?.limits.map((limit) => [limit.metric, limit.value]));
+    expect(workflowMetrics.get("requests")).toContain("100,000");
+    expect(workflowMetrics.get("steps")).toContain("3,000");
+    expect(workflowMetrics.get("storage")).toContain("1 GB-month");
+  });
+
+  test("Upstash Redis Free records the refreshed baseline: 256 MB / 500K monthly commands / 10 GB monthly bandwidth", () => {
+    const ledger = parseLedger(realLedgerSource());
+    const upstash = tierOfProvider(ledger, "upstash-redis");
+    expect(upstash?.selectedTier.tierClass).toBe("provider-free-tier");
+    const metrics = new Map(upstash?.limits.map((limit) => [limit.metric, limit.value]));
+    expect(metrics.get("max-data-size")).toContain("256 MB");
+    expect(metrics.get("commands")).toContain("500,000");
+    expect(metrics.get("commands")).toContain("month");
+    expect(metrics.get("bandwidth")).toContain("10 GB");
+  });
+
+  test("the commercial boundary is recorded on the delivery tier and the preview environment", () => {
+    const ledger = parseLedger(realLedgerSource());
+    const vercel = tierOfProvider(ledger, "vercel");
+    const price = vercel?.limits.find((limit) => limit.metric === "price");
+    expect(price?.value).toContain("$0");
+    expect(vercel?.terms).toContain("non-commercial");
+
+    // The preview environment manifest carries the explicit boundary
+    // annotation (read raw: the loader ignores annotation fields).
+    const environments = JSON.parse(
+      readFileSync(join(REPO_ROOT, "deploy", "manifests", "environments.json"), "utf8"),
+    ) as { environments: { preview: { commercialBoundary?: string } } };
+    const boundary = environments.environments.preview.commercialBoundary;
+    expect(typeof boundary).toBe("string");
+    expect(boundary).toContain("non-commercial");
+    expect(boundary).toContain("commercial production");
+  });
+
+  test("the refreshed ledger still loads against the real manifest set (structure preserved)", () => {
+    // The exhaustion/degradation/upgrade/exit behavior fields are
+    // preserved by the refresh — pinned by the DEP-001 block above;
+    // this pins that the refresh did not break the parse itself.
+    expect(() => parseLedger(realLedgerSource())).not.toThrow();
   });
 });

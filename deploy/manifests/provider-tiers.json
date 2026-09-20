@@ -1,21 +1,24 @@
 {
   "schemaVersion": 1,
-  "description": "Zeck free-tier-first provider topology ledger (DEP-001). Records, for every provider in providers.json, the tier the public deployment bootstrap selects under the roadmap doctrine order (provider free tier -> usage-based/no-minimum -> low fixed-cost managed -> paid only where required), the CURRENT limits/terms as operational constraints, the degradation path on exhaustion/outage, and the explicit upgrade/exit note. Limits are external facts recorded with an asOf date and a verification status; they are NEVER architecture. Live verification of provider consoles was NOT RUN in the DEP-001 worker pod (no credentials) — every entry carries verification 'recorded-not-live-verified' and must be re-verified by the credentialed operator at dispatch time (DEP-001 AC7 / roadmap free-tier doctrine).",
+  "description": "Zeck free-tier-first provider topology ledger (DEP-001; refreshed by PPR-002 — Live Free-Tier-First Public Preview Deployment). Records, for every provider in providers.json, the tier the public deployment bootstrap selects under the roadmap doctrine order (provider free tier -> usage-based/no-minimum -> low fixed-cost managed -> paid only where required), the CURRENT limits/terms as operational constraints, the degradation path on exhaustion/outage, and the explicit upgrade/exit note. Limits are external facts recorded with an asOf date and a verification status; they are NEVER architecture. PPR-002 refresh (asOf 2026-09-20): every entry now carries its own asOf, source (the provider's public documentation URL, or the repository contract path for repository-defined entries) and verification status; the Cloudflare Queues/Workflows entries moved to doctrine position 1 — both are included on the Workers Free plan with documented free allowances (the preview plane rides the free allowances, usage-based beyond); the Neon, Upstash and Vercel free-tier facts were re-recorded to the 2026-09-20 public baseline. Live verification of provider consoles was NOT RUN in the PPR-002 worker pod (no credentials) — every entry carries verification 'recorded-not-live-verified' and must be re-verified by the credentialed operator at dispatch time (PPR-002 required fact reconciliation; deploy/preflight.ts surfaces this boundary).",
   "doctrineOrder": [
     "provider-free-tier",
     "usage-based-no-minimum",
     "low-fixed-cost-managed",
     "paid-where-required"
   ],
-  "asOf": "2026-09-16",
+  "asOf": "2026-09-20",
   "verification": {
     "status": "recorded-not-live-verified",
-    "detail": "Limits below were recorded from the providers' public documentation knowledge at authoring time (asOf). NOT RUN: no provider console, quota API or live deployment was queried from the DEP-001 worker pod — no cloud credentials exist there (DEP-001 AC7). The credentialed operator (Lead re-run) must re-verify each limit against the provider's current pricing/limits page before applying the deployment; drift is an operational update to this ledger, never a silent assumption."
+    "detail": "Limits below were recorded from the providers' public documentation at the PPR-002 refresh (asOf 2026-09-20; per-entry sources recorded on each tier). NOT RUN: no provider console, quota API or live deployment was queried from the PPR-002 worker pod — no cloud credentials exist there. The credentialed operator (Lead re-run) must re-verify each limit against the provider's current pricing/limits page before provisioning and upgrade the per-entry verification status to live-verified; drift is an operational update to this ledger, never a silent assumption."
   },
   "tiers": [
     {
       "provider": "neon",
       "concern": "relational-state",
+      "asOf": "2026-09-20",
+      "source": "https://neon.tech/pricing",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "provider-free-tier",
         "tierName": "Neon Free",
@@ -23,25 +26,30 @@
       },
       "limits": [
         {
-          "metric": "storage-per-branch",
-          "value": "0.5 GiB",
-          "unit": "GiB"
+          "metric": "projects",
+          "value": "100 projects",
+          "unit": "projects"
         },
         {
           "metric": "compute",
-          "value": "bounded free compute hours per month (plan-defined)",
-          "unit": "hours"
+          "value": "100 CU-hours per month",
+          "unit": "CU-hours"
         },
         {
-          "metric": "projects",
-          "value": "plan-bounded (single-digit count)",
-          "unit": "projects"
+          "metric": "storage",
+          "value": "0.5 GB",
+          "unit": "GB"
+        },
+        {
+          "metric": "branches",
+          "value": "10 branches per project",
+          "unit": "branches"
         }
       ],
-      "limitsSource": "Neon public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "limitsSource": "Neon public pricing documentation at https://neon.tech/pricing (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
       "terms": "Free tier is for development/evaluation use; production commercial use should move to a paid plan (e.g. Neon Launch) per provider terms.",
       "operationallyCritical": true,
-      "upgradeExit": "The authoritative concern MUST NOT remain on the free tier for commercial production: promote to Neon Launch (or any managed PostgreSQL provider — the adapter is provider-neutral over the PostgreSQL wire protocol; connection URLs only). Exit path: pg_dump/logical backup through deploy:backup, restore into the replacement through deploy:restore — both are repository-resident drills. The database-port contract (src/platform/db/port.ts) is unchanged by the move.",
+      "upgradeExit": "The authoritative concern MUST NOT remain on the free tier for commercial production: promote to Neon Launch (or any managed PostgreSQL provider — the adapter is provider-neutral over the PostgreSQL wire protocol; connection URLs only). Exit path: pg_dump/logical backup through deploy:backup, restore into the replacement through deploy:restore — both are repository-resident drills. The database-port contract (src/platform/db/port.ts) is unchanged by the move. The 100-project / 10-branch-per-project envelope comfortably holds the per-branch preview topology (one project per environment class, one branch per preview).",
       "exhaustionBehavior": {
         "mode": "authority-unavailable",
         "effect": "Storage/compute exhaustion on the authoritative store fails closed: control-plane admission and every authority-bearing operation refuse. No datastore is silently promoted; no silent paid overage is enabled by default (Neon Free overage is disabled by design; the quota fence denies at the declared limit)."
@@ -50,6 +58,9 @@
     {
       "provider": "cloudflare-r2",
       "concern": "artifact-bytes",
+      "asOf": "2026-09-20",
+      "source": "https://developers.cloudflare.com/r2/pricing/",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "provider-free-tier",
         "tierName": "Cloudflare R2 free allowances",
@@ -58,8 +69,8 @@
       "limits": [
         {
           "metric": "storage",
-          "value": "10 GiB-month",
-          "unit": "GiB-month"
+          "value": "10 GB-month",
+          "unit": "GB-month"
         },
         {
           "metric": "class-a-operations",
@@ -77,7 +88,7 @@
           "unit": "bytes"
         }
       ],
-      "limitsSource": "Cloudflare R2 public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "limitsSource": "Cloudflare R2 public pricing documentation at https://developers.cloudflare.com/r2/pricing/ (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
       "terms": "R2 free allowances apply on any plan; usage beyond allowances bills usage-based (no fixed minimum).",
       "operationallyCritical": false,
       "upgradeExit": "Non-authoritative bytes: exit to any S3-compatible object store through the D-07 artifact-exit drill (deploy:drill artifact-exit — digest-verified byte migration over two ObjectStorePort endpoints; endpoint+credentials only). The free allowance is disposable headroom, never an operational dependency: artifact metadata/provenance stay authoritative in PostgreSQL.",
@@ -89,27 +100,35 @@
     {
       "provider": "cloudflare-queues",
       "concern": "async-transport",
+      "asOf": "2026-09-20",
+      "source": "https://developers.cloudflare.com/queues/platform/pricing/",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
-        "tierClass": "usage-based-no-minimum",
-        "tierName": "Cloudflare Queues usage-based",
-        "selectionRationale": "Doctrine position 2 (usage-based/no-minimum): Queues bills per operation with no fixed minimum; the dispatch transport is non-authoritative and backlogs safely in PostgreSQL."
+        "tierClass": "provider-free-tier",
+        "tierName": "Cloudflare Queues on Workers Free",
+        "selectionRationale": "Doctrine position 1 (provider free tier, PPR-002 refresh): Queues is included on the Workers Free plan with a documented free allowance (10,000 operations/day, 24-hour free retention), so the preview dispatch transport rides the free allowance first; usage beyond the allowance bills usage-based with no fixed minimum (the doctrine position 2 fallback stays the same provider, no exit needed). The dispatch transport is non-authoritative and backlogs safely in PostgreSQL either way."
       },
       "limits": [
         {
           "metric": "operations",
-          "value": "usage-based per million operations (no fixed minimum)",
+          "value": "10,000 operations per day (Workers Free allowance)",
           "unit": "operations"
         },
         {
-          "metric": "message-size",
-          "value": "provider-defined per-message bound (envelopes carry reference-only correlation pointers)",
-          "unit": "bytes"
+          "metric": "message-retention",
+          "value": "24 hours free retention (Workers Free)",
+          "unit": "hours"
+        },
+        {
+          "metric": "workers-platform-allowance",
+          "value": "the queue consumer runs on Workers Free: 100,000 requests/day and 10 ms CPU per invocation",
+          "unit": "platform-allowance"
         }
       ],
-      "limitsSource": "Cloudflare Queues public pricing documentation (recorded at asOf; not live-verified in this pod)",
-      "terms": "Usage-based billing on the owning Cloudflare account; throughput/concurrency subject to plan limits.",
+      "limitsSource": "Cloudflare Queues public pricing documentation at https://developers.cloudflare.com/queues/platform/pricing/ and Workers Free at https://developers.cloudflare.com/workers/platform/pricing/ (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
+      "terms": "Included on the Workers Free plan with the documented free allowance; usage beyond the free allowance bills usage-based per million operations (no fixed minimum) on the owning Cloudflare account. The 24-hour free retention bound is the reason dispatch envelopes carry reference-only correlation pointers and the PostgreSQL authority is the recovery point.",
       "operationallyCritical": false,
-      "upgradeExit": "Non-authoritative transport: exit to any managed queue/broker implementing the QueueTransportPort contract through the queue-recovery drill (transport substitution + replay convergence through existing dispatch/execution idempotency). Backlogged dispatch is recoverable by design (deploy:queue republish/replay).",
+      "upgradeExit": "Non-authoritative transport: exit to any managed queue/broker implementing the QueueTransportPort contract through the queue-recovery drill (transport substitution + replay convergence through existing dispatch/execution idempotency). Backlogged dispatch is recoverable by design (deploy:queue republish/replay). Staying on Cloudflare beyond the free allowance is usage-based with no fixed minimum — no exit is forced by exhaustion, only by spend policy.",
       "exhaustionBehavior": {
         "mode": "dispatch-backlogged",
         "effect": "Execution admission continues through PostgreSQL authority; dispatch defers and backlogs. A queued message is never mistaken for execution success. Spend guardrail: publish attempts are bounded (ZECK_QUEUE_MAX_PUBLISH_ATTEMPTS); the quota fence denies further publishes at the declared spend limit rather than silently continuing paid operations."
@@ -118,16 +137,29 @@
     {
       "provider": "cloudflare-workflows",
       "concern": "durable-orchestration",
+      "asOf": "2026-09-20",
+      "source": "https://developers.cloudflare.com/workflows/platform/pricing/",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
-        "tierClass": "usage-based-no-minimum",
-        "tierName": "Cloudflare Workflows usage-based",
-        "selectionRationale": "Doctrine position 2 (usage-based/no-minimum): orchestration is non-authoritative and pauses safely; Workflows bills per invocation/duration with no fixed minimum."
+        "tierClass": "provider-free-tier",
+        "tierName": "Cloudflare Workflows on Workers Free",
+        "selectionRationale": "Doctrine position 1 (provider free tier, PPR-002 refresh): Workflows is included on the Workers Free plan with documented free allowances (100,000 requests/day, 3,000 steps/day, 1 GB-month storage), so the preview orchestration rides the free allowance first; usage beyond the allowances bills usage-based with no fixed minimum (the doctrine position 2 fallback stays the same provider, no exit needed). Orchestration is non-authoritative and pauses safely either way."
       },
       "limits": [
         {
-          "metric": "invocations",
-          "value": "usage-based per million invocations (no fixed minimum)",
-          "unit": "invocations"
+          "metric": "requests",
+          "value": "100,000 requests per day (Workers Free allowance)",
+          "unit": "requests"
+        },
+        {
+          "metric": "steps",
+          "value": "3,000 steps per day (Workers Free allowance)",
+          "unit": "steps"
+        },
+        {
+          "metric": "storage",
+          "value": "1 GB-month (Workers Free allowance)",
+          "unit": "GB-month"
         },
         {
           "metric": "instance-retention",
@@ -135,10 +167,10 @@
           "unit": "days"
         }
       ],
-      "limitsSource": "Cloudflare Workflows public pricing documentation (recorded at asOf; not live-verified in this pod)",
-      "terms": "Usage-based billing on the owning Cloudflare account; requires a deployed Worker script (Workers Scripts Write token).",
+      "limitsSource": "Cloudflare Workflows public pricing documentation at https://developers.cloudflare.com/workflows/platform/pricing/ (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
+      "terms": "Included on the Workers Free plan with the documented free allowances; usage beyond the allowances bills usage-based on the owning Cloudflare account. Requires a deployed Worker script (Workers Scripts Write token).",
       "operationallyCritical": false,
-      "upgradeExit": "Non-authoritative orchestration: exit to any durable workflow engine implementing the workflow port contract. Waiting executions live in PostgreSQL (workflow_orchestration.waits is the authority); instances are terminated by compaction and the replacement engine is re-armed by the recovery scan.",
+      "upgradeExit": "Non-authoritative orchestration: exit to any durable workflow engine implementing the workflow port contract. Waiting executions live in PostgreSQL (workflow_orchestration.waits is the authority); instances are terminated by compaction and the replacement engine is re-armed by the recovery scan. Staying on Cloudflare beyond the free allowances is usage-based with no fixed minimum — no exit is forced by exhaustion, only by spend policy.",
       "exhaustionBehavior": {
         "mode": "orchestration-paused",
         "effect": "Waiting orchestrations pause; execution status, budget, policy and ledger state remain authoritative in PostgreSQL and resume on recovery. Instance starts are bounded (ZECK_WORKFLOW_MAX_START_ATTEMPTS); the quota fence denies at the declared spend limit."
@@ -147,6 +179,9 @@
     {
       "provider": "upstash-redis",
       "concern": "ephemeral-coordination",
+      "asOf": "2026-09-20",
+      "source": "https://upstash.com/pricing/redis",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "provider-free-tier",
         "tierName": "Upstash Redis Free",
@@ -154,34 +189,47 @@
       },
       "limits": [
         {
-          "metric": "commands",
-          "value": "10,000 commands per day (free tier)",
-          "unit": "commands"
-        },
-        {
           "metric": "max-data-size",
           "value": "256 MB",
           "unit": "MB"
+        },
+        {
+          "metric": "commands",
+          "value": "500,000 commands per month (free tier)",
+          "unit": "commands"
+        },
+        {
+          "metric": "bandwidth",
+          "value": "10 GB per month",
+          "unit": "GB"
         }
       ],
-      "limitsSource": "Upstash public pricing documentation (recorded at asOf; not live-verified in this pod)",
+      "limitsSource": "Upstash public pricing documentation at https://upstash.com/pricing/redis (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
       "terms": "Free tier for evaluation/development; pay-as-you-go beyond.",
       "operationallyCritical": false,
       "upgradeExit": "Disposable by doctrine: Redis holds NO authority data (locks, rate limits, dedup hints, cache only). Exit is dropping it — the coordination-degraded mode is a first-class operating state (local runs without Redis by default). Replacement: any managed Redis-compatible service (or local Redis) behind src/platform/redis/port.ts.",
       "exhaustionBehavior": {
         "mode": "coordination-degraded",
-        "effect": "Command-quota exhaustion or outage degrades to conservative local behavior; durable authority is untouched. The daily command quota makes exhaustion a routine expected state, not an incident."
+        "effect": "Command-quota or bandwidth exhaustion or outage degrades to conservative local behavior; durable authority is untouched. The monthly command quota makes exhaustion a routine expected state, not an incident."
       }
     },
     {
       "provider": "vercel",
       "concern": "experience-delivery",
+      "asOf": "2026-09-20",
+      "source": "https://vercel.com/pricing",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "provider-free-tier",
         "tierName": "Vercel Hobby",
         "selectionRationale": "Doctrine position 1 (provider free tier) FOR PREVIEW/PERSONAL-NON-COMMERCIAL ONLY: the terms restriction is the binding constraint (ACR-002: Hobby is a development/non-commercial facility; free-tier claims are never commercial entitlements)."
       },
       "limits": [
+        {
+          "metric": "price",
+          "value": "$0 (Hobby) for personal/non-commercial use",
+          "unit": "currency"
+        },
         {
           "metric": "bandwidth",
           "value": "100 GB per month (Hobby)",
@@ -198,8 +246,8 @@
           "unit": "terms"
         }
       ],
-      "limitsSource": "Vercel public pricing documentation (recorded at asOf; not live-verified in this pod)",
-      "terms": "Vercel Hobby is restricted to permitted personal/non-commercial use (repository contract, ACR-002, providers.json commercialUse). Commercial production MUST use a commercially permitted plan (Vercel Pro) or an alternate host.",
+      "limitsSource": "Vercel public pricing documentation at https://vercel.com/pricing (recorded at asOf 2026-09-20, PPR-002 refresh; not live-verified in this pod)",
+      "terms": "Vercel Hobby is $0 and restricted to permitted personal/non-commercial use (repository contract, ACR-002, providers.json commercialUse). Commercial production MUST use a commercially permitted plan (Vercel Pro) or an alternate host — the non-commercial preview rail is the boundary.",
       "operationallyCritical": false,
       "upgradeExit": "Delivery-only concern: the API is independently runnable (deploy/api.ts; D1.0 section 12) — repoint delivery at any host running the same repository entry with configuration only. Upgrade: Vercel Pro for commercial production; exit: any alternate web/API host (the redundancy alternate in providers.json). Domain authority is unchanged by the repoint (the domain is operator-owned config, never the provider's).",
       "exhaustionBehavior": {
@@ -210,6 +258,9 @@
     {
       "provider": "zeck-container-runner",
       "concern": "execution-compute",
+      "asOf": "2026-09-20",
+      "source": "deploy/README.md",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "paid-where-required",
         "tierName": "self-hosted / governed runner",
@@ -227,7 +278,7 @@
           "unit": "currency"
         }
       ],
-      "limitsSource": "Repository-defined protocol (deploy/README.md container-runner REST contract); no external provider quota.",
+      "limitsSource": "Repository-defined protocol (deploy/README.md container-runner REST contract); no external provider quota (the source is the repository contract itself, re-confirmed at asOf 2026-09-20 by the PPR-002 refresh).",
       "terms": "First-party fleet runner or a governed customer runner implementing the documented protocol; Zeck validates configurations before the wire.",
       "operationallyCritical": false,
       "upgradeExit": "Non-authoritative executor: any runner daemon implementing the documented REST protocol (provider-neutral, no vendor SDK). Absent runner = container substrate reports unavailable and dispatch fails closed; the process substrate still executes.",
@@ -239,6 +290,9 @@
     {
       "provider": "otel-export",
       "concern": "observability-export",
+      "asOf": "2026-09-20",
+      "source": "src/platform/observability/port.ts",
+      "verification": "recorded-not-live-verified",
       "selectedTier": {
         "tierClass": "usage-based-no-minimum",
         "tierName": "any OpenTelemetry-compatible collector",
@@ -256,7 +310,7 @@
           "unit": "currency"
         }
       ],
-      "limitsSource": "Repository-defined observability port (src/platform/observability/port.ts); no external provider quota.",
+      "limitsSource": "Repository-defined observability port (src/platform/observability/port.ts); no external provider quota (the source is the repository contract itself, re-confirmed at asOf 2026-09-20 by the PPR-002 refresh).",
       "terms": "Any OpenTelemetry-compatible collector (self-hosted or managed); the protocol is a standard, not a vendor control plane.",
       "operationallyCritical": false,
       "upgradeExit": "Unconfigured endpoint is the declared logs-only degraded mode — observability never blocks the control or execution planes. Substitution is endpoint configuration only.",

@@ -1,8 +1,8 @@
-# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002, DEP-003 and DEP-043)
+# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002, DEP-003, DEP-043 and PPR-002)
 
 **Status:** OPERATIONAL RUNBOOK (repository truth; provider consoles are evidence, never authority)
 **Parent:** `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0), `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`
-**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002), the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003), the end-to-end validation driver (§10, DEP-040) and the production operations drills: promote/rollback both directions, backup/restore round-trip, provider exit and teardown classification guards (§11, DEP-043).
+**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002), the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003), the end-to-end validation driver (§10, DEP-040), the production operations drills: promote/rollback both directions, backup/restore round-trip, provider exit and teardown classification guards (§11, DEP-043), and the PPR-002 free-tier preview readiness layer: the refreshed provider-tier ledger (asOf 2026-09-20) and the account/credential preflight + provider-tier fact reconciliation that now heads the credentialed sequence (§12, PPR-002).
 
 This recipe is the DEP-001 deliverable for AC1 ("fresh operator can
 reproduce the target deployment from repository configuration"). Every
@@ -39,8 +39,8 @@ The authoritative record is `deploy/manifests/provider-tiers.json`
 |---|---|---|---|---|
 | relational-state | Neon | Neon Free (1: free tier) | **authoritative** | fail-closed `authority-unavailable` |
 | artifact-bytes | Cloudflare R2 | free allowances (1: free tier) | bytes-only | `artifact-store-unavailable` |
-| async-transport | Cloudflare Queues | usage-based, no minimum (2) | non-authoritative | `dispatch-backlogged` |
-| durable-orchestration | Cloudflare Workflows | usage-based, no minimum (2) | non-authoritative | `orchestration-paused` |
+| async-transport | Cloudflare Queues | Workers Free allowance (1: free tier — PPR-002 refresh) | non-authoritative | `dispatch-backlogged` |
+| durable-orchestration | Cloudflare Workflows | Workers Free allowance (1: free tier — PPR-002 refresh) | non-authoritative | `orchestration-paused` |
 | ephemeral-coordination | Upstash Redis | Free (1: free tier) | non-authoritative | `coordination-degraded` |
 | experience-delivery | Vercel | Hobby (1: free tier — **non-commercial terms only**) | delivery-only | `delivery-degraded` |
 | execution-compute | zeck-container-runner | self-hosted runner (4: where required) | non-authoritative | `execution-compute-unavailable` |
@@ -50,12 +50,21 @@ Doctrine order (roadmap): provider free tier → usage-based/no-minimum
 → low fixed-cost managed → paid only where required.
 
 **Exact limits/terms** live in the ledger with per-entry sources. They
-are operational constraints recorded at an `asOf` date — NOT live
-facts: the DEP-001 worker pod had no cloud credentials, so every
-live-provider check is recorded NOT RUN (AC7) and the credentialed
-operator must re-verify each limit before applying the deployment.
+are operational constraints recorded at an `asOf` date with a
+per-entry source (the provider's public documentation URL, or the
+repository contract path for repository-defined entries) and a
+per-entry verification status — NOT live facts: the PPR-002 worker
+pod had no cloud credentials, so every live-provider check is
+recorded NOT RUN and the credentialed operator must re-verify each
+limit against its recorded source before applying the deployment
+(`bun deploy/preflight.ts` surfaces exactly this boundary — §12).
 Drift is an operational update to the ledger, never a silent
-assumption.
+assumption. The PPR-002 refresh (asOf 2026-09-20) moved Queues and
+Workflows to doctrine position 1: both are included on the Workers
+Free plan with documented free allowances (Queues 10,000
+operations/day + 24-hour free retention; Workflows 100,000
+requests/day + 3,000 steps/day + 1 GB-month storage), with
+usage-based billing beyond the allowance on the same provider.
 
 **Hard commercial rule:** Vercel Hobby is permitted for
 personal/non-commercial development and preview only. Commercial
@@ -124,6 +133,12 @@ bun run deploy:public-smoke -- --environment local # strict pass: /health 200
 Account-plane preconditions (one-time; the repository cannot create
 provider accounts):
 
+0. **PPR-002 preflight (the head of the sequence):**
+   `bun deploy/preflight.ts --environment preview [--branch <branch>]`
+   runs the configuration gate, the URL-hygiene check over the
+   variable contract, the account/credential preflight (presence
+   only) and the provider-tier fact reconciliation in one fail-closed
+   report — see §12.
 1. Provider accounts exist: Cloudflare (R2 + Queues + Workflows), Neon,
    Upstash (optional), Vercel (or your alternate host).
 2. Resources are created with the DETERMINISTIC names — never invented:
@@ -139,7 +154,9 @@ provider accounts):
    values never transit it (see §8).
 4. Re-verify the free-tier limits against current provider pricing
    pages; update `deploy/manifests/provider-tiers.json` if drifted
-   (then `bun run deploy:validate` must stay green).
+   (then `bun run deploy:validate` must stay green, and the per-entry
+   verification status upgrades to `live-verified` as you re-verify
+   each recorded fact against its per-entry source).
 
 Then converge and attest:
 
@@ -668,3 +685,80 @@ recorded NOT RUN with their owner in the driver's own report and in
 `deploy/evidence/dep-043.json`; the PG-backed rails ran for real
 against the local PostgreSQL server above. The driver REFUSES a
 `ZECK_PG_ADMIN_URL` carrying URL-embedded credentials.
+
+## 12. The free-tier preview readiness layer (PPR-002)
+
+PPR-002 (Live Free-Tier-First Public Preview Deployment,
+repository-side work) refreshed the provider-tier ledger and added the
+preflight that now heads the credentialed sequence. The evidence
+record of this layer is `deploy/evidence/ppr-002.json`.
+
+### 12.1 The refreshed provider-tier ledger (asOf 2026-09-20)
+
+`deploy/manifests/provider-tiers.json` records the 2026-09-20 public
+free-tier baseline, every entry now carrying its OWN `asOf`, `source`
+(the provider's public documentation URL, or the repository contract
+path for repository-defined entries) and `verification` status from
+the closed vocabulary. The refresh:
+
+- **Neon Free** — 100 projects / 100 CU-hours per month / 0.5 GB
+  storage / 10 branches per project (was: bounded prose values);
+- **Cloudflare Queues** — moved to doctrine position 1: included on
+  the Workers Free plan (10,000 operations/day, 24-hour free
+  retention; the queue consumer rides the Workers Free 100,000
+  requests/day + 10 ms CPU platform allowance); usage-based beyond
+  the allowance on the same provider;
+- **Cloudflare Workflows** — moved to doctrine position 1: included
+  on the Workers Free plan (100,000 requests/day, 3,000 steps/day,
+  1 GB-month storage); usage-based beyond the allowances;
+- **Upstash Redis Free** — 256 MB / 500,000 commands per month /
+  10 GB monthly bandwidth (was: 10,000 commands per day);
+- **Vercel Hobby** — $0 personal/non-commercial, the commercial-use
+  PROHIBITED limit unchanged;
+- R2 free allowances, the self-hosted runner and the OTLP collector
+  entries unchanged (re-recorded with per-entry fields).
+
+Every exhaustion/degradation/upgrade/exit behavior is preserved (the
+exhaustion modes still equal the providers.json declared degradation
+modes — pinned by `tests/unit/deployment/provider-tiers.test.ts`).
+The commercial boundary is now recorded on the preview environment
+itself (`environments.json` `commercialBoundary`) in addition to the
+delivery tier's terms. Verification stays the honest worker-pod
+state: `recorded-not-live-verified` — the Lead's credentialed re-run
+re-verifies each fact against its per-entry source and upgrades the
+status.
+
+### 12.2 The preflight — `deploy/preflight.ts` (provisioning steps 1-2)
+
+```bash
+bun deploy/preflight.ts --environment preview [--branch work/PPR-002-x]
+```
+
+One fail-closed report before any provider resource is touched: the
+configuration gate (the deploy:validate rule families), the URL
+hygiene over the variable contract (a URL-typed variable carrying
+`scheme://user:password@host` REFUSES — the same pattern class the
+architecture secret-scan pins over `deploy/**`), the account/credential
+preflight (the environment's provider resources with the
+credential-variable NAMES each kind requires — presence only, never
+values; the mapping is the ONE list shared with deploy/provision),
+and the provider-tier fact reconciliation (per-entry
+asOf/source/verification; a missing, malformed, future-dated or
+unresolvable field refuses; the ledger age is reported informationally
+— no invented staleness threshold). Absent credentials are honest
+not-run rows with the owner "Lead credentialed re-run" — the tool
+performs no provider control-plane calls. Exit 0 = preflight passed
+(not-run rows are facts, not failures); exit 1 = fail-closed problems.
+
+### 12.3 The honest boundary on manifest-refresh branches
+
+The DEP-040/DEP-043 rollback both-directions drills require a second
+revision with byte-identical `deploy/manifests` (the re-attestation
+verifies against the CURRENT manifest set). A branch that legitimately
+changes the manifests — the PPR-002 ledger refresh is the first such
+case — has no such ancestor, and the drivers record their documented
+honest skip (`skipped: true` with the exact reason) instead of
+fabricating one. Both outcomes are pinned by
+`tests/integration/deployment/e2e-driver.test.ts` and
+`tests/integration/deployment/production-drill.test.ts`; the full
+both-directions drills re-engage on the next manifest-stable revision.

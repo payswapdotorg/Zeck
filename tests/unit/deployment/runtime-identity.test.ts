@@ -79,9 +79,19 @@ describe("the runtime deployment identity document (DEP-001 AC2)", () => {
     const neon = topology.find((entry) => entry.provider === "neon");
     expect(neon?.tierClass).toBe("provider-free-tier");
     expect(neon?.tierName).toBe("Neon Free");
+    // PPR-002 refresh (asOf 2026-09-20): Queues and Workflows are
+    // included on the Workers Free plan with documented free
+    // allowances, so the doctrine-first selection moved from position
+    // 2 (usage-based) to position 1 (provider free tier). The pin
+    // moved WITH the recorded fact — the assertion stays a strict
+    // equality on the refreshed ledger.
     const queues = topology.find((entry) => entry.provider === "cloudflare-queues");
-    expect(queues?.tierClass).toBe("usage-based-no-minimum");
+    expect(queues?.tierClass).toBe("provider-free-tier");
+    expect(queues?.tierName).toContain("Workers Free");
     expect(queues?.authorityRole).toBe("non-authoritative");
+    const workflows = topology.find((entry) => entry.provider === "cloudflare-workflows");
+    expect(workflows?.tierClass).toBe("provider-free-tier");
+    expect(workflows?.tierName).toContain("Workers Free");
   });
 
   test("the topology digest is order- and content-sensitive", () => {
