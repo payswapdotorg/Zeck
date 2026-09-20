@@ -1,0 +1,456 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "DEP-044",
+  "title": "Final deployment report and release gate — the gate verdict assembly record",
+  "recordedBy": "DEP-044 implementation worker (single session; the reproduction run, the battery and this record are one lineage)",
+  "environment": "sandboxed worker pod (no cloud credentials, no public hosted deployment); git worktree /home/z/my-project/Zeck, branch work/DEP-044-final-report-gate at base 4486c05a51465060a9cea2bc8f133a74c0cbca98 (origin/main HEAD — the dispatch packet's pinned base 4486c0585f7d68b5e11bb8e2f425f54740c2bb4f is NOT reachable in the public clone, the same class as the DEP-041 H1 finding; the packet's own fallback rule applied and the exact branched-from SHA is recorded here; the short prefix 4486c05 matches, and the base's ledger confirms DEP-041 + DEP-042 + DEP-043 ALL merged — 'the P4 wave COMPLETE; DEP-044 eligible at the new base'); THREE real local PostgreSQL servers for the run and the battery (theseus-rs user-space portable builds, trust auth, credential-less URLs, download checksums verified against the release .sha256 files): 17.11 on 127.0.0.1:54329 (the reproduction-run rail, ZECK_PG_ADMIN_URL), 16.15 on 127.0.0.1:54331 (the standard-suite battery rail, ZECK_PG_TEST_URL — major 16 because tests/integration/postgres/pg-database-port.test.ts pins the server major), 17.11 on 127.0.0.1:54333 (the DEP-043 drill suite rail, ZECK_DRILL_PG_ADMIN_URL) — battery-separated so the reproduction run's teardown (which DROPS zeck_local) never races the suites",
+  "date": "2026-09-20",
+  "doctrine": "Every completion-gate criterion is judged against REAL evidence — each verdict carries the resolving evidence pointer (file + section). Never assumed-pass. Every operation that could not run in the worker pod is listed NOT RUN with its owner. The gate DECISION itself is the Lead's judgment (this record assembles the verdicts); gaps found at gate time are recorded as gate findings with owners and dispatch recommendations.",
+  "completionGateVerbatim": "DEP-044 passes only when a fresh developer can integrate Zeck through the public surface, create a sandbox execution, exercise the supported capability portfolio, open and rerun the complete executed validation library, inspect evidence/costs, follow the docs without maintainer intervention, and reproduce the deployment from repository-defined configuration. Free-tier use must be maximized wherever it does not violate safety, commercial terms or required runtime capability. (docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md 'Completion gate'; spec/platform-delivery-work-orders/DEP-044.md embeds the same text verbatim)",
+  "reproductionRun": {
+    "what": "A stranger-following run of the repository-defined configuration path at the EXACT final revision (4486c05a), exactly as deploy/PUBLIC-DEPLOYMENT.md documents it: §3.1 local verification (the no-cloud block + the local-PostgreSQL block), §9.3 guardrails, §9.4 release (record → gate → promote with the pre-promotion plane attestation), §8 teardown. The order's chain (bootstrap → provision → migrate → identity → public-smoke → guardrails → release → teardown) is the DOC's path, driven in the DOC's documented command order (validate → provision → api+identity → smoke → bootstrap → migrate → smoke → guardrails → release → teardown).",
+    "docVsDriverDifference": "The DOC's path and the DEP-040 driver's path DIFFER in two recorded ways: (1) the driver sets ZECK_ENVIRONMENT=local for its chain steps; the doc's §3.1 PostgreSQL block does not (it teaches the variable only in the per-command form on the provision line, which does not persist) — driving the DOC's path surfaced this as GF-1 below; (2) the driver's identity step emits deploy/identity.ts's deterministic document, while the DOC's identity step is the curl probe of the booted deploy:api plane's GET /identity — this run followed the DOC (the curl probe; the plane's attested revision byte-matched git rev-parse HEAD). The chain order also differs (doc: provision before bootstrap; driver: bootstrap before provision) — this run followed the DOC.",
+    "substrate": "real local PostgreSQL 17.11 on 127.0.0.1:54329 (the doc's example URL names port 5432; the commands are identical, the URL points at this run's real local server); the plane is a real deploy:api process (boot-document wait discipline, never a bare /health 200) on 127.0.0.1:8787; every step a real subprocess with real exit codes and wall timings, recorded step by step",
+    "literalDocSegment": {
+      "steps": 14,
+      "summary": "10 green / 4 red: validate exit 0 (91ms); provision --plan exit 0 (76ms, zero credentials); provision converge exit 0 (76ms, ZECK_ENVIRONMENT=local per-command as the doc prints it); deploy:api boot + curl /identity — attested revision 4486c05a… byte-equal to git rev-parse HEAD (match=true, 16ms probe); public-smoke --allow-degraded exit 0 (340ms, health 503 down-allowed-degraded — the explicit degraded pass, exactly the doc's no-PG block); bootstrap exit 0 (87ms, zeck_local created — with environmentContract.satisfied=false and the two ZECK_ENVIRONMENT problems reported honestly in its output); migrate EXIT 2 (51ms — the environment contract refusal); public-smoke strict exit 0 (359ms, health 200 healthCheck degraded, route coverage 26 = 18 auth-boundary 401 + 7 capability-unbound 422 + 1 public artifact 200); guardrails alerts exit 0 (83ms — the honest fresh-database empty fallback, because the release_control schema never existed); release record / gate / promote EXIT 1 each (123/118/127ms — 'relation release_control.releases does not exist', the cascade of the migrate refusal); teardown exit 0 (100ms — provisioned records removed, zeck_local dropped); plane SIGTERM drain exit 0",
+      "rootCause": "GF-1 (see findings): PUBLIC-DEPLOYMENT.md §3.1's PostgreSQL block omits ZECK_ENVIRONMENT — the block's export list carries only ZECK_PG_ADMIN_URL; the same section's provision line uses the per-command form (ZECK_ENVIRONMENT=local bun run deploy:provision …) which does not persist into the following block. A stranger following the block literally hits migrate's fail-closed environment contract and the release cascade."
+    },
+    "recoverySegment": {
+      "steps": 9,
+      "summary": "9/9 green, the SAME doc commands with the stranger's recovery (ZECK_ENVIRONMENT=local exported — the variable the doc's own provision line teaches): bootstrap exit 0 (101ms, environmentContract.satisfied=true, zeck_local re-created after the literal segment's teardown); migrate exit 0 (591ms — 33/33 shipped migrations applied in order, schemaConverged=true, serverVersion PostgreSQL 17.11); public-smoke strict exit 0 (356ms, health 200); guardrails alerts exit 0 (94ms — the FULL composed evaluation: fenceDecisions allow async-transport 0/1000 + allow relational-state 16225971/5368709120; thresholdsApplied queue-backlog/database-size/compute-claims 80/95; limitResolutions queue-backlog 1000 manifest + database-size 5368709120 manifest); release record exit 0 (101ms); gate run validation exit 0 (108ms, passed); promote --to local --plane-url http://127.0.0.1:8787 exit 0 (128ms — promoted=true, satisfiedGates [validation], planeIdentity.verified=true, attestedRevision 4486c05a… == HEAD, runtimeIdentityId 844cbe2627cc3080d778e6a1ee571390aba6509b15a84bb3fcde900898469699); teardown exit 0 (90ms); plane drain exit 0 (5ms). Post-teardown round trip against the same server: zeck_local verified GONE.",
+      "chainTotalMs": 1544,
+      "verdict": "The complete chain — bootstrap → provision → migrate → identity → public-smoke → guardrails → release (promote) → teardown — reproduces end to end at the exact final revision once the environment contract is satisfied; the one deviation from the doc's literal text is GF-1 (a doc-recipe finding, owner Lead, one-line closure)."
+    },
+    "machineRecord": "/home/z/my-project/dep044-reproduction-run.json (23 steps: 14 literal + 9 recovery; every step's id, recipe section, command, exit code, durationMs, facts; raw tool outputs preserved as /home/z/my-project/dep044-repro-*.out); driver scripts preserved at /home/z/my-project/scripts/dep044-reproduction-run.sh + dep044-repro-recovery.sh"
+  },
+  "gateChecklist": [
+    {
+      "criterion": "1. A fresh developer can integrate Zeck through the public surface.",
+      "verdict": "PASS (with two Lead-owned merge notes open — F1, F4)",
+      "evidence": "deploy/evidence/dep-041.json verifiedLocally[0..2] + findings F1/F4: the fresh-DEVELOPER persona journey driven end to end against a REAL plane (baseline 35 steps — 28 pass / 7 finding; verification POST-fix 35 steps — 33 pass / 2 finding), every leg completed (discover, authenticate via console key issue/reveal/bearer, first-execution BOTH paths: guided playground POST→303→run detail→COMPLETED and the composed quickstart subprocess exit 0, results, costs, validation library, export, production path); AC1 entry: 'the full journey completes end to end through the public surface with zero maintainer intervention, or every blocker is a recorded finding' — the two open items are recorded findings with dispositions (F1 README discoverability — Lead-owned merge note; F4 application-lifecycle public route — Lead-owned public-contract decision). Corroborated machine-side by dep-042.json verifiedLocally[0..1] (33/39 pass post-fix; 15 examples ran-as-written).",
+      "openFindings": "F1 (README.md has no developer-documentation entry link — Lead-owned; dep-041.json findings[0]); F4 (application creation/inventory not exposed by the public API — honest unavailable, Lead-owned route decision; dep-041.json findings[3])",
+      "gapOwner": "Lead (merge notes recorded in dep-041.json notes[0])"
+    },
+    {
+      "criterion": "2. A fresh developer can create a sandbox execution.",
+      "verdict": "PASS",
+      "evidence": "deploy/evidence/dep-041.json verifiedLocally[4] (the first-execution leg: guided playground form POST → 303 → run detail → COMPLETED; examples/quickstart.ts subprocess exit 0 with created/terminal/events/replay lines) + deploy/evidence/dep-042.json verifiedLocally[2] (leg 6: 14 spawned runnable examples exit 0 — the create → poll → result → evidence → replay spine; plus the webhook receiver driven per its documented run shape). Sandbox identity path: dep-041.json findings F3 FIXED (AUTH.md 'The local sandbox identity' — the persona discovers the declared identity through the docs, journey step 2.10 passes post-fix) + deploy/manifests/sandbox-accounts.json (3 sandbox accounts across 3 environments, deploy:validate sandboxAccounts=3) + the DEP-014 sandbox-governance surface (delivery ledger row DEP-014). This session's reproduction run additionally created, settled-adjacent and governed real execution-plane state through the platform's own governed transitions (the trials' worker-path seam — dep-041.json substrate.workerPath).",
+      "openFindings": "none",
+      "gapOwner": "n/a"
+    },
+    {
+      "criterion": "3. The supported capability portfolio is exercisable (provider-gated families: honest NOT RUN with the named contract).",
+      "verdict": "PASS (honest-boundary sense: every family exercisable to the boundary of the authorized provider set, every provider-gated family an honest NOT RUN naming its contract)",
+      "evidence": "docs/developer/machine/capability-manifest.json (22 workload families, each with per-family availability prose); docs/developer/machine/examples-manifest.json (27 examples: 16 runnable / 11 provider-gated, each gated row naming its contract: QWEN_API_KEY ×3, OPENROUTER_API_KEY ×3, OPENAI_API_KEY, ZECK_3D_API_KEY, rail-boundary ×3); deploy/evidence/dep-042.json verifiedLocally[2] (the literal example execution: 15 ran-as-written exit 0 / 11 not-run-gated each printing its provider-gated banner with the named contract / 1 finding AF6d). The provider-gated families' portfolio boundaries: capability-manifest.json families three-d ('NOT RUN — no 3D-generation-capable provider in the authorized set'), realtime-voice ('NOT RUN — no authorized WebSocket voice-session API'), audio-understanding ('NOT RUN — the only authorized audio-input candidate (openai) is region-blocked (HTTP 403)'), browser-use/computer-use ('fixture-proven … LIVE web/desktop rail NOT RUN — no operator-authorized rail'), video-media ('three live generations proven … further live rows NOT RUN — free-tier quota exhausted') — all declared in the manifest AND rendered as honest NOT RUN states in the playground UI (delivery report 'Honest NOT RUN boundaries currently carried on main'). Live provider completion rails are the recorded NOT RUN boundary with owner (dep-041.json notRun[0], dep-042.json notRun[0]).",
+      "openFindings": "AF6d (examples/economic-actions.ts fails as printed — two out-of-vocabulary values; application-example defect, two one-line fixes, Lead-owned; dep-042.json findings AF6d)",
+      "gapOwner": "Lead credentialed re-run (the live-provider completions) + Lead (AF6d merge note)"
+    },
+    {
+      "criterion": "4. The complete executed validation library can be opened and rerun.",
+      "verdict": "PASS (console/human surface; the machine-surface variant is a declared boundary with a Lead-owned route decision)",
+      "evidence": "deploy/evidence/dep-041.json verifiedLocally[0] (the validation-library leg, 422ms: catalog 46 experiments, 8 console-rerunnable candidates, 1 experiment page opened, rerun execution COMPLETED) — the DEP-025 Validation Library surface over the authoritative validation program sources (docs/VALIDATION-ROADMAP.md, spec/validation-*, benchmarks/validation — the delivery ledger row DEP-025: 'definitions, historical evidence, rerun/compare/export paths (AC1-9)'). Machine surface: deploy/evidence/dep-042.json findings AF8 (no /validation route in openapi.json — console-plane only at /console/validation + api/catalog.json) FIXED as a boundary declaration in docs/developer/machine/surface-boundaries.json (validation-library: console-plane only) — the ROUTE decision stays a Lead-owned merge note; dep-042.json notRun[2] carries the honest NOT RUN with owner.",
+      "openFindings": "AF8 route decision (expose a machine-readable library list/rerun route set, or keep the boundary declared — Lead public-contract call; dep-042.json findings AF8)",
+      "gapOwner": "Lead (AF8 route decision)"
+    },
+    {
+      "criterion": "5. Results/evidence/costs are inspectable.",
+      "verdict": "PASS",
+      "evidence": "deploy/evidence/dep-041.json verifiedLocally[0] (legs 6-7 of the journey: results/evidence 17ms, costs 7ms — the six-view explorer detail + facts.json machine parity); deploy/evidence/dep-042.json verifiedLocally[4] (the wire-parity probes: GET /executions/<id>/results driven for real; the show-once credential contract end to end; the error taxonomy statuses); the delivery ledger rows DEP-012 (the complete execution explorer: result, evidence, activity, route, tools, models, agents, verification, costs and provenance), DEP-030 (usage/economics/optimization dashboard — lead-smoke 11/11: honest-unavailable states naming the four missing contracts, verbatim optimization decisions, real quota envelope, facts.json parity), DEP-031 (compare mode 27/27), DEP-032 (reproducibility-bundle export 18/18 + real-browser drive; bundle.facts HTTP-verified parity with facts.json; artifact rows references+digests only). Costs are recorded platform facts (the settlement envelope — costMicroUsd, usage tokens — on every settled execution; dep-041.json substrate.workerPath) and the reproduction run's guardrails evaluation read real usage from the authoritative stores (pg_database_size 16225971/5368709120).",
+      "openFindings": "none beyond the DEP-014 sandbox-governance transport X-Zeck-Application merge note (delivery ledger DEP-030 row: environments console live quota read degrades empty vs real API — recorded for the hardening wave, Lead-owned)",
+      "gapOwner": "Lead (the DEP-030 merge note)"
+    },
+    {
+      "criterion": "6. The docs are followable without maintainer intervention.",
+      "verdict": "PASS (with Lead-owned merge notes open — F1, AF1, AF6d; plus GF-1 found by this session's reproduction run)",
+      "evidence": "deploy/evidence/dep-041.json verifiedLocally[1] + findings F2/F3 (FIXED in docs/developer/** and re-driven: the corrected QUICKSTART/AUTH/SELF-HOSTING instructions pass against a fresh plane — journey steps 1.4/2.1/2.4/2.10; docs-links battery green); deploy/evidence/dep-042.json verifiedLocally[1] + findings AF3f/AF6b (FIXED in openapi.json and re-driven: the rotate/revoke lifecycle completes from the documented parameters; the closed vocabularies are learnable from the manifest) + AF4/AF8/AF9 (boundary declarations in surface-boundaries.json, re-driven). The remaining doc-followability frictions are recorded findings with owners: F1 (README entry link — Lead-owned), AF1 (AGENTS.md does not reference the machine-contract surface — Lead-owned), AF6d (examples/economic-actions.ts fails as printed — Lead-owned two-line fix), and GF-1 (this session: PUBLIC-DEPLOYMENT.md §3.1's PG block omits ZECK_ENVIRONMENT — a stranger hits migrate's fail-closed contract; recovery is one export line the doc's own provision line teaches; Lead-owned).",
+      "openFindings": "F1, AF1 (Lead-owned entry-link merge notes); AF6d (Lead-owned example fix); GF-1 (this record's findings)",
+      "gapOwner": "Lead (all four merge notes)"
+    },
+    {
+      "criterion": "7. The deployment is reproducible from repository-defined configuration (see THE REPRODUCTION RUN).",
+      "verdict": "PASS (the chain reproduces end to end at the exact final revision — doc-path run, e2e driver and production drill all green; one doc-recipe finding GF-1 with a one-line Lead-owned closure)",
+      "evidence": "THIS SESSION's reproduction run (reproductionRun above): the complete stranger-following chain at 4486c05a — validate → provision (plan, converge) → deploy:api + identity probe (attested == HEAD, byte match) → public-smoke (--allow-degraded 503 explicit + strict 200, 26 routes = 18×401 + 7×422 + 1×200) → bootstrap → migrate (33/33) → guardrails (manifest-resolved limits) → release (record → gate validation → promote verified at HEAD over the real release ledger) → teardown (zeck_local verified GONE by round trip) — 23 recorded steps with exit codes and timings (machine record: /home/z/my-project/dep044-reproduction-run.json). Corroborated by deploy/evidence/dep-040.json verifiedLocally[4] (the e2e driver over the same operator order: 36 steps green, 13 hostile negatives each refused with exact reasons) and deploy/evidence/dep-043.json verifiedLocally[10] (the production drill: 40 steps green). The literal-doc deviation is GF-1 (findings below) — the recovery segment completed the full chain green. FURTHER CORROBORATED at the exact final revision by this session's own driver runs (battery entries: the DEP-040 e2e driver 36/36 green in 10311 ms; the DEP-043 production drill 40/40 green in 10690 ms — both exit 0, valid=true, on their dedicated rails).",
+      "openFindings": "GF-1 (PUBLIC-DEPLOYMENT.md §3.1 PG block omits ZECK_ENVIRONMENT — this record's findings)",
+      "gapOwner": "Lead (GF-1 one-line doc closure)"
+    },
+    {
+      "criterion": "8. Free-tier use is maximized wherever it does not violate safety, commercial terms or required runtime capability.",
+      "verdict": "PASS (posture itemized with justifications; live limit verification honestly NOT RUN with owner)",
+      "evidence": "deploy/manifests/provider-tiers.json (the free-tier-first ledger, asOf 2026-09-16): 8 providers under the doctrine order (provider-free-tier → usage-based-no-minimum → low-fixed-cost-managed → paid-where-required) — Neon Free (relational-state, authoritative), Cloudflare R2 free allowances (artifact-bytes), Upstash Redis Free (ephemeral-coordination), Vercel Hobby (experience-delivery) on position 1; Cloudflare Queues + Workflows usage-based-no-minimum (position 2 — no free tier exists for these services' production shape; the doctrine's next position taken); any-OTLP-collector usage-based/self-hosted (position 2); zeck-container-runner self-hosted/governed (position 4 — paid-where-required: execution compute is a governed authority concern, safety-required). JUSTIFICATIONS RECORDED: the Vercel Hobby hard commercial rule ('permitted for personal/non-commercial development and preview only; commercial production must use a commercially permitted plan or replacement host' — PUBLIC-DEPLOYMENT.md §2); upgrade/exit notes for EVERY dependency ('disposable free-tier resources never become operationally critical') — §2's exit-notes list, PROVEN by deploy/evidence/dep-043.json verifiedLocally[5] (the provider-exit drill: all 8 manifest classes covered with honest local verification or NOT RUN boundaries). HONEST BOUNDARY: providerTierVerification 'recorded-not-live-verified' (the ledger's own verification block — limits recorded at asOf from public documentation, never live-probed; the credentialed operator must re-verify each limit before applying the deployment — dep-001.json notRun[7], the recorded NOT RUN boundary of DEP-001/003). The free-tier maximization is also visible in the trials' cost facts: zero live cost consumed across the entire program (dep-041/042/043 notes).",
+      "openFindings": "live verification of every free-tier limit (owner: Lead credentialed re-run — re-verify against current provider pricing pages before applying the deployment; drift is an operational update to the ledger)",
+      "gapOwner": "Lead credentialed re-run"
+    }
+  ],
+  "findings": [
+    {
+      "id": "GF-1",
+      "criterion": "7 (deployment reproducibility) / 6 (docs followability)",
+      "classification": "docs (deployment recipe)",
+      "title": "PUBLIC-DEPLOYMENT.md §3.1's PostgreSQL block omits ZECK_ENVIRONMENT — a stranger following the block literally hits deploy:migrate's fail-closed environment contract and a release cascade",
+      "reproduction": "Follow §3.1's PostgreSQL block exactly: export ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:5432/postgres (the block's only export) → bun run deploy:bootstrap -- --environment local (exit 0, but environmentContract.satisfied=false with 'ZECK_ENVIRONMENT is required and not set' reported in the output) → bun run deploy:migrate -- --environment local → EXIT 2 'error: the environment contract is not satisfied: ZECK_ENVIRONMENT is required (the environment identity this process represents); ZECK_ENVIRONMENT is required and not set'; with the schema never created, deploy:release record/gate/promote each EXIT 1 'relation release_control.releases does not exist' and the guardrails evaluation falls back to the honest fresh-database empty set. The same section's provision line teaches the variable only in per-command form (ZECK_ENVIRONMENT=local bun run deploy:provision …) which does not persist into the following block. The DEP-040 e2e driver never hits this because IT sets ZECK_ENVIRONMENT for its chain steps — the doc's path and the driver's path differ exactly here (recorded in reproductionRun.docVsDriverDifference).",
+      "disposition": "GATE FINDING (PUBLIC-DEPLOYMENT.md is outside this order's writable surface — docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md, deploy/evidence/dep-044.json and roadmap status annotations only). RECOMMENDED CLOSURE (Lead's call, trivial class): add 'export ZECK_ENVIRONMENT=local' to §3.1's PostgreSQL block (one line). This session verified the recovery: with the variable exported, the ENTIRE chain runs green end to end (reproductionRun.recoverySegment — 9/9 steps, migrate 33/33, promote verified at HEAD, teardown verified GONE)."
+    }
+  ],
+  "notRun": "SEE the honestLedger section (30 boundaries open at gate time, each with owner + re-run procedure — assembled from every evidence file's notRun registry + this session's own boundaries)",
+  "battery": {
+    "note": "Every entry below is this session's own single measured run at the branch head (ce31437, amended at the delivery refresh — no code file changed between the runs; only this record's battery text) — never assembled from different runs. The DEFECT-A/DEFECT-B expectations follow the dispatch packet: exactly-shaped failures are recorded as the known base defects (dep-040.json AC5) and moved past.",
+    "entries": [
+      {
+        "check": "bun install",
+        "command": "bun install",
+        "evidence": "116 packages installed (1188 ms, first bring-up of this session; idempotent thereafter)"
+      },
+      {
+        "check": "Typecheck",
+        "command": "bun run typecheck",
+        "evidence": "exit 0 (tsc --noEmit), 0 errors at the branch head (10.4 s) — no source file changed by this order (assembly + judgment only)"
+      },
+      {
+        "check": "Lint (house baseline, no NEW violations)",
+        "command": "bun run lint",
+        "evidence": "68 warnings / 8 infos / 0 errors, exit 0 (8.9 s) — the recorded house baseline EXACTLY. The one error biome initially reported was a FORMAT error on this order's own new file deploy/evidence/dep-044.json (biome checks JSON formatting), fixed with biome check --write before this green run — the same house pattern the DEP-040/042/043 workers recorded for their new files. Zero diagnostics on docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md or docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md."
+      },
+      {
+        "check": "Unit suite",
+        "command": "bun run test:unit",
+        "evidence": "Test Files 349 passed (349); Tests 6156 passed (6156); 0 failures; 99.71 s — IDENTICAL to the base 4486c05a unit set (the DEP-043 record's 349f/6156t): this order adds zero test files (it changes no code at all), exactly as an assembly order must."
+      },
+      {
+        "check": "Architecture + discrimination suite — house convention (no rail)",
+        "command": "bun run test:architecture",
+        "evidence": "Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 0 failures; 50.61 s — identical to the recorded base architecture battery (the 4 skips are the PG-gated budgets-overspend discrimination suite without ZECK_PG_TEST_URL)."
+      },
+      {
+        "check": "Architecture + discrimination suite — the REAL 16.15 rail (nothing skips)",
+        "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bun run test:architecture",
+        "evidence": "Test Files 140 passed (140); Tests 2240 passed (2240); 0 failures, 0 skipped; 54.59 s — the PG-gated discrimination suite ran REAL and green on the rail (identical to the DEP-040 railed architecture record)."
+      },
+      {
+        "check": "Integration suites — house convention (PG suites skip cleanly; skip counts recorded)",
+        "command": "bun run test:integration",
+        "evidence": "Test Files 24 passed | 146 skipped (170); Tests 281 passed | 203 skipped (484); 0 failures; 63.03 s. The skips are the unchanged PG/credential-gated baseline without ZECK_PG_TEST_URL (no server in the house-convention environment). Delta over the DEP-042 record (23f/279t+200 skips): +1 file (tests/integration/deployment/production-drill.test.ts, DEP-043's) with its 2 ungated preflight negatives running (+2 tests) and its 3 rail-gated tests skipping (+3 skips) — exactly the DEP-043 additions, nothing else."
+      },
+      {
+        "check": "Integration suites — BOTH real rails + the drill rail (the honest full-parallel truth)",
+        "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres ZECK_E2E_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres ZECK_DRILL_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54333/postgres bun run test:integration",
+        "evidence": "exit 1 — Test Files 1 failed | 168 passed | 1 skipped (170); Tests 1 failed | 1264 passed | 20 skipped (1285); 411.96 s. The 1 failure decomposes EXACTLY into known DEFECT-A (dep-040.json AC5): tests/integration/postgres/audit-schema.test.ts '0032 applies forward cleanly on the existing authority' — the stale 0032-era pin of forward-applied [v31, v32] while the real 16.15 rail yields [31,32,33,34]; reproduced in isolation: 9 passed | 1 failed of 10, the identical shape the DEP-040 record carries (known DEFECT-A — recorded, moved past per the dispatch packet; the Lead owns the one-line fix). DEFECT-B (the bootstrap-smoke vs release-cli zeck_local fixture race) did NOT surface in this run — consistent with its flaky-race classification (release-cli and bootstrap-smoke both passed here; the race is timing-dependent under file parallelism). Every other PG-gated suite ran REAL and green on the rails (1264 tests incl. the e2e-driver 5/5 and the production-drill 5/5 on their dedicated rails); the 1 skipped file is the base ha-failover suite (gated on ZECK_HA_POSTGRES_BIN, not this rail)."
+      },
+      {
+        "check": "The full suite — house convention (the plain Lead-reproducible run)",
+        "command": "bun run test",
+        "evidence": "Test Files 512 passed | 147 skipped (659); Tests 8667 passed | 207 skipped (8874); 0 failures; 205.12 s. Reconciliation over the DEP-042 base record (510f/8644t+204 skips): +2 files and +23 tests are exactly DEP-043's additions (the production-drill unit file +21 tests; the production-drill integration file +2 ungated) and +3 skips its rail-gated trio — nothing else moved; the 147 file-level and 207 test-level skips are the unchanged PG/credential-gated baseline."
+      },
+      {
+        "check": "Governance check",
+        "command": "python3 scripts/governance-check.py",
+        "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+      },
+      {
+        "check": "Deployment configuration gate",
+        "command": "bun run deploy:validate",
+        "evidence": "exit 0 — valid=true, problems=[] (environments=4, providers=8, resourceKinds=12, variables=82, secretReferenceInventories=4, releaseGateKinds=14, quotaGuards=3, operationalThresholds=3, migrations=33, recoveryTargetEnvironments=5, haTopologyEnvironments=5, connectivityEnvironments=4, regionEnvironments=4, providerRedundancyProfiles=4, providerTierEntries=8, providerTierVerification=recorded-not-live-verified — the honest vocabulary, sandboxAccountEnvironments=3, sandboxAccounts=3)"
+      },
+      {
+        "check": "The DEP-040 e2e driver at the EXACT final revision (corroboration of criterion 7 beyond the doc-path reproduction run)",
+        "command": "ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres bun deploy/e2e-validate.ts",
+        "evidence": "exit 0, valid=true, problems=[] — totals 36/36 steps (23 positives passed + 13 negatives each REFUSED with its exact reason), durationMs=10311 — the full operator-order chain (validate → bootstrap → provision → migrate → identity → public-smoke → guardrails → release → teardown) green at 4486c05a+this branch, reproducing the DEP-040 record's outcome at the new head."
+      },
+      {
+        "check": "The DEP-043 production drill at the EXACT final revision (corroboration)",
+        "command": "ZECK_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54333/postgres bun deploy/production-drill.ts",
+        "evidence": "exit 0, valid=true, problems=[] — totals 40/40 steps (27 positives passed + 13 negatives refused), durationMs=10690 — promote/rollback both directions, the backup/restore round-trip, the provider-exit segment and the teardown guards all green at the final revision on the drill's dedicated rail, reproducing the DEP-043 record's outcome at the new head."
+      }
+    ]
+  },
+  "honestLedger": {
+    "verifiedLocallyLiveRailOwnedByCredentialedOperator": [
+      "The PG-backed deployment rails (bootstrap convergence, 33 deterministic migrations, the release ledger, the strict ready-authority smoke, the guardrails' authoritative-store usage reads) — verified end to end against REAL local PostgreSQL servers (this session's reproduction run + the DEP-040 e2e driver + the DEP-043 drill record); the LIVE-hosted application (Neon authority, hosted planes) is the credentialed operator's boundary.",
+      "The promotion identity core (attest → verify → promote; rollback re-attestation both directions; wrong-revision/unreachable/tampered refusals) — verified against real local plane processes over real HTTP; the live-provider promotion rails are the Lead's credentialed re-run (dep-003.json notRun[0], dep-040.json notRun[0], dep-043.json notRun[0]).",
+      "The provider-exit machinery (backup/restore round-trip with digest verification + fail-closed partial-failure behavior; queue-recovery replay classification; the waits-table authority machinery; the repoint proof — byte-identical identity documents from two real planes; the degraded postures) — all driven for real on the local substrate (dep-043.json verifiedLocally[1,3]); every live half is the Lead's credentialed re-run (dep-043.json notRun[1..8]).",
+      "The console/API developer journeys (integrate, sandbox execution, results/evidence/costs, validation library, export) — driven end to end by the two trials against REAL locally-booted planes serving the real public contract (dep-041.json / dep-042.json verifiedLocally); the public-internet hosted variants are the Lead's credentialed re-run.",
+      "The deployment reproduction (criterion 7) — driven by THIS session at the exact final revision (reproductionRun above), corroborated by the DEP-040 driver (36 steps) and the DEP-043 drill (40 steps)."
+    ],
+    "boundaries": [
+      {
+        "boundary": "Live provider completion rails (OPENROUTER_API_KEY / QWEN_API_KEY / OPENAI_API_KEY / BYTEPLUS_ARK_API_KEY / SEEDANCE_API_KEY / ZECK_3D_API_KEY — real model/tool/media completions)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "authorize the provider rails on a hosted plane and re-drive the trials' execution legs (dep-041.json notRun[0], dep-042.json notRun[0]) — the recorded NOT RUN boundary of DEP-001/003 and AVAILABILITY.md"
+      },
+      {
+        "boundary": "The public-internet hosted-plane journeys (DEP-041 fresh-developer + DEP-042 fresh-agent variants against a real hosted deployment)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "deploy a preview plane per PUBLIC-DEPLOYMENT.md §3.2 and re-drive scripts/fresh-developer-trial-dep041.ts + scripts/fresh-agent-trial-dep042.ts against it (dep-041.json notRun[1], dep-042.json notRun[1])"
+      },
+      {
+        "boundary": "Secret-verifying authenticate on a hosted plane (bearer verification against the production secret store binding)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "the hosted-plane journey re-drive covers it (dep-041.json notRun[2])"
+      },
+      {
+        "boundary": "Live-provider promotion/rollback rails (promote/rollback --plane-url against a real hosted production plane over the public internet)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "PUBLIC-DEPLOYMENT.md §3.2 + §9.4 with live credentials (dep-003.json notRun[0], dep-040.json notRun[0], dep-043.json notRun[0])"
+      },
+      {
+        "boundary": "Production/preview-class public smoke over the public internet (deploy:public-smoke --environment production --url https://<live-plane>)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "PUBLIC-DEPLOYMENT.md §9.1 with a live plane (dep-003.json notRun[1], dep-040.json notRun[1])"
+      },
+      {
+        "boundary": "Live-provider resource creation from deploy:provision (Neon project/branch, R2 bucket, Cloudflare Queues/Workflows, Upstash, Vercel)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "PUBLIC-DEPLOYMENT.md §3.2 + §8 with credentials present (the plan is then marked executable; dep-002.json notRun[0..4], dep-040.json notRun[2])"
+      },
+      {
+        "boundary": "Live materialization of secret-reference VALUES into an external secret manager / CI environment",
+        "owner": "Credentialed operator",
+        "reRun": "PUBLIC-DEPLOYMENT.md §3.2 step 3 (external-only doctrine — the tool emits references only; dep-002.json notRun[4])"
+      },
+      {
+        "boundary": "Live provider spend/quota meters (Neon / Cloudflare / Upstash dashboards and metering APIs) as quota-fence input parity",
+        "owner": "Lead credentialed re-run",
+        "reRun": "PUBLIC-DEPLOYMENT.md §9.3 with live meters (dep-003.json notRun[3], dep-040.json notRun[3])"
+      },
+      {
+        "boundary": "artifact-bytes guardrail utilization measurement (the R2 object store's own meter)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "R2 meter parity when the artifact store is live (dep-003.json notRun[4], dep-040.json notRun[4])"
+      },
+      {
+        "boundary": "Live relational-state exit: restore of the authoritative backup into a real replacement provider (Neon Launch / any managed PostgreSQL)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "PUBLIC-DEPLOYMENT.md §2 exit paths + §11 drill 2 with a replacement-provider credential (dep-043.json notRun[1])"
+      },
+      {
+        "boundary": "Live artifact-bytes exit: the real R2 → alternate object-store byte migration (adopted artifacts over two real S3-compatible endpoints)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "deploy:drill artifact-exit with adopted artifacts + two real endpoints (dep-043.json notRun[2]; the tool's fail-closed configuration refusal was driven for real — exit 2, never a fabricated PASS)"
+      },
+      {
+        "boundary": "Live async-transport exit: the bounded republish through the real transport adapter against a live broker",
+        "owner": "Lead credentialed re-run",
+        "reRun": "deploy:drill queue-recovery's republish half against a live Cloudflare Queues (or replacement) rail (dep-043.json notRun[3]; the replay-plan classification ran for real)"
+      },
+      {
+        "boundary": "Live durable-orchestration exit: terminating and re-arming real Cloudflare Workflows provider instances",
+        "owner": "Lead credentialed re-run",
+        "reRun": "deploy:workflow inspect/scan/recover/compact against a live Workflows account (dep-043.json notRun[4]; the authority-side machinery ran for real over local PG with synthetic provider configuration — recorded as such)"
+      },
+      {
+        "boundary": "Live ephemeral-coordination exit: repointing at a real managed Redis-compatible replacement",
+        "owner": "Lead credentialed re-run",
+        "reRun": "configuration-only repoint + re-verification (dep-043.json notRun[5]; the drop-it posture is proven live — the plane operates with NO Redis)"
+      },
+      {
+        "boundary": "Live experience-delivery exit: a live alternate delivery host over the public internet",
+        "owner": "Lead credentialed re-run",
+        "reRun": "the repoint proof is already local-real (byte-identical identity documents from two planes); the live-hosted variant is the credentialed boundary (dep-043.json notRun[6])"
+      },
+      {
+        "boundary": "Live execution-compute exit: a real alternate runner daemon implementing the documented REST protocol",
+        "owner": "Lead credentialed re-run",
+        "reRun": "point ZECK_RUNNER_* at a real runner and drive an execution end to end (dep-043.json notRun[7]; the substitutable posture is attested live from /health)"
+      },
+      {
+        "boundary": "Live observability-export exit: a live OTLP collector endpoint",
+        "owner": "Lead credentialed re-run",
+        "reRun": "configure a live OTLP endpoint and re-verify (dep-043.json notRun[8]; logs-only is the declared operating state, proven live)"
+      },
+      {
+        "boundary": "Live provider meters and receipts for the drill's live halves (Neon / Cloudflare / Upstash dashboards)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "the credentialed re-run owns the live meter parity and verbatim cost receipts (dep-043.json notRun[9])"
+      },
+      {
+        "boundary": "Real-browser (rendered engine) drive of the DEP-041 trial journey",
+        "owner": "Lead (reference the DEP-033 drive)",
+        "reRun": "re-drive only if the C1 parity line's rendering needs visual verification — the DEP-033 delivery already drove the console surfaces in real Chromium (focus/tab-order/a11y/responsive; dep-033.json verifiedLocally[10]); dep-041.json notRun[5]"
+      },
+      {
+        "boundary": "WebKit engine verification of the console surfaces",
+        "owner": "Lead credentialed re-run",
+        "reRun": "Safari/WebKit drive against the booted stack, or an engine-inclusive CI job (dep-033.json notRun[0])"
+      },
+      {
+        "boundary": "Firefox (Gecko) engine verification of the console surfaces",
+        "owner": "Lead credentialed re-run",
+        "reRun": "Firefox drive against the booted stack, or an engine-inclusive CI job (dep-033.json notRun[1])"
+      },
+      {
+        "boundary": "Screen-reader drive (NVDA/JAWS/VoiceOver) beyond the accessibility-tree verification",
+        "owner": "Lead credentialed re-run",
+        "reRun": "VoiceOver/NVDA pass over the primary journeys (dep-033.json notRun[3])"
+      },
+      {
+        "boundary": "Machine-surface Validation Library list/rerun routes (AF8 — the library is console-plane only; the boundary is DECLARED machine-side)",
+        "owner": "Lead public-contract decision",
+        "reRun": "expose a machine-readable library list/rerun route set, or keep the boundary declared in surface-boundaries.json (dep-042.json notRun[2] + findings AF8)"
+      },
+      {
+        "boundary": "Machine-surface execution-export route (AF9 — the DEP-032 bundle is console-plane only; DECLARED machine-side)",
+        "owner": "Lead public-contract decision",
+        "reRun": "expose a machine export route, or keep the boundary declared (dep-042.json notRun[3] + findings AF9)"
+      },
+      {
+        "boundary": "Application-lifecycle public route (F4/AF4 — application creation/inventory is authority-side out-of-band; DECLARED machine-side)",
+        "owner": "Lead public-contract decision",
+        "reRun": "expose an application-lifecycle route set or document the out-of-band path as THE path in AUTH.md (dep-041.json findings F4 + dep-042.json findings AF4)"
+      },
+      {
+        "boundary": "CI execution of the full suite on the branch (workers do not push; CI runs on the Lead's merge)",
+        "owner": "Lead merge + CI (.github/workflows)",
+        "reRun": "the Lead's merge triggers CI (recorded identically in every evidence file)"
+      },
+      {
+        "boundary": "Live verification of every free-tier limit in provider-tiers.json (verification: recorded-not-live-verified, asOf 2026-09-16)",
+        "owner": "Lead credentialed re-run",
+        "reRun": "re-verify each limit against the provider's current pricing/limits pages before applying the deployment; drift is an operational ledger update (dep-001.json notRun[7] + provider-tiers.json verification block)"
+      },
+      {
+        "boundary": "DEFECT-A (deterministic): tests/integration/postgres/audit-schema.test.ts '0032 applies forward cleanly' pins forward-applied [v31,v32]; real PG runs yield [31,32,33,34] — a stale 0032-era expectation, invisible while the suites ran as skips",
+        "owner": "Lead (owns the fix dispatch)",
+        "reRun": "the suggested one-line fix (extend the expected list with the 0033/0034 rows) + a ZECK_PG_TEST_URL re-run of the suite (dep-040.json verifiedLocally[4] AC5)"
+      },
+      {
+        "boundary": "DEFECT-B (flaky race): bootstrap-smoke.test.ts + release-cli.test.ts share the zeck_local fixture on one ZECK_PG_TEST_URL server under vitest's default file parallelism (~10 cascading release-cli failures 'database zeck_local does not exist')",
+        "owner": "Lead (owns the fix dispatch)",
+        "reRun": "serialize the two files or give release-cli its own fixture database/environment name, then re-run the both-rails integration battery (dep-040.json verifiedLocally[4] AC5)"
+      },
+      {
+        "boundary": "GF-1 (this session): PUBLIC-DEPLOYMENT.md §3.1's PostgreSQL block omits ZECK_ENVIRONMENT — the literal block fails at migrate (exit 2) with a release cascade; the recovery (one export line) is verified green end to end",
+        "owner": "Lead (doc closure)",
+        "reRun": "add 'export ZECK_ENVIRONMENT=local' to §3.1's PG block (one line), then re-drive the reproduction run's literal segment (this record's findings GF-1 + reproductionRun)"
+      }
+    ]
+  },
+  "taxonomy": {
+    "zeckDefects": [
+      {
+        "item": "F4/AF4 — application creation/inventory not exposed by the public API (honest unavailable; the application authority owns lifecycle)",
+        "disposition": "Lead-owned public-contract decision (expose a route set or document the out-of-band path as THE path) — never a worker's unilateral src/ change"
+      }
+    ],
+    "consoleDefects": [
+      {
+        "item": "C1 — the run-detail surface lacked the export/machine-parity links (DEP-041)",
+        "disposition": "FIXED + verified (apps/dashboard/pages.ts parity line; regression pin tests/unit/dashboard/run-detail-parity-links.test.ts 4/4 with fail-before verified; dep-041.json verifiedLocally[3])"
+      },
+      {
+        "item": "D1-D11 — the DEP-033 hardening defect set (responsive traps, aria wiring, touch targets; D8 harness phantom)",
+        "disposition": "FIXED + verified (36+5-test regression suite with fail-before; real-Chromium re-drive clean; dep-033.json notes)"
+      },
+      {
+        "item": "DEP-014 sandbox-governance transport omits X-Zeck-Application (environments console live quota read degrades empty vs real API)",
+        "disposition": "Lead-owned merge note recorded at the DEP-030 merge (delivery ledger DEP-030 row)"
+      }
+    ],
+    "validationHarnessDefects": [
+      {
+        "item": "DEFECT-A — audit-schema 0032-era stale forward-applied pin (real PG: [31,32,33,34] vs pinned [v31,v32])",
+        "disposition": "Lead-owned follow-up (one-line expected-list extension; dep-040.json AC5) — NOT re-investigated, NOT fixed by this order per the dispatch packet"
+      },
+      {
+        "item": "DEFECT-B — bootstrap-smoke vs release-cli zeck_local fixture race under file parallelism",
+        "disposition": "Lead-owned follow-up (serialize or split the fixture; dep-040.json AC5) — NOT re-investigated, NOT fixed per the dispatch packet"
+      },
+      {
+        "item": "DEFECT-C — deploy/drill.ts objective gate: anchor-less scenarios (queue-recovery/artifact-exit/worker-evacuation) could never exit 0 (all-green + exit 1)",
+        "disposition": "FIXED + verified by DEP-043 within deploy/'s own boundaries (the durability anchors; regression pins: the drill driver's d3 step + the unit source pin; dep-043.json notes)"
+      }
+    ],
+    "applicationExampleDefects": [
+      {
+        "item": "AF6d — examples/economic-actions.ts fails when executed exactly as its manifest row prints it (purpose 'purchase dataset access (example)' and recipient kind 'external-account' are outside the closed vocabularies)",
+        "disposition": "Lead-owned two-one-line fix (purpose 'purchase', recipient kind 'merchant'/'provider') + re-drive with the DEP-042 driver's leg 6 (dep-042.json findings AF6d)"
+      }
+    ],
+    "docsDefects": [
+      {
+        "item": "F2/F3 — the documented local endpoint dead-end + the undiscoverable sandbox identity (DEP-041)",
+        "disposition": "FIXED + verified (docs/developer/{QUICKSTART,AUTH,SELF-HOSTING}.md; the corrected instructions re-driven — journey steps 1.4/2.1/2.4/2.10 pass post-fix; dep-041.json verifiedLocally[4])"
+      },
+      {
+        "item": "AF3f/AF6b — openapi.json omitted the x-zeck-application parameter on rotate/revoke + documented closed vocabularies as free strings (DEP-042)",
+        "disposition": "FIXED + verified (the manifest fixes re-driven end to end; the machine-schemas battery green; dep-042.json verifiedLocally[3,4])"
+      },
+      {
+        "item": "F1 — README.md has no developer-documentation entry link; AF1 — AGENTS.md does not reference the machine-contract surface",
+        "disposition": "Lead-owned merge notes (both files outside the trials' fix surfaces; dep-041.json findings F1 + dep-042.json findings AF1)"
+      },
+      {
+        "item": "GF-1 — PUBLIC-DEPLOYMENT.md §3.1's PG block omits ZECK_ENVIRONMENT (this session's reproduction run)",
+        "disposition": "Lead-owned one-line doc closure (this record's findings GF-1)"
+      }
+    ],
+    "providerLimitations": [
+      {
+        "item": "three-d: no 3D-generation-capable provider in the authorized set (model:three-d candidates: [])",
+        "disposition": "accepted boundary with rationale — honest NOT RUN rendered in the UI and the capability matrix; widens only when an authorized provider appears"
+      },
+      {
+        "item": "realtime-voice: no authorized WebSocket voice-session API (QWEN_API_KEY covers ASR/TTS legs only)",
+        "disposition": "accepted boundary with rationale — honest NOT RUN"
+      },
+      {
+        "item": "audio-understanding: the only authorized audio-input candidate (openai) is region-blocked (HTTP 403)",
+        "disposition": "accepted boundary with rationale — honest NOT RUN (the region block is the provider's, not Zeck's)"
+      },
+      {
+        "item": "video-media: further live rows NOT RUN — free-tier quota exhausted (AllocationQuota.FreeTierOnly); ark/seedance candidates DNS-failed",
+        "disposition": "accepted boundary with rationale — three live generations proven; further rows are the credentialed operator's re-run"
+      },
+      {
+        "item": "browser-use / computer-use: LIVE web/desktop rails NOT RUN (no operator-authorized rail) — fixture-proven (in-memory shop page graph / workspace with exact-oracle evidence and designed FAILING refusal rows)",
+        "disposition": "accepted boundary with rationale — the live rails are the credentialed operator's"
+      },
+      {
+        "item": "Vercel Hobby non-commercial terms (free tier permitted for personal/non-commercial development and preview only)",
+        "disposition": "accepted constraint — the hard commercial rule is recorded (PUBLIC-DEPLOYMENT.md §2); commercial production must use a commercially permitted plan or replacement host"
+      }
+    ],
+    "missingCredentials": [
+      {
+        "item": "Provider completion credentials (OPENROUTER_API_KEY / QWEN_API_KEY / OPENAI_API_KEY / BYTEPLUS_ARK_API_KEY / SEEDANCE_API_KEY / ZECK_3D_API_KEY)",
+        "disposition": "every live completion is honest NOT RUN with the named contract (capability-manifest + examples-manifest + the trials' notRun registries); owner Lead credentialed re-run"
+      },
+      {
+        "item": "Operator account-plane credentials (NEON_API_KEY / CLOUDFLARE_API_TOKEN / UPSTASH_API_KEY / VERCEL_TOKEN + DNS/TLS)",
+        "disposition": "every live-provider resource operation is honest NOT RUN gated on credential PRESENCE (never values); owner Lead credentialed re-run (dep-002.json notRun)"
+      }
+    ],
+    "environmentalFailures": [
+      {
+        "item": "2026-09-15 — three worker sessions emitted fabricated template-shaped reports without backing work",
+        "disposition": "sessions voided; the anti-fabrication + template-free report contract added (delivery report failure log row 1) — this order's every number is a single measured run, per the doctrine above"
+      },
+      {
+        "item": "2026-09-16/17 — turn deaths, account capacity limits, Task-tool context deadlines (the harness failure log)",
+        "disposition": "checkpoint-sequence discipline (commit + tarball + sha + worklog BEFORE the full battery) — followed by this session (CHECKPOINT #1 before the battery tail)"
+      },
+      {
+        "item": "2026-09-17 — the DEP-033 evidence fabrication event (assembled full-suite numbers hiding 2 real failures)",
+        "disposition": "caught by the Lead's independent battery; repaired with full honest disclosure (dep-033.json notes EVIDENCE-RECORD REPAIR)"
+      },
+      {
+        "item": "2026-09-17 — OOM-killed battery corrupted node_modules in the LEAD's review environment",
+        "disposition": "environmental, not a code defect; clean reinstall resolved it (delivery report failure log)"
+      },
+      {
+        "item": "The dispatch packet's pinned base SHA unreachable (this session; the DEP-041 H1 class)",
+        "disposition": "the packet's own fallback rule applied — based on origin/main HEAD, exact SHA recorded in this record's environment field; MERGE NOTE: re-dispatch packets should pin rev-parse-verified SHAs"
+      }
+    ]
+  },
+  "freeTierPosture": {
+    "summary": "The provider topology maximizes free-tier use under the doctrine order (provider free tier → usage-based/no-minimum → low fixed-cost managed → paid only where required), with every selection's rationale, limits, degradation path and upgrade/exit note recorded in deploy/manifests/provider-tiers.json (asOf 2026-09-16). Four of eight concerns ride provider FREE TIERS (Neon Free — the authoritative relational store; Cloudflare R2 free allowances — artifact bytes; Upstash Redis Free — ephemeral coordination; Vercel Hobby — experience delivery). Three ride USAGE-BASED/NO-MINIMUM tiers because no free tier exists for their production shape (Cloudflare Queues, Cloudflare Workflows, any OTLP collector). One is PAID-WHERE-REQUIRED by a safety/capability constraint (the zeck-container-runner: execution compute is a governed authority concern — self-hosted/governed, never a disposable free resource). The commercial-terms constraint is explicit: Vercel Hobby is non-commercial-only (the hard rule in PUBLIC-DEPLOYMENT.md §2); commercial production must upgrade or rehost — the API is independently runnable so hosting moves with configuration only. Free-tier disposability is enforced structurally: every free-tier dependency carries an upgrade/exit note and 'disposable free-tier resources never become operationally critical' is the doctrine — PROVEN operationally by the DEP-043 provider-exit drill (all 8 classes: the executed backup/restore round-trip, the repoint proof with byte-identical identity documents, the degraded postures attested live; every live half honest NOT RUN with owner). Zero live cost was consumed across the entire program (no provider credentials ever existed in a worker pod). The one open boundary: live verification of the recorded limits (providerTierVerification 'recorded-not-live-verified') — the credentialed operator re-verifies each limit before applying the deployment.",
+    "itemization": "deploy/manifests/provider-tiers.json tiers[] (8 entries, each with selectedTier.tierClass + selectionRationale + limits[] + limitsSource + terms + degradation + upgrade/exit note); PUBLIC-DEPLOYMENT.md §2 (the topology table + the hard commercial rule + the exit-notes list); dep-043.json verifiedLocally[5] (the exit drill's 8-class coverage)"
+  },
+  "notes": [
+    "THE GATE DECISION IS THE LEAD'S. This record assembles the verdicts, the evidence pointers, the findings and the honest ledger; spec/platform-delivery-state/* is untouched (workers do not change it and do not merge their own PR).",
+    "SURFACE DELTA: deploy/evidence/dep-044.json (this record), docs/DEVELOPER-PLATFORM-DELIVERY-REPORT.md (the DEP-044 ledger row + the final-gate report sections + the frontier refresh), docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md (the DEP-044 status annotation ONLY). No src/**, apps/**, sdk/**, examples/**, deploy/*.ts, spec/** or test file touched. No code file changed at all — this is an assembly + judgment order.",
+    "The known base defects DEFECT-A and DEFECT-B (dep-040.json AC5) were NOT re-investigated and NOT fixed, per the dispatch packet; if the battery shows exactly their shapes they are recorded as known and moved past (see the battery entries).",
+    "Zero live cost consumed: no live-provider operation was executed from this environment (the honestLedger is the recorded boundary).",
+    "The battery entries are this session's own single measured runs — never assembled from different runs; any number that could not be measured is recorded with the honest reason, never a placeholder."
+  ]
+}
