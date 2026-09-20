@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-post-release-public-productization",
+  "status": "active",
+  "currentBase": "faa024247546e61d6e52465b1929188230f0feb6",
+  "delivered": [],
+  "eligible": ["PPR-001","PPR-002","PPR-003"],
+  "inFlight": [],
+  "blocked": [],
+  "maxConcurrentWorkers": 3,
+  "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head"
+}
