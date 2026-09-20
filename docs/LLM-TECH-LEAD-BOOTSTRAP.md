@@ -50,18 +50,17 @@ Worker claims and PR bodies never override repository state.
 
 ## 3. Current implementation truth
 
-At this handoff revision:
-
-- v1.0 is frozen.
-- D1.0 is approved and subordinate.
-- E1.0 is approved.
-- E1.1 is approved by ACR-004/ADR-0020.
-- D-00 through D-06 are complete.
-- `WORK-048 / D-07` is the only executable implementation item.
-- D-08 is blocked until its explicit gates are satisfied.
-- E1.1 implementation starts only after D-07 is complete and the Architect issues its next Work Order(s).
-
-Never infer a future Work Order directly from chat or this bootstrap.
+- Core Architecture v1.0 is frozen.
+- D1.0 deployment/runtime architecture is approved.
+- E1.0 and E1.1 are approved.
+- D-00 through D-08 are complete.
+- E1.1 WORK-048 through WORK-056 are complete.
+- Validation VAL-001 through VAL-052 is complete.
+- Developer Platform DEP-001 through DEP-044 is complete.
+- The active program is now `zeck-post-release-public-productization`.
+- Read `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`, `docs/POST-RELEASE-USER-JOURNEY-SIMULATION.md`, `docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md`, `docs/LLM-TECH-LEAD-HANDOFF.md` and `spec/post-release-state/frontier-state.json`.
+- The first authorized wave is PPR-001/PPR-002/PPR-003, subject to live conflict analysis.
+- Never infer the current SHA from this bootstrap; fetch live `main` at recovery.
 
 ## 4. E1.1 architectural rule
 
