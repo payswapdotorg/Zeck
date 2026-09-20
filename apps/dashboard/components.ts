@@ -317,6 +317,13 @@ export interface WhyPanelView {
   readonly execution: Execution;
   readonly result: ExecutionResult;
   readonly events: readonly ExecutionEvent[];
+  /**
+   * PPR-001: render the disclosure OPEN by default. The "How Zeck did
+   * it" hierarchy is the NORMAL result comprehension — the result view
+   * passes true (promotion, not re-engineering); deeper tabs keep the
+   * collapsed progressive-disclosure default.
+   */
+  readonly open?: boolean;
 }
 
 /**
@@ -396,7 +403,7 @@ export function whyPanel(view: WhyPanelView): string {
       ? '<p class="muted">No verification results are recorded yet — no confidence claim is shown.</p>'
       : `<p>${esc(deriveQualityAxis(result.verification).label)} — each check is a platform verification result; the full table is on the Evidence view.</p>
 <p><a href="/runs/${encodeURIComponent(execution.id)}?tab=evidence">View the evidence</a></p>`;
-  return `<details class="why-panel">
+  return `<details class="why-panel"${view.open === true ? " open" : ""}>
   <summary>How Zeck did it</summary>
   <div class="why-body">
     <h3>Understood task — what did Zeck understand?</h3>

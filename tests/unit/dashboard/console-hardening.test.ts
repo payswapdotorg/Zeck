@@ -863,16 +863,22 @@ describe("AC4: the no-script foundation — native links, GET forms, details/sum
 // ---------------------------------------------------------------------------
 
 describe("AC7: the route table carries exactly the pinned routes (this order adds none)", () => {
-  test("the dashboard route table is exactly 88 routes — the base count, unchanged by DEP-033", () => {
-    expect(routes.length).toBe(88);
+  test("the dashboard route table is exactly 91 routes — 88 + the three PPR-001 discovery routes", () => {
+    // PPR-001 added exactly three GET routes: /console/catalog,
+    // /console/start and /trust/limits (all read-only discovery
+    // surfaces; no new mutation route, no machine-boundary route).
+    expect(routes.length).toBe(91);
     // The console surface set stays pinned (spot-check the DEP-033 scope:
     // no new route patterns landed beside the existing console routes).
     const patterns = routes.map((route) => `${route.method} ${route.pattern}`);
     expect(patterns).toContain("GET /console/quickstart");
+    expect(patterns).toContain("GET /console/catalog");
+    expect(patterns).toContain("GET /console/start");
+    expect(patterns).toContain("GET /trust/limits");
     expect(patterns).toContain("GET /console/executions");
     expect(patterns).toContain("GET /console/compare");
     expect(patterns).toContain("GET /console/settings");
-    expect(patterns.filter((pattern) => pattern.startsWith("GET /console")).length).toBe(40);
+    expect(patterns.filter((pattern) => pattern.startsWith("GET /console")).length).toBe(42);
     expect(patterns.filter((pattern) => pattern.startsWith("POST /console")).length).toBe(6);
     // The public API's machine contract is untouched by this order
     // (AC7's zero-new-routes rule covers the openapi boundary too —

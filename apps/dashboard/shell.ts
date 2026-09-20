@@ -28,6 +28,7 @@
 
 import { type AttentionItem, attentionIndicator } from "./attention";
 import { esc } from "./components";
+import { MOBILE_NAV_ITEMS } from "./discovery";
 import { DEFAULT_MODE, type ExperienceMode, modeSelectionForm, visibleInMode } from "./modes";
 import { DASHBOARD_CSS } from "./tokens";
 
@@ -83,6 +84,22 @@ const DEVELOPER_CONSOLE: readonly NavItem[] = [
     description:
       "Guided sandbox runs for every workload family — synthetic data, hard limits, honest availability.",
     keywords: ["playground", "sandbox", "workload", "family", "experiment", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "Capability catalog",
+    path: "/console/catalog",
+    description:
+      "All 22 workload families with their honest availability states — the discovery-first catalog.",
+    keywords: [
+      "capability",
+      "catalog",
+      "workload",
+      "family",
+      "availability",
+      "discover",
+      "develop",
+    ],
     modes: PROFESSIONAL,
   },
   {
@@ -155,6 +172,14 @@ const DEVELOPER_CONSOLE: readonly NavItem[] = [
     path: "/console/docs",
     description: "The developer documentation entry points, served from the repository.",
     keywords: ["docs", "documentation", "guide", "reference", "develop"],
+    modes: PROFESSIONAL,
+  },
+  {
+    label: "For agents",
+    path: "/console/docs/AGENT-GUIDE.md",
+    description:
+      "The agent integration guide plus the machine-readable contract layer — first-class agent onboarding.",
+    keywords: ["agent", "agents", "machine", "integration", "coding agent", "develop"],
     modes: PROFESSIONAL,
   },
   {
@@ -279,9 +304,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     label: "Trust",
     path: "/trust/evidence",
-    keywords: ["trust", "evidence", "evaluations", "verification"],
+    keywords: ["trust", "evidence", "evaluations", "verification", "limits"],
     modes: PROFESSIONAL,
     items: [
+      {
+        label: "Trust & Limits",
+        path: "/trust/limits",
+        description:
+          "The consolidated entry — policy, spend, the sandbox envelope and verification in one place.",
+        keywords: ["trust", "limits", "policy", "spend", "sandbox", "verification"],
+        modes: PROFESSIONAL,
+      },
       {
         label: "Evidence",
         path: "/trust/evidence",
@@ -591,6 +624,26 @@ function renderNav(activePath: string, mode: ExperienceMode): string {
 </nav>`;
 }
 
+/**
+ * PPR-001: the mobile bottom navigation bar (the ShareNet-inspired
+ * grammar's mobile variant). The SAME five primary destinations render
+ * in every page's DOM — CSS selects the variant per viewport class
+ * (fixed bottom bar at the mobile width, hidden elsewhere); the active
+ * destination carries aria-current exactly like the sidebar. Visibility
+ * only: no route, object or semantic differs from the sidebar/menu.
+ */
+function renderMobileNav(activePath: string): string {
+  const items = MOBILE_NAV_ITEMS.map((item) => {
+    const current = matchesPath(item.path, activePath) ? ' aria-current="page"' : "";
+    return `<li><a href="${esc(item.path)}"${current}>${esc(item.label)}</a></li>`;
+  }).join("\n    ");
+  return `<nav class="mobile-nav" aria-label="Primary destinations">
+  <ul>
+    ${items}
+  </ul>
+</nav>`;
+}
+
 // ---------------------------------------------------------------------------
 // The global command dialog (the second front door, v2 §7)
 // ---------------------------------------------------------------------------
@@ -756,6 +809,7 @@ export function appShell(input: AppShellInput): string {
       <p>Zeck dashboard — a projection over the governed public API. Every view reads live through the Zeck SDK client; no facts are cached in this browser beyond navigation-only recents.</p>
     </footer>
   </div>
+  ${renderMobileNav(input.activePath)}
   ${commandDialog(mode)}
   <script src="/assets/client.js" defer></script>
 </body>

@@ -196,6 +196,10 @@ describe("the v2 route map: every route renders", () => {
     ["/command", 200],
     ["/command?q=agents", 200],
     ["/command?q=000000000000000000000000000000deadbeef", 200],
+    // PPR-001 — the discovery surfaces.
+    ["/console/catalog", 200],
+    ["/console/start", 200],
+    ["/trust/limits", 200],
     // Developer console (DEP-010).
     ["/console", 200],
     ["/console/quickstart", 200],
@@ -372,15 +376,18 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP
       "Quickstart",
       "Applications",
       "Playground",
+      "Capability catalog",
       "Executions",
       "Usage & economics",
       "Validation Lab",
       "Providers",
       "Docs",
+      "For agents",
       "Settings",
     ]);
     expect(NAV_GROUPS[3]?.items.map((item) => item.label)).toEqual(["Artifacts", "Connections"]);
     expect(NAV_GROUPS[4]?.items.map((item) => item.label)).toEqual([
+      "Trust & Limits",
       "Evidence",
       "Evaluations",
       "Lineage",
@@ -414,11 +421,14 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP
       "Quickstart",
       "Applications",
       "Playground",
+      "Capability catalog",
       "Usage &amp; economics",
       "Validation Lab",
       "Providers",
       "Docs",
+      "For agents",
       "Settings",
+      "Trust &amp; Limits",
       "Artifacts",
       "Connections",
       "Evidence",
@@ -531,6 +541,41 @@ describe("responsive and appearance evidence in the stylesheet", () => {
     expect(DASHBOARD_CSS).not.toMatch(/gradient/);
   });
 
+  test("the PPR-001 mobile bottom navigation variant exists in the stylesheet (nav variant selection)", () => {
+    // The bottom bar is hidden by default and renders only at the mobile
+    // viewport class — the same DOM, CSS-selected per viewport.
+    expect(DASHBOARD_CSS).toContain(".mobile-nav { display: none; }");
+    const mobileBlock = DASHBOARD_CSS.slice(DASHBOARD_CSS.indexOf(".mobile-nav {"));
+    expect(mobileBlock).toContain(".mobile-nav {\n    display: block;\n    position: fixed;");
+    expect(mobileBlock).toContain("bottom: 0;");
+    // Touch-safe: the bar's targets obey the >=44px touch-target minimum
+    // and the safe-area insets are honored.
+    expect(mobileBlock).toContain("min-height: var(--touch-target)");
+    expect(mobileBlock).toContain("env(safe-area-inset-bottom)");
+    expect(mobileBlock).toContain(
+      "body { padding-bottom: calc(var(--touch-target) + var(--space-4)); }",
+    );
+    // Active-item treatment mirrors the sidebar's aria-current rule.
+    expect(mobileBlock).toContain('.mobile-nav ul li a[aria-current="page"]');
+  });
+
+  test("the PPR-001 discovery styles carry the ShareNet-inspired grammar (whitespace, hero, states)", () => {
+    // Generous whitespace: the hero and discovery sections carry the
+    // larger spacing rhythm; the hero lead is width-capped for calm.
+    expect(DASHBOARD_CSS).toContain(".discovery-hero {");
+    expect(DASHBOARD_CSS).toContain("margin-bottom: var(--space-6)");
+    expect(DASHBOARD_CSS).toContain("max-width: 46rem");
+    // One dominant action: the hero CTA is the heavier primary treatment.
+    expect(DASHBOARD_CSS).toContain("a.button-link.hero-cta {");
+    expect(DASHBOARD_CSS).toContain("padding: var(--space-3) var(--space-5);");
+    // Restrained semantic availability states (color classes pair with
+    // the symbol+text chips in the markup — never color alone).
+    expect(DASHBOARD_CSS).toContain(".chip.state-available");
+    expect(DASHBOARD_CSS).toContain(".chip.state-requires-access");
+    expect(DASHBOARD_CSS).toContain(".chip.state-provider-gated");
+    expect(DASHBOARD_CSS).toContain(".chip.state-not-run");
+  });
+
   test("the appearance route sets the presentation cookie and redirects back", async () => {
     const response = await get("/appearance?mode=dark&returnTo=/runs");
     expect(response.status).toBe(303);
@@ -553,5 +598,42 @@ describe("responsive and appearance evidence in the stylesheet", () => {
   test("no explicit preference renders without data-theme (system follows the OS)", async () => {
     const html = await getHtml("/");
     expect(html).toContain('<html lang="en">');
+  });
+});
+
+describe("the PPR-001 mobile bottom navigation (DOM evidence, every viewport class)", () => {
+  const PAGES: readonly string[] = ["/", "/console/catalog", "/console/start", "/trust/limits"];
+
+  test("every page carries the bottom bar DOM with the five primary destinations", async () => {
+    for (const page of PAGES) {
+      const html = await getHtml(page);
+      expect(html, page).toContain('<nav class="mobile-nav" aria-label="Primary destinations">');
+      for (const label of ["Home", "Start", "Catalog", "Validation", "Trust"]) {
+        expect(html, `${page} ${label}`).toContain(`>${label}</a>`);
+      }
+      // The same routes exist in every viewport class — the bar is the
+      // same five REAL routes the sidebar addresses (visibility only).
+      expect(html, page).toContain('href="/console/start"');
+      expect(html, page).toContain('href="/console/catalog"');
+      expect(html, page).toContain('href="/console/validation"');
+      expect(html, page).toContain('href="/trust/limits"');
+    }
+  });
+
+  test("the active destination carries aria-current exactly like the sidebar", async () => {
+    const catalog = await getHtml("/console/catalog");
+    expect(catalog).toContain('href="/console/catalog" aria-current="page"');
+    const start = await getHtml("/console/start");
+    expect(start).toContain('href="/console/start" aria-current="page"');
+    const trust = await getHtml("/trust/limits");
+    expect(trust).toContain('href="/trust/limits" aria-current="page"');
+    const home = await getHtml("/");
+    expect(home).toContain('href="/" aria-current="page"');
+  });
+
+  test("the bottom bar appears once per page and after the app shell (quiet, persistent, non-modal)", async () => {
+    const html = await getHtml("/");
+    expect((html.match(/<nav class="mobile-nav"/g) ?? []).length).toBe(1);
+    expect(html.indexOf('<nav class="mobile-nav"')).toBeGreaterThan(html.indexOf("</footer>"));
   });
 });

@@ -146,6 +146,8 @@ async function getHtml(path: string, cookie?: string): Promise<string> {
 const CONSOLE_PAGES: readonly string[] = [
   "/console",
   "/console/quickstart",
+  "/console/catalog",
+  "/console/start",
   "/console/applications",
   `/console/applications/${APP_ID}`,
   "/console/applications/keys",
@@ -189,7 +191,9 @@ describe("every console page renders with the full a11y frame", () => {
       "Quickstart",
       "Applications",
       "Playground",
+      "Capability catalog",
       "Providers",
+      "For agents",
       "Docs",
       "Settings",
     ]) {
@@ -197,6 +201,8 @@ describe("every console page renders with the full a11y frame", () => {
     }
     const playground = await getHtml("/console/playground");
     expect(playground).toContain('href="/console/playground" aria-current="page"');
+    const catalog = await getHtml("/console/catalog");
+    expect(catalog).toContain('href="/console/catalog" aria-current="page"');
   });
 });
 
@@ -205,9 +211,14 @@ describe("the developer console home and quickstart", () => {
     const html = await getHtml("/console");
     expect(html).toContain(APP_ID);
     for (const href of [
+      "/console/start",
+      "/console/catalog",
       "/console/quickstart",
       "/console/applications",
       "/console/playground",
+      "/console/validation",
+      "/trust/limits",
+      "/console/docs/AGENT-GUIDE.md",
       "/runs",
       "/trust/evidence",
       "/assets/artifacts",

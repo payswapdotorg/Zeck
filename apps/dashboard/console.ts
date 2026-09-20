@@ -48,6 +48,14 @@ export interface ConsoleFamily {
   readonly taskShape: Readonly<Record<string, unknown>>;
   readonly capabilityRequirements: readonly string[];
   readonly availability: string;
+  /**
+   * PPR-001: the credential ENV VAR NAME the manifest records on
+   * provider-gated families (e.g. QWEN_API_KEY) — absent when the
+   * manifest records no gate. A NAME only, never a value; projected
+   * verbatim so the availability-state derivation (discovery.ts) can
+   * stay a pure function of manifest facts.
+   */
+  readonly gatedBy?: string;
 }
 
 /** One seeded capability as the machine manifest records it. */
@@ -115,6 +123,9 @@ function narrowFamily(value: unknown): ConsoleFamily {
       record.availability,
       `family ${String(record.family)} availability`,
     ),
+    ...(record.gatedBy === undefined
+      ? {}
+      : { gatedBy: requireString(record.gatedBy, `family ${String(record.family)} gatedBy`) }),
   };
 }
 
