@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
   "status": "active",
-  "currentBase": "6c261b7ac60f0eb2b9b6abdd193bbe5a4b35dc9e",
+  "currentBase": "a3f89982b637c6c52ff09fd07a00f183c72bb211",
   "delivered": [
-    "PPR-001"
+    "PPR-001",
+    "PPR-002"
   ],
   "eligible": [
-    "PPR-002",
     "PPR-003"
   ],
   "inFlight": [],
