@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:pg": "vitest run tests/integration/postgres",
     "deploy:validate": "bun deploy/validate.ts",
+    "deploy:build-vercel-output": "bun deploy/build-vercel-output.ts",
     "deploy:bootstrap": "bun deploy/bootstrap.ts",
     "deploy:provision": "bun deploy/provision.ts",
     "deploy:teardown": "bun deploy/teardown.ts",

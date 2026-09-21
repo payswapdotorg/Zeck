@@ -83,6 +83,8 @@ export interface HarnessRunOptions {
   readonly targetUrl: string;
   readonly environment: EnvironmentId;
   readonly expectedRevision?: string;
+  /** The preview branch (the per-branch preview resource set's identity input — required when environment is preview). */
+  readonly branch?: string;
   readonly allowDegraded: boolean;
   readonly credentials: { readonly token: string; readonly applicationId: string } | null;
   /** A label for the report's mode field (url | local-plane | negative-drill). */
@@ -228,7 +230,12 @@ export async function runJourneyHarness(options: HarnessRunOptions): Promise<Har
   const revision = expectedRevisionOf(options.expectedRevision);
 
   // THE IDENTITY GATE (fail-closed for the whole run).
-  const gate = await identityGate(options.targetUrl, revision.revision, options.environment);
+  const gate = await identityGate(
+    options.targetUrl,
+    revision.revision,
+    options.environment,
+    options.branch,
+  );
 
   const ctx: HarnessContext = createContext({
     targetUrl: options.targetUrl.replace(/\/$/, ""),

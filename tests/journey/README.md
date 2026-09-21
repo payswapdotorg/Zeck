@@ -27,20 +27,25 @@ git checkout <the-deployed-revision>
 bun install
 bun tests/journey/run.ts \
   --url https://<the-public-preview-url> \
-  --environment production \
+  --environment preview \
+  --branch <the-deployed-branch> \
   --report deploy/evidence/ppr-003-live.json
 
 # credentialed journey steps (optional — the real sandbox path):
 ZECK_JOURNEY_TOKEN=<bearer> \
 ZECK_JOURNEY_APPLICATION_ID=<application-uuid> \
 bun tests/journey/run.ts --url https://<the-public-preview-url> \
-  --environment production
+  --environment preview --branch <the-deployed-branch>
 ```
 
 The expected revision defaults to the checkout's HEAD (the
 `deploy/public-smoke.ts --url` contract); pin it explicitly with
 `--expected-revision <40-hex-sha>` when the checkout and the deployed
-revision differ deliberately.
+revision differ deliberately. A PREVIEW-environment plane requires
+`--branch <branch-name>` — the per-branch preview resource set makes
+the preview slug an identity input (the same contract as
+`deploy/public-smoke.ts --url`; the live PPR-003 run's first finding,
+2026-09-21, was the harness dropping it).
 
 Exit codes: `0` = every executed step passed (not-run boundaries are
 honest, never failures); `1` = any step failed, any finding fired, or

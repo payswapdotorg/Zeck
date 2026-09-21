@@ -1,167 +1,168 @@
 {
-  "schemaVersion": 1,
-  "workOrder": "PPR-006",
-  "title": "Vercel hosting adapter (the Experience-Delivery Enabler) \u2014 shared bootstrap composition export + request-handler entry + vercel.json + deployment contract (verification evidence record)",
-  "recordedBy": "PPR-006 implementation worker (this session)",
-  "environment": "sandboxed worker pod (no cloud credentials, no Vercel credentials, no deployment performed \u2014 the Lead owns the credentialed deployment run); git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-006-vercel-hosting-adapter, base fe26d9305f4b1d7040e35c7bff6a272c0c38a6fb (verified with git rev-parse before branching). bun 1.3.14 in the pod. NO PostgreSQL server exists in this pod (ports 5432/54329/54331 all closed; no psql/postgres binaries) \u2014 the local-rail proof runs the documented --allow-degraded no-PG path (the pre-authorized sandbox fallback; a reachable PostgreSQL authority would pass strict).",
-  "date": "2026-09-21",
-  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The worker never deploys and never holds Vercel credentials: the Vercel project zeck-preview-main already exists and the Lead owns the credentialed deployment run. This work order adds NO authority and changes NO route: the deployed surface is the IDENTICAL createApiServer public route table, composed by the shared builder the CLI host itself uses.",
-  "runtimeChoice": {
-    "decision": "Node.js runtime via Vercel's Fastify framework entrypoint detection (the zero-configuration path)",
-    "verifiedDocumentation": [
-      {
-        "url": "https://vercel.com/docs/project-configuration/vercel-json",
-        "lastUpdated": "2026-08-24 (page front matter)",
-        "whatItSays": "\"This file should be created in your project's root directory\" (vercel.json placement). The functions property: \"A glob pattern that matches the paths of the Vercel functions you would like to customize\"; its runtime value is \"The npm package name of a Runtime, including its version\" and is documented ONLY under \"Using unsupported runtimes\" (\"To use a runtime that is not officially supported, you can add a runtime property\" \u2014 the example is vercel-php@0.5.2). The Bun runtime is configured by the TOP-LEVEL bunVersion property (\"The bunVersion property configures your project to use the Bun runtime instead of Node.js\"; values \"1.4.x\" | \"1.x\"), NOT through functions.runtime."
-      },
-      {
-        "url": "https://vercel.com/docs/functions/runtimes/bun",
-        "lastUpdated": "2026-08-24 (page front matter)",
-        "whatItSays": "The Bun runtime page carries \"\ud83d\udd12 Permissions Required: The Bun runtime (Beta)\". The sanctioned Bun shapes are Bun.serve() entrypoints (the framework preset: bunVersion + bun.lock + a server entrypoint in the project root or src/, calling Bun.serve() once during module startup; or api/server.ts served at /api/server with prefix-related routing caveats). The framework-specific guidance covers only Next.js. No Fastify-on-Bun entrypoint shape is documented."
-      },
-      {
-        "url": "https://vercel.com/docs/frameworks/backend/fastify",
-        "lastUpdated": "2026-08-10 (page front matter)",
-        "whatItSays": "\"Fastify entrypoint detection\": the entry \"should be named one of the following\": src/app.{js,mjs,cjs,ts,cts,mts}, src/index.{...}, src/server.{...}, app.{...}, index.{...}, server.{...} \u2014 \"Create your Fastify instance, register your routes, and call fastify.listen() in this file.\" The whole app becomes a single Vercel Function on Fluid compute (Node.js runtime by default)."
-      },
-      {
-        "url": "https://vercel.com/kb/guide/ship-a-fastify-app-on-vercel",
-        "lastUpdated": "2026-09-16 (page front matter)",
-        "whatItSays": "\"Because your app is deployed as one function, Vercel routes every incoming request to it and lets Fastify's router match the path.\" \u2014 the original-path guarantee for the route table at its ROOT paths (no /api folder, no rewrites needed)."
-      },
-      {
-        "url": "https://vercel.com/changelog/zero-configuration-express-backends",
-        "published": "2025-09-05",
-        "whatItSays": "\"Vercel's framework-defined infrastructure now recognizes and deeply understands Express applications. This update removes the need for redirects in vercel.json or using the /api folder.\" \u2014 the framework-detection shape supersedes the api/-folder + rewrite pattern for backend frameworks."
-      },
-      {
-        "url": "https://vercel.com/docs/environment-variables/system-environment-variables",
-        "whatItSays": "VERCEL_GIT_COMMIT_REF \u2014 \"Available at: Both build and runtime\" \u2014 \"The git branch of the commit the deployment was triggered by.\" (Consumed by the adapter as the preview-branch input \u2014 the only host-specific variable; every identity input stays the governed ZECK_* contract.)"
-      },
-      {
-        "url": "https://vercel.com/docs/functions/limitations",
-        "whatItSays": "Maximum duration with Fluid compute, Node.js/Bun/Python runtimes: Hobby \"300s (5 minutes)\" default and maximum \u2014 the vercel.json maxDuration bound (60) stays within it."
-      }
-    ],
-    "mechanicalVerification": [
-      "The npm package @vercel/frameworks@3.34.0 (the framework detection definitions Vercel's build uses) was fetched and inspected: the Fastify framework definition has detectors {every: [matchPackage fastify]} + entry files [app, index, server, src/app, src/index, src/server] x [js, cjs, mjs, ts, cts, mts] matched by the content regex importing fastify; useRuntime {@vercel/fastify}; defaultRoutes [{handle: filesystem}, {src: '/(.*)', dest: '/', transforms: [{type: request.path, op: set, args: '/$1'}]}] \u2014 the platform routing that preserves the ORIGINAL path for Fastify's router.",
-      "The npm package @vercel/fastify@8.0.1 (dist/index.js) was fetched and inspected: it delegates to @vercel/node's build with an entrypointCallback that searches exactly those root/src entry filenames whose content imports fastify.",
-      "The npm package @vercel/node@13.0.1 (dist/bundling-handler.js + dist/index.js) was fetched and inspected: the runtime \"Monkey-patch[s] http.Server.prototype.listen to capture server instances created during module import (e.g. Express apps calling app.listen())\" \u2014 the module loads ONCE per entrypoint (handlerCache: \"concurrent requests to the same entrypoint share one compileUserCode() call\"), the captured Fastify server is bound to 127.0.0.1:0 once and every request is proxied into it with \"path: req.url\" (the ORIGINAL request path). The builder consumes the vercel.json functions config via \"config.functions?.[entrypoint]\" keyed by the relative entrypoint path \u2014 for the root entry that key is \"server.ts\", which is the glob vercel.json uses.",
-      "The official example repository github.com/vercel/vercel/tree/main/examples/fastify was fetched: it contains exactly package.json + server.ts (root, importing fastify, calling fastify.listen({port: 3000})) + tsconfig.json \u2014 the shape this delivery follows."
-    ],
-    "reasoning": "The work order asked for the sanctioned Bun runtime function configuration (vercel.json functions runtime field) with the Node.js runtime acceptable if Bun does not fit. Verification found: (1) the functions.runtime field does NOT carry the Bun runtime in current documentation \u2014 it is reserved for runtimes that are not officially supported (community npm packages); the sanctioned Bun configuration is the top-level bunVersion; (2) the Bun runtime is Beta and permissions-gated and its documented entrypoint shapes are Bun.serve() servers with Next.js as the only framework-specific guidance \u2014 no Fastify shape; (3) the Fastify framework detection (root server.ts + fastify.listen) is the CURRENT dedicated zero-configuration path for exactly this transport, on the Node.js runtime, with the original-path routing explicitly documented. Node.js chosen per the work order's allowance; the Bun option (bunVersion) is recorded here for the Lead."
-  },
-  "filePlacementDecision": {
-    "files": [
-      "server.ts (repository root) \u2014 the Vercel function entry (the Fastify entrypoint-detection location: root server.{ts} importing fastify, calling fastify.listen())",
-      "deploy/vercel.ts \u2014 the hosting adapter (fail-closed entry inputs, the once-per-isolate singleton, the cold-start boot record, the SIGTERM/SIGINT drain); under deploy/ so the tsconfig/biome gates cover it like every other tool",
-      "vercel.json (repository root) \u2014 \"This file should be created in your project's root directory\" (documented placement); functions key \"server.ts\" (the builder's config.functions lookup key for the detected root entrypoint), maxDuration 60 (within the documented Hobby 300s maximum), includeFiles \"deploy/manifests/*.json\" (the composition reads the manifest set from disk at runtime; the bundler's import tracing cannot see readFileSync targets)",
-      "tsconfig.json \u2014 \"server.ts\" added to the include list (the root entry must pass the same typecheck gate as every other TypeScript file; without it the entry would escape bun run typecheck)",
-      "biome.json \u2014 \"server.ts\" added to files.includes (the same lint gate)"
-    ],
-    "architectureTestReconciliation": "The repository's structure pins were read FIRST. tests/architecture/module-skeleton.test.ts pins src/modules only \u2014 untouched. tests/architecture/public-surface.test.ts walks src/api, sdk, cli, apps \u2014 the new files are outside those trees and import no module internals (deploy/vercel.ts imports src/platform/deployment + the shared deploy/api builder, the same import surface every deploy/ tool uses; server.ts imports fastify + ./deploy/vercel only). tests/architecture/d02-production-paths.test.ts B5 scans deploy/**/*.ts for credential-shaped literals \u2014 the new files are clean (0 diagnostics). tests/integration/fresh-clone-governance.test.ts copies git-tracked files and runs scripts/governance-check.py with only Python \u2014 the new tracked files change nothing there (governance OK re-verified in the battery below). No test pins the repository ROOT file list (root already carries README.md, tsconfig.json, biome.json, vitest.config.ts, .env.example), so a root-level server.ts + vercel.json conflicts with nothing; the fallback the work order named (the api/ functions-path placement) was therefore not needed."
-  },
-  "notRun": [
-    {
-      "check": "the live Vercel deployment itself (deploying the merged main to the project zeck-preview-main, the public URL, DNS, TLS, the production-environment variable materialization on the Vercel project)",
-      "reason": "No Vercel credentials exist in the worker pod; the worker never deploys. The repository carries the complete hosting configuration (the entry, the adapter, vercel.json, the deployment contract and the operator sequence in deploy/PUBLIC-DEPLOYMENT.md \u00a713).",
-      "owner": "Lead credentialed deployment run"
-    },
-    {
-      "check": "the public-internet smoke of the deployed plane (bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main) and the /health + /identity verification of the live Vercel plane",
-      "reason": "No live deployed plane exists from this pod. The exact --url verification path was executed FOR REAL against the hosting entry on the local rail (see verifiedLocally: the integration test + the live command pair), including the wrong-revision hostile negative; the live-plane execution is the Lead's.",
-      "owner": "Lead credentialed deployment run"
-    },
-    {
-      "check": "Vercel-side verification of the functions-config application (maxDuration/includeFiles taking effect on the built function) and of the framework detection on the Vercel build",
-      "reason": "Requires a real Vercel build. The configuration follows the documented functions contract and the mechanically verified builder lookup key (config.functions[\"server.ts\"]); its live application is verified at deployment time.",
-      "owner": "Lead credentialed deployment run"
-    },
-    {
-      "check": "the Bun runtime alternative (bunVersion) on the live plane",
-      "reason": "The Node.js runtime was chosen per the verification above; if the Lead later selects the Bun runtime (top-level bunVersion), the live verification of that switch is theirs.",
-      "owner": "Lead credentialed deployment run"
-    },
-    {
-      "check": "the browser journey acceptance against the deployed URL (the PPR-003 harness)",
-      "reason": "Runs against the live public URL; no live URL exists in the worker pod.",
-      "owner": "Lead credentialed deployment run (with PPR-003)"
-    },
-    {
-      "check": "CI execution of the full suite on the branch",
-      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
-      "owner": "Lead merge + CI (.github/workflows)"
-    }
+ "schemaVersion": 1,
+ "workOrder": "PPR-006",
+ "title": "Vercel hosting adapter (the Experience-Delivery Enabler) — shared bootstrap composition export + request-handler entry + vercel.json + deployment contract (verification evidence record)",
+ "recordedBy": "PPR-006 implementation worker (this session)",
+ "environment": "sandboxed worker pod (no cloud credentials, no Vercel credentials, no deployment performed — the Lead owns the credentialed deployment run); git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-006-vercel-hosting-adapter, base fe26d9305f4b1d7040e35c7bff6a272c0c38a6fb (verified with git rev-parse before branching). bun 1.3.14 in the pod. NO PostgreSQL server exists in this pod (ports 5432/54329/54331 all closed; no psql/postgres binaries) — the local-rail proof runs the documented --allow-degraded no-PG path (the pre-authorized sandbox fallback; a reachable PostgreSQL authority would pass strict).",
+ "date": "2026-09-21",
+ "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The worker never deploys and never holds Vercel credentials: the Vercel project zeck-preview-main already exists and the Lead owns the credentialed deployment run. This work order adds NO authority and changes NO route: the deployed surface is the IDENTICAL createApiServer public route table, composed by the shared builder the CLI host itself uses.",
+ "runtimeChoice": {
+  "decision": "Node.js runtime via Vercel's Fastify framework entrypoint detection (the zero-configuration path)",
+  "verifiedDocumentation": [
+   {
+    "url": "https://vercel.com/docs/project-configuration/vercel-json",
+    "lastUpdated": "2026-08-24 (page front matter)",
+    "whatItSays": "\"This file should be created in your project's root directory\" (vercel.json placement). The functions property: \"A glob pattern that matches the paths of the Vercel functions you would like to customize\"; its runtime value is \"The npm package name of a Runtime, including its version\" and is documented ONLY under \"Using unsupported runtimes\" (\"To use a runtime that is not officially supported, you can add a runtime property\" — the example is vercel-php@0.5.2). The Bun runtime is configured by the TOP-LEVEL bunVersion property (\"The bunVersion property configures your project to use the Bun runtime instead of Node.js\"; values \"1.4.x\" | \"1.x\"), NOT through functions.runtime."
+   },
+   {
+    "url": "https://vercel.com/docs/functions/runtimes/bun",
+    "lastUpdated": "2026-08-24 (page front matter)",
+    "whatItSays": "The Bun runtime page carries \"🔒 Permissions Required: The Bun runtime (Beta)\". The sanctioned Bun shapes are Bun.serve() entrypoints (the framework preset: bunVersion + bun.lock + a server entrypoint in the project root or src/, calling Bun.serve() once during module startup; or api/server.ts served at /api/server with prefix-related routing caveats). The framework-specific guidance covers only Next.js. No Fastify-on-Bun entrypoint shape is documented."
+   },
+   {
+    "url": "https://vercel.com/docs/frameworks/backend/fastify",
+    "lastUpdated": "2026-08-10 (page front matter)",
+    "whatItSays": "\"Fastify entrypoint detection\": the entry \"should be named one of the following\": src/app.{js,mjs,cjs,ts,cts,mts}, src/index.{...}, src/server.{...}, app.{...}, index.{...}, server.{...} — \"Create your Fastify instance, register your routes, and call fastify.listen() in this file.\" The whole app becomes a single Vercel Function on Fluid compute (Node.js runtime by default)."
+   },
+   {
+    "url": "https://vercel.com/kb/guide/ship-a-fastify-app-on-vercel",
+    "lastUpdated": "2026-09-16 (page front matter)",
+    "whatItSays": "\"Because your app is deployed as one function, Vercel routes every incoming request to it and lets Fastify's router match the path.\" — the original-path guarantee for the route table at its ROOT paths (no /api folder, no rewrites needed)."
+   },
+   {
+    "url": "https://vercel.com/changelog/zero-configuration-express-backends",
+    "published": "2025-09-05",
+    "whatItSays": "\"Vercel's framework-defined infrastructure now recognizes and deeply understands Express applications. This update removes the need for redirects in vercel.json or using the /api folder.\" — the framework-detection shape supersedes the api/-folder + rewrite pattern for backend frameworks."
+   },
+   {
+    "url": "https://vercel.com/docs/environment-variables/system-environment-variables",
+    "whatItSays": "VERCEL_GIT_COMMIT_REF — \"Available at: Both build and runtime\" — \"The git branch of the commit the deployment was triggered by.\" (Consumed by the adapter as the preview-branch input — the only host-specific variable; every identity input stays the governed ZECK_* contract.)"
+   },
+   {
+    "url": "https://vercel.com/docs/functions/limitations",
+    "whatItSays": "Maximum duration with Fluid compute, Node.js/Bun/Python runtimes: Hobby \"300s (5 minutes)\" default and maximum — the vercel.json maxDuration bound (60) stays within it."
+   }
   ],
-  "verifiedLocally": [
-    {
-      "check": "Install",
-      "command": "bun install",
-      "evidence": "exit 0 \u2014 116 packages installed [1384ms] at the branch working tree"
-    },
-    {
-      "check": "Typecheck",
-      "command": "bun run typecheck",
-      "evidence": "exit 0 (tsc --noEmit), 0 errors at the delivery state (two intermediate runs surfaced 3 errors in the new code \u2014 the EnvironmentId narrowing in deploy/vercel.ts and an unbalanced regex group in the unit test \u2014 both fixed before the first green run)."
-    },
-    {
-      "check": "Lint (house baseline, no NEW violations)",
-      "command": "bun run lint",
-      "evidence": "exit 0 \u2014 68 warnings / 8 infos / 0 errors: the recorded house baseline exactly. The 6 errors biome initially reported on the new/modified files (import organization + formatting) were fixed with `bunx biome check --write` on exactly the touched files (the PPR-002 precedent) before the recorded run; re-run after the unit-test fix: still 68w/8i/0e, exit 0, zero diagnostics on any touched file."
-    },
-    {
-      "check": "Unit suite",
-      "command": "bun run test:unit",
-      "evidence": "exit 0 \u2014 Test Files 353 passed (353); Tests 6256 passed (6256); 0 failures; 102.8s. Base fe26d93 measured in a clean detached worktree with the shared node_modules: 352 files / 6243 tests \u2014 the delta is exactly this work order's additions: +1 file (tests/unit/deployment/vercel-adapter.test.ts) and +13 tests. The new file pins: the identical-route-table pin (the adapter's table equals both the CLI host composition's and the architecture-pinned 28-entry public surface), the identity-document equality with the CLI host for the same inputs (local + the preview-branch slug path), the verified exact-revision /identity inject (verifyRuntimeDeploymentIdentity over the recomputed manifest+ledger), the ZECK_DEPLOY_GIT_REVISION override changing both hosts' attested revision identically + the invalid-override refusal with the exact contract message, the honest-boundary injects (401 AUTHENTICATION_FAILED / 422 CAPABILITY_UNAVAILABLE / the 200 policy artifact), the fail-closed /health semantics without a PostgreSQL authority, the fail-closed entry inputs (ZECK_ENVIRONMENT absent/invalid; the preview VERCEL_GIT_COMMIT_REF requirement), the module-level singleton reuse (same instance + same Fastify app on repeated getVercelPlane calls), and the hosting-contract file pins (vercel.json functions[server.ts] with maxDuration within the documented Hobby maximum + the includeFiles manifest glob; server.ts satisfying the @vercel/fastify detector regex + the documented listen shape + composing through ./deploy/vercel)."
-    },
-    {
-      "check": "Architecture + discrimination battery \u2014 house convention (no rails)",
-      "command": "bun run test:architecture",
-      "evidence": "exit 0 \u2014 Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 53.0s. The skip is the PG-gated budgets-overspend discrimination suite (no ZECK_PG_TEST_URL in the house convention). Zero new diagnostics on any touched surface: the d02 B5 URL-credential scan covers the new deploy/vercel.ts + the refactored deploy/api.ts (clean); the public-surface/module-skeleton pins are untouched by the file placement (see filePlacementDecision)."
-    },
-    {
-      "check": "Integration battery \u2014 house convention (the standard PG suites skip-and-count exactly as every recorded battery)",
-      "command": "bun run test:integration",
-      "evidence": "exit 0 \u2014 Test Files 28 passed | 146 skipped (174); Tests 302 passed | 203 skipped (505); 65.0s. tests/integration/deployment/vercel-entry.test.ts ran green ungated inside this battery (2/2) and standalone (2/2, 927ms)."
-    },
-    {
-      "check": "The adapter's local-rail integration proof (the --url production path against the REAL entry)",
-      "command": "bunx vitest run tests/integration/deployment/vercel-entry.test.ts",
-      "evidence": "2/2 tests pass: (1) boots the REAL root server.ts entry as a REAL listener (bun subprocess, ZECK_ENVIRONMENT=local, ephemeral PORT), waits for the listener, then runs the repository's own deploy:public-smoke --environment local --url <base> --allow-degraded against it \u2014 exit 0 with problems=[], identityBound=true, identityVerified=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200; asserts the entry's cold-start boot record (tool deploy/vercel, status booted, environment local, routes 28, gitRevision == the smoke's expectedRevision) and the graceful SIGTERM drain (exit 0); (2) the wrong-revision hostile negative \u2014 an entry booted with ZECK_DEPLOY_GIT_REVISION=<40*f> is REFUSED by the same smoke (exit 1, identityVerified=false, problems non-empty) \u2014 the deployed-plane identity verification catches a wrong-revision plane, never warns."
-    },
-    {
-      "check": "The full suite \u2014 house convention, the plain Lead-reproducible run (no env vars)",
-      "command": "bun run test",
-      "evidence": "exit 0 \u2014 Test Files 520 passed | 147 skipped (667); Tests 8788 passed | 207 skipped (8995); 0 failures; 218.4s. Base fe26d93 measured in a clean detached worktree with the shared node_modules: 518 passed | 147 skipped (665) files and 8773 passed | 207 skipped (8980) tests \u2014 the delta is exactly this work order's additions: +2 files (tests/unit/deployment/vercel-adapter.test.ts, tests/integration/deployment/vercel-entry.test.ts) and +15 tests (13 + 2), with IDENTICAL skip counts (147 files / 207 tests \u2014 no new skips)."
-    },
-    {
-      "check": "Governance check",
-      "command": "python3 scripts/governance-check.py",
-      "evidence": "exit 0 \u2014 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
-    },
-    {
-      "check": "deploy:validate at the delivery head",
-      "command": "bun run deploy:validate",
-      "evidence": "exit 0 \u2014 valid=true, problems=[] (4 environments / 8 providers / 82 variables / 33 migrations / 8 provider-tier entries / providerTierVerification stays 'recorded-not-live-verified' \u2014 the honest vocabulary / 3 sandbox accounts)"
-    },
-    {
-      "check": "The CLI host local-rail behavior proof (the refactor changed nothing observable)",
-      "command": "bun run deploy:public-smoke -- --environment local --allow-degraded",
-      "evidence": "exit 0 \u2014 mode local-boot (boots the REFACTORED deploy/api.ts as a subprocess on an ephemeral port, attests it, drains it on SIGTERM): problems=[], transportReachable=true, identityBound=true, identityVerified=true, healthCheck 'down-allowed-degraded (authoritative dependency unattested; explicit)' \u2014 the honest no-PG state of this pod, healthStatus 503 fail-closed with controlPlane ready, authBoundaryEnforced=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200, expectedRevision 90faf697f13e59bb6228d2f2ab15f4603d06b767 (the branch HEAD), and the smoke's own SIGTERM discipline recorded the graceful drain (exit 0 \u2014 the smoke fails the run otherwise). A direct boot of the refactored host was ALSO verified by hand: the boot document is field-for-field the original shape (tool deploy/api, status listening, environment, environmentClass disposable, host, port, deploymentIdentity{runtimeIdentityId, identityId, gitRevision, manifestDigest, topologyDigest}, composition{transport, deploymentSeams, domainCapabilities}, environmentContract{satisfied, problems}, routes 28) and GET /identity attests the same revision."
-    },
-    {
-      "check": "The adapter local-rail LIVE proof (the Lead's exact verification command shape, run by hand against the booted entry)",
-      "command": "ZECK_ENVIRONMENT=local PORT=<ephemeral> bun server.ts   # then: bun deploy/public-smoke.ts --environment local --url http://127.0.0.1:<port> --allow-degraded",
-      "evidence": "exit 0 \u2014 the entry booted (cold-start boot record on stdout: tool deploy/vercel, status booted, environment local, environmentClass disposable, the full deploymentIdentity, composition, environmentContract satisfied=true, routes 28) and the --url smoke against it: problems=[], mode url, transportReachable=true, identityBound=true, identityVerified=true, healthCheck 'down-allowed-degraded (authoritative dependency unattested; explicit)', authBoundaryEnforced=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200, expectedRevision 90faf697f13e59bb6228d2f2ab15f4603d06b767. PARITY FACT: the entry's runtimeIdentityId (8554bc4e97a72b57\u2026) is byte-identical to the CLI host's from the local-boot run above \u2014 the SAME revision + environment + manifest set compose the SAME identity document on both hosting shapes."
-    }
+  "mechanicalVerification": [
+   "The npm package @vercel/frameworks@3.34.0 (the framework detection definitions Vercel's build uses) was fetched and inspected: the Fastify framework definition has detectors {every: [matchPackage fastify]} + entry files [app, index, server, src/app, src/index, src/server] x [js, cjs, mjs, ts, cts, mts] matched by the content regex importing fastify; useRuntime {@vercel/fastify}; defaultRoutes [{handle: filesystem}, {src: '/(.*)', dest: '/', transforms: [{type: request.path, op: set, args: '/$1'}]}] — the platform routing that preserves the ORIGINAL path for Fastify's router.",
+   "The npm package @vercel/fastify@8.0.1 (dist/index.js) was fetched and inspected: it delegates to @vercel/node's build with an entrypointCallback that searches exactly those root/src entry filenames whose content imports fastify.",
+   "The npm package @vercel/node@13.0.1 (dist/bundling-handler.js + dist/index.js) was fetched and inspected: the runtime \"Monkey-patch[s] http.Server.prototype.listen to capture server instances created during module import (e.g. Express apps calling app.listen())\" — the module loads ONCE per entrypoint (handlerCache: \"concurrent requests to the same entrypoint share one compileUserCode() call\"), the captured Fastify server is bound to 127.0.0.1:0 once and every request is proxied into it with \"path: req.url\" (the ORIGINAL request path). The builder consumes the vercel.json functions config via \"config.functions?.[entrypoint]\" keyed by the relative entrypoint path — for the root entry that key is \"server.ts\", which is the glob vercel.json uses.",
+   "The official example repository github.com/vercel/vercel/tree/main/examples/fastify was fetched: it contains exactly package.json + server.ts (root, importing fastify, calling fastify.listen({port: 3000})) + tsconfig.json — the shape this delivery follows."
   ],
-  "batteryStatus": "COMPLETE \u2014 every entry above is a real measured value from this session's runs at the delivery head (plus the base-comparison worktree runs for the delta attribution). The pod carries NO PostgreSQL server (verified: no psql/postgres binaries; ports 5432/54329/54331 closed), so every local-rail entry above records the documented --allow-degraded no-PG pass \u2014 the pre-authorized sandbox fallback (a reachable PostgreSQL authority would pass strict); the PG-gated suites skip-and-count exactly as in every recorded house battery.",
-  "notes": [
-    "THE SHARED COMPOSITION EXPORT: deploy/api.ts now exports buildBootstrapApp(options) (the manifest+ledger load, the environment record, the preview slug, the exact-revision contract, the runtime identity, the createApiServer wiring with the honest unbound domain seams, the dependency-readiness evaluation and the environment-contract facts). The CLI main() keeps its exact observable behavior: the same exit-2 preview-branch pre-check with the same message, the same boot document (same fields, same order \u2014 tool deploy/api, status listening, environment, environmentClass, host, port, deploymentIdentity, composition, environmentContract, routes), the same SIGTERM/SIGINT drain JSON + close + exit 0, the same exit-1 error path. The only reordering is internal and unobservable: the CLI pre-check loads the manifest itself (as before) and the shared builder loads it again internally (a pure deterministic read).",
-    "THE IDENTITY-SEMANTICS PROOF (how route-table + revision parity with the CLI host is pinned): BOTH hosts compose through the ONE shared builder \u2014 the adapter (deploy/vercel.ts buildVercelPlane) wraps buildBootstrapApp and never re-implements any composition decision \u2014 so parity is by construction, and tests/unit/deployment/vercel-adapter.test.ts pins it against drift (route-table deep equality, identity deep equality, the revision-override change applied identically, the invalid-override refusal identically, the /identity inject verified through the SAME wireToRuntimeDocument + verifyRuntimeDeploymentIdentity path the deployed-plane smoke uses). The integration proof (tests/integration/deployment/vercel-entry.test.ts) then boots the REAL entry as a REAL listener and runs the repository's own deploy:public-smoke --url against it \u2014 the exact verification the Lead executes against the live plane \u2014 asserting exit 0 with identityVerified=true and the 26-route coverage (18 honest 401 + 7 honest 422 + 1 public artifact), plus the wrong-revision hostile negative (an entry attesting a wrong revision is REFUSED, exit 1).",
-    "THE DEPLOYMENT CONTRACT + OPERATOR SEQUENCE (also recorded in deploy/PUBLIC-DEPLOYMENT.md \u00a713 and deploy/README.md): set the deployment-time environment variables on the Vercel project zeck-preview-main \u2014 ZECK_ENVIRONMENT=preview, ZECK_DEPLOY_GIT_REVISION=<the exact 40-hex deployed revision; REQUIRED on Vercel because the deployed bundle carries no git checkout \u2014 absent, the isolate fails closed at cold start, never fabricating an identity>, the ZECK_SECRET_*_REF reference bindings of the preview materialization set plus their materialized values (ZECK_DATABASE_URL, ...; names only \u2014 values never transit this repository), and VERCEL_GIT_COMMIT_REF is consumed as the preview-branch input (the per-branch preview resource set requires it; git-connected deployments provide it) \u2192 deploy the merged main \u2192 verify with `bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main` \u2192 continue the \u00a73.2 chain (deploy:release -- record, the journey acceptance).",
-    "SURFACE DELTA: new files server.ts (root), deploy/vercel.ts, vercel.json (root), tests/unit/deployment/vercel-adapter.test.ts, tests/integration/deployment/vercel-entry.test.ts, deploy/evidence/ppr-006.json (this record); modified deploy/api.ts (the behavior-preserving composition-export refactor), deploy/README.md (layout + the bootstrap-host paragraph + the PPR-006 section), deploy/PUBLIC-DEPLOYMENT.md (header scope + \u00a73.2 hosting paragraph + \u00a713), tsconfig.json + biome.json (the server.ts include lines). No src/**, apps/dashboard/**, sdk/**, cli/**, examples/**, benchmarks/**, docs/** or spec/** file touched; no package.json script added (the entry runs as `bun server.ts` locally and as the detected Vercel function in deployment).",
-    "Zero live cost consumed: no live-provider operation was executed from this environment (the notRun registry is the recorded boundary).",
-    "LEAD DEPLOYMENT-RUN ADDENDUM (2026-09-21, the credentialed run this record's notRun row owned): the first three live deployment attempts on the Vercel project zeck-preview-main (team ekonplacidegmailcoms-projects) proved TWO platform facts the worker sandbox could not observe, both corrected in the same run: (1) the platform build REJECTS the functions-key entry pattern for a root entry \u2014 vercel.json's functions[\"server.ts\"] fails with 'The pattern \"server.ts\" defined in `functions` doesn't match any Serverless Functions inside the `api` directory' (reproduced with and without an explicit framework pin; the corrected vercel.json pins framework: fastify only, and the build's default file tracing ships deploy/manifests/*.json into the function bundle \u2014 verified in the locally-built .vercel/output/functions bundle via `vercel build`); (2) the sandbox build's tsc transpile cannot resolve a `types` pin from the repository tsconfig.json (TS2688 'Cannot find type definition file for node' even with @types/node@26.4.0 present in the bun install output) \u2014 the corrected tsconfig carries no `types` array; the Lead re-verified typecheck 0 errors, lint 68w/8i/0e (house baseline) and the unit suite on the real rail after the change. The hosting-contract unit test was re-pinned to the corrected contract. The deployment itself then hit the team's free-tier 100-deployments-per-day quota (96 consumed by the operator's other active projects in the rolling window) \u2014 a hard provider boundary, not a build defect; the corrected build is verified locally and the deployment retries when the rolling window frees a slot."
-  ]
+  "reasoning": "The work order asked for the sanctioned Bun runtime function configuration (vercel.json functions runtime field) with the Node.js runtime acceptable if Bun does not fit. Verification found: (1) the functions.runtime field does NOT carry the Bun runtime in current documentation — it is reserved for runtimes that are not officially supported (community npm packages); the sanctioned Bun configuration is the top-level bunVersion; (2) the Bun runtime is Beta and permissions-gated and its documented entrypoint shapes are Bun.serve() servers with Next.js as the only framework-specific guidance — no Fastify shape; (3) the Fastify framework detection (root server.ts + fastify.listen) is the CURRENT dedicated zero-configuration path for exactly this transport, on the Node.js runtime, with the original-path routing explicitly documented. Node.js chosen per the work order's allowance; the Bun option (bunVersion) is recorded here for the Lead."
+ },
+ "filePlacementDecision": {
+  "files": [
+   "server.ts (repository root) — the Vercel function entry (the Fastify entrypoint-detection location: root server.{ts} importing fastify, calling fastify.listen())",
+   "deploy/vercel.ts — the hosting adapter (fail-closed entry inputs, the once-per-isolate singleton, the cold-start boot record, the SIGTERM/SIGINT drain); under deploy/ so the tsconfig/biome gates cover it like every other tool",
+   "vercel.json (repository root) — \"This file should be created in your project's root directory\" (documented placement); functions key \"server.ts\" (the builder's config.functions lookup key for the detected root entrypoint), maxDuration 60 (within the documented Hobby 300s maximum), includeFiles \"deploy/manifests/*.json\" (the composition reads the manifest set from disk at runtime; the bundler's import tracing cannot see readFileSync targets)",
+   "tsconfig.json — \"server.ts\" added to the include list (the root entry must pass the same typecheck gate as every other TypeScript file; without it the entry would escape bun run typecheck)",
+   "biome.json — \"server.ts\" added to files.includes (the same lint gate)"
+  ],
+  "architectureTestReconciliation": "The repository's structure pins were read FIRST. tests/architecture/module-skeleton.test.ts pins src/modules only — untouched. tests/architecture/public-surface.test.ts walks src/api, sdk, cli, apps — the new files are outside those trees and import no module internals (deploy/vercel.ts imports src/platform/deployment + the shared deploy/api builder, the same import surface every deploy/ tool uses; server.ts imports fastify + ./deploy/vercel only). tests/architecture/d02-production-paths.test.ts B5 scans deploy/**/*.ts for credential-shaped literals — the new files are clean (0 diagnostics). tests/integration/fresh-clone-governance.test.ts copies git-tracked files and runs scripts/governance-check.py with only Python — the new tracked files change nothing there (governance OK re-verified in the battery below). No test pins the repository ROOT file list (root already carries README.md, tsconfig.json, biome.json, vitest.config.ts, .env.example), so a root-level server.ts + vercel.json conflicts with nothing; the fallback the work order named (the api/ functions-path placement) was therefore not needed."
+ },
+ "notRun": [
+  {
+   "check": "the live Vercel deployment itself (deploying the merged main to the project zeck-preview-main, the public URL, DNS, TLS, the production-environment variable materialization on the Vercel project)",
+   "reason": "No Vercel credentials exist in the worker pod; the worker never deploys. The repository carries the complete hosting configuration (the entry, the adapter, vercel.json, the deployment contract and the operator sequence in deploy/PUBLIC-DEPLOYMENT.md §13).",
+   "owner": "Lead credentialed deployment run"
+  },
+  {
+   "check": "the public-internet smoke of the deployed plane (bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main) and the /health + /identity verification of the live Vercel plane",
+   "reason": "No live deployed plane exists from this pod. The exact --url verification path was executed FOR REAL against the hosting entry on the local rail (see verifiedLocally: the integration test + the live command pair), including the wrong-revision hostile negative; the live-plane execution is the Lead's.",
+   "owner": "Lead credentialed deployment run"
+  },
+  {
+   "check": "Vercel-side verification of the functions-config application (maxDuration/includeFiles taking effect on the built function) and of the framework detection on the Vercel build",
+   "reason": "Requires a real Vercel build. The configuration follows the documented functions contract and the mechanically verified builder lookup key (config.functions[\"server.ts\"]); its live application is verified at deployment time.",
+   "owner": "Lead credentialed deployment run"
+  },
+  {
+   "check": "the Bun runtime alternative (bunVersion) on the live plane",
+   "reason": "The Node.js runtime was chosen per the verification above; if the Lead later selects the Bun runtime (top-level bunVersion), the live verification of that switch is theirs.",
+   "owner": "Lead credentialed deployment run"
+  },
+  {
+   "check": "the browser journey acceptance against the deployed URL (the PPR-003 harness)",
+   "reason": "Runs against the live public URL; no live URL exists in the worker pod.",
+   "owner": "Lead credentialed deployment run (with PPR-003)"
+  },
+  {
+   "check": "CI execution of the full suite on the branch",
+   "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+   "owner": "Lead merge + CI (.github/workflows)"
+  }
+ ],
+ "verifiedLocally": [
+  {
+   "check": "Install",
+   "command": "bun install",
+   "evidence": "exit 0 — 116 packages installed [1384ms] at the branch working tree"
+  },
+  {
+   "check": "Typecheck",
+   "command": "bun run typecheck",
+   "evidence": "exit 0 (tsc --noEmit), 0 errors at the delivery state (two intermediate runs surfaced 3 errors in the new code — the EnvironmentId narrowing in deploy/vercel.ts and an unbalanced regex group in the unit test — both fixed before the first green run)."
+  },
+  {
+   "check": "Lint (house baseline, no NEW violations)",
+   "command": "bun run lint",
+   "evidence": "exit 0 — 68 warnings / 8 infos / 0 errors: the recorded house baseline exactly. The 6 errors biome initially reported on the new/modified files (import organization + formatting) were fixed with `bunx biome check --write` on exactly the touched files (the PPR-002 precedent) before the recorded run; re-run after the unit-test fix: still 68w/8i/0e, exit 0, zero diagnostics on any touched file."
+  },
+  {
+   "check": "Unit suite",
+   "command": "bun run test:unit",
+   "evidence": "exit 0 — Test Files 353 passed (353); Tests 6256 passed (6256); 0 failures; 102.8s. Base fe26d93 measured in a clean detached worktree with the shared node_modules: 352 files / 6243 tests — the delta is exactly this work order's additions: +1 file (tests/unit/deployment/vercel-adapter.test.ts) and +13 tests. The new file pins: the identical-route-table pin (the adapter's table equals both the CLI host composition's and the architecture-pinned 28-entry public surface), the identity-document equality with the CLI host for the same inputs (local + the preview-branch slug path), the verified exact-revision /identity inject (verifyRuntimeDeploymentIdentity over the recomputed manifest+ledger), the ZECK_DEPLOY_GIT_REVISION override changing both hosts' attested revision identically + the invalid-override refusal with the exact contract message, the honest-boundary injects (401 AUTHENTICATION_FAILED / 422 CAPABILITY_UNAVAILABLE / the 200 policy artifact), the fail-closed /health semantics without a PostgreSQL authority, the fail-closed entry inputs (ZECK_ENVIRONMENT absent/invalid; the preview VERCEL_GIT_COMMIT_REF requirement), the module-level singleton reuse (same instance + same Fastify app on repeated getVercelPlane calls), and the hosting-contract file pins (vercel.json functions[server.ts] with maxDuration within the documented Hobby maximum + the includeFiles manifest glob; server.ts satisfying the @vercel/fastify detector regex + the documented listen shape + composing through ./deploy/vercel)."
+  },
+  {
+   "check": "Architecture + discrimination battery — house convention (no rails)",
+   "command": "bun run test:architecture",
+   "evidence": "exit 0 — Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 53.0s. The skip is the PG-gated budgets-overspend discrimination suite (no ZECK_PG_TEST_URL in the house convention). Zero new diagnostics on any touched surface: the d02 B5 URL-credential scan covers the new deploy/vercel.ts + the refactored deploy/api.ts (clean); the public-surface/module-skeleton pins are untouched by the file placement (see filePlacementDecision)."
+  },
+  {
+   "check": "Integration battery — house convention (the standard PG suites skip-and-count exactly as every recorded battery)",
+   "command": "bun run test:integration",
+   "evidence": "exit 0 — Test Files 28 passed | 146 skipped (174); Tests 302 passed | 203 skipped (505); 65.0s. tests/integration/deployment/vercel-entry.test.ts ran green ungated inside this battery (2/2) and standalone (2/2, 927ms)."
+  },
+  {
+   "check": "The adapter's local-rail integration proof (the --url production path against the REAL entry)",
+   "command": "bunx vitest run tests/integration/deployment/vercel-entry.test.ts",
+   "evidence": "2/2 tests pass: (1) boots the REAL root server.ts entry as a REAL listener (bun subprocess, ZECK_ENVIRONMENT=local, ephemeral PORT), waits for the listener, then runs the repository's own deploy:public-smoke --environment local --url <base> --allow-degraded against it — exit 0 with problems=[], identityBound=true, identityVerified=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200; asserts the entry's cold-start boot record (tool deploy/vercel, status booted, environment local, routes 28, gitRevision == the smoke's expectedRevision) and the graceful SIGTERM drain (exit 0); (2) the wrong-revision hostile negative — an entry booted with ZECK_DEPLOY_GIT_REVISION=<40*f> is REFUSED by the same smoke (exit 1, identityVerified=false, problems non-empty) — the deployed-plane identity verification catches a wrong-revision plane, never warns."
+  },
+  {
+   "check": "The full suite — house convention, the plain Lead-reproducible run (no env vars)",
+   "command": "bun run test",
+   "evidence": "exit 0 — Test Files 520 passed | 147 skipped (667); Tests 8788 passed | 207 skipped (8995); 0 failures; 218.4s. Base fe26d93 measured in a clean detached worktree with the shared node_modules: 518 passed | 147 skipped (665) files and 8773 passed | 207 skipped (8980) tests — the delta is exactly this work order's additions: +2 files (tests/unit/deployment/vercel-adapter.test.ts, tests/integration/deployment/vercel-entry.test.ts) and +15 tests (13 + 2), with IDENTICAL skip counts (147 files / 207 tests — no new skips)."
+  },
+  {
+   "check": "Governance check",
+   "command": "python3 scripts/governance-check.py",
+   "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+  },
+  {
+   "check": "deploy:validate at the delivery head",
+   "command": "bun run deploy:validate",
+   "evidence": "exit 0 — valid=true, problems=[] (4 environments / 8 providers / 82 variables / 33 migrations / 8 provider-tier entries / providerTierVerification stays 'recorded-not-live-verified' — the honest vocabulary / 3 sandbox accounts)"
+  },
+  {
+   "check": "The CLI host local-rail behavior proof (the refactor changed nothing observable)",
+   "command": "bun run deploy:public-smoke -- --environment local --allow-degraded",
+   "evidence": "exit 0 — mode local-boot (boots the REFACTORED deploy/api.ts as a subprocess on an ephemeral port, attests it, drains it on SIGTERM): problems=[], transportReachable=true, identityBound=true, identityVerified=true, healthCheck 'down-allowed-degraded (authoritative dependency unattested; explicit)' — the honest no-PG state of this pod, healthStatus 503 fail-closed with controlPlane ready, authBoundaryEnforced=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200, expectedRevision 90faf697f13e59bb6228d2f2ab15f4603d06b767 (the branch HEAD), and the smoke's own SIGTERM discipline recorded the graceful drain (exit 0 — the smoke fails the run otherwise). A direct boot of the refactored host was ALSO verified by hand: the boot document is field-for-field the original shape (tool deploy/api, status listening, environment, environmentClass disposable, host, port, deploymentIdentity{runtimeIdentityId, identityId, gitRevision, manifestDigest, topologyDigest}, composition{transport, deploymentSeams, domainCapabilities}, environmentContract{satisfied, problems}, routes 28) and GET /identity attests the same revision."
+  },
+  {
+   "check": "The adapter local-rail LIVE proof (the Lead's exact verification command shape, run by hand against the booted entry)",
+   "command": "ZECK_ENVIRONMENT=local PORT=<ephemeral> bun server.ts   # then: bun deploy/public-smoke.ts --environment local --url http://127.0.0.1:<port> --allow-degraded",
+   "evidence": "exit 0 — the entry booted (cold-start boot record on stdout: tool deploy/vercel, status booted, environment local, environmentClass disposable, the full deploymentIdentity, composition, environmentContract satisfied=true, routes 28) and the --url smoke against it: problems=[], mode url, transportReachable=true, identityBound=true, identityVerified=true, healthCheck 'down-allowed-degraded (authoritative dependency unattested; explicit)', authBoundaryEnforced=true, routeCoverage 26 probed = 18 honest 401 + 7 honest 422 + 1 public artifact 200, expectedRevision 90faf697f13e59bb6228d2f2ab15f4603d06b767. PARITY FACT: the entry's runtimeIdentityId (8554bc4e97a72b57…) is byte-identical to the CLI host's from the local-boot run above — the SAME revision + environment + manifest set compose the SAME identity document on both hosting shapes."
+  }
+ ],
+ "batteryStatus": "COMPLETE — every entry above is a real measured value from this session's runs at the delivery head (plus the base-comparison worktree runs for the delta attribution). The pod carries NO PostgreSQL server (verified: no psql/postgres binaries; ports 5432/54329/54331 closed), so every local-rail entry above records the documented --allow-degraded no-PG pass — the pre-authorized sandbox fallback (a reachable PostgreSQL authority would pass strict); the PG-gated suites skip-and-count exactly as in every recorded house battery.",
+ "notes": [
+  "THE SHARED COMPOSITION EXPORT: deploy/api.ts now exports buildBootstrapApp(options) (the manifest+ledger load, the environment record, the preview slug, the exact-revision contract, the runtime identity, the createApiServer wiring with the honest unbound domain seams, the dependency-readiness evaluation and the environment-contract facts). The CLI main() keeps its exact observable behavior: the same exit-2 preview-branch pre-check with the same message, the same boot document (same fields, same order — tool deploy/api, status listening, environment, environmentClass, host, port, deploymentIdentity, composition, environmentContract, routes), the same SIGTERM/SIGINT drain JSON + close + exit 0, the same exit-1 error path. The only reordering is internal and unobservable: the CLI pre-check loads the manifest itself (as before) and the shared builder loads it again internally (a pure deterministic read).",
+  "THE IDENTITY-SEMANTICS PROOF (how route-table + revision parity with the CLI host is pinned): BOTH hosts compose through the ONE shared builder — the adapter (deploy/vercel.ts buildVercelPlane) wraps buildBootstrapApp and never re-implements any composition decision — so parity is by construction, and tests/unit/deployment/vercel-adapter.test.ts pins it against drift (route-table deep equality, identity deep equality, the revision-override change applied identically, the invalid-override refusal identically, the /identity inject verified through the SAME wireToRuntimeDocument + verifyRuntimeDeploymentIdentity path the deployed-plane smoke uses). The integration proof (tests/integration/deployment/vercel-entry.test.ts) then boots the REAL entry as a REAL listener and runs the repository's own deploy:public-smoke --url against it — the exact verification the Lead executes against the live plane — asserting exit 0 with identityVerified=true and the 26-route coverage (18 honest 401 + 7 honest 422 + 1 public artifact), plus the wrong-revision hostile negative (an entry attesting a wrong revision is REFUSED, exit 1).",
+  "THE DEPLOYMENT CONTRACT + OPERATOR SEQUENCE (also recorded in deploy/PUBLIC-DEPLOYMENT.md §13 and deploy/README.md): set the deployment-time environment variables on the Vercel project zeck-preview-main — ZECK_ENVIRONMENT=preview, ZECK_DEPLOY_GIT_REVISION=<the exact 40-hex deployed revision; REQUIRED on Vercel because the deployed bundle carries no git checkout — absent, the isolate fails closed at cold start, never fabricating an identity>, the ZECK_SECRET_*_REF reference bindings of the preview materialization set plus their materialized values (ZECK_DATABASE_URL, ...; names only — values never transit this repository), and VERCEL_GIT_COMMIT_REF is consumed as the preview-branch input (the per-branch preview resource set requires it; git-connected deployments provide it) → deploy the merged main → verify with `bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main` → continue the §3.2 chain (deploy:release -- record, the journey acceptance).",
+  "SURFACE DELTA: new files server.ts (root), deploy/vercel.ts, vercel.json (root), tests/unit/deployment/vercel-adapter.test.ts, tests/integration/deployment/vercel-entry.test.ts, deploy/evidence/ppr-006.json (this record); modified deploy/api.ts (the behavior-preserving composition-export refactor), deploy/README.md (layout + the bootstrap-host paragraph + the PPR-006 section), deploy/PUBLIC-DEPLOYMENT.md (header scope + §3.2 hosting paragraph + §13), tsconfig.json + biome.json (the server.ts include lines). No src/**, apps/dashboard/**, sdk/**, cli/**, examples/**, benchmarks/**, docs/** or spec/** file touched; no package.json script added (the entry runs as `bun server.ts` locally and as the detected Vercel function in deployment).",
+  "Zero live cost consumed: no live-provider operation was executed from this environment (the notRun registry is the recorded boundary).",
+  "LEAD DEPLOYMENT-RUN ADDENDUM (2026-09-21, the credentialed run this record's notRun row owned): the first three live deployment attempts on the Vercel project zeck-preview-main (team ekonplacidegmailcoms-projects) proved TWO platform facts the worker sandbox could not observe, both corrected in the same run: (1) the platform build REJECTS the functions-key entry pattern for a root entry — vercel.json's functions[\"server.ts\"] fails with 'The pattern \"server.ts\" defined in `functions` doesn't match any Serverless Functions inside the `api` directory' (reproduced with and without an explicit framework pin; the corrected vercel.json pins framework: fastify only, and the build's default file tracing ships deploy/manifests/*.json into the function bundle — verified in the locally-built .vercel/output/functions bundle via `vercel build`); (2) the sandbox build's tsc transpile cannot resolve a `types` pin from the repository tsconfig.json (TS2688 'Cannot find type definition file for node' even with @types/node@26.4.0 present in the bun install output) — the corrected tsconfig carries no `types` array; the Lead re-verified typecheck 0 errors, lint 68w/8i/0e (house baseline) and the unit suite on the real rail after the change. The hosting-contract unit test was re-pinned to the corrected contract. The deployment itself then hit the team's free-tier 100-deployments-per-day quota (96 consumed by the operator's other active projects in the rolling window) — a hard provider boundary, not a build defect; the corrected build is verified locally and the deployment retries when the rolling window frees a slot.",
+  "LEAD DEPLOYMENT-RUN ADDENDUM #2 (2026-09-21, the quota window freed and the deployment LANDED — the live plane is up): the rolling 24h window freed a slot at ~10:26 UTC and the deployment fired (10:33 UTC, from the 8b109aa checkout; ZECK_DEPLOY_GIT_REVISION had been re-pinned to 8b109aa before the attempt — the variable predated the corrections commit). The build succeeded but the isolate died at cold start on every route (FUNCTION_INVOCATION_FAILED) — THE FIFTH PLATFORM FACT: the Fastify framework build's tsc transpilation emits ES-module syntax (import/export; import.meta.url in deploy/lib.ts — the graph is ESM-required), but the runtime loads the traced handler /var/task/server.js as COMMONJS because the file-traced repository package.json carries no \"type\" field ('SyntaxError: Cannot use import statement outside a module'; a CJS emit is impossible — import.meta). THE CORRECTION (deploy/build-vercel-output.ts, the smallest valid delta on the platform's OWN output): vercel build --prod runs unchanged (framework detection, tsc transpile, nft tracing), then the emitted .js graph (outside node_modules) gets its relative import specifiers made Node-ESM-resolvable — a FILE target gains .js, a DIRECTORY target gains /index.js (38 directory imports + 3198 file imports in the server graph; Node ESM has no directory-index resolution), rewriteRelativeImportExtensions was PROVED insufficient (it rewrites only source-level .ts specifiers) — and the function root's package.json becomes the minimal {\"type\":\"module\"} marker (scopes only the emitted graph; every traced node_modules package keeps its own nearest package.json, so CJS packages stay CJS); a fail-closed verification pass refuses the build if any extensionless relative specifier remains. THE LOCAL ARTIFACT PROOF (the exact shipped bytes): node server.js boots (boot document: environment preview, revision 8b109aa, routes 28) and deploy:public-smoke --environment preview --branch main --url http://127.0.0.1:<port> --allow-degraded attests identityVerified, 26 routes, exit 0. THE DEPLOYMENT MECHANISM: vercel deploy --prebuilt --prod (the artifact is verified locally before it ships — a stronger guarantee than the opaque on-platform build; the .vc-config.json, config.json routes and the traced bundle are the platform's own, untouched). THE LIVE PLANE: https://zeck-preview-main.vercel.app — /identity bound at 8b109aa with the SAME runtimeIdentityId as the local artifact boot (3bdadf5d9a8cf99af08cff0b5303098db22b8048b5bf7dbec48f5a675ecf2621 — byte-identical artifact + same inputs = same identity); /health controlPlane ready with relational-state (Neon) READY (connect + select 1 against ep-old-dream-avy8pld9.c-11.us-east-1.aws.neon.tech) and the non-authoritative dependencies honestly degraded per their declared modes; deploy:public-smoke --url against the live plane: transportReachable, identityVerified, healthStatus 200 (degraded-honest), 26/26 routes (18 auth-boundary, 7 capability-unbound-honest, 1 public-artifact), problems [] — exit 0. The live PPR-003 journey run's FIRST harness execution refused at the identity gate (the harness dropped the preview branch slug — the per-branch preview resource set makes it an identity input; deploy/public-smoke.ts --url threads it, the harness did not) — fixed in the same run (run.ts parses --branch, required for preview targets; identity-gate computes previewBranchSlug and passes previewSlug to attestDeployedPlane — the public-smoke contract), self-proof re-verified, and the live re-run PASSED (deploy/evidence/ppr-003-live.json: 12 journeys, 28 steps — 11 pass / 0 fail / 17 not-run with the two honest owner classes [7 credentialed steps owned by the Lead's transport credential, 10 experience-surface steps owned by the not-yet-deployed console composition; all 22 workload families honestly not-served], 0 findings, identity gate verified). The browser dimension: desktop 1920x1080 / tablet 768x1024 / mobile iPhone-14 viewports all load the plane with ZERO console/page errors; /health and /identity attest in-browser; the root answers the honest Fastify 404 JSON (the API plane serves no HTML landing — the experience composition is the next correction wave's input)."
+ ]
 }

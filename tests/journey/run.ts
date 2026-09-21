@@ -75,6 +75,7 @@ async function runOnce(options: {
   readonly targetUrl: string;
   readonly environment: "local" | "preview" | "staging" | "production";
   readonly expectedRevision?: string;
+  readonly branch?: string;
   readonly allowDegraded: boolean;
   readonly mode: string;
   readonly reportPath?: string;
@@ -85,6 +86,7 @@ async function runOnce(options: {
     ...(options.expectedRevision === undefined
       ? {}
       : { expectedRevision: options.expectedRevision }),
+    ...(options.branch === undefined ? {} : { branch: options.branch }),
     allowDegraded: options.allowDegraded,
     credentials: credentialsFromEnvironment(),
     mode: options.mode,
@@ -129,10 +131,17 @@ async function main(): Promise<void> {
   const allowDegraded = hasFlag(argv, "--allow-degraded");
   const reportPath = optionalValue(argv, "--report");
   const url = optionalValue(argv, "--url");
+  const branch = optionalValue(argv, "--branch");
   const localPlane = hasFlag(argv, "--local-plane");
   const selfProof = hasFlag(argv, "--self-proof");
   if (url !== undefined && (localPlane || selfProof)) {
     console.error("error: --url cannot be combined with --local-plane / --self-proof");
+    process.exit(2);
+  }
+  if (environment === "preview" && branch === undefined && url !== undefined) {
+    console.error(
+      "error: --environment preview requires --branch <branch-name> (the per-branch preview resource set: the preview slug is an identity input — the same contract as deploy/public-smoke.ts --url)",
+    );
     process.exit(2);
   }
   if (url === undefined && !localPlane && !selfProof) {
@@ -150,6 +159,7 @@ async function main(): Promise<void> {
         targetUrl: url,
         environment,
         ...(expectedRevision === undefined ? {} : { expectedRevision }),
+        ...(branch === undefined ? {} : { branch }),
         allowDegraded,
         mode: "url",
         ...(reportPath === undefined ? {} : { reportPath }),

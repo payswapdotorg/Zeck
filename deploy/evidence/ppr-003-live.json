@@ -1,0 +1,1108 @@
+{
+  "tool": "tests/journey/run (PPR-003 public user-journey acceptance harness)",
+  "schemaVersion": 1,
+  "mode": "url",
+  "targetUrl": "https://zeck-preview-main.vercel.app",
+  "expectedRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+  "environment": "preview",
+  "allowDegraded": false,
+  "startedAt": "2026-09-21T10:52:17.438Z",
+  "finishedAt": "2026-09-21T10:52:32.708Z",
+  "durationMs": 15270,
+  "identityGate": {
+    "verified": true,
+    "planeUrl": "https://zeck-preview-main.vercel.app",
+    "expectedRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+    "attested": {
+      "runtimeIdentityId": "3bdadf5d9a8cf99af08cff0b5303098db22b8048b5bf7dbec48f5a675ecf2621",
+      "gitRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+      "manifestDigest": "60859b78f303de66e83c6e1b95750031e3aa5553b81b416e019d4ed895b9c8ee",
+      "topologyDigest": "876d40ac7be57076fee57096502439953e23cf74cce8cdea751031166e20061c",
+      "environment": "preview"
+    }
+  },
+  "journeys": [
+    {
+      "id": "discover",
+      "title": "Discover Zeck",
+      "steps": [
+        {
+          "id": "reachability",
+          "journey": "discover",
+          "title": "The public URL is reachable",
+          "surface": "/",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "91d4e3c2b5d1d8efcf97edbdc1b4ebb74f9be30f369ecd7800939599eab68f63",
+            "durationMs": 232
+          },
+          "observed": "answered 404 application/json; charset=utf-8",
+          "expected": "the public URL answers over HTTP (any honest answer class)"
+        },
+        {
+          "id": "discover-landing",
+          "journey": "discover",
+          "title": "The newcomer's landing surface",
+          "surface": "/",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "91d4e3c2b5d1d8efcf97edbdc1b4ebb74f9be30f369ecd7800939599eab68f63",
+            "durationMs": 232
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML landing is served by this plane",
+          "expected": "an HTML landing when the deployment serves the experience composition",
+          "notRun": {
+            "reason": "the target serves no HTML landing at / (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "identity-facts",
+          "journey": "discover",
+          "title": "The deployment identity is newcomer-visible",
+          "surface": "/identity",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/identity",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "699f5693b3fa7ddb6d92c174591daea3eb43d4ac58bd891d72cc3a6e8c120b1b",
+            "durationMs": 230
+          },
+          "observed": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1",
+          "expected": "GET /identity answers 200 with the runtime identity document"
+        },
+        {
+          "id": "health",
+          "journey": "discover",
+          "title": "Health semantics (control plane / dependency distinction)",
+          "surface": "/health",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/health",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "5693ad7fb67b388b22267a7f92748da4818d7bf69598a04954b25cb51882ba5d",
+            "durationMs": 280
+          },
+          "observed": "answered 200 with status degraded, controlPlane ready",
+          "expected": "the honest health vocabulary with the control plane ready"
+        },
+        {
+          "id": "public-artifact",
+          "journey": "discover",
+          "title": "The public governed data-policy artifact",
+          "surface": "/sandbox/data-policy",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/data-policy",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "d1d5a9ea495561eefc8ef29aebacf4fa07677f7bba93d4e0b0fa3e2b273970bf",
+            "durationMs": 231
+          },
+          "observed": "the versioned policy artifact with its digest",
+          "expected": "200 with the versioned policy artifact + digest (the one unauthenticated public document)"
+        }
+      ]
+    },
+    {
+      "id": "capability-discovery",
+      "title": "Discover capabilities",
+      "steps": [
+        {
+          "id": "matrix-integrity",
+          "journey": "capability-discovery",
+          "title": "The 22-family coverage matrix derives cleanly from the machine manifest",
+          "surface": "docs/developer/machine/capability-manifest.json",
+          "status": "pass",
+          "evidence": null,
+          "observed": "22 workload families, every example path existing, classifications in the honest vocabulary, gates as env var names",
+          "expected": "every family maps to discovery location, availability state, example path and provider/access explanation"
+        },
+        {
+          "id": "matrix-target-disclosure",
+          "journey": "capability-discovery",
+          "title": "Every family's discovery surface discloses its honest availability state",
+          "surface": "/console/playground/:family (22 routes)",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no console composition is served by this plane — every family route answered non-HTML; discovery location falls back to the machine manifest (repository-resident)",
+          "expected": "every served family page names its family, discloses an availability state and shows its gate; provider-gated is never presented as live success",
+          "notRun": {
+            "reason": "the target serves no console composition at /console/playground/:family",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "capability-catalog",
+          "journey": "capability-discovery",
+          "title": "The capability catalog surface",
+          "surface": "/console/playground",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/playground",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "06cf270893e309798e648b34ea2156c38e38e69a505ee2eec23eb73171268a25",
+            "durationMs": 232
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/playground (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sandbox-start",
+      "title": "Start the sandbox safely",
+      "steps": [
+        {
+          "id": "sandbox-envelope",
+          "journey": "sandbox-start",
+          "title": "The sandbox safety envelope answers honestly",
+          "surface": "/sandbox/quotas",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/quotas",
+            "method": "GET",
+            "status": 422,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
+            "durationMs": 228
+          },
+          "observed": "answered 422 CAPABILITY_UNAVAILABLE",
+          "expected": "the honest answer class (200 when the governance capability is bound, 422 CAPABILITY_UNAVAILABLE when unbound)"
+        },
+        {
+          "id": "unauthenticated-start-boundary",
+          "journey": "sandbox-start",
+          "title": "An unauthenticated sandbox start is refused honestly",
+          "surface": "POST /executions",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/executions",
+            "method": "POST",
+            "status": 401,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "2d5f55ac9d8d48b8a8b80eeb6ed7a592d75d535ac1fbbbc67c4c848df2c5769f",
+            "durationMs": 221
+          },
+          "observed": "answered 401 AUTHENTICATION_FAILED",
+          "expected": "the honest 401 AUTHENTICATION_FAILED (the auth boundary is enforced; no capability is fabricated)"
+        },
+        {
+          "id": "authenticated-start",
+          "journey": "sandbox-start",
+          "title": "The guided sandbox start creates a real execution",
+          "surface": "POST /executions",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no transport credential is configured for this run",
+          "expected": "a governed sandbox execution created through the public API",
+          "notRun": {
+            "reason": "ZECK_JOURNEY_TOKEN (+ ZECK_JOURNEY_APPLICATION_ID) is not set — the credentialed journey steps are the Lead's boundary",
+            "owner": "Lead credentialed re-run (transport credential for the public preview)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "first-text-execution",
+      "title": "First text execution",
+      "steps": [
+        {
+          "id": "execution-lifecycle",
+          "journey": "first-text-execution",
+          "title": "The first text execution reaches a terminal state",
+          "surface": "GET /executions/:id",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no transport credential is configured for this run",
+          "expected": "the execution drives to a terminal state with its verification outcome",
+          "notRun": {
+            "reason": "ZECK_JOURNEY_TOKEN is not set — the credentialed journey steps are the Lead's boundary",
+            "owner": "Lead credentialed re-run (transport credential for the public preview)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "execution-inspection",
+      "title": "Inspect the execution",
+      "steps": [
+        {
+          "id": "inspection-surfaces",
+          "journey": "execution-inspection",
+          "title": "Result, activity and verification are inspectable",
+          "surface": "GET /executions/:id{,/events,/verification,/results}",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no transport credential is configured for this run",
+          "expected": "the execution's receipt, events, verification and results all answer 200",
+          "notRun": {
+            "reason": "ZECK_JOURNEY_TOKEN is not set — the credentialed journey steps are the Lead's boundary",
+            "owner": "Lead credentialed re-run (transport credential for the public preview)"
+          }
+        },
+        {
+          "id": "inspection-console",
+          "journey": "execution-inspection",
+          "title": "The execution explorer console surface",
+          "surface": "/console/executions",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/executions",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4135f9335ab35d821a6c11e87d8575177687f00268b306b957a602f66a73eaf3",
+            "durationMs": 228
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/executions (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "evidence-cost",
+      "title": "Inspect evidence and cost",
+      "steps": [
+        {
+          "id": "receipt-cost",
+          "journey": "evidence-cost",
+          "title": "The receipt carries the evidence and cost facts",
+          "surface": "GET /executions/:id",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no transport credential is configured for this run",
+          "expected": "the execution receipt carries usage/cost facts once settled",
+          "notRun": {
+            "reason": "ZECK_JOURNEY_TOKEN is not set — the credentialed journey steps are the Lead's boundary",
+            "owner": "Lead credentialed re-run (transport credential for the public preview)"
+          }
+        },
+        {
+          "id": "usage-console",
+          "journey": "evidence-cost",
+          "title": "The usage/economics console surface",
+          "surface": "/console/applications/usage",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/applications/usage",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "5631ad6ae1eb1d0cff6869e9b400685962df031eaba2b580b7cef75ba9807c98",
+            "durationMs": 225
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/applications/usage (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "validation-rerun",
+      "title": "Validation rerun",
+      "steps": [
+        {
+          "id": "validation-lab",
+          "journey": "validation-rerun",
+          "title": "The Validation Lab surface",
+          "surface": "/console/validation",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/validation",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "e7cf40dd508927c720928e8ff5b6104f43fb5ebc8f302c434d0d91693532abff",
+            "durationMs": 236
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/validation (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "validation-agent",
+          "journey": "validation-rerun",
+          "title": "The agent-facing validation view",
+          "surface": "/console/validation/agent",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/validation/agent",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "29aee7c888b6a82798f8c2a2e8dd2ff518d52d4b88ef39a6781e4c6326fdbc25",
+            "durationMs": 225
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/validation/agent (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Compare",
+      "steps": [
+        {
+          "id": "compare-console",
+          "journey": "compare",
+          "title": "The compare surface",
+          "surface": "/console/compare",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/compare",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "16b7fdaaf342faf89ae6ee3ebab8a21610a2efaf384d4e9fd9ce920aae188ccc",
+            "durationMs": 226
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/compare (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "export-reproduce",
+      "title": "Export / reproduce",
+      "steps": [
+        {
+          "id": "export-console",
+          "journey": "export-reproduce",
+          "title": "The reproducibility export surface",
+          "surface": "/console/executions",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/executions",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4135f9335ab35d821a6c11e87d8575177687f00268b306b957a602f66a73eaf3",
+            "durationMs": 221
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/executions (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "export-bundle",
+          "journey": "export-reproduce",
+          "title": "The reproducibility bundle exports as verbatim JSON",
+          "surface": "/console/executions/:id/export/bundle.json",
+          "status": "not-run",
+          "evidence": null,
+          "observed": "no transport credential is configured for this run",
+          "expected": "the execution's reproducibility bundle exports",
+          "notRun": {
+            "reason": "ZECK_JOURNEY_TOKEN is not set — the credentialed journey steps are the Lead's boundary",
+            "owner": "Lead credentialed re-run (transport credential for the public preview)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "trust-limits",
+      "title": "Trust and limits",
+      "steps": [
+        {
+          "id": "trust-evidence",
+          "journey": "trust-limits",
+          "title": "The trust evidence surface",
+          "surface": "/trust/evidence",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/trust/evidence",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "c7ff0bb05d323b9325a9d88557a3307671216da5394506cb936471decf7a9cb0",
+            "durationMs": 231
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /trust/evidence (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "trust-limits-policies",
+          "journey": "trust-limits",
+          "title": "The policy surface",
+          "surface": "/admin/policies",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/admin/policies",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "7f2c7cd95f42789f801f63e91cd51039225f3ac35c519bd44699b6266584a5e5",
+            "durationMs": 232
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /admin/policies (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "limits-envelope",
+          "journey": "trust-limits",
+          "title": "The limits envelope is reachable",
+          "surface": "/sandbox/quotas",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/quotas",
+            "method": "GET",
+            "status": 422,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
+            "durationMs": 230
+          },
+          "observed": "answered 422 CAPABILITY_UNAVAILABLE",
+          "expected": "the sandbox governance seam answers (200 bound or the honest 422 unbound)"
+        }
+      ]
+    },
+    {
+      "id": "agent-onboarding",
+      "title": "Agent onboarding",
+      "steps": [
+        {
+          "id": "agent-quickstart",
+          "journey": "agent-onboarding",
+          "title": "The agent quickstart surface",
+          "surface": "/console/quickstart",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/quickstart",
+            "method": "GET",
+            "status": 404,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "dc9965d90bbf9003b22144647cb6cd509d20c8d2bdca59c24f2b60705aedae23",
+            "durationMs": 225
+          },
+          "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
+          "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
+          "notRun": {
+            "reason": "the target serves no HTML experience composition at /console/quickstart (answered 404 application/json; charset=utf-8)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "machine-artifacts",
+          "journey": "agent-onboarding",
+          "title": "The machine onboarding artifacts are present and parseable",
+          "surface": "docs/developer/machine/*.json",
+          "status": "pass",
+          "evidence": null,
+          "observed": "7 machine artifacts present and JSON-parseable (validated against the wire contract by the kit's own suite)",
+          "expected": "every machine artifact exists and parses (the agent's onboarding truth)"
+        }
+      ]
+    },
+    {
+      "id": "production-deployment",
+      "title": "Production / deployment path",
+      "steps": [
+        {
+          "id": "route-table",
+          "journey": "production-deployment",
+          "title": "Every public route answers its honest boundary",
+          "surface": "the public route table (26 routes)",
+          "status": "pass",
+          "evidence": null,
+          "observed": "26 routes probed: 18 auth-boundary (401), 7 capability-unbound (422), 1 public-artifact (200)",
+          "expected": "the honest boundary semantics of the deployed public route table"
+        },
+        {
+          "id": "deployment-docs",
+          "journey": "production-deployment",
+          "title": "The production/deployment path documentation is present",
+          "surface": "deploy/PUBLIC-DEPLOYMENT.md (+ runbooks)",
+          "status": "pass",
+          "evidence": null,
+          "observed": "the public deployment runbook, the deploy README and the production guide are present",
+          "expected": "the deployment path is documented (the runbook the Lead's provisioning follows)"
+        }
+      ]
+    }
+  ],
+  "capabilityMatrix": [
+    {
+      "family": "text",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY).",
+      "examplePath": "examples/text-summarization.ts",
+      "capabilityRequirements": [
+        "model:text"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/text",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "structured",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "deterministic rows proven with byte-exact comparison oracles.",
+      "examplePath": "examples/structured-invoice-extraction.ts",
+      "capabilityRequirements": [
+        "model:text",
+        "algorithm:json-schema-validation"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/structured",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: deterministic rows proven with byte-exact comparison oracles.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "rag",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "retrieval is a seeded deterministic tool capability; family proven in the validation program.",
+      "examplePath": "examples/rag-grounded-answers.ts",
+      "capabilityRequirements": [
+        "model:text",
+        "tool:document-retrieval"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/rag",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: retrieval is a seeded deterministic tool capability; family proven in the validation program.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "tools",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "tool-agent family live-proven over the openrouter rail.",
+      "examplePath": "examples/tool-augmented-lookup.ts",
+      "capabilityRequirements": [
+        "model:text"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/tools",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: tool-agent family live-proven over the openrouter rail.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "workflow",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "durable orchestration proven over the transport (Cloudflare Workflows protocol suite).",
+      "examplePath": "examples/workflow-orchestration.ts",
+      "capabilityRequirements": [
+        "model:text"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/workflow",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: durable orchestration proven over the transport (Cloudflare Workflows protocol suite).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "long-running",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "checkpoint/resume semantics proven over REAL PostgreSQL (integration suites).",
+      "examplePath": "examples/long-running-batch.ts",
+      "capabilityRequirements": [
+        "runtime:process-sandbox"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/long-running",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: checkpoint/resume semantics proven over REAL PostgreSQL (integration suites).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "voice",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "ASR/TTS live-proven over the qwen dashscope-international rail (qwen3-asr-flash/qwen3-tts-flash); the openai candidate is region-blocked (HTTP 403).",
+      "examplePath": "examples/voice-transcription.ts",
+      "capabilityRequirements": [
+        "model:asr"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/voice",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "realtime-voice",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only).",
+      "examplePath": "examples/realtime-voice-session.ts",
+      "capabilityRequirements": [
+        "model:realtime-voice"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/realtime-voice",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "image-generation",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "live-proven over the qwen rail (qwen-image-2.0); the openai candidate is region-blocked (403).",
+      "examplePath": "examples/image-generation.ts",
+      "capabilityRequirements": [
+        "model:image-generation"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/image-generation",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "video-media",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "three live generations proven (wan2.2-t2v-plus, ~88 s each); further live rows NOT RUN — free-tier quota exhausted (AllocationQuota.FreeTierOnly); ark/seedance candidates DNS-failed.",
+      "examplePath": "examples/video-generation.ts",
+      "capabilityRequirements": [
+        "model:video-generation"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/video-media",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "image-recognition",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "vision candidates: openrouter (live-proven) and openai (region-blocked 403).",
+      "examplePath": "examples/image-recognition.ts",
+      "capabilityRequirements": [
+        "model:vision"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/image-recognition",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "vlm",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "VLM candidates: openrouter (live-proven) and openai (region-blocked 403).",
+      "examplePath": "examples/vlm-image-qa.ts",
+      "capabilityRequirements": [
+        "model:vlm"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/vlm",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "audio-understanding",
+      "classification": "provider-gated",
+      "gatedBy": "OPENAI_API_KEY",
+      "availability": "NOT RUN — the only authorized audio-input candidate (openai) is region-blocked (HTTP 403 unsupported_country_region_territory).",
+      "examplePath": "examples/audio-understanding.ts",
+      "capabilityRequirements": [
+        "model:audio-understanding"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/audio-understanding",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openai (OPENAI_API_KEY, name only): NOT RUN — HTTP 403 region block (unsupported_country_region_territory) from the recorded egress",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "multimodal",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "chained rows live-proven (vision over openrouter, derived raster over qwen-image-2.0); one honest FAILED row (corrupted source, chain-abort).",
+      "examplePath": "examples/multimodal-transformation.ts",
+      "capabilityRequirements": [
+        "model:vlm",
+        "model:image-generation"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/multimodal",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "three-d",
+      "classification": "provider-gated",
+      "gatedBy": "ZECK_3D_API_KEY",
+      "availability": "NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: []).",
+      "examplePath": "examples/three-d-generation.ts",
+      "capabilityRequirements": [
+        "model:three-d"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/three-d",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "gated by the ZECK_3D_API_KEY credential (name only); no providerAccess row carries that name — the recorded availability stands verbatim: NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: []).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "customer-service",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "triage is deterministic over pinned ticket fixtures; reply generation follows the text rail.",
+      "examplePath": "examples/customer-service-triage.ts",
+      "capabilityRequirements": [
+        "model:text"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/customer-service",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: triage is deterministic over pinned ticket fixtures; reply generation follows the text rail.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "browser-use",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail.",
+      "examplePath": "examples/browser-use-agent.ts",
+      "capabilityRequirements": [
+        "agent:browser"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/browser-use",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "computer-use",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail.",
+      "examplePath": "examples/computer-use-agent.ts",
+      "capabilityRequirements": [
+        "agent:computer-use"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/computer-use",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "research",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "retrieval is deterministic; synthesis follows the live-proven text rail.",
+      "examplePath": "examples/research-synthesis.ts",
+      "capabilityRequirements": [
+        "model:text",
+        "tool:document-retrieval"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/research",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: retrieval is deterministic; synthesis follows the live-proven text rail.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "coding",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "family exercised by the validation program over pinned function specs.",
+      "examplePath": "examples/coding-assistant.ts",
+      "capabilityRequirements": [
+        "model:text"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/coding",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: family exercised by the validation program over pinned function specs.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "operations",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "runbook steps are deterministic tool invocations over pinned operational fixtures.",
+      "examplePath": "examples/operations-runbook.ts",
+      "capabilityRequirements": [
+        "tool:document-retrieval"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/operations",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: runbook steps are deterministic tool invocations over pinned operational fixtures.",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    },
+    {
+      "family": "hitl",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "gate discipline is deterministic (approval-before-action event ordering is the oracle).",
+      "examplePath": "examples/human-review-gate.ts",
+      "capabilityRequirements": [
+        "human:human-review"
+      ],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/hitl",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: gate discipline is deterministic (approval-before-action event ordering is the oracle).",
+      "targetProbe": {
+        "status": "not-run",
+        "observed": "answered 404 application/json; charset=utf-8 — no console composition at this route"
+      }
+    }
+  ],
+  "findings": [],
+  "notRun": [
+    {
+      "check": "The final acceptance run against the real public Zeck URL (the deployed PPR-002 preview) at its exact revision",
+      "reason": "The public URL does not exist at harness-delivery time (PPR-002's live provisioning is the Lead's credentialed run, in parallel). The harness is proven end to end against a locally-booted Zeck plane (the deploy chain's local mode) and the repository's machine manifests; the final run is the Lead's, the moment the preview is live.",
+      "owner": "Lead post-deployment run"
+    },
+    {
+      "check": "Credentialed journey steps (guided sandbox start, first text execution lifecycle, inspection, export) without transport credentials",
+      "reason": "The harness accepts a bearer credential + application id through ZECK_JOURNEY_TOKEN / ZECK_JOURNEY_APPLICATION_ID; without them every credentialed step records the honest not-run state with this owner (the bootstrap plane's auth boundary itself IS asserted — the 401 step).",
+      "owner": "Lead credentialed re-run (transport credential for the public preview)"
+    },
+    {
+      "check": "Live provider rails for provider-gated workload families (voice/image/video/vision/3D/browser/computer-use live rows)",
+      "reason": "No provider credentials exist in this environment, and a provider-gated family is never reported as live success without the required access — the harness asserts the honest disclosure, never the completion (docs/developer/AVAILABILITY.md).",
+      "owner": "Lead credentialed re-run (provider rails)"
+    },
+    {
+      "check": "A real browser session's console-error capture and interactive keyboard/focus traversal",
+      "reason": "The harness is an HTTP/DOM-level acceptance harness (the repository's own assertion grammar). It records the HTTP-observable proxies (resource integrity, structural focus affordances); the interactive browser pass is the Lead's post-deployment verification.",
+      "owner": "Lead post-deployment browser pass (a real browser session; the harness's HTTP-observable proxies are recorded here)"
+    },
+    {
+      "check": "The /health ready state on a plane whose authoritative relational dependency is unprovisioned (the no-PG local plane)",
+      "reason": "The local plane supports the deploy chain's documented no-PG degradation: /health answers the honest fail-closed 503 down with controlPlane ready. The harness records that state exactly (with the run's explicit degraded allowance); the ready state is the provisioned deployment's fact.",
+      "owner": "Harness operator (configure the environment's dependency, or run with the explicit degraded allowance)"
+    }
+  ],
+  "gates": [
+    {
+      "gate": "public URL reachable",
+      "status": "pass",
+      "evidence": "answered 404 application/json; charset=utf-8 (/)"
+    },
+    {
+      "gate": "exact revision attested",
+      "status": "pass",
+      "evidence": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1 (/identity)"
+    },
+    {
+      "gate": "/health verified",
+      "status": "pass",
+      "evidence": "answered 200 with status degraded, controlPlane ready (/health)"
+    },
+    {
+      "gate": "/identity verified",
+      "status": "pass",
+      "evidence": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1 (/identity)"
+    },
+    {
+      "gate": "first sandbox execution works",
+      "status": "not-run",
+      "evidence": "no transport credential is configured for this run (GET /executions/:id)"
+    },
+    {
+      "gate": "all 22 capability families discoverable",
+      "status": "not-run",
+      "evidence": "no console composition is served by this plane — every family route answered non-HTML; discovery location falls back to the machine manifest (repository-resident) (/console/playground/:family (22 routes))"
+    },
+    {
+      "gate": "executions inspectable (result/evidence/cost)",
+      "status": "not-run",
+      "evidence": "no transport credential is configured for this run (GET /executions/:id{,/events,/verification,/results})"
+    },
+    {
+      "gate": "compare reachable",
+      "status": "not-run",
+      "evidence": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane (/console/compare)"
+    },
+    {
+      "gate": "export/reproduce reachable",
+      "status": "not-run",
+      "evidence": "no transport credential is configured for this run (/console/executions/:id/export/bundle.json)"
+    },
+    {
+      "gate": "agent integration discoverable",
+      "status": "pass",
+      "evidence": "7 machine artifacts present and JSON-parseable (validated against the wire contract by the kit's own suite) (docs/developer/machine/*.json)"
+    },
+    {
+      "gate": "provider/free-tier state truthful (route boundaries honest)",
+      "status": "pass",
+      "evidence": "26 routes probed: 18 auth-boundary (401), 7 capability-unbound (422), 1 public-artifact (200) (the public route table (26 routes))"
+    },
+    {
+      "gate": "trust/limits reachable",
+      "status": "pass",
+      "evidence": "answered 422 CAPABILITY_UNAVAILABLE (/sandbox/quotas)"
+    }
+  ],
+  "summary": {
+    "journeys": 12,
+    "stepsTotal": 28,
+    "stepsPassed": 11,
+    "stepsFailed": 0,
+    "stepsNotRun": 17,
+    "findingsBySeverity": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "familiesTotal": 22,
+    "familiesWithServedDisclosure": 0,
+    "familiesNotServed": 22,
+    "familiesDisclosureFailed": 0
+  },
+  "selfScan": {
+    "checked": "the harness's own serialized report",
+    "clean": true,
+    "note": "no secret-shaped value appears in the report (redaction held at every finding)"
+  },
+  "problems": []
+}

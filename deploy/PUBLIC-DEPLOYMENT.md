@@ -813,6 +813,33 @@ record of this layer is `deploy/evidence/ppr-006.json`.
   `@types/*` packages are auto-included — verified identical
   typecheck/lint results on the real rail).
 
+**The module-loading fact (the landed deployment's cold-start
+  discovery)**: the framework build's `tsc` transpilation emits
+  ES-module syntax (`import`/`export`; `import.meta.url` in
+  `deploy/lib.ts` — the graph is ESM-required, a CommonJS emit is
+  impossible), but the runtime loads the traced handler
+  `/var/task/server.js` as **CommonJS**, because the file-traced
+  repository `package.json` carries no `"type"` field — the isolate
+  dies at cold start on every route (`SyntaxError: Cannot use import
+  statement outside a module`, FUNCTION_INVOCATION_FAILED).
+  `--rewriteRelativeImportExtensions` is NOT a fix (it rewrites only
+  source-level `.ts` specifiers, never adds extensions to
+  extensionless ones). **`deploy/build-vercel-output.ts`** is the
+  correction — the platform's own `vercel build --prod` runs
+  unchanged, then the emitted graph's relative import specifiers are
+  made Node-ESM-resolvable (a file target gains `.js`; a directory
+  target gains `/index.js` — Node ESM has no directory-index
+  resolution) and the function root's `package.json` becomes the
+  minimal `{"type": "module"}` marker (scoping only the emitted
+  graph — every traced `node_modules` package keeps its own nearest
+  `package.json`, so CJS packages stay CJS); a fail-closed
+  verification refuses the build if any extensionless relative
+  specifier remains. The corrected output ships with `vercel deploy
+  --prebuilt --prod` — the artifact is proven locally first (it boots
+  under plain `node server.js` and answers `deploy:public-smoke
+  --url`) so the exact shipped bytes are verified before they serve
+  traffic.
+
 **The runtime**: Node.js (the Fastify framework detection's
 default). The current Vercel documentation configures the officially
 supported Bun runtime through the top-level `bunVersion` property —
@@ -841,8 +868,22 @@ deploying (the variable contract is `deploy/manifests/variables.json`
 1. Set the deployment contract variables above on the Vercel project
    (Production environment; the preview materialization set of §3.2
    step 3).
-2. Deploy the merged `main` (git-connected deployment or
-   `vc deploy --prod` from a main checkout).
+2. Build and deploy the merged `main`:
+
+   ```bash
+   bun run deploy:build-vercel-output   # platform build + the module-loading correction
+   # the local artifact proof (the exact shipped bytes):
+   #   cd .vercel/output/functions/index.func && ZECK_ENVIRONMENT=preview \
+   #   ZECK_DEPLOY_GIT_REVISION=<rev> VERCEL_GIT_COMMIT_REF=main node server.js
+   #   bun run deploy:public-smoke -- --environment preview --branch main \
+   #     --url http://127.0.0.1:<port> --allow-degraded
+   vercel deploy --prebuilt --prod
+   ```
+
+   (A git-connected deployment or a plain `vc deploy --prod` produces
+   the uncorrected transpilation and fails at cold start — the
+   module-loading fact above; `deploy/build-vercel-output.ts` is the
+   sanctioned path.)
 3. Verify the DEPLOYED plane at the exact revision with the
    repository's own smoke — the same verification the local rail
    exercises against the entry before any deployment:

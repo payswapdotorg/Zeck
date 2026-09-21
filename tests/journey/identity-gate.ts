@@ -21,7 +21,9 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { gitRevision, loadManifest, REPOSITORY_ROOT } from "../../deploy/lib";
 import { attestDeployedPlane } from "../../deploy/plane-identity";
+import { namingConventionsOf } from "../../src/platform/deployment/identity";
 import type { EnvironmentId } from "../../src/platform/deployment/naming";
+import { previewBranchSlug, requiresPreviewSlug } from "../../src/platform/deployment/naming";
 import { parseProviderTiers } from "../../src/platform/deployment/provider-tiers";
 import type { IdentityGateOutcome } from "./types";
 
@@ -54,21 +56,46 @@ export function expectedRevisionOf(override: string | undefined): {
  * THE IDENTITY GATE: attest the deployed plane at the exact revision.
  * Fail-closed semantics identical to the deploy chain: any transport
  * failure, schema drift, revision mismatch or recomputation failure
- * refuses the run.
+ * refuses the run. For a PREVIEW-environment plane the per-branch
+ * resource set makes the branch (and with it the preview slug) an
+ * identity input — the SAME threading deploy/public-smoke.ts --url
+ * performs (--branch → previewBranchSlug → verifyRuntimeDeployment
+ * Identity); without it a preview plane's identity can never
+ * recompute (the live PPR-003 run's first finding, 2026-09-21).
  */
 export async function identityGate(
   targetUrl: string,
   expectedRevision: string,
   environment: EnvironmentId,
+  branch?: string,
 ): Promise<IdentityGateOutcome> {
   const manifest = loadManifest();
   const ledger = parseProviderTiers(
     readFileSync(resolve(REPOSITORY_ROOT, "deploy", "manifests", "provider-tiers.json"), "utf8"),
     manifest,
   );
+  const conventions = namingConventionsOf(manifest);
+  if (
+    environment === "preview" &&
+    branch === undefined &&
+    requiresPreviewSlug(manifest.resources.preview)
+  ) {
+    return {
+      verified: false,
+      reason:
+        "the target environment is preview and its per-branch resource set requires --branch <branch-name>: the preview slug (and with it the identity) cannot compute",
+      planeUrl: targetUrl,
+      expectedRevision,
+    };
+  }
+  const slug =
+    environment === "preview" && branch !== undefined
+      ? previewBranchSlug(branch, conventions.previewBranchSlugMaxLength)
+      : undefined;
   const attestation = await attestDeployedPlane(targetUrl, {
     revision: expectedRevision,
     environment,
+    ...(slug === undefined ? {} : { previewSlug: slug }),
     manifest,
     ledger,
   });
