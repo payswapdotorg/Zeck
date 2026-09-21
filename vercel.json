@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "server.ts": {
+      "maxDuration": 60,
+      "includeFiles": "deploy/manifests/*.json"
+    }
+  }
+}

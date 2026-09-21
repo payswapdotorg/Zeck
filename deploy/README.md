@@ -34,7 +34,8 @@ deploy/
   teardown.ts                classification-guarded disposable teardown (incl. provisioned records)
   smoke.ts                   readiness + exact-revision identity attestation
   identity.ts                deployment identity emission
-  api.ts                     DEP-001: the independently-runnable public API bootstrap host (/health + /identity)
+  api.ts                     DEP-001/PPR-006: the independently-runnable public API bootstrap host (/health + /identity) + the SHARED composition export (buildBootstrapApp) every hosting shape composes
+  vercel.ts                  PPR-006: the Vercel hosting adapter (entry inputs, the once-per-isolate singleton, the signal drain)
   public-smoke.ts            DEP-001: the public API smoke at an exact revision
   migrate.ts                 D-02: deterministic managed-PostgreSQL startup/migrations
   backup.ts                  D-02: logical backup of the authoritative state
@@ -256,9 +257,14 @@ identity behind `GET /identity`, the dependency readiness behind
 application work orders (DEP-010+) own the domain binding, and until
 then every domain seam answers the platform's typed
 `CAPABILITY_UNAVAILABLE` / `AUTHENTICATION_FAILED` — never a fabricated
-success. The host runs on any Bun-capable host (Vercel's Bun runtime,
-a container, a VM) behind configuration only (`ZECK_API_HOST` /
-`ZECK_API_PORT`; `--host` / `--port` flags).
+success. PPR-006 exports the composition as the SHARED builder
+`buildBootstrapApp` (same CLI behavior: boot document, SIGTERM drain,
+exit codes) so every hosting shape composes the IDENTICAL plane; the
+CLI host runs on any Bun-capable host (a container, a VM) behind
+configuration only (`ZECK_API_HOST` / `ZECK_API_PORT`; `--host` /
+`--port` flags), and the Vercel hosting entry (the root `server.ts` +
+`deploy/vercel.ts` + `vercel.json`, § "The PPR-006 Vercel hosting
+adapter" below) serves the same route table as one Vercel Function.
 
 **The runtime identity surface** (`GET /identity`): any deployed
 instance proves what it is — the exact 40-hex Git revision, the
@@ -322,6 +328,87 @@ The operator recipe for reproducing the public deployment end-to-end
 (including the credentialed provider-environment path and the NOT RUN
 boundaries) is `deploy/PUBLIC-DEPLOYMENT.md`; the structured evidence
 record is `deploy/evidence/dep-001.json`.
+
+## The PPR-006 Vercel hosting adapter (the experience-delivery enabler)
+
+The repository carries the hosting configuration that makes the
+bootstrap plane deployable to Vercel behind repository-resident files
+only — NO new authority, NO route change: the deployed surface is the
+IDENTICAL `createApiServer` public route table the CLI host serves.
+
+**The hosting files** (the placement verified against the current
+Vercel documentation — sources recorded in
+`deploy/evidence/ppr-006.json`):
+
+- `server.ts` (repository root) — the Vercel function entry, at the
+  location Vercel's Fastify framework entrypoint detection requires
+  (root `server.{ts}` importing fastify). It builds the bootstrap
+  composition ONCE PER ISOLATE (the module-level singleton in
+  `deploy/vercel.ts`: cold start builds, warm requests reuse) through
+  the shared `buildBootstrapApp`, installs the SIGTERM/SIGINT drain,
+  and calls `fastify.listen()` — the documented shape Vercel's runtime
+  captures to route every request into Fastify's router with the
+  ORIGINAL path. On a local run (`bun server.ts`) the listener binds
+  for real (`PORT`, default 3000).
+- `deploy/vercel.ts` — the hosting adapter: the fail-closed entry
+  inputs (`ZECK_ENVIRONMENT`; the preview branch from the
+  `VERCEL_GIT_COMMIT_REF` system variable), the once-per-isolate
+  singleton, the cold-start boot record, and the signal drain.
+- `vercel.json` (repository root, where Vercel requires it) — the
+  functions configuration for the entry: a deliberate `maxDuration`
+  bound and `includeFiles: deploy/manifests/*.json` (the composition
+  reads the manifest set from disk at runtime; the bundler's import
+  tracing cannot see `readFileSync` targets).
+
+**The runtime**: Node.js (the Fastify framework detection's default).
+The sanctioned Bun runtime configuration was verified to be the
+top-level `bunVersion` property — NOT the `functions` `runtime` field,
+which current documentation reserves for runtimes that are not
+officially supported — and the Bun runtime (Beta, permissions-gated)
+has no documented Fastify entrypoint shape; the Node.js runtime is
+used per the work order's allowance. All sources are recorded in the
+evidence record.
+
+**The deployment-time environment variables** (names only — values
+never transit this repository; the full contract:
+`deploy/manifests/variables.json` + `secret-references.json`):
+
+- `ZECK_ENVIRONMENT` — the environment identity (the preview rail
+  sets `preview`);
+- `ZECK_DEPLOY_GIT_REVISION` — the exact deployed revision (REQUIRED
+  on Vercel: the deployed bundle carries no git checkout, so the
+  override is the only revision source — absent, the isolate fails
+  closed at cold start rather than fabricating an identity);
+- the preview materialization set: the `ZECK_SECRET_*_REF` reference
+  bindings (`ZECK_SECRET_DATABASE_URL_REF`,
+  `ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF`,
+  `ZECK_SECRET_OBJECT_STORE_SECRET_ACCESS_KEY_REF`, ...) plus their
+  materialized values (`ZECK_DATABASE_URL`, ...) for the `/health`
+  readiness facts;
+- `VERCEL_GIT_COMMIT_REF` — the Vercel system variable the adapter
+  consumes as the preview branch input (provided by git-connected
+  deployments; required when the environment is preview).
+
+**The operator sequence** (the Lead's credentialed run — the worker
+never deploys): set the environment variables above on the Vercel
+project `zeck-preview-main` → deploy the merged main → verify the
+deployed plane with the repository's own exact-revision smoke:
+
+```bash
+bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main
+```
+
+**The local-rail proof** (no credentials, no deployment): the entry
+boots the same composition as a real listener and the SAME `--url`
+smoke path attests it — `tests/integration/deployment/vercel-entry.test.ts`
+runs both plus the wrong-revision hostile negative; the CLI host's
+behavior preservation (the refactor changed nothing observable) is
+`bun run deploy:api -- --environment local` +
+`bun run deploy:public-smoke -- --environment local
+[--allow-degraded]` (the no-PG degradation is the honest explicit
+pass; a reachable PostgreSQL authority passes strict).
+
+The evidence record of this layer is `deploy/evidence/ppr-006.json`.
 
 ## The D-03 runtime configuration (asynchronous execution transport)
 
