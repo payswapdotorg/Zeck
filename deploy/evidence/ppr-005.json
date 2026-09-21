@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-005",
+  "title": "Test-Harness Convergence Fix — the audit-schema forward-apply assertion derives from the shipped migration set (verification evidence record)",
+  "recordedBy": "PPR-005 implementation worker (this session)",
+  "environment": "sandboxed worker pod (no cloud credentials, no push credentials); git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-005-audit-schema-convergence, base fe26d9305f4b1d7040e35c7bff6a272c0c38a6fb (verified with git rev-parse before branching; equals origin/main HEAD at clone time). THREE REAL local PostgreSQL servers (theseus-rs user-space portable binaries from the public theseus-rs/postgresql-binaries GitHub releases, download sha256-verified against the published .sha256 release assets, trust auth for loopback, credential-less URLs): PostgreSQL 16.15.0 on 127.0.0.1:54331 — the standard battery rail (ZECK_PG_TEST_URL; major 16 because tests/integration/postgres/pg-database-port.test.ts pins the server major at 16) — and PostgreSQL 17.11.0 on 127.0.0.1:54329 + 127.0.0.1:54333 — the deployment driver rails (ZECK_E2E_PG_ADMIN_URL / ZECK_DRILL_PG_ADMIN_URL; battery-separated so the drivers' zeck_local teardowns never race the suites). The rails stand in for the Lead's PG rails LOCALLY only — not a live-provider verification and not recorded as one.",
+  "date": "2026-09-21",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. This work order is a one-file test correction plus this evidence record: the fix makes the audit-schema forward-apply expectation track the shipped migration set instead of a stale snapshot; no production code changed (git diff --name-only fe26d93..HEAD is exactly the one integration test file plus this record).",
+  "defect": {
+    "what": "tests/integration/postgres/audit-schema.test.ts, test '0032 applies forward cleanly on the existing authority (no destructive migration)': the assertion pinned forward.applied to exactly [{version:31,name:isolation_profiles},{version:32,name:audit_compliance}] while the shipped migration set now also carries 0033_application_credentials and 0034_sandbox_governance — four migrations apply forward on the 0030-converged base, so the test failed on every clean PostgreSQL rail that ran the postgres integration suites. The forward.skipped inline comment and the surrounding comments (the header bullet and the forward-run block) encoded the same stale two-migration assumption.",
+    "discoveryHistory": "identified during the PPR-001 delivery cycle (Task 57-b); reproduced identically on clean base 9915be6 by the Lead; independently reproduced and correctly attributed by the PPR-002 worker in an isolated environment (the DEP-040 record's DEFECT-A is the earliest written record) — two-environment cross-confirmation at attribution time. Live cross-evidence (Lead, 2026-09-21): deploy:migrate --environment preview against the real Neon preview authority applied all 33 shipped migrations and converged — the production path is proven; only the test's pinned expectation was stale.",
+    "reproducedHere": "third independent environment, this session: on the UNMODIFIED branch (identical to base fe26d93) with ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres, `bunx vitest run tests/integration/postgres/audit-schema.test.ts` → exit 1, Tests 1 failed | 9 passed (10); the failure is exactly forward.applied received [{31 isolation_profiles},{32 audit_compliance},{33 application_credentials},{34 sandbox_governance}] vs the pinned two-entry list (the diff names application_credentials 33 + sandbox_governance 34 as the unexpected rows)."
+  },
+  "fix": {
+    "surface": "tests/integration/postgres/audit-schema.test.ts only (plus this evidence record). The 0030-converged scratch-database harness above the assertion (loadMigrations, the <=30 base filter, baseRun, the authority seeding) is untouched; the test's intent is preserved exactly — the D-08 migrations apply forward cleanly, no destructive migration, the pre-existing authority rows intact, the audit plane works on the converged base.",
+    "derivation": "the expected forward set is computed from the shipped migration set at runtime: convergedHead = the head version of the base set the harness just applied (baseSet.at(-1)?.version ?? 0 — 30 today, whatever the converged head is tomorrow); expectedForward = every shipped migration with version > convergedHead, mapped to {version, name}. The assertions: expect(expectedForward.length).toBeGreaterThan(0) (not vacuous — the shipped set really carries migrations beyond the base), expect(forward.applied).toEqual(expectedForward) (order-preserving: loadMigrations sorts ascending and the runner applies in that order), and expect(forward.skipped).toBe(baseSet.length) (unchanged — it was already derived). A hard-coded list — the two entries before, a four-entry list today — would recreate the same defect at migration 0035; the derivation tracks the repository.",
+    "comments": "the stale two-migration comments (the file-header bullet, the forward-run block, the skipped inline note) now state the derived expectation.",
+    "proofOnRealRail": "same rail, same file, after the fix: `ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bunx vitest run tests/integration/postgres/audit-schema.test.ts` → exit 0, Test Files 1 passed (1), Tests 10 passed (10), 1.54s."
+  },
+  "notRun": [
+    {
+      "check": "the Lead's pre-merge re-run of the postgres integration suites on the canonical 127.0.0.1:55432 rail",
+      "reason": "This pod's rails are local stand-ins (real PostgreSQL, but not the Lead's rail). The Lead re-runs the suite on the real rail before merge per the runbook.",
+      "owner": "Lead PG-rail re-run"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    },
+    {
+      "check": "the PR itself (branch → main)",
+      "reason": "Workers never merge their own PR; the Lead harvests the sandbox (tarball + working tree) and applies the delivery.",
+      "owner": "Lead (harvest + PR + merge)"
+    },
+    {
+      "check": "live-provider operations (Neon authority, preview plane)",
+      "reason": "No cloud credentials exist in the worker pod. None are needed for this work order: the live Neon preview authority already applied all 33 shipped migrations and converged (Lead, 2026-09-21) — the production path is proven and untouched by this test-only change.",
+      "owner": "Lead (already proven 2026-09-21; no re-run required by this work order)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Install",
+      "command": "bun install",
+      "evidence": "exit 0 — 116 packages installed [1098ms] at the branch working tree"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit), 0 errors at the delivery state"
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "exit 0 — 68 warnings / 8 infos / 0 errors across 1951 checked files: the recorded house baseline exactly (PPR-002 and DEP-040 recorded the identical 68w/8i/0e). Zero diagnostics on the touched file (bunx biome check tests/integration/postgres/audit-schema.test.ts: checked, no fixes applied, clean)."
+    },
+    {
+      "check": "Unit suite",
+      "command": "bun run test:unit",
+      "evidence": "exit 0 — Test Files 352 passed (352); Tests 6243 passed (6243); 0 failures; 99.92s. Versus the PPR-002 record (350 files / 6186 tests at base 0c57491) the delta is the two work orders merged in between (PPR-002 a3f8998, PPR-003 58ad06 — verified ancestors), not this delivery: git diff --name-only fe26d93..HEAD touches zero unit-test files."
+    },
+    {
+      "check": "Defect reproduction on the unmodified base (third-environment confirmation)",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bunx vitest run tests/integration/postgres/audit-schema.test.ts  (on the pristine branch = base fe26d93, before the edit)",
+      "evidence": "exit 1 — Test Files 1 failed (1); Tests 1 failed | 9 passed (10); the assertion diff shows the received set carrying application_credentials 33 + sandbox_governance 34 beyond the pinned [31, 32] — byte-for-byte the documented defect, reproduced identically to the Lead's clean-base run and the PPR-002 worker's run."
+    },
+    {
+      "check": "Fix proof on the same real rail",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bunx vitest run tests/integration/postgres/audit-schema.test.ts  (after the fix)",
+      "evidence": "exit 0 — Test Files 1 passed (1); Tests 10 passed (10); 1.54s. The convergence test now derives [31 isolation_profiles, 32 audit_compliance, 33 application_credentials, 34 sandbox_governance] from the shipped set and passes; the other nine tests in the file are unchanged and green."
+    },
+    {
+      "check": "Architecture + discrimination battery — house convention (no rails)",
+      "command": "bun run test:architecture",
+      "evidence": "exit 0 — Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 51.26s. The skip is the PG-gated budgets-overspend discrimination suite — byte-identical to the PPR-002 house-convention record (139|1 files / 2230|4 tests)."
+    },
+    {
+      "check": "Architecture + discrimination battery — the real 16.15 rail (nothing skips)",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres bun run test:architecture",
+      "evidence": "exit 0 — Test Files 140 passed (140); Tests 2240 passed (2240); 0 failures, 0 skipped; 56.21s."
+    },
+    {
+      "check": "Integration battery — house convention (the standard PG suites skip-and-count exactly as every recorded battery)",
+      "command": "bun run test:integration",
+      "evidence": "exit 0 — Test Files 27 passed | 146 skipped (173); Tests 300 passed | 203 skipped (503); 63.38s. The 203 test skips are identical to the PPR-002 house record; the +2 files / +16 tests delta versus it (25|146 (171) files / 284|203 (487) tests) is the merged PPR-003 wave between the two bases, not this delivery (this delivery's diff touches no test file other than the one postgres integration test)."
+    },
+    {
+      "check": "Integration battery — ALL THREE real rails (the run class that failed for PPR-002, now fully green)",
+      "command": "ZECK_PG_TEST_URL=postgres://postgres@127.0.0.1:54331/postgres ZECK_E2E_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54329/postgres ZECK_DRILL_PG_ADMIN_URL=postgres://postgres@127.0.0.1:54333/postgres bun run test:integration",
+      "evidence": "exit 0 — Test Files 172 passed | 1 skipped (173); Tests 1284 passed | 20 skipped (1304); 414.74s. ZERO failures — the previously-failing audit-schema convergence test ('0032 applies forward cleanly on the existing authority') PASSED inside the full railed battery (the PPR-002 worker's both-rails run of this command class was exit 1 — 1 failed | 1264 passed | 23 skipped — with this exact test as the single failure). The 1 skipped file is tests/integration/postgres/ha-failover.test.ts (6 tests; skips without ZECK_HA_POSTGRES_BIN — an optional HA rail outside this battery's definition, the same 1-file skip the PPR-002 railed run recorded); the remaining 14 test skips are the credential-gated live-provider probes under the honest-skip contract (r2-live 5, workflow-live 4, queue-live 2, runner-live 2, provider-redundancy 1 — no cloud credentials exist in the worker pod)."
+    },
+    {
+      "check": "The full suite — house convention, the plain Lead-reproducible run (no env vars)",
+      "command": "bun run test",
+      "evidence": "exit 0 — Test Files 518 passed | 147 skipped (665); Tests 8773 passed | 207 skipped (8980); 0 failures; 209.62s. The skip profile is identical to the PPR-002 full-suite record (147 files / 207 tests); the +4 files / +73 tests delta versus it (514|147 (661) / 8700|207 (8907)) is the merged PPR-003 wave between the two bases."
+    },
+    {
+      "check": "Governance check",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+    },
+    {
+      "check": "deploy:validate at the delivery head",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0 — valid=true, problems=[] (4 environments / 8 providers / 12 resource kinds / 82 variables / 33 migrations / 8 provider-tier entries / providerTierVerification stays 'recorded-not-live-verified' — the honest vocabulary / 3 sandbox accounts / 14 release gate kinds / 3 quota guards)"
+    }
+  ],
+  "notes": [
+    "WHY DERIVE, NOT RE-PIN: a hard-coded four-entry list ([31,32,33,34]) would be correct today and stale at migration 0035 — the exact failure mode that broke the two-entry pin this work order retires. The derivation (shipped set beyond the converged head, with version and name) makes the test track the repository: adding 0035 requires no edit here, and the non-vacuity guard keeps the test from silently passing if the base ever swallowed the whole shipped set.",
+    "The `forward.skipped` assertion was already derived (baseSet.length) and needed no change — only its inline comment carried the stale 'exactly the two D-08 migrations' assumption; the comment now states the derived expectation.",
+    "The test's title ('0032 applies forward cleanly on the existing authority (no destructive migration)') is intentionally unchanged: it is the test's identity as quoted by the work order and the prior evidence records; the intent it names (the audit-plane migrations apply forward cleanly on the converged authority) is preserved exactly.",
+    "BATTERY ORDER AND STATE: every verifiedLocally entry above was executed in the runbook's checkpoint order — install/typecheck/lint/unit + the base-reproduction and fix-proof runs before the record's first commit; architecture (house + railed), integration (house + railed), the full suite, governance and deploy:validate after it — and the record was amended once at the delivery head to carry the phase-2 numbers. Nothing in this record is anticipated or invented; the tarball + sha256 at the stated paths back the exact tree this record describes."
+  ]
+}
