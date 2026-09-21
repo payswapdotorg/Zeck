@@ -1,15 +1,14 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "active",
-  "currentBase": "a3f89982b637c6c52ff09fd07a00f183c72bb211",
+  "status": "wave-a-complete",
+  "currentBase": "158ad06658f9c3184f2817e00b2a8ec2feef2af3",
   "delivered": [
     "PPR-001",
-    "PPR-002"
-  ],
-  "eligible": [
+    "PPR-002",
     "PPR-003"
   ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
