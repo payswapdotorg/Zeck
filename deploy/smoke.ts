@@ -178,6 +178,7 @@ async function probeLocal(
 async function probeProviderEnvironment(
   manifest: ReturnType<typeof loadManifest>,
   environment: EnvironmentId,
+  previewSlug?: string,
 ): Promise<readonly DependencyProbeResult[]> {
   // PROVIDER probes (D-02, WORK-043): concerns with landed adapters
   // are probed for real when their credential materialization is
@@ -185,6 +186,12 @@ async function probeProviderEnvironment(
   // honest secret-reference precondition state. Credentials absent ⇒
   // "unavailable" (nothing is attested — the authoritative relational
   // concern keeps the whole environment DOWN, fail closed).
+  //
+  // `previewSlug` is the SAME branch identity the deployment identity
+  // document computes from --branch (the PPR-004 F2 correction): every
+  // manifest-computed resource-name comparison in this attestation
+  // must see the per-branch names, or a correctly-named per-branch
+  // resource reads as drift.
   const contract = evaluateEnvironmentContract(manifest, environment, process.env);
   const expected = manifest.secretReferences[environment].length;
   const materialized = contract.materializedReferences.length;
@@ -195,7 +202,7 @@ async function probeProviderEnvironment(
     if (concern === "relational-state") {
       probes.push(await probeProviderRelationalState(manifest, environment, contract));
     } else if (concern === "artifact-bytes") {
-      probes.push(await probeProviderObjectStore(manifest, environment, contract));
+      probes.push(await probeProviderObjectStore(manifest, environment, contract, previewSlug));
     } else if (concern === "async-transport") {
       probes.push(await probeProviderAsyncTransport(manifest, environment, contract));
     } else if (concern === "durable-orchestration") {
@@ -299,6 +306,7 @@ async function probeProviderObjectStore(
   manifest: ReturnType<typeof loadManifest>,
   environment: EnvironmentId,
   contract: ReturnType<typeof evaluateEnvironmentContract>,
+  previewSlug?: string,
 ): Promise<DependencyProbeResult> {
   const accessKeyBound = contract.materializedReferences.some(
     (reference) => reference.variable === "ZECK_SECRET_OBJECT_STORE_ACCESS_KEY_ID_REF",
@@ -328,11 +336,17 @@ async function probeProviderObjectStore(
   }
   // Cross-check the configured bucket against the manifest-computed
   // resource name for this environment (naming drift is a defect).
+  // The preview branch slug (PPR-004 F2 correction) is threaded
+  // through: the preview object-store bucket is a PER-BRANCH resource
+  // (zeck-preview-<branch>-artifacts), and the same attestation's
+  // identity document names it with the branch — omitting the slug
+  // here made a correctly-named per-branch bucket read as drift.
   const conventions = namingConventionsOf(manifest);
   const names = computeResourceNames(
     conventions,
     environment,
     manifest.resources[environment as keyof typeof manifest.resources] ?? [],
+    previewSlug,
   );
   const expectedBucket = names.find((name) => name.kind === "r2-bucket")?.name;
   const bucketDrift =
@@ -560,15 +574,22 @@ export async function runSmokeAttestation(
   const manifest = loadManifest();
   const revision = gitRevision();
 
-  const contract = evaluateEnvironmentContract(manifest, environment, process.env);
-  const probes =
-    environment === "local"
-      ? await probeLocal(manifest)
-      : await probeProviderEnvironment(manifest, environment);
+  // The preview branch identity, computed ONCE and threaded through
+  // EVERY manifest-computed name in this attestation — the deployment
+  // identity document AND every provider probe's resource-name drift
+  // cross-check (the PPR-004 F2 correction: the artifact-bucket
+  // cross-check used to omit it, reporting correctly-named per-branch
+  // buckets as drift and reading the concern unavailable).
   const slug =
     environment === "preview" && options?.branch !== undefined
       ? previewBranchSlug(options.branch, namingConventionsOf(manifest).previewBranchSlugMaxLength)
       : undefined;
+
+  const contract = evaluateEnvironmentContract(manifest, environment, process.env);
+  const probes =
+    environment === "local"
+      ? await probeLocal(manifest)
+      : await probeProviderEnvironment(manifest, environment, slug);
 
   // The control plane for the smoke attestation is the tool itself
   // executing over a valid, loaded manifest set at an exact revision.

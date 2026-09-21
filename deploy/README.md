@@ -361,16 +361,44 @@ when the materialization is present and reports the honest
 `dispatch-backlogged` degraded mode otherwise — a queued message is never
 mistaken for execution success.
 
+A REST-probeable queue needs the `http_pull` consumer (the PPR-004
+provisioning knowledge, verified live on 2026-09-21): until the queue
+carries an `http_pull` consumer, the REST pull endpoint refuses every
+request with HTTP 405 (`messages cannot be pulled unless http_pull mode
+is enabled`) — the queue EXISTS and publishing succeeds, but nothing
+can be leased or acknowledged over REST. Provision it exactly once per
+queue, either with the wrangler CLI (`npx wrangler queues consumer http
+add <queue-name>`) or the REST API itself (`POST
+/accounts/<account>/queues/<queue-id>/consumers` with body
+`{"type": "http_pull"}` → 200). A queue with a push-based (Worker)
+consumer must have that consumer removed first. This applies to BOTH
+the execution queue and the dedicated probe queue — the transport
+probe's pull leg needs the probe queue's own `http_pull` consumer
+(next to `ZECK_PROBE_QUEUE_ID` in the configuration checklist above).
+
+Message-body delivery form over REST pull (the PPR-004 wire
+correction): bodies published under the `json` (the default) or
+`bytes` content types are delivered BASE64-ENCODED (RFC 4648) in the
+pull response; `text` bodies arrive as plain UTF-8 strings. The
+adapter decodes both forms transparently (`metadata.CF-Content-Type`
+disambiguates) — recorded here so an operator reading raw REST
+responses interprets them correctly.
+
 ### The transport probe and the dedicated probe queue
 
 The transport probe (`deploy:smoke`'s async-transport concern and
 `deploy:queue -- probe`) NEVER runs against the execution queue. It
 executes its publish → pull → ack round trip on a **dedicated
 operator-owned probe queue** (`ZECK_PROBE_QUEUE_ID`): a queue reserved
-for probe traffic, provisioned exactly like the execution queue (HTTP
-pull consumer enabled, token scopes `queues_read` + `queues_write`),
-carrying no application state and therefore not part of the
-environment's authoritative resource inventory.
+for probe traffic, provisioned exactly like the execution queue (an
+`http_pull` consumer enabled — see the provisioning note above, e.g.
+`npx wrangler queues consumer http add zeck-preview-<branch>-executions-probe`
+— token scopes `queues_read` + `queues_write`), carrying no application
+state and therefore not part of the environment's authoritative resource
+inventory. Without the probe queue's own `http_pull` consumer the probe
+fails closed exactly as the live plane refuses it (the 405 above) — the
+probe's own message stays pending as disposable noise on the noise-only
+probe queue.
 
 The probe acknowledges **exactly the one message it published in that
 run** (exact probe-tag match). Anything else it happens to lease — an

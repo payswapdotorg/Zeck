@@ -3,17 +3,52 @@
  * implementation behind the provider-neutral `QueueTransportPort`
  * (WORK-044 / D-03).
  *
- * Cloudflare Queues speaks a plain JSON-over-HTTPS REST API (verified
- * against the official developer documentation):
+ * Cloudflare Queues speaks a plain JSON-over-HTTPS REST API. The wire
+ * contract below is the LIVE-VERIFIED + CURRENT-PUBLIC-DOCUMENTED
+ * shape (the PPR-004 drift correction; verified against the Lead's
+ * credentialed probe of 2026-09-21 on the dedicated probe queue
+ * `zeck-preview-main-executions-probe` and the current public API
+ * reference at developers.cloudflare.com/api, fetched 2026-09-21):
  *
- *  - publish: `POST {api}/accounts/{account_id}/queues/{queue_id}/messages`
- *    with body `{"body": <json value>}` → `{"success": true}`;
- *  - pull (HTTP pull consumer): `POST .../messages/poll` with body
- *    `{"visibility_timeout_ms": N, "batch_size": N}` →
+ *  - publish ("Push Message"):
+ *    `POST {api}/accounts/{account_id}/queues/{queue_id}/messages`
+ *    with body `{"body": <plain JSON object>}` → HTTP 200 with
+ *    `result.metadata.metrics.backlog_count`. Live-refused forms: a
+ *    STRING body (under content_type "json") → HTTP 400 provider
+ *    code 10207 ("Expected object, received string at body"); any
+ *    `{"messages": [...]}` wrapper → HTTP 400 ("Required at body").
+ *    The current public schema documents the request body as a one-of
+ *    union: `MqQueueMessageText` {body: string, content_type: "text"}
+ *    or `MqQueueMessageJson` {body: <json value>, content_type:
+ *    "json"} — `content_type` is an ENUM ("text" | "json"), never a
+ *    free-form MIME string, and `delay_seconds` expresses the delivery
+ *    delay in SECONDS. This adapter sends the live-verified BARE
+ *    object (the documented default content type "json"), so the
+ *    port's opaque string payload rides inside a versioned envelope
+ *    object (see `WIRE_ENVELOPE_MARKER`) and the port's free-form
+ *    `contentType` is NOT forwarded (the provider's enum cannot
+ *    express it — "when the provider can honor it", it cannot).
+ *  - pull (HTTP pull consumer): `POST .../messages/pull` with body
+ *    `{"visibility_timeout_ms": N, "batch_size": N}` (both optional;
+ *    documented bounds: batch max 100, visibility max 12h) →
  *    `{"result": {"messages": [{ "body", "id", "timestamp_ms",
- *    "attempts", "lease_id", "metadata" }], "message_backlog_count": N}}`;
- *  - settle: `POST .../messages/ack` with body
- *    `{"acks": [{"lease_id": ...}], "retries": [{"lease_id": ...}]}`.
+ *    "attempts", "lease_id", "metadata" }], "message_backlog_count": N}}`.
+ *    The pull path 405s ("messages cannot be pulled unless http_pull
+ *    mode is enabled") until the queue carries an `http_pull`
+ *    consumer — an operator-owned account-plane precondition (see
+ *    deploy/README.md). Per the current public documentation, message
+ *    bodies published with the `json` (or `bytes`) content type are
+ *    delivered BASE64-ENCODED (RFC 4648) over the REST pull surface;
+ *    `text` bodies arrive as plain UTF-8 strings. The normalization
+ *    below decodes accordingly (tolerant: a body that is not strict
+ *    base64 passes through verbatim — the authoritative correlation
+ *    digest check downstream fails closed on any mismatch).
+ *  - settle ("Acknowledge + Retry Queue Messages"): `POST
+ *    .../messages/ack` with body `{"acks": [{"lease_id": ...}],
+ *    "retries": [{"lease_id": ...}]}` (verified against the current
+ *    public API reference — the shape this adapter always sent; a
+ *    retry entry may optionally carry `delay_seconds`, which this
+ *    adapter does not use: a retry re-queues immediately).
  *
  * Cloudflare concepts stop HERE: the domain/application boundary sees
  * only the port (pinned by the architecture tests). No
@@ -215,10 +250,57 @@ export function validateCloudflareQueuesConfig(config: CloudflareQueuesConfig): 
 const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 const DEFAULT_PULL_BATCH_SIZE = 10;
 const DEFAULT_VISIBILITY_TIMEOUT_MS = 30_000;
-/** Provider-documented bounds (Cloudflare Queues pull consumers). */
+/**
+ * Provider-documented bounds (Cloudflare Queues pull consumers, current
+ * public limits page, fetched 2026-09-21): consumer batch size max 100,
+ * visibility timeout max 12 hours, delivery delay (delaySeconds, when
+ * sending or retrying) max 24 hours.
+ */
 const MAX_PULL_BATCH_SIZE = 100;
 const MAX_VISIBILITY_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 const MAX_DELAY_SECONDS = 86_400;
+
+/**
+ * The wire-envelope marker (the PPR-004 correction): the live-verified
+ * publish contract requires the request's `body` VALUE to be a plain
+ * JSON OBJECT (a string body is provider-refused with code 10207),
+ * while the port contract carries the payload as an opaque STRING.
+ * The port's payload therefore rides inside this versioned envelope
+ * object — any string (valid JSON or not) round-trips losslessly, and
+ * the envelope marker makes the unwrap unambiguous against foreign
+ * message bodies (a foreign message is NEVER misread as ours).
+ */
+const WIRE_ENVELOPE_MARKER = "zeckTransport";
+const WIRE_ENVELOPE_VERSION = 1;
+
+/** The publish-side envelope: the port's opaque string payload as a
+ * plain JSON object (the live-verified publish body value shape). */
+function toWireEnvelope(message: QueueOutboundMessage): Record<string, unknown> {
+  return { [WIRE_ENVELOPE_MARKER]: WIRE_ENVELOPE_VERSION, payload: message.body };
+}
+
+/**
+ * Best-effort envelope unwrap: returns the port payload iff the given
+ * text parses as EXACTLY this adapter's versioned envelope. Every
+ * other body (a foreign message, unparseable noise) returns null —
+ * foreign messages are passed through untouched, never misread.
+ */
+function tryUnwrapWireEnvelope(text: string): string | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (parsed === null || typeof parsed !== "object") {
+    return null;
+  }
+  const record = parsed as Record<string, unknown>;
+  if (record[WIRE_ENVELOPE_MARKER] !== WIRE_ENVELOPE_VERSION) {
+    return null;
+  }
+  return typeof record.payload === "string" ? record.payload : null;
+}
 
 /**
  * The wire-level result the adapter understands. Kept public for the
@@ -349,20 +431,29 @@ export function createCloudflareQueuesTransport(
   /** Build the wire surface bound to ONE queue's REST path. */
   const wireFor = (targetPath: string): CloudflareQueuesWire => ({
     async publishWire(message) {
+      // The live-verified publish contract (Lead probe 2026-09-21):
+      // the request body is the BARE object {"body": <plain JSON
+      // object>}. A string body value is provider-refused (HTTP 400,
+      // code 10207 "Expected object, received string at body") and any
+      // {"messages": [...]} wrapper is refused (HTTP 400 "Required at
+      // body") — the stale pre-PPR-004 shapes. The port's opaque
+      // string payload rides inside the versioned envelope object;
+      // the port's free-form contentType is NOT forwarded (the
+      // provider's current schema types content_type as the enum
+      // "text" | "json" — it cannot express a MIME string, so the
+      // provider cannot honor it).
       const body: Record<string, unknown> = {
-        body: message.body,
+        body: toWireEnvelope(message),
       };
-      if (message.contentType !== undefined) {
-        body.content_type = message.contentType;
-      }
       if (message.delaySeconds !== undefined && message.delaySeconds > 0) {
         if (!Number.isInteger(message.delaySeconds) || message.delaySeconds > MAX_DELAY_SECONDS) {
           throw new QueueConfigError(
             `delaySeconds must be an integer in [0, ${MAX_DELAY_SECONDS}]`,
           );
         }
-        // Cloudflare's REST publish expresses delay in milliseconds.
-        body.delay_ms = message.delaySeconds * 1000;
+        // The current public schema expresses the delivery delay in
+        // SECONDS (delay_seconds; the stale shape sent delay_ms).
+        body.delay_seconds = message.delaySeconds;
       }
       const { status, json } = await request(targetPath, "/messages", body);
       if (status < 200 || status >= 300) {
@@ -380,7 +471,7 @@ export function createCloudflareQueuesTransport(
         Math.max(1, options?.visibilityTimeoutMs ?? DEFAULT_VISIBILITY_TIMEOUT_MS),
         MAX_VISIBILITY_TIMEOUT_MS,
       );
-      const { status, json } = await request(targetPath, "/messages/poll", {
+      const { status, json } = await request(targetPath, "/messages/pull", {
         visibility_timeout_ms: visibilityTimeoutMs,
         batch_size: batchSize,
       });
@@ -424,6 +515,11 @@ export function createCloudflareQueuesTransport(
       if (settlement.ackLeaseIds.length === 0 && settlement.retryLeaseIds.length === 0) {
         return;
       }
+      // The ack shape is verified against the current public API
+      // reference ("Acknowledge + Retry Queue Messages", fetched
+      // 2026-09-21): {"acks": [{"lease_id"}], "retries": [{"lease_id"}]}
+      // — exactly this shape (a retry entry MAY carry delay_seconds;
+      // an absent delay re-queues immediately, which is the intent).
       const { status, json } = await request(targetPath, "/messages/ack", {
         acks: settlement.ackLeaseIds.map((leaseId) => ({ lease_id: leaseId })),
         retries: settlement.retryLeaseIds.map((leaseId) => ({ lease_id: leaseId })),
@@ -439,10 +535,7 @@ export function createCloudflareQueuesTransport(
 
   /** Decode a wire message into the provider-neutral delivery shape. */
   function toDelivery(message: CloudflareWireMessage): QueueDelivery {
-    // body arrives as the published JSON value; the port contract is a
-    // string body, so string payloads pass through and JSON-object
-    // bodies are canonicalized to their JSON text.
-    const body = typeof message.body === "string" ? message.body : JSON.stringify(message.body);
+    const body = normalizeWireBodyToPortBody(message);
     const metadata = message.metadata;
     let contentType: string | undefined;
     if (metadata !== null && typeof metadata === "object") {
@@ -520,7 +613,6 @@ export function createCloudflareQueuesTransport(
       const probeTag = `zeck-transport-probe-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       await probeWire.publishWire({
         body: JSON.stringify({ probe: probeTag }),
-        contentType: "application/json",
       });
       const deadline = Date.now() + 20_000;
       while (Date.now() < deadline) {
@@ -556,16 +648,16 @@ export function createCloudflareQueuesTransport(
 
 /**
  * True iff the wire message is EXACTLY this run's probe message — the
- * published body parses as JSON and carries this run's unique probe
- * tag. Every other body (an execution pointer payload, another
- * probe's tag, unparseable noise) is foreign to this probe.
+ * normalized body (decoded + envelope-unwrapped, exactly as the port
+ * sees it) parses as JSON and carries this run's unique probe tag.
+ * Every other body (an execution pointer payload, another probe's
+ * tag, unparseable noise — including foreign base64 or plain-text
+ * forms) is foreign to this probe.
  */
 function isOwnProbeMessage(message: CloudflareWireMessage, probeTag: string): boolean {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(
-      typeof message.body === "string" ? message.body : JSON.stringify(message.body),
-    );
+    parsed = JSON.parse(normalizeWireBodyToPortBody(message));
   } catch {
     return false;
   }
@@ -574,4 +666,66 @@ function isOwnProbeMessage(message: CloudflareWireMessage, probeTag: string): bo
     typeof parsed === "object" &&
     (parsed as Record<string, unknown>).probe === probeTag
   );
+}
+
+/**
+ * The provider-reported content type of a wire message ("json" is the
+ * documented default when the metadata does not report one).
+ */
+function providerContentTypeOf(message: CloudflareWireMessage): string {
+  const metadata = message.metadata;
+  if (metadata !== null && typeof metadata === "object") {
+    const raw = (metadata as Record<string, unknown>)["CF-Content-Type"];
+    if (typeof raw === "string" && raw.length > 0) {
+      return raw;
+    }
+  }
+  return "json";
+}
+
+/**
+ * Strict RFC 4648 base64 decode — null when the text is not strict
+ * base64 (wrong length, wrong charset). Used only as the documented
+ * json/bytes pull-body decode; a null result passes the body through
+ * verbatim (never a silent drop — the authoritative correlation
+ * digest check downstream fails closed on any mismatch).
+ */
+function strictBase64Decode(text: string): string | null {
+  if (text.length === 0 || text.length % 4 !== 0) {
+    return null;
+  }
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(text)) {
+    return null;
+  }
+  return Buffer.from(text, "base64").toString("utf8");
+}
+
+/**
+ * Normalize a pulled wire body to the port's string contract
+ * (the PPR-004 pull-path correction) — shared by the delivery decode
+ * and the probe's own-message match:
+ *  - a non-string body (a passed-through JSON value) canonicalizes
+ *    to its JSON text;
+ *  - a "text" body arrives as a plain UTF-8 string (current public
+ *    documentation) and passes through as-is;
+ *  - a "json"/"bytes" body arrives BASE64-ENCODED (RFC 4648, current
+ *    public documentation) and is strict-decoded (a body that is
+ *    not strict base64 passes through verbatim — tolerance for
+ *    foreign/legacy payloads, governed fail-closed downstream);
+ *  - finally, this adapter's own versioned envelope unwraps to the
+ *    exact port payload it published (lossless round trip).
+ */
+function normalizeWireBodyToPortBody(message: CloudflareWireMessage): string {
+  const contentType = providerContentTypeOf(message);
+  let text: string;
+  if (typeof message.body !== "string") {
+    text = JSON.stringify(message.body);
+  } else if (contentType === "text") {
+    text = message.body;
+  } else {
+    const decoded = strictBase64Decode(message.body);
+    text = decoded ?? message.body;
+  }
+  const unwrapped = tryUnwrapWireEnvelope(text);
+  return unwrapped ?? text;
 }

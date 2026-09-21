@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-004",
+  "title": "Live-provider drift corrections — Cloudflare Queues transport publish shape + deploy/smoke preview-slug naming (verification evidence record)",
+  "recordedBy": "PPR-004 implementation worker (this session)",
+  "environment": "sandboxed worker pod (no cloud credentials); git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-004-provider-drift-corrections, base fe26d9305f4b1d7040e35c7bff6a272c0c38a6fb (verified with git rev-parse fe26d9305f4b1d7040e35c7bff6a272c0c38a6fb^{commit} before branching — the guide's pinned main head, exact match)",
+  "date": "2026-09-21",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The two corrections are the repository-side defects the Lead's credentialed live-preview provisioning run (2026-09-21, revision 9915be6) proved; this delivery corrects them so the Lead's credentialed re-run of deploy:smoke --environment preview --branch main attests the non-authoritative transport and artifact concerns ready instead of unavailable. Every wire-shape decision carries its verification basis (live probe matrix / current public documentation); the live re-verification against the real Cloudflare plane is the Lead's credentialed boundary.",
+  "wireContractBasis": {
+    "publish": "LIVE-VERIFIED (Lead probe 2026-09-21, account API token, dedicated probe queue zeck-preview-main-executions-probe): {\"body\": <plain JSON object>} → HTTP 200 with result.metadata.metrics.backlog_count; {\"body\": \"<string>\", \"content_type\": \"json\"} → HTTP 400 code 10207 (Expected object, received string at body); any {\"messages\": [...]} wrapper → HTTP 400 (Required at body). Cross-checked against the current public API reference (Push Message, developers.cloudflare.com/api/resources/queues/subresources/messages/methods/push, fetched 2026-09-21): request body is the one-of union MqQueueMessageText {body: string, content_type: \"text\", delay_seconds} | MqQueueMessageJson {body: <json value>, content_type: \"json\", delay_seconds} — content_type is an enum, delay is expressed in SECONDS. Implementation: the bare body object (live-verified form, the documented default content type json) carrying the port's opaque string payload inside a versioned envelope object {zeckTransport: 1, payload: <string>}; the port's free-form MIME contentType is NOT forwarded (the provider's enum cannot express it); a requested delay rides as delay_seconds.",
+    "pull": "CURRENT-PUBLIC-DOCUMENTED (Pull Queue Messages, developers.cloudflare.com/api/resources/queues/subresources/messages/methods/pull + the pull-consumers guide, fetched 2026-09-21) + LIVE-VERIFIED endpoint behavior (Lead probe: pull 405s 'messages cannot be pulled unless http_pull mode is enabled' until the queue carries an http_pull consumer created via POST .../queues/{queue_id}/consumers {\"type\": \"http_pull\"} → 200; after that POST .../messages/pull {\"batch_size\": n} → 200 with result.messages[]): the corrected endpoint is /messages/pull (the stale adapter path was /messages/poll) with {batch_size, visibility_timeout_ms} (documented bounds batch max 100, visibility max 12h — verified against the current limits page). Pull-body delivery form: per the current pull-consumers documentation, json (the default) and bytes content types are delivered BASE64-ENCODED (RFC 4648) over the REST pull surface; text arrives as plain UTF-8. The adapter decodes accordingly (strict RFC 4648 validation; a non-base64 body passes through verbatim — never a silent drop: the authoritative PostgreSQL correlation digest check downstream fails closed on any mismatch) and unwraps its own envelope. The base64 delivery form itself is documentation-verified, NOT live-exercised (the Lead's probe verified the pull endpoint and envelope, not a pulled body) — the Lead's credentialed re-run exercises the full round trip.",
+    "ack": "CURRENT-PUBLIC-DOCUMENTED (Acknowledge + Retry Queue Messages, developers.cloudflare.com/api/resources/queues/subresources/messages/methods/ack + the pull-consumers guide's ack example, fetched 2026-09-21): POST .../messages/ack with {\"acks\": [{\"lease_id\"}], \"retries\": [{\"lease_id\"}]} (a retry entry may optionally carry delay_seconds, which this adapter does not use — a retry re-queues immediately). NOT live-exercised by the Lead's probe (no message remained) — this is the honest verification basis; the shape this adapter has always sent matches the current public schema and examples exactly, so no wire change was needed on this leg.",
+    "httpPullConsumerProvisioning": "LIVE-VERIFIED (Lead probe 2026-09-21) + current public pull-consumers guide: POST /accounts/{account_id}/queues/{queue_id}/consumers {\"type\": \"http_pull\"} → 200 (or npx wrangler queues consumer http add <queue-name>); a queue with a push-based Worker consumer must have it removed first. Recorded in deploy/README.md next to the probe-queue requirement."
+  },
+  "notRun": [
+    {
+      "check": "live re-verification of the corrected publish/pull/ack wire shapes against the real Cloudflare Queues plane (the full round trip on the dedicated probe queue, including the documentation-verified base64 json pull-body delivery form)",
+      "reason": "No Cloudflare credentials exist in the worker pod. The corrected shapes are pinned against the Lead's live probe matrix and the current public API documentation; the real-plane re-verification requires the account API token and the provisioned probe queue.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "the credentialed re-run of deploy:smoke --environment preview --branch main against the live plane (the artifact-bytes concern reading ready on the correctly-named per-branch bucket zeck-preview-main-artifacts + the async-transport concern's publish → pull → ack round trip on the probe queue with its http_pull consumer)",
+      "reason": "Requires the materialized preview secret references and live provider resources; the repository-side corrections (the slug threading + the naming regression pins) are verified locally against a real local object-store endpoint and the real manifest set.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "the gated live queue suite (tests/integration/queue/queue-live.test.ts) — the real-transport port flow on the probe queue",
+      "reason": "Env-gated on ZECK_CLOUDFLARE_ACCOUNT_ID + ZECK_QUEUE_ID + ZECK_PROBE_QUEUE_ID + ZECK_QUEUE_API_TOKEN; none materialize in the worker pod. The suite skips with its exact missing-materialization reason (the honest WORK-044 evidence contract); the adapter wire behavior is proven against the corrected in-process protocol fake over real HTTP.",
+      "owner": "Lead credentialed re-run"
+    },
+    {
+      "check": "queue protocol tests + smoke naming regression against a real local PostgreSQL rail",
+      "reason": "No PostgreSQL server exists in this worker pod (unlike the PPR-002 pod, which carried portable binaries). The queue protocol suite and the smoke naming regression are PG-independent (in-process HTTP + the real manifest set) and ran in full; the PG-gated suites of the battery skip-and-count under the house convention exactly as every recorded battery.",
+      "owner": "Lead merge + CI (the CI rail carries PostgreSQL)"
+    },
+    {
+      "check": "CI execution of the full suite on the branch",
+      "reason": "Workers do not push and do not open PRs; CI runs on the Lead's merge.",
+      "owner": "Lead merge + CI (.github/workflows)"
+    }
+  ],
+  "verifiedLocally": [
+    {
+      "check": "Install",
+      "command": "bun install",
+      "evidence": "exit 0 — 116 packages installed [1138ms] at the branch working tree"
+    },
+    {
+      "check": "Typecheck",
+      "command": "bun run typecheck",
+      "evidence": "exit 0 (tsc --noEmit), 0 errors at the delivery head. One intermediate run surfaced 1 TS2552 (RequestInfo absent from the ES2023+node lib in the new unit test's fetch double) — fixed by typing the double as typeof fetch with inferred parameters before the first recorded green run."
+    },
+    {
+      "check": "Lint (house baseline, no NEW violations)",
+      "command": "bun run lint",
+      "evidence": "exit 0 — 68 warnings / 8 infos / 0 errors: the recorded house baseline exactly (PPR-002 recorded the identical 68w/8i/0e). Two intermediate runs surfaced formatter errors on the touched files: the first (6 format errors + 1 import-organization diagnostic + 1 unused-parameter warning on the new/touched files) was fixed with bunx biome check --write on exactly the touched files plus a one-line unused-parameter rename; the second (1 format error — a line-length wrap in the 405 assertion edit made after the first recorded run, missed because that file's check output was tail-truncated) was caught by the checkpoint-2 re-verification of the delivered head and fixed the same way. Both fixes are pure formatting; the final recorded run is the delivered head exactly."
+    },
+    {
+      "check": "Unit suite",
+      "command": "bun run test:unit",
+      "evidence": "exit 0 — Test Files 354 passed (354); Tests 6255 passed (6255); 0 failures; ~100s. Base fe26d93 measured in a clean detached worktree with the shared node_modules: 352 files / 6243 tests — the delta is exactly this work order's additions: +2 files (tests/unit/queue/wire-contract.test.ts, 9 tests + tests/unit/deployment/smoke-naming.test.ts, 3 tests)."
+    },
+    {
+      "check": "The queue protocol integration suite (pre-checkpoint direct run)",
+      "command": "bunx vitest run tests/integration/queue/",
+      "evidence": "exit 0 — Test Files 2 passed (2); Tests 27 passed | 2 skipped (29). The skips are the env-gated live suite's honest missing-materialization skip. The corrected pins ran green: the bare-object publish envelope, delay_seconds, /messages/pull, the base64 json round trip, the live-refused stale shapes (string body → 400 code 10207; messages-wrapper → 400 Required at body; free-form content_type → 400 enum; /messages/poll → 404), the http_pull precondition (405 → consumer creation via the live REST call → pull works; the probe failing closed on an unprovisioned probe queue with its own message left pending), and the full PR #6 probe-isolation battery over the corrected wire. One intermediate failure (a wrong expected-substring in the 405 assertion) was fixed before the recorded green run."
+    },
+    {
+      "check": "Architecture + discrimination battery — house convention (no rails)",
+      "command": "bun run test:architecture",
+      "evidence": "exit 0 — Test Files 139 passed | 1 skipped (140); Tests 2230 passed | 4 skipped (2234); 51.9s. The skip is the PG-gated budgets-overspend discrimination suite (no ZECK_PG_TEST_URL in this pod — the same house-convention skip set every recorded battery carries). The D-03 transport boundary pins (B1–B9: platform isolation, the frozen provider-neutral port, provider-vocabulary confinement, no second execution state machine, the DatabasePort authority boundary, secret-free sources, no new provider SDK, the established port contract, the declared environment-materialized token) all stayed green over the corrected adapter."
+    },
+    {
+      "check": "Integration battery — house convention (the standard PG suites skip-and-count exactly as every recorded battery)",
+      "command": "bun run test:integration",
+      "evidence": "exit 0 — Test Files 27 passed | 146 skipped (173); Tests 311 passed | 203 skipped (514); 65.8s. The queue protocol suite ran green ungated inside this battery."
+    },
+    {
+      "check": "The full suite — the plain Lead-reproducible run (no env vars)",
+      "command": "bun run test",
+      "evidence": "exit 0 — Test Files 520 passed | 147 skipped (667); Tests 8796 passed | 207 skipped (9003); 0 failures; 209.1s. Base fe26d93 measured in a clean detached worktree with the shared node_modules (the four vitest projects the full suite resolves): 518 passed | 147 skipped (665) files and 8773 passed | 207 skipped (8980) tests — the delta is exactly this work order's additions: +2 files (tests/unit/queue/wire-contract.test.ts, 9 tests; tests/unit/deployment/smoke-naming.test.ts, 3 tests) and +11 tests in the extended tests/integration/queue/cloudflare-protocol.test.ts (26 tests at the delivery head vs 15 at base), all passed."
+    },
+    {
+      "check": "Governance check",
+      "command": "python3 scripts/governance-check.py",
+      "evidence": "exit 0 — 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'"
+    },
+    {
+      "check": "deploy:validate at the delivery head",
+      "command": "bun run deploy:validate",
+      "evidence": "exit 0 — valid=true, problems=[] (4 environments / 8 providers / 12 resource kinds / 82 variables / 4 secret-reference inventories / 33 migrations / 14 release gate kinds / 3 quota guards / 8 provider-tier entries / providerTierVerification stays 'recorded-not-live-verified' — the honest vocabulary / 3 sandbox accounts)"
+    }
+  ],
+  "notes": [
+    "FINDING F1 (reproduction + root cause + fix + regression pins): reproduction — the Lead's credentialed live probe (2026-09-21) posted the adapter's then-publish shape {\"body\": \"<string>\", \"content_type\": \"application/json\"} to POST /accounts/{account_id}/queues/{queue_id}/messages and the live API refused it (HTTP 400, provider code 10207, Expected object, received string at body); any {\"messages\": [...]} wrapper was likewise refused (Required at body); only the BARE object {\"body\": <plain JSON object>} was accepted (HTTP 200 with result.metadata.metrics.backlog_count). Root cause — adapter defect: the adapter encoded the port's string payload as the wire body VALUE and passed the port's free-form contentType through as content_type, a shape the current Cloudflare Queues REST schema does not accept (body must be an object/array under the json content type; content_type is the enum text|json). Classification: wire-format drift in the owning adapter (src/platform/queue/cloudflare-queues.ts). Fix — publishWire now sends the live-verified bare object with the port payload inside a versioned envelope object ({zeckTransport: 1, payload: <string>}); content_type is no longer forwarded (the enum cannot express a MIME string); a requested delay rides as delay_seconds (the current schema field; the stale shape multiplied into delay_ms); pullWire targets /messages/pull (the current documented endpoint; the stale path was /messages/poll) with unchanged batch/visibility semantics; the pull-body normalization decodes the documented base64 json delivery form and unwraps the envelope (strict RFC 4648 validation; non-base64 bodies pass through verbatim, governed fail-closed by the downstream correlation digest check); settleWire's ack shape was verified against the current public API reference and is UNCHANGED (it matches). Every fail-closed behavior is preserved exactly: 401/403 permanent, 404 permanent, 429/5xx/405/network transient, bounded retry budgets, credential redaction, error slicing. Regression pins — tests/unit/queue/wire-contract.test.ts (the exact request shapes via a fetch double), tests/integration/queue/cloudflare-protocol.test.ts (the corrected shapes over real HTTP; the fake now refuses the stale shapes exactly as the live API did — string body → 400 code 10207, messages-wrapper → 400 Required at body, free-form content_type → 400 — and pins the http_pull consumer precondition + the live-verified consumer-creation REST call), tests/integration/queue/lib/fake-cloudflare-queues.ts (the corrected protocol mirror: publish one-of union validation, the live 200 publish envelope with result.metadata.metrics, /messages/pull + the 405 refusal + consumers endpoint, base64 json pull bodies, /messages/poll no longer routed).",
+    "FINDING F2 (reproduction + root cause + fix + regression pins): reproduction — the Lead's live-preview smoke run executed deploy:smoke --environment preview --branch main against revision 9915be6 with the correctly-provisioned per-branch bucket zeck-preview-main-artifacts reachable; the run's identity document (computed WITH the branch slug) named the bucket zeck-preview-main-artifacts, but probeProviderObjectStore's drift cross-check called computeResourceNames WITHOUT the slug, computed zeck-preview-artifacts, and reported the reachable correctly-named bucket as drift (zeck-preview-main-artifacts != zeck-preview-artifacts) — the artifact-bytes concern read unavailable. Root cause — tool defect: deploy/smoke.ts computed the preview branch slug for the identity document but did not thread it into the provider probes' manifest-computed name comparison (the r2-bucket is a perBranch resource). Classification: state-threading defect in the deploy smoke tool. Fix — runSmokeAttestation computes the slug ONCE before the probes and threads it through probeProviderEnvironment → probeProviderObjectStore → computeResourceNames; the whole file was audited for the same omission (probeLocal computes names for the local environment only, where no preview slug can exist — computeResourceName rejects a slug outside preview — and no other manifest-computed name comparison exists in the smoke). Regression pins — tests/unit/deployment/smoke-naming.test.ts: the per-branch expected name over the real manifest (zeck-preview-main-artifacts with the slug, zeck-preview-artifacts without — the exact pair that produced the false drift), the full runSmokeAttestation('preview', {branch: 'main'}) against a real local object-store endpoint reporting the correctly-named per-branch bucket READY with the identity document carrying the same per-branch name, and the negative (a genuinely mis-named bucket still reads as drift — the fix threads the slug, it does not weaken the check).",
+    "Verification-basis honesty: the publish shape and the http_pull consumer precondition are LIVE-verified (the Lead's probe matrix, quoted verbatim in spec/post-release-work-orders/PPR-004.md); the pull endpoint/envelope, the base64 json pull-body delivery form, the delay_seconds field, the content_type enum and the ack shape are CURRENT-PUBLIC-DOCUMENTED (developers.cloudflare.com/api Push Message / Pull Queue Messages / Acknowledge + Retry Queue Messages method pages + the pull-consumers guide + the limits page, all fetched 2026-09-21 from this pod). The ack shape was NOT live-exercised (the Lead's probe had no remaining message to acknowledge) — this is recorded above and in the adapter's source comments; the Lead's credentialed re-run is the live attestation for every leg.",
+    "Surface delta: modified src/platform/queue/cloudflare-queues.ts (the F1 wire corrections), deploy/smoke.ts (the F2 slug threading), deploy/README.md (annotation only: the http_pull consumer provisioning knowledge + the base64 json pull-body delivery note, recorded next to the probe-queue requirement), tests/integration/queue/cloudflare-protocol.test.ts (corrected + extended pins), tests/integration/queue/lib/fake-cloudflare-queues.ts (the corrected protocol mirror); new tests/unit/queue/wire-contract.test.ts, tests/unit/deployment/smoke-naming.test.ts, deploy/evidence/ppr-004.json (this record). tests/integration/queue/queue-live.test.ts needed NO change (its port-flow assertions are payload-shape agnostic and the corrected adapter round-trips the marker exactly). No file outside the owned surface was touched.",
+    "Zero live cost consumed: no live-provider operation was executed from this environment (the notRun registry is the recorded boundary)."
+  ]
+}
