@@ -16,8 +16,10 @@
  *    gate (which the store sets exclusively inside its purge
  *    transaction);
  *  - a database converged at the PREVIOUS migration head (0030, the
- *    D-02/E1.1-converged authority) applies the audit migration forward cleanly (no
- *    destructive migration; convergence on fresh + existing states).
+ *    D-02/E1.1-converged authority) applies every shipped migration
+ *    beyond that base forward cleanly — the expected forward set is
+ *    derived from the shipped migration set (no destructive migration;
+ *    convergence on fresh + existing states).
  */
 
 import { randomUUID } from "node:crypto";
@@ -356,14 +358,22 @@ if (PG_TEST_URL) {
           parameters: [applicationId, tenantId],
         });
 
-        // Apply the FULL shipped set: 0031 (WORK-058 isolation, merged
-        // before this branch) and 0032 (audit) apply forward together.
+        // Apply the FULL shipped set: every shipped migration beyond the
+        // 0030-converged base applies forward together, in order. The
+        // expected forward set is DERIVED from the shipped migration set
+        // at runtime — bounded by the converged head the harness just
+        // applied, never a pinned snapshot — so this test tracks the
+        // repository as the migration set grows instead of failing at the
+        // next shipped migration (the stale two-migration pin this
+        // replaces broke exactly that way once 0033/0034 shipped).
+        const convergedHead = baseSet.at(-1)?.version ?? 0;
+        const expectedForward = shipped
+          .filter((file) => file.version > convergedHead)
+          .map((file) => ({ version: file.version, name: file.name }));
+        expect(expectedForward.length).toBeGreaterThan(0); // not vacuous — the shipped set carries migrations beyond the base
         const forward = await runMigrations(port, shipped);
-        expect(forward.applied).toEqual([
-          { version: 31, name: "isolation_profiles" },
-          { version: 32, name: "audit_compliance" },
-        ]);
-        expect(forward.skipped).toBe(baseSet.length); // the 0030-converged base set; exactly the two D-08 migrations apply forward
+        expect(forward.applied).toEqual(expectedForward);
+        expect(forward.skipped).toBe(baseSet.length); // the 0030-converged base set; every shipped migration beyond it applied forward
 
         // The pre-existing authority rows are intact (no destructive
         // migration) and the audit plane works on the converged base.
