@@ -3,19 +3,19 @@
   "schemaVersion": 1,
   "mode": "url",
   "targetUrl": "https://zeck-preview-main.vercel.app",
-  "expectedRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+  "expectedRevision": "2b8bb2730b878f85f73c9ed17034c2d3653ff2f0",
   "environment": "preview",
   "allowDegraded": false,
-  "startedAt": "2026-09-21T10:52:17.438Z",
-  "finishedAt": "2026-09-21T10:52:32.708Z",
-  "durationMs": 15270,
+  "startedAt": "2026-09-21T11:25:32.700Z",
+  "finishedAt": "2026-09-21T11:25:48.249Z",
+  "durationMs": 15549,
   "identityGate": {
     "verified": true,
     "planeUrl": "https://zeck-preview-main.vercel.app",
-    "expectedRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+    "expectedRevision": "2b8bb2730b878f85f73c9ed17034c2d3653ff2f0",
     "attested": {
-      "runtimeIdentityId": "3bdadf5d9a8cf99af08cff0b5303098db22b8048b5bf7dbec48f5a675ecf2621",
-      "gitRevision": "8b109aa3ffc1d67cdb283925f4e5407308078a49",
+      "runtimeIdentityId": "cb8bce3454a193289aaa5d8111317a9fc6754c155275399400a1a0df919a5b54",
+      "gitRevision": "2b8bb2730b878f85f73c9ed17034c2d3653ff2f0",
       "manifestDigest": "60859b78f303de66e83c6e1b95750031e3aa5553b81b416e019d4ed895b9c8ee",
       "topologyDigest": "876d40ac7be57076fee57096502439953e23cf74cce8cdea751031166e20061c",
       "environment": "preview"
@@ -38,7 +38,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "91d4e3c2b5d1d8efcf97edbdc1b4ebb74f9be30f369ecd7800939599eab68f63",
-            "durationMs": 232
+            "durationMs": 227
           },
           "observed": "answered 404 application/json; charset=utf-8",
           "expected": "the public URL answers over HTTP (any honest answer class)"
@@ -55,7 +55,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "91d4e3c2b5d1d8efcf97edbdc1b4ebb74f9be30f369ecd7800939599eab68f63",
-            "durationMs": 232
+            "durationMs": 227
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML landing is served by this plane",
           "expected": "an HTML landing when the deployment serves the experience composition",
@@ -75,10 +75,10 @@
             "method": "GET",
             "status": 200,
             "contentType": "application/json; charset=utf-8",
-            "bodySha256": "699f5693b3fa7ddb6d92c174591daea3eb43d4ac58bd891d72cc3a6e8c120b1b",
-            "durationMs": 230
+            "bodySha256": "d94f85dd08c8015a366af9f04d9198344a4a51f88f445f5f2e7c4699edd15ac3",
+            "durationMs": 224
           },
-          "observed": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1",
+          "observed": "runtime identity cb8bce3454a19328 at revision 2b8bb2730b87",
           "expected": "GET /identity answers 200 with the runtime identity document"
         },
         {
@@ -93,7 +93,7 @@
             "status": 200,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "5693ad7fb67b388b22267a7f92748da4818d7bf69598a04954b25cb51882ba5d",
-            "durationMs": 280
+            "durationMs": 270
           },
           "observed": "answered 200 with status degraded, controlPlane ready",
           "expected": "the honest health vocabulary with the control plane ready"
@@ -110,7 +110,7 @@
             "status": 200,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "d1d5a9ea495561eefc8ef29aebacf4fa07677f7bba93d4e0b0fa3e2b273970bf",
-            "durationMs": 231
+            "durationMs": 245
           },
           "observed": "the versioned policy artifact with its digest",
           "expected": "200 with the versioned policy artifact + digest (the one unauthenticated public document)"
@@ -157,7 +157,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "06cf270893e309798e648b34ea2156c38e38e69a505ee2eec23eb73171268a25",
-            "durationMs": 232
+            "durationMs": 233
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -184,7 +184,7 @@
             "status": 422,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
-            "durationMs": 228
+            "durationMs": 237
           },
           "observed": "answered 422 CAPABILITY_UNAVAILABLE",
           "expected": "the honest answer class (200 when the governance capability is bound, 422 CAPABILITY_UNAVAILABLE when unbound)"
@@ -201,7 +201,7 @@
             "status": 401,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "2d5f55ac9d8d48b8a8b80eeb6ed7a592d75d535ac1fbbbc67c4c848df2c5769f",
-            "durationMs": 221
+            "durationMs": 226
           },
           "observed": "answered 401 AUTHENTICATION_FAILED",
           "expected": "the honest 401 AUTHENTICATION_FAILED (the auth boundary is enforced; no capability is fabricated)"
@@ -272,7 +272,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "4135f9335ab35d821a6c11e87d8575177687f00268b306b957a602f66a73eaf3",
-            "durationMs": 228
+            "durationMs": 227
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -313,7 +313,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "5631ad6ae1eb1d0cff6869e9b400685962df031eaba2b580b7cef75ba9807c98",
-            "durationMs": 225
+            "durationMs": 238
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -340,7 +340,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "e7cf40dd508927c720928e8ff5b6104f43fb5ebc8f302c434d0d91693532abff",
-            "durationMs": 236
+            "durationMs": 238
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -361,7 +361,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "29aee7c888b6a82798f8c2a2e8dd2ff518d52d4b88ef39a6781e4c6326fdbc25",
-            "durationMs": 225
+            "durationMs": 221
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -388,7 +388,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "16b7fdaaf342faf89ae6ee3ebab8a21610a2efaf384d4e9fd9ce920aae188ccc",
-            "durationMs": 226
+            "durationMs": 234
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -415,7 +415,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "4135f9335ab35d821a6c11e87d8575177687f00268b306b957a602f66a73eaf3",
-            "durationMs": 221
+            "durationMs": 236
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -456,7 +456,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "c7ff0bb05d323b9325a9d88557a3307671216da5394506cb936471decf7a9cb0",
-            "durationMs": 231
+            "durationMs": 237
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -477,7 +477,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "7f2c7cd95f42789f801f63e91cd51039225f3ac35c519bd44699b6266584a5e5",
-            "durationMs": 232
+            "durationMs": 228
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -498,7 +498,7 @@
             "status": 422,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
-            "durationMs": 230
+            "durationMs": 258
           },
           "observed": "answered 422 CAPABILITY_UNAVAILABLE",
           "expected": "the sandbox governance seam answers (200 bound or the honest 422 unbound)"
@@ -521,7 +521,7 @@
             "status": 404,
             "contentType": "application/json; charset=utf-8",
             "bodySha256": "dc9965d90bbf9003b22144647cb6cd509d20c8d2bdca59c24f2b60705aedae23",
-            "durationMs": 225
+            "durationMs": 232
           },
           "observed": "answered 404 application/json; charset=utf-8 — no HTML experience composition is served at this path by this plane",
           "expected": "an HTML experience page (the console composition) when the deployment serves the experience; the honest served/not-served fact otherwise",
@@ -1030,7 +1030,7 @@
     {
       "gate": "exact revision attested",
       "status": "pass",
-      "evidence": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1 (/identity)"
+      "evidence": "runtime identity cb8bce3454a19328 at revision 2b8bb2730b87 (/identity)"
     },
     {
       "gate": "/health verified",
@@ -1040,7 +1040,7 @@
     {
       "gate": "/identity verified",
       "status": "pass",
-      "evidence": "runtime identity 3bdadf5d9a8cf99a at revision 8b109aa3ffc1 (/identity)"
+      "evidence": "runtime identity cb8bce3454a19328 at revision 2b8bb2730b87 (/identity)"
     },
     {
       "gate": "first sandbox execution works",
