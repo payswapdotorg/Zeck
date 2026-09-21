@@ -1,8 +1,8 @@
-# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002, DEP-003, DEP-043 and PPR-002)
+# Zeck Public Deployment Bootstrap — Operator Recipe (DEP-001, extended by DEP-002, DEP-003, DEP-043, PPR-002 and PPR-006)
 
 **Status:** OPERATIONAL RUNBOOK (repository truth; provider consoles are evidence, never authority)
 **Parent:** `docs/DEPLOYMENT-ARCHITECTURE.md` (D1.0), `docs/DEVELOPER-PLATFORM-DEPLOYMENT-ROADMAP.md`
-**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002), the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003), the end-to-end validation driver (§10, DEP-040), the production operations drills: promote/rollback both directions, backup/restore round-trip, provider exit and teardown classification guards (§11, DEP-043), and the PPR-002 free-tier preview readiness layer: the refreshed provider-tier ledger (asOf 2026-09-20) and the account/credential preflight + provider-tier fact reconciliation that now heads the credentialed sequence (§12, PPR-002).
+**Scope:** reproducing the public Zeck control/API plane for preview and sandbox exploration from repository configuration only, under the free-tier-first doctrine — now including the environment/secret/sandbox-account provisioning path (§8, DEP-002), the production verification chain: exact-revision public-route smoke, fail-closed health readiness, spend/quota guardrails and deployment-identity promotion (§9, DEP-003), the end-to-end validation driver (§10, DEP-040), the production operations drills: promote/rollback both directions, backup/restore round-trip, provider exit and teardown classification guards (§11, DEP-043), the PPR-002 free-tier preview readiness layer: the refreshed provider-tier ledger (asOf 2026-09-20) and the account/credential preflight + provider-tier fact reconciliation that now heads the credentialed sequence (§12, PPR-002), and the PPR-006 Vercel hosting layer: the repository-resident function entry, adapter and vercel.json that make the plane deployable to Vercel behind configuration only, with the exact deployment contract and the post-deploy exact-revision verification (§13, PPR-006).
 
 This recipe is the DEP-001 deliverable for AC1 ("fresh operator can
 reproduce the target deployment from repository configuration"). Every
@@ -169,10 +169,16 @@ bun run deploy:public-smoke -- --environment preview --branch <branch>
 bun run deploy:release   -- record --environment preview             # bind the exact-revision deployment identity
 ```
 
-Hosting: run `deploy/api.ts` on Vercel's Bun runtime (preview;
-Hobby terms only where permitted) or any container/VM host. The host
-is configuration, not architecture — the identity and health surfaces
-behave identically everywhere.
+Hosting: the repository now carries the Vercel hosting
+configuration (PPR-006, §13): the root `server.ts` function entry +
+`deploy/vercel.ts` (the hosting adapter) + `vercel.json` — the plane
+deploys to the Vercel project `zeck-preview-main` (Hobby,
+non-commercial preview only) behind the deployment contract below,
+or runs on any container/VM host via `deploy/api.ts`. The host is
+configuration, not architecture — the identity and health surfaces
+behave identically everywhere (pinned by
+`tests/unit/deployment/vercel-adapter.test.ts` and
+`tests/integration/deployment/vercel-entry.test.ts`).
 
 ### 3.3 Promotion to staging/production
 
@@ -762,3 +768,93 @@ fabricating one. Both outcomes are pinned by
 `tests/integration/deployment/e2e-driver.test.ts` and
 `tests/integration/deployment/production-drill.test.ts`; the full
 both-directions drills re-engage on the next manifest-stable revision.
+
+## 13. The Vercel hosting layer (PPR-006 — the experience-delivery enabler)
+
+The repository carries everything the Vercel deployment needs; the
+Lead's credentialed run applies it. NO new authority and NO route
+change: the deployed surface is the IDENTICAL `createApiServer`
+public route table the CLI host serves, at its root paths (`GET
+/health`, `GET /identity`, `POST /executions`, ...), composed by the
+SHARED builder (`deploy/api.ts`'s `buildBootstrapApp`) — the hosting
+adapter imports it, never re-implements it (parity pinned by
+`tests/unit/deployment/vercel-adapter.test.ts`; the local-rail
+`--url` proof plus the wrong-revision hostile negative are pinned by
+`tests/integration/deployment/vercel-entry.test.ts`). The evidence
+record of this layer is `deploy/evidence/ppr-006.json`.
+
+### 13.1 The hosting files
+
+- **`server.ts`** (repository root) — the Vercel function entry, at
+  the location Vercel's Fastify framework entrypoint detection
+  requires (a root `server.{ts}` importing fastify, calling
+  `fastify.listen()`). The composition builds ONCE PER ISOLATE (the
+  module-level singleton: cold start builds, warm requests reuse);
+  Vercel's runtime captures the Fastify server and routes every
+  request into Fastify's router with the ORIGINAL path. Locally
+  (`bun server.ts`) the listener binds for real (`PORT`, default
+  3000) so the exact `--url` smoke path can attest it before any
+  deployment.
+- **`deploy/vercel.ts`** — the hosting adapter: the fail-closed entry
+  inputs, the once-per-isolate singleton, the cold-start boot record
+  (the `deploy/vercel` `booted` JSON on the runtime logs) and the
+  SIGTERM/SIGINT graceful drain.
+- **`vercel.json`** (repository root) — the functions configuration
+  for the entry: `"server.ts"` → a deliberate `maxDuration` bound
+  (60s, within the documented Hobby maximum) and `includeFiles:
+  "deploy/manifests/*.json"` (the composition reads the manifest set
+  from disk at runtime; the bundler's import tracing cannot see
+  `readFileSync` targets — without this glob the cold start fails
+  closed on the missing manifests).
+
+**The runtime**: Node.js (the Fastify framework detection's
+default). The current Vercel documentation configures the officially
+supported Bun runtime through the top-level `bunVersion` property —
+NOT the `functions` `runtime` field, which is reserved for runtimes
+that are not officially supported — and documents no Fastify
+entrypoint shape for the Bun runtime (Beta, permissions-gated); the
+Node.js runtime is used per the work order's allowance. Every source
+URL and quotation date is recorded in the evidence record.
+
+### 13.2 The deployment contract (environment variables — NAMES only)
+
+Set these on the Vercel project (`zeck-preview-main`) before
+deploying (the variable contract is `deploy/manifests/variables.json`
++ `secret-references.json`; values never transit this repository):
+
+| Variable | Role |
+|---|---|
+| `ZECK_ENVIRONMENT` | the environment identity — `preview` on this rail (required, fail closed) |
+| `ZECK_DEPLOY_GIT_REVISION` | the exact 40-hex deployed revision — REQUIRED on Vercel: the deployed bundle carries no git checkout, so the override is the only revision source; absent, the isolate fails closed at cold start (never a fabricated identity) |
+| `ZECK_SECRET_DATABASE_URL_REF` + the other `ZECK_SECRET_*_REF` bindings | the environment-scoped reference URIs of the preview materialization set (§8; the inventory is `deploy/manifests/secret-references.json`) |
+| the materialized values (`ZECK_DATABASE_URL`, ...) | the preview dependency values for the `/health` readiness facts (credential-shaped: environment-only storage, never committed) |
+| `VERCEL_GIT_COMMIT_REF` | the Vercel system variable the adapter consumes as the preview branch input (provided by git-connected deployments; required when the environment is preview — the preview resource set is per-branch) |
+
+### 13.3 The operator sequence (the Lead's credentialed run)
+
+1. Set the deployment contract variables above on the Vercel project
+   (Production environment; the preview materialization set of §3.2
+   step 3).
+2. Deploy the merged `main` (git-connected deployment or
+   `vc deploy --prod` from a main checkout).
+3. Verify the DEPLOYED plane at the exact revision with the
+   repository's own smoke — the same verification the local rail
+   exercises against the entry before any deployment:
+
+   ```bash
+   bun run deploy:public-smoke -- --url <public-url> --environment preview --branch main
+   ```
+
+   The smoke attests the deployed plane's `/identity` (the exact
+   revision, the recomputed identity, the provider topology), the
+   `/health` honest facts over the materialized dependencies, and the
+   full 26-route honest-boundary coverage; a wrong-revision or
+   unreachable plane FAILS, never warns (the wrong-revision refusal
+   is pinned by the integration test above).
+4. Continue the §3.2 chain (`deploy:release -- record`, the journey
+   acceptance against the public URL).
+
+The worker never deploys and holds no Vercel credentials: every
+live-Vercel step is an honest NOT RUN owned by the Lead credentialed
+deployment run (the registry in `deploy/evidence/ppr-006.json`).
+

@@ -18,10 +18,21 @@
  *    that lies. The route table stays identical across compositions.
  *
  * This host is the provider-neutral hosting exit proof: it runs on any
- * host with `bun` (Vercel's Bun runtime, a container, a VM) behind
- * configuration only. Repointing delivery at another host running the
- * same entry never changes the identity document or the domain
- * authority mapping (DEP-001 AC6).
+ * host with `bun` (a container, a VM) behind configuration only.
+ * Repointing delivery at another host running the same entry never
+ * changes the identity document or the domain authority mapping
+ * (DEP-001 AC6).
+ *
+ * PPR-006 — THE SHARED COMPOSITION EXPORT: the bootstrap composition
+ * above is exported as `buildBootstrapApp(options)` so every hosting
+ * shape composes the IDENTICAL plane: the CLI host (`main()` below —
+ * unchanged in behavior: same boot document, same SIGTERM/SIGINT drain,
+ * same exit codes) and the Vercel hosting adapter (deploy/vercel.ts +
+ * the root server.ts entry — the request-handler entry that builds the
+ * same composition once per isolate). The adapter IMPORTS this builder;
+ * it never re-implements it — route-table and identity parity with the
+ * CLI host is by construction and pinned by
+ * tests/unit/deployment/vercel-adapter.test.ts.
  *
  * Usage:
  *   bun run deploy:api -- --environment local [--host 127.0.0.1] [--port 8787]
@@ -39,18 +50,22 @@ import { createConnection } from "node:net";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "pg";
-import type { Authenticate } from "../src/api";
+import type { ApiServer, Authenticate } from "../src/api";
 import { createApiServer } from "../src/api";
+import type { EnvironmentContractEvaluation } from "../src/platform/deployment/env-contract";
 import { evaluateEnvironmentContract } from "../src/platform/deployment/env-contract";
 import { namingConventionsOf } from "../src/platform/deployment/identity";
+import type { DeploymentManifest } from "../src/platform/deployment/manifest";
 import type { EnvironmentId } from "../src/platform/deployment/naming";
 import { previewBranchSlug, requiresPreviewSlug } from "../src/platform/deployment/naming";
+import type { ProviderTiersLedger } from "../src/platform/deployment/provider-tiers";
 import { parseProviderTiers } from "../src/platform/deployment/provider-tiers";
 import {
   type DependencyProbeResult,
   evaluateReadiness,
   expectedProbeConcerns,
 } from "../src/platform/deployment/readiness";
+import type { RuntimeDeploymentIdentity } from "../src/platform/deployment/runtime-identity";
 import { runtimeDeploymentIdentity } from "../src/platform/deployment/runtime-identity";
 import { PlatformError } from "../src/shared/errors";
 import {
@@ -69,7 +84,7 @@ const DEFAULT_DATA_ROOT = join(
 const GIT_REVISION_PATTERN = /^[0-9a-f]{40}$/;
 
 /** The exact revision this host attests (manifest contract: ZECK_DEPLOY_GIT_REVISION overrides HEAD). */
-function exactRevision(): string {
+export function exactRevision(): string {
   const override = process.env.ZECK_DEPLOY_GIT_REVISION?.trim();
   if (override !== undefined && override.length > 0) {
     if (!GIT_REVISION_PATTERN.test(override)) {
@@ -211,10 +226,61 @@ function unboundCapability<T>(name: string): T {
   ) as T;
 }
 
-async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
-  const environment = requireEnvironment(argv);
-  const branch = optionalBranch(argv);
+// ---------------------------------------------------------------------------
+// The shared bootstrap composition export (PPR-006)
+// ---------------------------------------------------------------------------
+
+/** The inputs of the bootstrap composition (environment + preview branch). */
+export interface BootstrapAppOptions {
+  readonly environment: EnvironmentId;
+  /** The preview branch (the per-branch slug input; required for preview when the resource set is per-branch). */
+  readonly branch?: string;
+}
+
+/** The composition facts the boot document reports (hosting-independent). */
+export interface BootstrapCompositionFacts {
+  readonly transport: string;
+  readonly deploymentSeams: string;
+  readonly domainCapabilities: string;
+}
+
+/**
+ * The built bootstrap composition: the REAL transport (createApiServer
+ * over the repository's public route table with the honest unbound
+ * domain seams), the REAL deployment seams (the runtime identity this
+ * plane attests + the dependency readiness evaluation), and the
+ * environment-contract facts — everything every hosting shape needs.
+ */
+export interface BootstrapApp {
+  /** The public API server (Fastify app + the introspected route table). */
+  readonly server: ApiServer;
+  readonly manifest: DeploymentManifest;
+  readonly ledger: ProviderTiersLedger;
+  readonly environment: EnvironmentId;
+  readonly environmentClass: string;
+  /** The exact revision this composition attests. */
+  readonly revision: string;
+  /** The preview branch slug (undefined outside per-branch preview). */
+  readonly slug: string | undefined;
+  /** The runtime deployment identity behind GET /identity. */
+  readonly identity: RuntimeDeploymentIdentity;
+  /** The composition description the boot document reports. */
+  readonly composition: BootstrapCompositionFacts;
+  /** The environment contract evaluation over the current process environment. */
+  readonly environmentContract: EnvironmentContractEvaluation;
+}
+
+/**
+ * Build the bootstrap composition (PPR-006's shared export): the SAME
+ * composition the CLI host serves — real transport, real deployment
+ * seams, honestly-unbound domain capabilities. Fail-closed inputs throw
+ * (the exact-revision override contract; the preview-branch
+ * requirement; the unknown-environment refusal) exactly as the CLI
+ * host's own preflight does.
+ */
+export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
+  const environment = options.environment;
+  const branch = options.branch;
   const manifest = loadManifest();
   const ledger = parseProviderTiers(
     readFileSync(resolve(REPOSITORY_ROOT, "deploy", "manifests", "provider-tiers.json"), "utf8"),
@@ -232,19 +298,13 @@ async function main(): Promise<void> {
       ? previewBranchSlug(branch, conventions.previewBranchSlugMaxLength)
       : undefined;
   if (environment === "preview" && branch === undefined && requiresPreviewSlug(previewResources)) {
-    console.error("error: --environment preview requires --branch <branch-name>");
-    process.exit(2);
+    throw new Error(
+      "environment preview requires a branch (the preview resource set is per-branch; pass the branch so the preview slug — and with it the identity — computes)",
+    );
   }
 
   const revision = exactRevision();
   const identity = runtimeDeploymentIdentity(manifest, ledger, revision, environment, slug);
-
-  const host = optionalValue(argv, "--host") ?? process.env.ZECK_API_HOST ?? "127.0.0.1";
-  const portArg = optionalValue(argv, "--port") ?? process.env.ZECK_API_PORT;
-  const port = portArg !== undefined ? Number(portArg) : 8787;
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error(`invalid API port: ${portArg ?? port}`);
-  }
 
   // The bootstrap composition: real transport + real deployment seams,
   // unbound (honestly refusing) domain capabilities.
@@ -300,36 +360,85 @@ async function main(): Promise<void> {
     }),
   });
 
-  await server.app.listen({ host, port });
-
   const contract = evaluateEnvironmentContract(manifest, environment, process.env);
-  const boot = {
-    tool: "deploy/api",
-    status: "listening",
+
+  return {
+    server,
+    manifest,
+    ledger,
     environment,
     environmentClass: environmentRecord.environmentClass,
-    host,
-    port,
-    deploymentIdentity: {
-      runtimeIdentityId: identity.runtimeIdentityId,
-      identityId: identity.identity.identityId,
-      gitRevision: identity.identity.gitRevision,
-      manifestDigest: identity.identity.manifestDigest,
-      topologyDigest: identity.topologyDigest,
-    },
+    revision,
+    slug,
+    identity,
     composition: {
       transport: "real (createApiServer — the repository public route table)",
       deploymentSeams: "real (runtime identity + dependency readiness)",
       domainCapabilities: "unbound (honest CAPABILITY_UNAVAILABLE / AUTHENTICATION_FAILED)",
     },
-    environmentContract: { satisfied: contract.satisfied, problems: contract.problems },
-    routes: server.routes.length,
+    environmentContract: contract,
+  };
+}
+
+async function main(): Promise<void> {
+  const argv = process.argv.slice(2);
+  const environment = requireEnvironment(argv);
+  const branch = optionalBranch(argv);
+
+  // The CLI's fail-closed preview-branch pre-check (exit 2, before any
+  // composition work — unchanged behavior; the shared builder below
+  // enforces the same requirement for non-CLI hosts by throwing).
+  if (environment === "preview" && branch === undefined) {
+    const manifest = loadManifest();
+    if (requiresPreviewSlug(manifest.resources[environment])) {
+      console.error("error: --environment preview requires --branch <branch-name>");
+      process.exit(2);
+    }
+  }
+
+  // The shared bootstrap composition (PPR-006): identical to every
+  // other hosting shape of this plane.
+  const app = buildBootstrapApp({ environment, ...(branch === undefined ? {} : { branch }) });
+
+  const host = optionalValue(argv, "--host") ?? process.env.ZECK_API_HOST ?? "127.0.0.1";
+  const portArg = optionalValue(argv, "--port") ?? process.env.ZECK_API_PORT;
+  const port = portArg !== undefined ? Number(portArg) : 8787;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`invalid API port: ${portArg ?? port}`);
+  }
+
+  await app.server.app.listen({ host, port });
+
+  const boot = {
+    tool: "deploy/api",
+    status: "listening",
+    environment: app.environment,
+    environmentClass: app.environmentClass,
+    host,
+    port,
+    deploymentIdentity: {
+      runtimeIdentityId: app.identity.runtimeIdentityId,
+      identityId: app.identity.identity.identityId,
+      gitRevision: app.identity.identity.gitRevision,
+      manifestDigest: app.identity.identity.manifestDigest,
+      topologyDigest: app.identity.topologyDigest,
+    },
+    composition: {
+      transport: app.composition.transport,
+      deploymentSeams: app.composition.deploymentSeams,
+      domainCapabilities: app.composition.domainCapabilities,
+    },
+    environmentContract: {
+      satisfied: app.environmentContract.satisfied,
+      problems: app.environmentContract.problems,
+    },
+    routes: app.server.routes.length,
   };
   console.log(JSON.stringify(boot, null, 2));
 
   const shutdown = async (signal: string): Promise<void> => {
     console.log(JSON.stringify({ tool: "deploy/api", status: "shutting-down", signal }));
-    await server.app.close();
+    await app.server.app.close();
     process.exit(0);
   };
   process.once("SIGTERM", () => {

@@ -16,6 +16,7 @@
       "apps/**",
       "examples/**",
       "tests/**",
+      "server.ts",
       "vitest.config.ts",
       "package.json",
       "tsconfig.json",
