@@ -1,16 +1,21 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-a-complete",
-  "currentBase": "158ad06658f9c3184f2817e00b2a8ec2feef2af3",
+  "status": "wave-b-open",
+  "currentBase": "9915be60de8561caf2c899b11ec761daf71429d0",
   "delivered": [
     "PPR-001",
     "PPR-002",
     "PPR-003"
   ],
-  "eligible": [],
+  "eligible": [
+    "PPR-004",
+    "PPR-005",
+    "PPR-006"
+  ],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
+  "waveBContext": "correction wave from the Lead's credentialed live-preview run (Task 58, 2026-09-21): PPR-004 queue-transport/smoke drift corrections, PPR-005 audit-schema convergence fix, PPR-006 Vercel hosting adapter; live plane state — Neon authority provisioned+migrated+release-recorded at 9915be6, R2 bucket + execution/probe queues verified, Vercel project zeck-preview-main created, Upstash honest free-tier boundary (single-database limit), CF Workflows honest boundary (probe script candidate for a later wave)",
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head"
 }
