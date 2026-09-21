@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-b-complete",
-  "currentBase": "48064d7bd50b06f5ac88a7e49107a6884fda11a2",
+  "status": "live-plane-verified",
+  "currentBase": "1580c03",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -15,6 +15,6 @@
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
-  "waveBContext": "correction wave delivered 2026-09-21: PPR-004 (PR #149, 13e6a7c \u2014 queue transport publish shape + smoke preview-slug naming), PPR-005 (PR #148, 33cdc4d \u2014 audit-schema convergence), PPR-006 (PR #150, 48064d7 \u2014 Vercel hosting adapter). Next: the Lead's credentialed live deployment (env vars -> Vercel deploy -> public-smoke --url) + the deployed-plane verification chain + PPR-003 harness against the live URL",
-  "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head"
+  "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
+  "context": "THE LIVE PLANE IS UP AND VERIFIED (2026-09-21, the Lead's credentialed deployment run, deployment-run corrections #2 at 2b8bb27 + evidence refresh at 1580c03): https://zeck-preview-main.vercel.app — identity bound at the exact revision (the committed deploy pipeline deploy:build-vercel-output + vercel deploy --prebuilt --prod after the local artifact proof; the fifth platform fact — the tsc ESM emit vs the CJS-assumed traced handler — corrected by the build tool), /health controlPlane ready with the Neon relational-state READY, public-smoke --url 26/26 routes zero problems, the PPR-003 journey harness live run exit 0 (12 journeys, 11 pass / 0 fail / 17 honest not-run, 0 findings, identity gate verified; its own preview-branch-slug defect found and fixed in the same run), browser dimensions clean. WAVE C INPUTS (the live run's two open findings, the next smallest-valid corrections): (F1) THE EXPERIENCE SURFACE HAS NO PUBLIC DEPLOYMENT — the preview serves the API plane only; 10 experience-surface journey steps and all 22 workload-family disclosures are honestly not-served (/console/*, /trust/*, /admin/* answer the honest Fastify 404; PPR-001's console composition exists but is not deployed; ZECK_EXPERIENCE_DEPLOY_TOKEN is already set on the Vercel project) — the work order: deploy the experience composition to the public preview and re-run the journey harness for the 10 steps + 22 disclosures. (F2) THE CREDENTIALED JOURNEY STEPS NEED A TRANSPORT CREDENTIAL PATH — 7 steps (sandbox start, first execution, inspection, evidence/cost, validation rerun, export bundle) are honestly not-run owned by the Lead's credential boundary; the credentials authority is unbound in the bootstrap composition (honest 422 CAPABILITY_UNAVAILABLE) — the work order: decide and implement the preview's credential issuance (bind a credentials authority for the preview materialization set, or record the honest boundary as the product state and re-pin the journey's acceptance gates)."
 }
