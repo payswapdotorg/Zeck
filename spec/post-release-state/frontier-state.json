@@ -1,21 +1,20 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-b-open",
-  "currentBase": "9915be60de8561caf2c899b11ec761daf71429d0",
+  "status": "wave-b-complete",
+  "currentBase": "48064d7bd50b06f5ac88a7e49107a6884fda11a2",
   "delivered": [
     "PPR-001",
     "PPR-002",
-    "PPR-003"
-  ],
-  "eligible": [
+    "PPR-003",
     "PPR-004",
     "PPR-005",
     "PPR-006"
   ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
-  "waveBContext": "correction wave from the Lead's credentialed live-preview run (Task 58, 2026-09-21): PPR-004 queue-transport/smoke drift corrections, PPR-005 audit-schema convergence fix, PPR-006 Vercel hosting adapter; live plane state — Neon authority provisioned+migrated+release-recorded at 9915be6, R2 bucket + execution/probe queues verified, Vercel project zeck-preview-main created, Upstash honest free-tier boundary (single-database limit), CF Workflows honest boundary (probe script candidate for a later wave)",
+  "waveBContext": "correction wave delivered 2026-09-21: PPR-004 (PR #149, 13e6a7c \u2014 queue transport publish shape + smoke preview-slug naming), PPR-005 (PR #148, 33cdc4d \u2014 audit-schema convergence), PPR-006 (PR #150, 48064d7 \u2014 Vercel hosting adapter). Next: the Lead's credentialed live deployment (env vars -> Vercel deploy -> public-smoke --url) + the deployed-plane verification chain + PPR-003 harness against the live URL",
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head"
 }
