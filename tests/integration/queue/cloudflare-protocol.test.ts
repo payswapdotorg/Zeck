@@ -1,16 +1,21 @@
 /**
  * Integration — the Cloudflare Queues REST adapter over REAL HTTP
  * against an in-process protocol server (WORK-044 / D-03, acceptance
- * criterion 2 — provider isolation).
+ * criterion 2 — provider isolation; PPR-004 drift corrections).
  *
- * This proves the ADAPTER's wire behavior against the documented
- * Cloudflare Queues REST protocol: request paths, Bearer
- * authorization, publish body shape, poll envelope parsing (body,
+ * This proves the ADAPTER's wire behavior against the documented +
+ * LIVE-VERIFIED Cloudflare Queues REST protocol: request paths, Bearer
+ * authorization, the publish body shape (the bare `{"body": <plain
+ * JSON object>}` envelope; stale string/wrapper forms REFUSED exactly
+ * as the live API refused them), the `/messages/pull` endpoint and
+ * envelope parsing (base64 json bodies decoded, envelope unwrapped,
  * lease ids, attempts, timestamp, metadata content-type, backlog
- * count), ack body shape (acks/retries), and the typed fail-closed
- * error classification (401/403/404 permanent; 429/5xx/network
- * transient). It is explicitly NOT Cloudflare evidence — the live
- * provider suite is env-gated (`queue-live.test.ts`).
+ * count), the http_pull consumer precondition (405 until provisioned;
+ * the live-verified consumer-creation REST call), the ack body shape
+ * (acks/retries), and the typed fail-closed error classification
+ * (401/403/404 permanent; 429/5xx/network transient). It is explicitly
+ * NOT Cloudflare evidence — the live provider suite is env-gated
+ * (`queue-live.test.ts`).
  *
  * PROBE ISOLATION (the PR #6 correction — the Architect's blocking
  * finding): the transport probe must never consume unrelated
@@ -45,6 +50,9 @@ describe("the Cloudflare Queues REST adapter over real HTTP (WORK-044 D-03)", ()
       accountId: ACCOUNT_ID,
       queueId: QUEUE_ID,
       apiToken: API_TOKEN,
+      // The execution queue carries an operator-provisioned http_pull
+      // consumer (the documented account-plane pull precondition).
+      httpPull: { execution: true },
     });
   });
 
@@ -61,36 +69,65 @@ describe("the Cloudflare Queues REST adapter over real HTTP (WORK-044 D-03)", ()
       requestTimeoutMs: 3000,
     });
 
-  test("publish sends the documented body with Bearer authorization", async () => {
+  test("publish sends the live-verified bare-object body with Bearer authorization", async () => {
     const receipt = await transport().publish({
       body: JSON.stringify({ correlationKey: "execution-dispatch:test-1" }),
       contentType: "application/json",
     });
     expect(receipt.accepted).toBe(true);
-    const publish = server.requests.find(
-      (r) => r.path.endsWith("/messages") && !r.path.includes("poll"),
-    );
+    const publish = server.requests.find((r) => r.path.endsWith("/messages"));
     expect(publish).toBeDefined();
     expect(publish?.authorization).toBe(`Bearer ${API_TOKEN}`);
+    // The live-verified publish contract (PPR-004 F1): the request
+    // body is the BARE object {"body": <plain JSON object>} — the
+    // port's string payload rides inside the versioned envelope, and
+    // the stale content_type passthrough is GONE (the provider's
+    // current schema types it as the enum "text"|"json", which cannot
+    // express a free-form MIME string).
     expect(publish?.body).toEqual({
-      body: JSON.stringify({ correlationKey: "execution-dispatch:test-1" }),
-      content_type: "application/json",
+      body: {
+        zeckTransport: 1,
+        payload: JSON.stringify({ correlationKey: "execution-dispatch:test-1" }),
+      },
     });
   });
 
-  test("poll parses the documented envelope and leases messages", async () => {
+  test("publish expresses a requested delay in delay_seconds (the current schema field)", async () => {
+    const t = transport();
+    await t.publish({ body: "delayed-body", delaySeconds: 90 });
+    const publish = server.requests
+      .filter((r) => r.path.endsWith("/messages"))
+      .find((r) => (r.body as Record<string, unknown>)?.delay_seconds !== undefined);
+    expect(publish).toBeDefined();
+    expect((publish?.body as Record<string, unknown>)?.delay_seconds).toBe(90);
+    // The stale pre-PPR-004 shape sent delay_ms — never again.
+    expect((publish?.body as Record<string, unknown>)?.delay_ms).toBeUndefined();
+  });
+
+  test("pull posts to /messages/pull and parses the documented envelope (base64 json body decoded, envelope unwrapped)", async () => {
     const t = transport();
     await t.publish({ body: "plain-body", contentType: "text/plain" });
     const batch = await t.pull({ batchSize: 5, visibilityTimeoutMs: 60_000 });
     expect(batch.backlogEstimate).toBeGreaterThanOrEqual(2);
     expect(batch.messages.length).toBeGreaterThanOrEqual(2);
+    // The round trip: the published string payload comes back EXACTLY
+    // (the fake delivered the json-content-type envelope base64-
+    // encoded, per the documented pull-body encoding; the adapter
+    // decodes and unwraps it).
     const plain = batch.messages.find((m) => m.body === "plain-body");
     expect(plain).toBeDefined();
     expect(plain?.attempts).toBe(1);
-    expect(plain?.contentType).toBe("text/plain");
+    // The provider-reported content type: the envelope publishes under
+    // the documented default "json" (the free-form "text/plain" MIME
+    // string is not forwarded — the provider cannot honor it).
+    expect(plain?.contentType).toBe("json");
     expect(plain?.messageId).toMatch(/^cf-message-/);
     expect(plain?.leaseId).toMatch(/^lease-/);
     expect(plain?.publishedAt).toMatch(/^2023-07-17T/);
+    // The pull request itself: the current documented endpoint + body.
+    const pull = server.requests.filter((r) => r.path.endsWith("/messages/pull")).pop();
+    expect(pull).toBeDefined();
+    expect(pull?.body).toEqual({ visibility_timeout_ms: 60_000, batch_size: 5 });
   });
 
   test("settle acks and retries with the documented body", async () => {
@@ -105,7 +142,9 @@ describe("the Cloudflare Queues REST adapter over real HTTP (WORK-044 D-03)", ()
       acks: [{ lease_id: target?.leaseId }],
       retries: [],
     });
-    expect(server.pendingCount).toBeLessThan(3);
+    // 4 messages published on this server's execution queue so far
+    // (publish, delay, pull, settle tests), exactly 1 acknowledged.
+    expect(server.pendingCount).toBe(3);
   });
 
   test("an empty settle is a no-op (no wire call)", async () => {
@@ -291,6 +330,191 @@ describe("the Cloudflare Queues REST adapter over real HTTP (WORK-044 D-03)", ()
   });
 });
 
+// The PPR-004 pins: the fake refuses the STALE publish shapes exactly
+// as the live Cloudflare API refused them in the Lead's credentialed
+// probe (2026-09-21), and the http_pull consumer precondition behaves
+// exactly as the live plane does. Raw fetch against the fake — the
+// corrected adapter never sends the stale shapes; these pins keep the
+// FAKE (and therefore the protocol mirror) from ever drifting back.
+describe("the fake pins the live-verified publish refusals + the http_pull precondition (PPR-004)", () => {
+  let server: FakeQueueServer;
+
+  beforeAll(async () => {
+    server = await startFakeCloudflareQueues({
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      apiToken: API_TOKEN,
+      // No httpPull: the precondition tests below provision (or fail
+      // against) the consumer deliberately.
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+  });
+
+  const post = async (path: string, body: unknown): Promise<Response> =>
+    fetch(`${server.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${API_TOKEN}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+  test("LIVE-PIN: a string body under content_type 'json' is refused (400, provider code 10207)", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages`, {
+      body: "a-string-body",
+      content_type: "json",
+    });
+    expect(response.status).toBe(400);
+    const envelope = (await response.json()) as {
+      success: boolean;
+      errors: { code: number; message: string }[];
+    };
+    expect(envelope.success).toBe(false);
+    expect(envelope.errors[0]?.code).toBe(10207);
+    expect(envelope.errors[0]?.message).toContain("Expected object, received string");
+  });
+
+  test("LIVE-PIN: a string body under the default (absent) content type is refused identically", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages`, {
+      body: "a-string-body",
+    });
+    expect(response.status).toBe(400);
+    const envelope = (await response.json()) as { errors: { code: number }[] };
+    expect(envelope.errors[0]?.code).toBe(10207);
+  });
+
+  test("LIVE-PIN: a messages-wrapper (missing body field) is refused (400, Required at body)", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages`, {
+      messages: [{ body: { some: "object" } }],
+    });
+    expect(response.status).toBe(400);
+    const envelope = (await response.json()) as { errors: { message: string }[] };
+    expect(envelope.errors[0]?.message).toContain('Required at "body"');
+  });
+
+  test("LIVE-PIN: the documented text variant (string body + content_type 'text') is accepted", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages`, {
+      body: "a plain text body",
+      content_type: "text",
+    });
+    expect(response.status).toBe(200);
+    const envelope = (await response.json()) as {
+      success: boolean;
+      result: { metadata: { metrics: { backlog_count: number } } };
+    };
+    expect(envelope.success).toBe(true);
+    // The live-verified 200 envelope: result.metadata.metrics.
+    expect(typeof envelope.result.metadata.metrics.backlog_count).toBe("number");
+  });
+
+  test("the provider's content_type enum refuses free-form MIME strings (the stale adapter shape)", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages`, {
+      body: { some: "object" },
+      content_type: "application/json",
+    });
+    expect(response.status).toBe(400);
+    const envelope = (await response.json()) as { errors: { message: string }[] };
+    expect(envelope.errors[0]?.message).toContain("content_type");
+  });
+
+  test("the stale /messages/poll endpoint is not routed (the current API documents /messages/pull)", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/messages/poll`, {
+      batch_size: 1,
+    });
+    expect(response.status).toBe(404);
+  });
+
+  test("pull without an http_pull consumer fails closed exactly as the live plane refuses it (405, transient)", async () => {
+    const t = createCloudflareQueuesTransport({
+      apiBaseUrl: server.baseUrl,
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      apiToken: API_TOKEN,
+      requestTimeoutMs: 3000,
+    });
+    await expect(t.pull({ batchSize: 5 })).rejects.toSatisfy((error: unknown) => {
+      const transportError = error as QueueTransportError;
+      return (
+        transportError instanceof QueueTransportError &&
+        transportError.failureKind === "transient" &&
+        transportError.status === 405 &&
+        transportError.message.includes(
+          "messages cannot be pulled unless http_pull mode is enabled",
+        )
+      );
+    });
+  });
+
+  test('the live-verified http_pull consumer creation (POST .../consumers {"type":"http_pull"}) enables pull', async () => {
+    // Before: refused.
+    expect(server.httpPullEnabled("execution")).toBe(false);
+    // The live probe's provisioning call.
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/consumers`, {
+      type: "http_pull",
+    });
+    expect(response.status).toBe(200);
+    expect(server.httpPullEnabled("execution")).toBe(true);
+    // After: pull works through the full adapter path.
+    const t = createCloudflareQueuesTransport({
+      apiBaseUrl: server.baseUrl,
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      apiToken: API_TOKEN,
+      requestTimeoutMs: 3000,
+    });
+    await t.publish({ body: "after-consumer" });
+    const batch = await t.pull({ batchSize: 5 });
+    expect(batch.messages.some((m) => m.body === "after-consumer")).toBe(true);
+  });
+
+  test("a non-http_pull consumer type is refused", async () => {
+    const response = await post(`/accounts/${ACCOUNT_ID}/queues/${QUEUE_ID}/consumers`, {
+      type: "worker",
+    });
+    expect(response.status).toBe(400);
+  });
+
+  test("the transport probe fails closed on a probe queue without an http_pull consumer (no message left behind)", async () => {
+    const PROBE_QUEUE_ID = "d".repeat(32);
+    const unprovisioned = await startFakeCloudflareQueues({
+      accountId: ACCOUNT_ID,
+      queueId: QUEUE_ID,
+      probeQueueId: PROBE_QUEUE_ID,
+      apiToken: API_TOKEN,
+      httpPull: { execution: true }, // execution queue only — NOT the probe queue
+    });
+    try {
+      const t = createCloudflareQueuesTransport({
+        apiBaseUrl: unprovisioned.baseUrl,
+        accountId: ACCOUNT_ID,
+        queueId: QUEUE_ID,
+        probeQueueId: PROBE_QUEUE_ID,
+        apiToken: API_TOKEN,
+        requestTimeoutMs: 3000,
+      });
+      await expect(t.probe()).rejects.toSatisfy((error: unknown) => {
+        const transportError = error as QueueTransportError;
+        return (
+          transportError instanceof QueueTransportError &&
+          transportError.failureKind === "transient" &&
+          transportError.status === 405
+        );
+      });
+      // The probe's own message was published (accepted) and NEVER
+      // acknowledged (nothing could be pulled) — it stays pending for
+      // the operator's hygiene, exactly as on the live plane.
+      expect(unprovisioned.settledBodies("probe")).toEqual([]);
+      expect(unprovisioned.pendingBodies("probe")).toHaveLength(1);
+    } finally {
+      await unprovisioned.close();
+    }
+  });
+});
+
 // The PR #6 correction battery: the transport probe on the DEDICATED
 // operator-owned probe queue can never consume unrelated workload.
 describe("the transport probe never consumes unrelated workload (WORK-044 PR #6 correction)", () => {
@@ -343,6 +567,9 @@ describe("the transport probe never consumes unrelated workload (WORK-044 PR #6 
       probeQueueId: PROBE_QUEUE_ID,
       apiToken: API_TOKEN,
       probeSeeded: [...EXECUTION_DELIVERY_BODIES, FOREIGN_PROBE_BODY],
+      // The operator provisioned the probe queue's http_pull consumer
+      // out-of-band (the documented account-plane precondition).
+      httpPull: { probe: true },
     });
     try {
       const t = createCloudflareQueuesTransport({
@@ -357,10 +584,14 @@ describe("the transport probe never consumes unrelated workload (WORK-044 PR #6 
       expect(probe.ok).toBe(true);
 
       // EXACTLY one message was ever acknowledged on the probe queue:
-      // this run's own probe message (fresh unique tag).
+      // this run's own probe message (fresh unique tag). The settled
+      // wire body is this adapter's envelope — its payload carries
+      // the probe tag.
       const settled = contaminated.settledBodies("probe");
       expect(settled).toHaveLength(1);
-      const settledBody = JSON.parse(settled[0] as string) as Record<string, unknown>;
+      const settledEnvelope = settled[0] as { zeckTransport: number; payload: string };
+      expect(settledEnvelope.zeckTransport).toBe(1);
+      const settledBody = JSON.parse(settledEnvelope.payload) as Record<string, unknown>;
       expect(typeof settledBody.probe).toBe("string");
       expect(settledBody.probe as string).toMatch(/^zeck-transport-probe-\d+-/);
       expect(settledBody.probe).not.toBe("zeck-transport-probe-earlier-crashed-run");
@@ -400,6 +631,12 @@ describe("the transport probe never consumes unrelated workload (WORK-044 PR #6 
       probeQueueId: PROBE_QUEUE_ID,
       apiToken: API_TOKEN,
       seeded: EXECUTION_DELIVERY_BODIES, // real workload on the execution queue
+      // Only the PROBE queue's http_pull consumer is provisioned —
+      // the execution queue carries none (the governed consumer
+      // provisions its own), which also proves the probe never needs
+      // it: a probe request against the execution queue would be the
+      // only way its pull path could ever be exercised here.
+      httpPull: { probe: true },
     });
     try {
       const t = createCloudflareQueuesTransport({
