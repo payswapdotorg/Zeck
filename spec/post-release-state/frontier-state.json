@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "live-plane-verified",
-  "currentBase": "1580c03",
+  "status": "wave-c-open",
+  "currentBase": "85efbb7682971c0aed3a1825c7a952912a682c2b",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -11,10 +11,13 @@
     "PPR-005",
     "PPR-006"
   ],
-  "eligible": [],
+  "eligible": [
+    "PPR-007",
+    "PPR-008"
+  ],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "THE LIVE PLANE IS UP AND VERIFIED (2026-09-21, the Lead's credentialed deployment run, deployment-run corrections #2 at 2b8bb27 + evidence refresh at 1580c03): https://zeck-preview-main.vercel.app — identity bound at the exact revision (the committed deploy pipeline deploy:build-vercel-output + vercel deploy --prebuilt --prod after the local artifact proof; the fifth platform fact — the tsc ESM emit vs the CJS-assumed traced handler — corrected by the build tool), /health controlPlane ready with the Neon relational-state READY, public-smoke --url 26/26 routes zero problems, the PPR-003 journey harness live run exit 0 (12 journeys, 11 pass / 0 fail / 17 honest not-run, 0 findings, identity gate verified; its own preview-branch-slug defect found and fixed in the same run), browser dimensions clean. WAVE C INPUTS (the live run's two open findings, the next smallest-valid corrections): (F1) THE EXPERIENCE SURFACE HAS NO PUBLIC DEPLOYMENT — the preview serves the API plane only; 10 experience-surface journey steps and all 22 workload-family disclosures are honestly not-served (/console/*, /trust/*, /admin/* answer the honest Fastify 404; PPR-001's console composition exists but is not deployed; ZECK_EXPERIENCE_DEPLOY_TOKEN is already set on the Vercel project) — the work order: deploy the experience composition to the public preview and re-run the journey harness for the 10 steps + 22 disclosures. (F2) THE CREDENTIALED JOURNEY STEPS NEED A TRANSPORT CREDENTIAL PATH — 7 steps (sandbox start, first execution, inspection, evidence/cost, validation rerun, export bundle) are honestly not-run owned by the Lead's credential boundary; the credentials authority is unbound in the bootstrap composition (honest 422 CAPABILITY_UNAVAILABLE) — the work order: decide and implement the preview's credential issuance (bind a credentials authority for the preview materialization set, or record the honest boundary as the product state and re-pin the journey's acceptance gates)."
+  "context": "WAVE C OPEN (2026-09-21, the Lead authored from the live run's two open findings at 85efbb7): PPR-007 (F1 \u2014 the experience-surface deployment: serve PPR-001's console composition on the public preview as a second function routed at /console/*, /trust/*, /admin/* and the root landing; the honest unbound mode preserved; ZECK_EXPERIENCE_DEPLOY_TOKEN already set) and PPR-008 (F2 \u2014 the preview credential issuance + the deterministic sandbox substrate: Lead decision recorded = BIND the preview materialization set \u2014 bearer authentication over the materialized transport token, SQL scope resolution, the credential lifecycle service, the execution service and the agents inventory over the Neon DatabasePort, with a repository-resident deterministic substrate driving created sandbox executions to an honest terminal receipt; every unmaterialized shape keeps the honest unbound behavior). Conflict partition: PPR-007 owns apps/dashboard/index.ts (additive handler export), the NEW experience entry, vercel.json, deploy/build-vercel-output.ts; PPR-008 owns deploy/api.ts and the NEW authority-materialization + substrate files; shared ADDITIVE surfaces (append-only, no reorganization): deploy/manifests/variables.json, deploy/manifests/secret-references.json, deploy/PUBLIC-DEPLOYMENT.md, deploy/README.md. After both merge: the Lead's redeploy + the journey harness re-run (the 10 experience steps, the 22 family disclosures, the 7 credentialed steps) against the completed plane."
 }
