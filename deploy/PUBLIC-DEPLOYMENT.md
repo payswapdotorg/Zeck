@@ -799,13 +799,19 @@ record of this layer is `deploy/evidence/ppr-006.json`.
   inputs, the once-per-isolate singleton, the cold-start boot record
   (the `deploy/vercel` `booted` JSON on the runtime logs) and the
   SIGTERM/SIGINT graceful drain.
-- **`vercel.json`** (repository root) — the functions configuration
-  for the entry: `"server.ts"` → a deliberate `maxDuration` bound
-  (60s, within the documented Hobby maximum) and `includeFiles:
-  "deploy/manifests/*.json"` (the composition reads the manifest set
-  from disk at runtime; the bundler's import tracing cannot see
-  `readFileSync` targets — without this glob the cold start fails
-  closed on the missing manifests).
+- **`vercel.json`** (repository root) — pins the Fastify framework
+  detection (`"framework": "fastify"`). The live deployment run
+  (Lead, 2026-09-21) proved the platform's build REJECTS a
+  `functions` pattern for a root entry (patterns only match
+  Serverless Functions inside the `api` directory) and that the
+  build's default file tracing ships `deploy/manifests/*.json` into
+  the function bundle (verified in the built bundle of the same run)
+  — the detected entry needs no functions-key configuration. The
+  same run also proved the sandbox build's `tsc` transpile cannot
+  resolve a `types` pin from the repository `tsconfig.json`
+  (TS2688), so the tsconfig carries no `types` array (the installed
+  `@types/*` packages are auto-included — verified identical
+  typecheck/lint results on the real rail).
 
 **The runtime**: Node.js (the Fastify framework detection's
 default). The current Vercel documentation configures the officially

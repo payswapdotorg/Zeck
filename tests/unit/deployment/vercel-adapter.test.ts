@@ -298,28 +298,25 @@ describe("PPR-006: the module-level singleton (once per isolate)", () => {
 });
 
 describe("PPR-006: the hosting contract files", () => {
-  test("vercel.json carries the functions configuration for the entry", () => {
+  test("vercel.json pins the framework detection and carries no functions-key entry pattern", () => {
     const config = JSON.parse(readFileSync(join(REPO_ROOT, "vercel.json"), "utf8")) as {
-      functions?: Record<string, { maxDuration?: number; includeFiles?: string | string[] }>;
+      framework?: string;
+      functions?: Record<string, unknown>;
     };
-    const entry = config.functions?.["server.ts"];
-    expect(entry).toBeDefined();
-    // The documented Hobby maximum duration is 300s — the deliberate
-    // bound stays within it.
-    expect(entry?.maxDuration).toBeLessThanOrEqual(300);
-    expect(entry?.maxDuration).toBeGreaterThan(0);
-    const includeFiles =
-      entry?.includeFiles === undefined
-        ? []
-        : Array.isArray(entry.includeFiles)
-          ? entry.includeFiles
-          : [entry.includeFiles];
-    // The composition reads the manifest set from disk at runtime; the
-    // bundler's import tracing cannot see readFileSync targets.
-    expect(
-      includeFiles.some((pattern) => pattern === "deploy/manifests/*.json"),
-      "includeFiles must ship deploy/manifests/*.json into the function bundle",
-    ).toBe(true);
+    // The zero-config Fastify entrypoint detection, pinned explicitly so
+    // a future framework reshuffle cannot silently change the hosting
+    // shape (the entry stays the root server.ts + fastify.listen form).
+    expect(config.framework).toBe("fastify");
+    // The live deployment run (Lead, 2026-09-21) proved the platform's
+    // build REJECTS a `functions` pattern for a root entry — patterns
+    // only match Serverless Functions inside the `api` directory
+    // ("The pattern \"server.ts\" defined in `functions` doesn't match
+    // any Serverless Functions inside the `api` directory."). The
+    // detected entry needs no functions-key configuration: the build's
+    // default file tracing ships deploy/manifests/*.json into the
+    // function bundle (verified in the built .vercel/output/functions
+    // bundle of the same run), so no includeFiles glob is required.
+    expect(config.functions).toBeUndefined();
   });
 
   test("server.ts satisfies Vercel's Fastify entrypoint detection and the documented listen shape", () => {

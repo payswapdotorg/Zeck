@@ -354,11 +354,14 @@ Vercel documentation — sources recorded in
   inputs (`ZECK_ENVIRONMENT`; the preview branch from the
   `VERCEL_GIT_COMMIT_REF` system variable), the once-per-isolate
   singleton, the cold-start boot record, and the signal drain.
-- `vercel.json` (repository root, where Vercel requires it) — the
-  functions configuration for the entry: a deliberate `maxDuration`
-  bound and `includeFiles: deploy/manifests/*.json` (the composition
-  reads the manifest set from disk at runtime; the bundler's import
-  tracing cannot see `readFileSync` targets).
+- `vercel.json` (repository root, where Vercel requires it) — pins
+  the Fastify framework detection (`"framework": "fastify"`). The
+  live deployment run (Lead, 2026-09-21) proved the platform's build
+  REJECTS a `functions` pattern for a root entry (patterns only match
+  Serverless Functions inside the `api` directory) and that the
+  build's default file tracing ships `deploy/manifests/*.json` into
+  the function bundle (verified in the built bundle of the same run)
+  — the detected entry needs no functions-key configuration.
 
 **The runtime**: Node.js (the Fastify framework detection's default).
 The sanctioned Bun runtime configuration was verified to be the

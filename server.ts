@@ -32,10 +32,14 @@
  * with the exact `deploy:public-smoke -- --url <base-url>` path the
  * credentialed deployment run executes against the live plane.
  *
- * vercel.json (project root) carries the functions configuration for
- * this entry: the deliberate maxDuration bound and the includeFiles
- * glob that ships deploy/manifests/*.json into the function bundle
- * (the composition reads the manifest set from disk at runtime).
+ * vercel.json (project root) pins the Fastify framework detection
+ * ("framework": "fastify"). The live deployment run (Lead,
+ * 2026-09-21) proved the platform's build REJECTS a `functions`
+ * pattern for a root entry (patterns only match Serverless Functions
+ * inside the `api` directory), and that the build's default file
+ * tracing ships deploy/manifests/*.json into the function bundle
+ * (verified in the built bundle of the same run) — the detected entry
+ * needs no functions-key configuration.
  */
 
 import type { FastifyInstance } from "fastify";

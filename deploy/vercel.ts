@@ -31,11 +31,14 @@
  *    reuse) and calls `fastify.listen()` — the documented shape
  *    Vercel's runtime captures to route every request into Fastify's
  *    router with the ORIGINAL path;
- *  - `vercel.json` at the project root carries the functions
- *    configuration for the entry (`server.ts`: maxDuration +
- *    includeFiles for deploy/manifests/*.json — the composition reads
- *    the manifest set from disk at runtime; the bundler's import
- *    tracing does not see readFileSync targets);
+ *  - `vercel.json` at the project root pins the Fastify framework
+ *    detection (`"framework": "fastify"`). The live deployment run
+ *    (Lead, 2026-09-21) proved the platform's build REJECTS a
+ *    `functions` pattern for a root entry (patterns only match
+ *    Serverless Functions inside the `api` directory) and that the
+ *    build's default file tracing ships deploy/manifests/*.json into
+ *    the function bundle (verified in the built bundle of the same
+ *    run) — the detected entry needs no functions-key configuration;
  *  - runtime: Node.js (the Fastify framework detection's default).
  *    The sanctioned Bun runtime configuration was verified to be the
  *    top-level `bunVersion` property (NOT the `functions` `runtime`
