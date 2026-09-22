@@ -388,7 +388,7 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     // branch point (the Architect's finalization commits) never
     // self-trips the proof, and the branch merging into main makes
     // the merge-base the branch head itself (the diff stays empty).
-    const ref = ["origin/main", "main"].find((candidate) => resolveGitRef(candidate));
+    const ref = ["main", "origin/main"].find((candidate) => resolveGitRef(candidate));
     expect(ref, "a main ref must exist for the ancestry proof").toBeDefined();
     const mergeBase = execSync(`git merge-base HEAD ${ref}`, {
       cwd: REPO_ROOT,

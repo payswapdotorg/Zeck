@@ -336,7 +336,7 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
     // THIS checkout's own changes; main advancing past the branch point
     // never trips the proof, and the branch merging into main makes the
     // merge-base the head itself (the diff stays empty).
-    const mainRef = ["origin/main", "main"].find((candidate) => {
+    const mainRef = ["main", "origin/main"].find((candidate) => {
       try {
         execSync(`git rev-parse --verify --quiet ${candidate}`, {
           cwd: REPO_ROOT,
