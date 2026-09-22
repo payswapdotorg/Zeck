@@ -241,13 +241,16 @@ async function dispatch(
 }
 
 /**
- * Create the dashboard HTTP server (a projection surface: every request
- * reads through the SDK — no local state, M24). The SDK client is bound
- * to the deployment's application scope (WORK-034) at construction.
+ * The composition core shared by every hosting shape (PPR-007): the
+ * fail-fast option validation, the SDK client bound to the deployment's
+ * application scope, the route table, and the per-request listener —
+ * everything `createDashboard`'s `createServer` wraps today, factored
+ * out ADDITIVELY so the exported `createDashboardHandler` composes the
+ * SAME surface without owning a listener (the Vercel function entry
+ * reuses this; the direct-execution entry's behavior is unchanged).
  */
-export function createDashboard(options: DashboardOptions): {
-  readonly server: ReturnType<typeof createServer>;
-  readonly port: number;
+function composeDashboard(options: DashboardOptions): {
+  readonly handler: (request: IncomingMessage, response: ServerResponse) => void;
   readonly routes: readonly RouteDefinition[];
 } {
   if (typeof options.applicationId !== "string" || options.applicationId.trim().length === 0) {
@@ -261,9 +264,8 @@ export function createDashboard(options: DashboardOptions): {
     applicationId: options.applicationId,
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
   });
-  const port = options.port ?? 4545;
   const routes = createDashboardRoutes(client, { applicationId: options.applicationId });
-  const server = createServer((request, response) => {
+  const handler = (request: IncomingMessage, response: ServerResponse): void => {
     void dispatch(routes, request, response).catch(() => {
       try {
         if (response.headersSent !== true) {
@@ -279,8 +281,41 @@ export function createDashboard(options: DashboardOptions): {
         response.destroy();
       }
     });
-  });
-  return { server, port, routes };
+  };
+  return { handler, routes };
+}
+
+/**
+ * PPR-007 — the reusable request listener: the composition's per-request
+ * handler as a hosting-agnostic builder. Returns the exact listener
+ * `createDashboard`'s `createServer` wraps today (the same dispatch, the
+ * same route table, the same error surfaces), WITHOUT binding a port —
+ * the Vercel experience function entry (api/experience.ts through
+ * deploy/experience.ts) composes this over a once-per-isolate singleton;
+ * any other host (tests, alternative deployments) may do the same. The
+ * composition is a PROJECTION (M24): the listener holds no state beyond
+ * the SDK client and the route table.
+ */
+export function createDashboardHandler(
+  options: DashboardOptions,
+): (request: IncomingMessage, response: ServerResponse) => void {
+  return composeDashboard(options).handler;
+}
+
+/**
+ * Create the dashboard HTTP server (a projection surface: every request
+ * reads through the SDK — no local state, M24). The SDK client is bound
+ * to the deployment's application scope (WORK-034) at construction.
+ */
+export function createDashboard(options: DashboardOptions): {
+  readonly server: ReturnType<typeof createServer>;
+  readonly port: number;
+  readonly routes: readonly RouteDefinition[];
+} {
+  const composed = composeDashboard(options);
+  const port = options.port ?? 4545;
+  const server = createServer(composed.handler);
+  return { server, port, routes: composed.routes };
 }
 
 /** Direct-execution entry (bun run apps/dashboard/index.ts). */

@@ -620,6 +620,35 @@
       "required": false,
       "credentialShaped": false,
       "description": "PPR-008: The preview application id (UUID) whose durable scope the materialized preview authorities bind — the idempotent cold-start seed ensures the tenant, the application, the transport principal/membership and the transport credential rows exist on the migrated relational authority. Together with ZECK_TRANSPORT_TOKEN and the relational URL it forms the materialization gate: any missing piece leaves the bootstrap composition's honest unbound shape."
+    },
+    {
+      "name": "ZECK_EXPERIENCE_API_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "description": "PPR-007 — the API plane base URL the experience function (the console composition at /console/*, /trust/*, /admin/* and the root /) projects through. Same origin as the experience surface in the preview deployment. Required by the experience entry: absent, the isolate fails closed at cold start (an experience surface with no API to project is a structural misconfiguration)."
+    },
+    {
+      "name": "ZECK_EXPERIENCE_TOKEN",
+      "type": "bearer-credential",
+      "required": false,
+      "credentialShaped": true,
+      "description": "PPR-007 — the materialized transport credential of the experience function's reads (the console composition's projection credential). Credential-shaped: environment-only storage, never committed. MAY BE UNBOUND: with an absent/empty token the experience surface STILL SERVES and renders its designed honest unauthenticated/permission states (nothing fabricates). The non-secret reference binding is ZECK_SECRET_EXPERIENCE_TOKEN_REF."
+    },
+    {
+      "name": "ZECK_EXPERIENCE_APPLICATION_ID",
+      "type": "zeck-identifier",
+      "required": false,
+      "credentialShaped": false,
+      "description": "PPR-007 — the application whose scope authorizes the experience function's scoped reads (the console composition's deployment scope, sent as the canonical X-Zeck-Application header the API requires). Required by the experience entry: a scopeless dashboard cannot exist by construction, so the isolate fails closed at cold start."
+    },
+    {
+      "name": "ZECK_SECRET_EXPERIENCE_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/experience-token",
+      "description": "Reference to the environment's experience-surface transport credential (the console composition's projection token; materialized as ZECK_EXPERIENCE_TOKEN immediately before the experience function's reads — distinct from experience-deploy-token, which is the Vercel deployment credential)."
     }
   ]
 }

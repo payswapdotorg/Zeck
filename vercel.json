@@ -1,4 +1,38 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "fastify"
+  "framework": "fastify",
+  "rewrites": [
+    {
+      "source": "/console",
+      "destination": "/api/experience?path=/console"
+    },
+    {
+      "source": "/console/:path*",
+      "destination": "/api/experience?path=/console/:path*"
+    },
+    {
+      "source": "/trust",
+      "destination": "/api/experience?path=/trust"
+    },
+    {
+      "source": "/trust/:path*",
+      "destination": "/api/experience?path=/trust/:path*"
+    },
+    {
+      "source": "/admin",
+      "destination": "/api/experience?path=/admin"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/api/experience?path=/admin/:path*"
+    },
+    {
+      "source": "/assets/client.js",
+      "destination": "/api/experience?path=/assets/client.js"
+    },
+    {
+      "source": "/",
+      "destination": "/api/experience?path=/"
+    }
+  ]
 }

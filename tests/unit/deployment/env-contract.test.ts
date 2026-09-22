@@ -48,8 +48,9 @@ describe("the environment contract over the real manifest (AC3/AC4)", () => {
     }
     const evaluation = evaluateEnvironmentContract(loadReal(), "staging", env);
     expect(evaluation.satisfied).toBe(true);
-    // PPR-008 appended the transport-token reference (additive manifest).
-    expect(evaluation.materializedReferences).toHaveLength(11);
+    // PPR-008 appended the transport-token reference and PPR-007 appended
+    // the experience-token reference (additive manifests, both preserved).
+    expect(evaluation.materializedReferences).toHaveLength(12);
   });
 
   test("a missing required variable is reported", () => {

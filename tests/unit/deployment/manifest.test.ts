@@ -166,11 +166,13 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
     expect(manifest.secretReferences.local.map((r) => r.name).sort()).toEqual([
       "container-runner-token",
       "database-url",
-      // PPR-008 appended the transport-token reference (additive manifest).
+      // PPR-008 appended the transport-token reference (additive manifest);
+      // PPR-007 appended the experience-token reference (additive manifest).
+      "experience-token",
       "transport-token",
     ]);
     for (const environment of ["preview", "staging", "production"] as const) {
-      expect(manifest.secretReferences[environment]).toHaveLength(11);
+      expect(manifest.secretReferences[environment]).toHaveLength(12);
     }
     // Reference namespaces are environment-scoped by construction: the
     // same logical name exists per environment, but the URI namespace
