@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-c-open",
-  "currentBase": "a5cc9fa98a047f67dd525871fc69b3698591bc45",
+  "status": "wave-c-complete",
+  "currentBase": "0ca08198ec3cc58eca6a7ca7e26f1a1db87c03bf",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -10,14 +10,13 @@
     "PPR-004",
     "PPR-005",
     "PPR-006",
+    "PPR-007",
     "PPR-008"
   ],
-  "eligible": [
-    "PPR-007"
-  ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "WAVE C OPEN (2026-09-21, the Lead authored from the live run's two open findings at 85efbb7): PPR-007 (F1 \u2014 the experience-surface deployment: serve PPR-001's console composition on the public preview as a second function routed at /console/*, /trust/*, /admin/* and the root landing; the honest unbound mode preserved; ZECK_EXPERIENCE_DEPLOY_TOKEN already set) and PPR-008 (F2 \u2014 the preview credential issuance + the deterministic sandbox substrate: Lead decision recorded = BIND the preview materialization set \u2014 bearer authentication over the materialized transport token, SQL scope resolution, the credential lifecycle service, the execution service and the agents inventory over the Neon DatabasePort, with a repository-resident deterministic substrate driving created sandbox executions to an honest terminal receipt; every unmaterialized shape keeps the honest unbound behavior). Conflict partition: PPR-007 owns apps/dashboard/index.ts (additive handler export), the NEW experience entry, vercel.json, deploy/build-vercel-output.ts; PPR-008 owns deploy/api.ts and the NEW authority-materialization + substrate files; shared ADDITIVE surfaces (append-only, no reorganization): deploy/manifests/variables.json, deploy/manifests/secret-references.json, deploy/PUBLIC-DEPLOYMENT.md, deploy/README.md. After both merge: the Lead's redeploy + the journey harness re-run (the 10 experience steps, the 22 family disclosures, the 7 credentialed steps) against the completed plane."
+  "context": "WAVE C COMPLETE (2026-09-22): PPR-007 (the experience-surface deployment) and PPR-008 (the preview credential issuance + deterministic sandbox substrate) both delivered and Lead-verified. PPR-007 merged at d74c2e2 (branch battery 9/9: no-rail 4/4 + with-rail 5/5) with the cosmetic 22-route-probe label fixed at merge; post-merge reconciliation 0ca0819 (e11 C9 ancestry-proof ref preference \u2014 the unpushed-clone false-trip, zero assertion changes) closed the only post-merge red; full suite on the final tree: 675+1skip files / 9852+26skip tests / 0 failed / 481s with the PG rail live (23:13 UTC). Remaining (the Lead's plane, credential-bound): the \u00a713.6 redeploy (build-vercel-output + two-function local artifact proof + vercel deploy --prebuilt --prod) awaits VERCEL_TOKEN re-provision \u2014 the secrets file was lost in the last sandbox reset; operator notice posted to the agent outbox. After the redeploy: the journey harness re-run (10 experience steps + 22 family disclosures) + deploy:public-smoke to close F1, and the experience-token materialization path per PPR-008's evidence record."
 }
