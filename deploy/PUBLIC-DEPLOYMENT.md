@@ -905,3 +905,135 @@ The worker never deploys and holds no Vercel credentials: every
 live-Vercel step is an honest NOT RUN owned by the Lead credentialed
 deployment run (the registry in `deploy/evidence/ppr-006.json`).
 
+
+### 13.4 The experience surface (PPR-007 — the console composition served as a second function)
+
+The preview deployment serves TWO functions composed from one
+repository (the API plane unchanged, the experience surface added
+alongside it):
+
+- **`api/experience.ts`** (NEW) — the experience Serverless Function
+  entry, at the placement the platform's `api` directory convention
+  sanctions (files under `api/` are detected as Serverless Functions
+  and served at their path — `/api/experience`; the documented
+  convention is orthogonal to the framework detection, which allows
+  ONE root entry per framework build — the root `server.ts` stays the
+  Fastify entry and is NOT touched). The entry composes PPR-001's
+  console composition ONCE PER ISOLATE (the module-level singleton in
+  `deploy/experience.ts` — PPR-006's cold-start pattern) over the
+  dashboard's ADDITIVE request-listener export
+  (`createDashboardHandler` in `apps/dashboard/index.ts` — the exact
+  listener `createDashboard`'s `createServer` wraps; the
+  direct-execution entry's behavior is unchanged). On a local run
+  (`bun api/experience.ts`) the listener binds for real (`PORT`,
+  default 3001) so the composed shape can be proven before any
+  deployment.
+- **`deploy/experience.ts`** (NEW) — the hosting adapter: the
+  fail-closed entry inputs, the once-per-isolate singleton, the
+  cold-start boot record (the `deploy/experience` `booted` JSON on the
+  runtime logs, with `tokenBound` as a BOOLEAN — never the
+  credential), and the routing carry (`experienceRequestPath`).
+- **`vercel.json`** — adds the routing (the `rewrites` array; the
+  Fastify framework pin from PPR-006 is unchanged).
+
+**The routing split (the preview plane's shape)**: every `/console/*`,
+`/trust/*`, `/admin/*` path, the root `/` and the composition's own
+static asset `/assets/client.js` route to the experience function;
+EVERY other path routes to the existing API function (PPR-006's
+entry), unchanged in behavior — the API plane's route table is
+untouched, and the API serves no `/assets` path (the one added asset
+rewrite changes no API route). The dashboard's non-experience paths
+(`/runs`, `/build`, `/agents`, ...) honestly fall through to the API
+function under this split — the work order's explicit contract.
+
+**The routing mechanism (the platform's documented shape, verified
+against the current Vercel documentation — URLs + dates recorded in
+`deploy/evidence/ppr-007.json`)**: `vercel.json` `rewrites` is the
+platform's sanctioned same-application routing layer for a framework
+build, and a rewrite to a Serverless Function CONVERTS the source path
+captures into QUERY PARAMETERS on the destination (the documented
+`/resize/:width/:height` → `/api/sharp?width=800&height=600`
+conversion). The routing table therefore carries the ORIGINAL
+experience path in the `path` query parameter:
+
+```json
+{ "source": "/console/:path*", "destination": "/api/experience?path=/console/:path*" }
+```
+
+and `deploy/experience.ts`'s `experienceRequestPath` reconstructs the
+original path before the dashboard dispatch (on a local rail the
+requests arrive with their original paths and pass through
+unchanged). The known platform fact from PPR-006's live run is
+respected: `functions` patterns only match Serverless Functions inside
+the `api` directory — the routing needs no `functions` key at all.
+
+**The module-loading correction covers BOTH function graphs**: the
+framework build's tsc transpilation emits ES-module syntax for every
+graph it transpiles (the platform fact PPR-006's live run discovered —
+§13.1), so `deploy/build-vercel-output.ts` now corrects EVERY function
+directory of the emitted `.vercel/output` (the ESM specifier
+resolution, the per-function-root `{"type": "module"}` marker, and the
+fail-closed verification), and REFUSES a build whose required function
+set is missing (the routing contract requires both `index` and
+`api/experience`). The correction core is `deploy/vercel-output.ts`
+(testable without Vercel credentials — the synthetic-fixture proof of
+`tests/unit/deployment/vercel-output.test.ts`; the live build is the
+Lead's credentialed run).
+
+### 13.5 The experience deployment contract (environment variables — NAMES only)
+
+Set these on the Vercel project (`zeck-preview-main`) for the
+experience function (the variable contract is
+`deploy/manifests/variables.json` +
+`deploy/manifests/secret-references.json`; values never transit this
+repository):
+
+| Variable | Role |
+|---|---|
+| `ZECK_EXPERIENCE_API_URL` | the API plane base URL the experience function projects through — the SAME ORIGIN in the preview (`https://zeck-preview-main.vercel.app`); required, fail closed (an experience surface with no API to project is a structural misconfiguration) |
+| `ZECK_EXPERIENCE_APPLICATION_ID` | the application whose scope authorizes the console's scoped reads (the canonical `X-Zeck-Application` selector); required, fail closed (a scopeless dashboard cannot exist by construction) |
+| `ZECK_EXPERIENCE_TOKEN` | the materialized transport credential of the console's reads (materialized from `ZECK_SECRET_EXPERIENCE_TOKEN_REF`); MAY BE UNBOUND — see the honest unbound mode below |
+| `ZECK_SECRET_EXPERIENCE_TOKEN_REF` | the environment-scoped reference URI of the experience transport credential (`zeck-secret://<environment>/experience-token`) — distinct from `ZECK_SECRET_EXPERIENCE_DEPLOY_TOKEN_REF` (the Vercel DEPLOYMENT credential) |
+
+**The honest unbound mode (the designed degradation)**: when
+`ZECK_EXPERIENCE_TOKEN` is absent or empty the experience surface
+STILL SERVES. The console's no-read pages (home, catalog, playground
+disclosures, validation lab, docs) render their designed 200 states;
+the reading pages render their designed permission-denied states over
+the API's honest 401 `AUTHENTICATION_FAILED`; the machine JSON views
+compose from the disclosed recents (an empty list without cookies).
+NOTHING fabricates: no data, no credential, no synthetic projection.
+The entry fails closed ONLY on structural misconfiguration (a missing
+API URL or application id).
+
+### 13.6 The operator sequence for the experience surface (the Lead's credentialed run — the §13.3 chain extended)
+
+After merging PPR-007, set the experience variables above on the
+Vercel project (Production environment; `ZECK_EXPERIENCE_TOKEN` may
+stay unbound — the honest mode is the sanctioned initial state), then
+build and deploy BOTH functions through the committed pipeline and
+verify:
+
+```bash
+# 1. the deployment contract variables (§13.2 + §13.5) are set on the project
+# 2. build (the platform's own build + the two-function correction):
+bun run deploy:build-vercel-output
+# 3. the local artifact proof for BOTH functions:
+#    cd .vercel/output/functions/index.func && ZECK_ENVIRONMENT=preview \
+#      ZECK_DEPLOY_GIT_REVISION=<rev> VERCEL_GIT_COMMIT_REF=main node server.js
+#    cd .vercel/output/functions/api/experience.func && \
+#      ZECK_EXPERIENCE_API_URL=<plane-url> ZECK_EXPERIENCE_APPLICATION_ID=<scope> \
+#      node api/experience.js
+# 4. deploy the corrected output:
+vercel deploy --prebuilt --prod
+```
+
+Then re-run the journey harness against the public URL for the
+experience surface's acceptance: the 10 experience-surface journey
+steps and the 22 workload-family disclosures that F1 recorded as
+honestly not-served must now record their served states (the harness
+audits the served HTML's structural dimensions — the availability
+disclosure, the responsive plan, the resource integrity including
+`/assets/client.js`, the navigation graph), and the API plane's own
+acceptance (`deploy:public-smoke --url <public-url>`) must stay green
+(the API side of the split is unchanged).

@@ -15,6 +15,7 @@
       "cli/**",
       "apps/**",
       "examples/**",
+      "api/**",
       "tests/**",
       "server.ts",
       "vitest.config.ts",

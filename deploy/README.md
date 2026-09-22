@@ -899,3 +899,34 @@ records the CI-runnable set). Live provider-environment promotion
 materialized credentials and its own release ledger — never claimed as
 exercised by CI. Provider quota consoles are not queried (no
 credential); the quota guards read the authoritative stores only.
+
+## The experience-surface deployment layer (PPR-007)
+
+The public preview serves TWO functions composed from one repository:
+the API plane (the root `server.ts` Fastify framework entry, PPR-006 —
+see the deployment layer above) and the EXPERIENCE surface
+(`api/experience.ts`, the console composition of `apps/dashboard`
+served as an additional Serverless Function at the placement the
+platform's `api` directory convention sanctions). The full deployment
+contract — the routing split (`/console/*`, `/trust/*`, `/admin/*`,
+the root `/` and the composition's own `/assets/client.js` asset to
+the experience function; every other path to the API function,
+unchanged), the rewrite mechanism (the documented capture-to-query
+conversion `vercel.json` rewrites carry), the environment contract
+(`ZECK_EXPERIENCE_API_URL`, `ZECK_EXPERIENCE_APPLICATION_ID`,
+`ZECK_EXPERIENCE_TOKEN` — the honest unbound mode), the two-function
+module-loading correction (`deploy/vercel-output.ts` +
+`deploy/build-vercel-output.ts`), and the exact operator sequence the
+Lead runs after merge — is `deploy/PUBLIC-DEPLOYMENT.md` §13.4–§13.6;
+the evidence record is `deploy/evidence/ppr-007.json`.
+
+The worker never deploys and holds no Vercel credentials: every
+live-Vercel step is an honest NOT RUN owned by the Lead credentialed
+deployment run. What the repository proves on its own rails: the
+composed two-plane shape boots locally (the API plane through the root
+entry next to the experience entry, with the boot record, the routing
+carry and the composed-shape parity against the direct-execution
+dashboard — `tests/integration/deployment/experience-entry.test.ts`),
+and the build tool's correction is proven against a synthetic
+two-function fixture
+(`tests/unit/deployment/vercel-output.test.ts`).

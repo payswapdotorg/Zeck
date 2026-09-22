@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-007",
+  "title": "Experience-surface deployment — the console composition served on the public preview as a second serverless function (dashboard handler export + experience function entry + routing + build-tool two-function extension + deployment contract)",
+  "recordedBy": "PPR-007 implementation worker (this session)",
+  "environment": "sandboxed worker pod (no cloud credentials, no Vercel credentials, no deployment performed — the Lead owns the credentialed deployment run; ZECK_EXPERIENCE_DEPLOY_TOKEN already exists on the Vercel project zeck-preview-main). git clone of https://github.com/payswapdotorg/Zeck.git at /home/z/my-project/Zeck, branch work/PPR-007-experience-surface-deployment, base 338cc46c1f6081c1cbfa9de94e607982a74a159d (verified with git rev-parse before branching). bun 1.3.14 in the pod. No PostgreSQL server exists in this pod (the integration suites' PG sections skip cleanly without ZECK_PG_TEST_URL; the local-rail API plane runs the pre-authorized no-PG degraded path).",
+  "date": "2026-09-22",
+  "doctrine": "Every operation that could not run in the worker pod is listed NOT RUN with its owner. Nothing in this record claims a result that was not executed. The worker never deploys and never holds Vercel credentials. This work order adds NO authority and changes NO API route: the API plane's route table is untouched (the architecture-pinned public table is unchanged — public-surface.test.ts M21 passes on this branch), and the experience surface is a read/compose projection served by a second function.",
+  "verifiedLocally": {
+    "battery": {
+      "bunInstall": "OK (116 packages)",
+      "typecheck": "bun run typecheck = 0 errors (tsc --noEmit, exit 0)",
+      "lint": "bun run lint exits 1 with EXACTLY the base commit's diagnostics: 2 errors, 68 warnings, 8 infos — verified identical against the base commit by a git-stash comparison (bunx biome check . on both trees: 'Found 2 errors. Found 68 warnings. Found 8 infos.' each). ZERO new errors, warnings or infos from this work order's files (all new files check clean).",
+      "testUnit": "bun run test:unit = 358 test files passed (358), 6295 tests passed (6295), 0 failed, 0 skipped — includes this work order's 3 new unit files (27 new tests: handler-export 5, experience-adapter 16, vercel-output 6) and 4 updated manifest-count pins (env-contract, provision x2, manifest).",
+      "testArchitecture": "bun run test:architecture = 139 files passed + 1 skipped (140), 2230 tests passed + 4 skipped (2234) — the structure pins (public-surface M21 route table, module skeleton, fresh-clone governance) hold with the new api/ entry and the additive dashboard export.",
+      "testIntegration": "bun run test:integration = 29 files passed + 146 skipped (175), 314 tests passed + 203 skipped (517) — the PG suites skip cleanly (no ZECK_PG_TEST_URL in this pod; recorded skip counts); the local-rail proof file passes.",
+      "testFullSuite": "bun run test = 526 files passed + 147 skipped (673), 8839 tests passed + 207 skipped (9046), 0 failed.",
+      "governance": "python3 scripts/governance-check.py = 'Governance OK: 60 Work Orders, 110 requirements, inFlight=[], frontier=[]'",
+      "deployValidate": "bun run deploy:validate = valid: true, problems: []"
+    },
+    "handlerExportBehavior": {
+      "file": "tests/unit/dashboard/handler-export.test.ts",
+      "facts": [
+        "createDashboardHandler(options) returns the request listener; the console home page serves through it (200 text/html, 'Developer console', the application-scope disclosure, the structural a11y frame: viewport meta, <main> landmark, aria-current)",
+        "a representative 22-family playground disclosure route (/console/playground/text) serves 200 text/html and carries the journey harness's availability-disclosure vocabulary (available | runnable | provider-gated | requires access | not run)",
+        "the machine JSON views serve through the composed listener: /console/executions/facts.json answers 200 application/json with runs: [] (the honest zero-recents composition + its disclosure note), and /console/validation/api/catalog.json answers 200 application/json with a non-empty catalog",
+        "the honest unbound mode (token: ''): /console still serves 200; the reading page /agents renders its designed 403 'Not authorized' HTML state over the API's honest 401 AUTHENTICATION_FAILED; no application/execution id is fabricated into the page",
+        "the parity anchor: createDashboard (the direct host, behavior unchanged) answers identically to the composed listener for 9 representative paths (status, content-type and body — body compared with the pages' per-request dash-<uuid> idempotency keys normalized)",
+        "createDashboard keeps its contract: the same validation error message for an empty applicationId, the same server/port/routes shape (composeDashboard is the shared core; the direct-execution entry block is unchanged)"
+      ]
+    },
+    "unboundTokenDegradation": {
+      "unitFile": "tests/unit/dashboard/handler-export.test.ts",
+      "integrationFile": "tests/integration/deployment/experience-entry.test.ts",
+      "facts": [
+        "unit: with token '' over a wire-exact honest-401 API stub, the console home serves 200 (no fabricated data) and /agents renders the designed 403 permission state",
+        "integration: the experience entry boots with NO ZECK_EXPERIENCE_TOKEN over the real (degraded no-PG) API plane and its cold-start boot record prints {tool: 'deploy/experience', status: 'booted', tokenBound: false, mode: 'honest-unbound'} — a BOOLEAN, never the credential",
+        "integration: through the composed rail the no-read pages serve 200 (/console, /console/playground/text with the availability disclosure, /trust/evidence, the root /), the machine JSON views answer 200, and the reading page /agents renders the honest 403 state",
+        "readExperienceInputs fails closed ONLY on structural misconfiguration: missing ZECK_EXPERIENCE_API_URL (error names the variable and the contract doc) and missing ZECK_EXPERIENCE_APPLICATION_ID; an absent or empty ZECK_EXPERIENCE_TOKEN reads back as '' and still serves"
+      ]
+    },
+    "routingTruthTable": {
+      "file": "tests/unit/deployment/experience-adapter.test.ts",
+      "facts": [
+        "41 representative experience paths route to the experience function (the root /, /console and every audited console surface incl. the executions explorer's deep export/bundle.json path, the usage/compare/validation-lab machine twins, /trust/{evidence,limits,lineage}, /admin/{policies,budgets,team,environments,audit}, and /assets/client.js)",
+        "EVERY route of the architecture-pinned public API table falls through to the existing API function (the 22-route probe set)",
+        "14 dashboard non-experience paths (/runs, /build, /agents, /executions/:id, /home, /mode, /appearance, /command, ...) honestly fall through to the API function — the work order's explicit split",
+        "every rewrite destination is /api/experience?path=/... — the documented capture-to-query carry; the exact-path rewrites (/ , /console, /trust, /admin, /assets/client.js) carry the original path bit-for-bit and experienceRequestPath reconstructs every carried path (deep paths, the root, merged query parameters preserved)",
+        "a request without the carry passes through unchanged (the local rail); a 'path' value that is not an absolute path is a client's own parameter and never rewrites the URL; a direct hit on /api/experience answers the function's own route"
+      ]
+    },
+    "machineParity": {
+      "pinned": [
+        "GET /console/playground/text — 200 text/html, the family page (not the index), the availability disclosure present",
+        "GET /console/executions/facts.json — 200 application/json, {runs: [], note: the disclosed-recents explanation}",
+        "GET /console/validation/api/catalog.json — 200 application/json, non-empty",
+        "GET /assets/client.js — 200 application/javascript (the composition's own static asset through the entry)",
+        "the parity anchor (unit) + the composed-rail parity (integration): the experience entry answers IDENTICALLY to the direct-execution dashboard (createDashboard / bun apps/dashboard/index.ts) over the same API plane for /, /console, /console/playground/text, /console/executions/facts.json, /console/validation/api/catalog.json, /trust/evidence and /admin/policies (status, content-type, body with dash-<uuid> normalized)",
+        "the routing carry over the real rail: /api/experience?path=/console/playground/text serves the same surface as /console/playground/text (status, content-type, normalized body)"
+      ]
+    },
+    "buildToolSyntheticFixture": {
+      "file": "tests/unit/deployment/vercel-output.test.ts",
+      "facts": [
+        "a synthetic .vercel/output with BOTH function graphs (functions/index.func + functions/api/experience.func, each mirroring a repository tree with extensionless relative imports — file targets like ./lib and ../deploy/experience, and directory targets like ./src/api and ../../sdk) is corrected by correctVercelOutput: measured on the fixture, the index graph = 1 file rewritten / 3 specifier rewrites / 0 remaining extensionless, the api/experience graph = 3 files rewritten / 4 specifier rewrites / 0 remaining extensionless",
+        "both function roots receive the minimal {\"type\": \"module\"} ESM marker package.json; already-resolved specifiers (.json, node:*) are untouched; a traced node_modules package is byte-identical (excluded from the walk)",
+        "fail-closed negatives: an output missing the api/experience function graph is REFUSED (the required-function set ['index', 'api/experience']); a specifier resolving to neither a source file nor a directory with index.ts fails with 'unresolvable relative import'; verifyGraph counts a remaining extensionless specifier (the orchestration refuses the build on it)"
+      ]
+    },
+    "localRailProof": {
+      "file": "tests/integration/deployment/experience-entry.test.ts",
+      "facts": [
+        "the composed two-plane shape boots as real processes: the API plane through the ROOT entry (bun server.ts, ZECK_ENVIRONMENT=local — PPR-006's function, unchanged) and the experience entry through the function's local-rail affordance (bun api/experience.ts, ZECK_EXPERIENCE_API_URL pointing at the API plane, an UNBOUND ZECK_EXPERIENCE_TOKEN)",
+        "the API plane serves its own route table next to the experience entry: /health answers its honest readiness document (200 ready or the honest 503 down JSON — this pod carries no PostgreSQL, the pre-authorized degraded path) and /identity answers 200 with the exact-revision document (the 40-hex git revision matches the checkout)",
+        "the composed-shape parity and the routing-carry reversal are proven over the real rail (see machineParity)",
+        "SIGTERM drains both entries gracefully (exit 0)",
+        "the direct-execution dashboard (bun apps/dashboard/index.ts — the entry whose behavior is unchanged) boots over the same API plane and answers identically (the parity anchor of the local rail)"
+      ]
+    }
+  },
+  "notRun": [
+    {
+      "boundary": "vercel build --prod (the platform's own framework build that produces the real .vercel/output)",
+      "reason": "requires Vercel credentials the worker pod does not hold",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "the module-loading correction applied to a REAL platform-built two-function output (the live-build proof of deploy/build-vercel-output.ts end to end)",
+      "reason": "depends on vercel build; the correction itself is proven against the synthetic two-function fixture (verifiedLocally.buildToolSyntheticFixture)",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "vercel deploy --prebuilt --prod (shipping the corrected output to zeck-preview-main.vercel.app)",
+      "reason": "the worker never deploys and holds no Vercel credentials (ZECK_EXPERIENCE_DEPLOY_TOKEN is set on the project for the Lead's run)",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "the live routing behavior of the rewrites on the Vercel platform (the capture-to-query conversion and the rewrite-vs-framework-function precedence observed on the live plane)",
+      "reason": "requires a deployed preview; the mechanism is the DOCUMENTED platform behavior (see notes.routingMechanism) and the reversal is pinned by tests, but the live observation is the deployment run's",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "the journey harness's 10 experience-surface steps + 22 workload-family disclosures re-run against the DEPLOYED preview",
+      "reason": "requires the deployed experience surface (F1's finding closes only after the Lead's deployment)",
+      "owner": "Lead post-deployment run"
+    },
+    {
+      "boundary": "deploy:public-smoke against the deployed plane with the experience surface live (the API side is unchanged; the smoke's route coverage pins the API table)",
+      "reason": "requires the deployed preview",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "the credentialed journey steps and a credential-bound experience surface (ZECK_EXPERIENCE_TOKEN materialized)",
+      "reason": "the preview materialization path is PPR-008's scope; this work order's honest-unbound mode is the sanctioned initial state",
+      "owner": "PPR-008 + Lead credentialed deployment run"
+    }
+  ],
+  "notes": {
+    "routingMechanism": {
+      "decision": "vercel.json `rewrites` (the platform's same-application routing layer) dispatch the experience paths to an ADDITIONAL Serverless Function at api/experience.ts (the `api` directory convention), with the ORIGINAL experience path carried in the `path` query parameter and reconstructed by deploy/experience.ts's experienceRequestPath before the dashboard dispatch.",
+      "documentedSources": [
+        {
+          "url": "https://vercel.com/docs/routing/rewrites",
+          "page": "Rewrites on Vercel (page front matter: last updated August 11, 2026; read 2026-09-22)",
+          "facts": [
+            "a same-application rewrite to a Serverless Function CONVERTS the source path captures into QUERY parameters on the destination — the page's own example: {\"source\": \"/resize/:width/:height\", \"destination\": \"/api/sharp\"} 'converts a request like /resize/800/600 to /api/sharp?width=800&height=600'",
+            "wildcard forwarding: {\"source\": \"/docs/:path*\", \"destination\": \"/help/:path*\"} forwards multi-segment tails; destination query values mix literals and captures (\"date=:year-:month\")",
+            "framework considerations: 'Use vercel.json rewrites for same-application routing only when your framework doesn't provide native routing features' — the Fastify framework build has no native platform-level rewrite layer, so vercel.json rewrites is the sanctioned mechanism"
+          ]
+        },
+        {
+          "url": "https://vercel.com/docs/functions",
+          "page": "Vercel Functions (read 2026-09-22)",
+          "facts": [
+            "functions are created from files under the api/ directory (the page's first-function example is api/hello.ts) — the universal convention alongside a framework build",
+            "the framework detection is orthogonal ('Framework-aware. Vercel detects and optimizes for your framework automatically')"
+          ]
+        },
+        {
+          "url": "https://vercel.com/docs/frameworks/backend/fastify",
+          "page": "the Fastify framework entrypoint detection (PPR-006's verified source, re-verified 2026-09-22)",
+          "facts": [
+            "the root server.ts is the ONE root entry the framework detection captures — additional functions ride the api/ directory (PPR-006's live-run platform fact: `functions` patterns only match Serverless Functions inside the api directory; this routing uses NO functions key)"
+          ]
+        }
+      ],
+      "knownPlatformFactsApplied": [
+        "one root entry per framework build — the root server.ts is untouched; the experience surface is an additional function",
+        "the live run's build ships deploy/manifests/*.json into the traced bundle by default — the experience function's file tracing ships the manifests the console reads the same way (to be confirmed in the Lead's build)",
+        "the same tsc transpilation emits ES-module syntax for every graph it builds — hence the two-function correction (below)"
+      ]
+    },
+    "entryPlacement": {
+      "decision": "api/experience.ts (the api-directory Serverless Function convention, served at /api/experience) + deploy/experience.ts (the hosting adapter: the fail-closed inputs, the once-per-isolate singleton, the routing carry) + apps/dashboard/index.ts's ADDITIVE createDashboardHandler export (the exact listener createDashboard's createServer wraps, via the shared composeDashboard core — the direct-execution entry and createDashboard keep their contracts).",
+      "architectureTestsSatisfied": "public-surface.test.ts (the public API route table is UNCHANGED — the M21 exact-table pin passes; the apps surface rules hold for the additive export), module-skeleton.test.ts (no src/ module touched), fresh-clone-governance.test.ts (the governance check runs on the tracked tree: Governance OK), and the lint/typecheck surfaces now cover api/** (tsconfig.json + biome.json carry the new directory)."
+    },
+    "assetRouteAddition": "vercel.json also routes /assets/client.js to the experience function: the served shell references that script on every page and the journey harness's resource-integrity dimension fails on any >=400 referenced resource; the API plane serves no /assets path (verified against the architecture-pinned route table), so the addition changes no API route.",
+    "rootLanding": "the root / serves the dashboard's home page (a real HTML landing: with no recents cookie it performs zero API reads — the discovery hero, catalog grid and safe-start section render — so it serves 200 even in the honest unbound mode; the discover journey's landing dimensions audit it directly).",
+    "buildToolExtension": "deploy/vercel-output.ts is the extracted correction core (PPR-006's module-loading correction, extended to EVERY function graph); deploy/build-vercel-output.ts orchestrates the unchanged platform build + correctVercelOutput and refuses a build missing either required function graph (['index', 'api/experience']).",
+    "sharedSurfaces": "deploy/manifests/variables.json (+4 entries: ZECK_EXPERIENCE_API_URL, ZECK_EXPERIENCE_TOKEN, ZECK_EXPERIENCE_APPLICATION_ID, ZECK_SECRET_EXPERIENCE_TOKEN_REF — 29 insertions, 0 deletions) and deploy/manifests/secret-references.json (+experience-token in every environment's list — 24 insertions, 0 deletions) were appended append-only; deploy/PUBLIC-DEPLOYMENT.md (+sections 13.4-13.6) and deploy/README.md (+the experience-surface layer section) were appended at their ends (PPR-008's concurrent regions untouched). Four manifest-count pins in tests/unit/deployment were updated to the new counts (env-contract 10->11, provision 2->3 twice, manifest local set + 10->11).",
+    "operatorSequenceAfterMerge": [
+      "1. set the experience deployment contract variables on the Vercel project zeck-preview-main (Production environment): ZECK_EXPERIENCE_API_URL=https://zeck-preview-main.vercel.app (the same origin), ZECK_EXPERIENCE_APPLICATION_ID=<the application scope>, and OPTIONALLY materialize ZECK_EXPERIENCE_TOKEN from ZECK_SECRET_EXPERIENCE_TOKEN_REF (the honest unbound mode is the sanctioned initial state — the surface serves without it)",
+      "2. build: bun run deploy:build-vercel-output (the platform build + the two-function module-loading correction; refuses unless BOTH index and api/experience function graphs exist)",
+      "3. the local artifact proof for BOTH functions: boot .vercel/output/functions/index.func/server.js with the §13.2 API-plane variables and .vercel/output/functions/api/experience.func/api/experience.js with the §13.5 experience variables; exercise both against the composed shape",
+      "4. vercel deploy --prebuilt --prod",
+      "5. re-run the journey harness against the public URL: the 10 experience-surface steps and the 22 workload-family disclosures must record their served states (F1 closes), and deploy:public-smoke --url must stay green (the API side of the split is unchanged)"
+    ]
+  }
+}
