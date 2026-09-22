@@ -905,3 +905,169 @@ The worker never deploys and holds no Vercel credentials: every
 live-Vercel step is an honest NOT RUN owned by the Lead credentialed
 deployment run (the registry in `deploy/evidence/ppr-006.json`).
 
+
+## 14. The preview credential issuance & the deterministic sandbox substrate (PPR-008)
+
+The bootstrap composition (`deploy/api.ts`'s `buildBootstrapApp` — the SAME
+shared builder the CLI host and the Vercel hosting adapter compose) now
+binds the REAL domain seams when — and only when — the environment
+MATERIALIZES the preview authority set. Any missing piece leaves exactly
+the honest unbound bootstrap of §13 (the 401/422 vocabulary, the identical
+route table, local/dev behavior unchanged — both shapes are pinned by
+`tests/unit/deployment/preview-authorities.test.ts`). The boot document
+reports the derived `composition.authorityMaterialization` fact: which
+authority set served, and which variable NAMES are absent when unbound
+(never values). The evidence record of this layer is
+`deploy/evidence/ppr-008.json`.
+
+### 14.1 The materialization gate (the environment contract)
+
+| Variable | Role |
+|---|---|
+| `ZECK_DATABASE_URL` (or `ZECK_PG_ADMIN_URL` on the local environment — exactly the value `/health`'s relational-state probe consumes) | the relational authority the whole bound set composes over (the Neon DatabasePort; the same materialized value §13.2 already contracts) |
+| `ZECK_TRANSPORT_TOKEN` | the materialized value of the environment's `transport-token` secret (the Lead's directly-materialized journey token; credential-shaped — environment-only storage, never committed, never logged; the composition compares it in constant time and never echoes it) |
+| `ZECK_PREVIEW_APPLICATION_ID` | the preview application id (a UUID) whose durable scope the materialized authorities bind |
+
+The reference binding `ZECK_SECRET_TRANSPORT_TOKEN_REF`
+(`zeck-secret://<environment>/transport-token`) and the two value variables
+are contracted in `deploy/manifests/variables.json` +
+`secret-references.json`. When all three values are present,
+`deploy/preview-authorities.ts` constructs over the real `DatabasePort`:
+
+- **bearer authentication** — `createBearerTokenAuthenticator` over the
+  materialized token → the SEEDED transport principal, governed by the
+  DURABLE credential row (revoking that row genuinely disables the token);
+- **SQL scope resolution** — the scope resolver over the SQL identity store
+  (durable membership rows are the only scope producer, exactly as
+  everywhere else in the platform);
+- **the credential lifecycle service** — `POST/GET /credentials` +
+  rotate/revoke over the real SQL stores and idempotency ledger;
+- **the execution service** — the SQL execution store + idempotency +
+  the REAL policy admission authority (a published baseline unrestricted
+  set — the same production composition `tests/integration/postgres/`'s
+  agents world wires; without a published set the authority denies by
+  default and no execution could ever run);
+- **the agents inventory** — the SQL registry + the read-only enumeration
+  seam.
+
+Economics and codebase analysis STAY honestly unbound (their routes keep
+§13's 422s) — no model credentials exist on this plane, by design.
+
+### 14.2 How a transport credential is issued/bound on the preview
+
+There are two paths, and both are real:
+
+1. **The Lead's directly-materialized journey token (the binding path on
+   the preview).** Set the reference + materialized value + application id
+   on the deployment (§14.4) and redeploy: on every cold start the
+   composition's IDEMPOTENT SEEDING converges the durable rows — the
+   tenant, the preview application (the env's id), the transport
+   principal + its OWNER membership, the substrate worker principal + its
+   membership, and the transport credential row (ACTIVE, referencing
+   `zeck-secret://<environment>/transport-token` — the material lives only
+   in the deployment environment, never in the record). All seeded
+   identities are deterministic functions of the application id, so
+   re-running the seed yields the SAME rows (`ON CONFLICT DO NOTHING`
+   guarded inserts; safe under concurrent isolates; run-twice-same-rows is
+   pinned on the real rail by
+   `tests/integration/postgres/preview-authorities.test.ts`). Revoking the
+   transport credential through `POST /credentials/:id/revoke` is the REAL
+   lifecycle: the durable row turns `revoked` and the token stops
+   authenticating (pinned on the real rail). Revocation is terminal — a
+   cold start never resurrects a revoked credential; re-binding after
+   revocation means binding a fresh `ZECK_PREVIEW_APPLICATION_ID`.
+
+2. **The `POST /credentials` lifecycle over the materialized authority.**
+   The routes are bound (no more 422 "not wired"): `GET /credentials`
+   lists the real durable rows and carries the deployment's issuance gate
+   fact; `POST /credentials/:id/revoke` performs the real, idempotent
+   revocation. On the preview, `issue` and `rotate` answer DEP-011's
+   honest issuance-gate 422 (`CAPABILITY_UNAVAILABLE`: "credential
+   issuance is not enabled for this deployment") because the preview's
+   only secret-store adapter is the environment materialization, which is
+   READ-ONLY — the external provisioning plane materializes values; the
+   platform never writes secrets into it, and the show-once contract
+   (DEP-011 AC1) cannot be honored against a store that cannot hold the
+   material. Opening the gate requires a deployment whose secret store can
+   hold issued material (a durable secret-store adapter is a future Work
+   Order's surface); the issuance path itself — issue → the show-once
+   secret authenticates → rotate retires the predecessor and the successor
+   secret works — is proven over the SAME SQL authorities on the real rail
+   with an issuance-capable secret store (the canonical
+   `tests/integration/postgres/credentials.test.ts` pattern), in
+   `tests/integration/postgres/preview-authorities.test.ts`.
+
+### 14.3 The deterministic sandbox substrate — what it is, and what it is not
+
+`deploy/preview-substrate.ts` drives a CREATED execution to an honest
+terminal receipt on the materialized plane — THROUGH the execution
+service's own state machine (`authorize → plan → [the planning decision]
+→ queue → start → [sandbox-admitted, sandbox-completed step events] →
+verify → pass` with the PASS verification result), under its frozen
+legality rules, its idempotency arbitration and its append-only gapless
+ledger. There is NO bypass and no direct table write: the substrate is a
+decorator over the real service whose post-create drive issues ordinary
+governed commands with deterministic idempotency keys
+(`substrate:<executionId>:<step>`), so replays and concurrent drives
+converge on the same durable outcome, and the create response itself is
+the terminal receipt.
+
+**What it IS:** a repository-resident deterministic substrate. Every
+record it produces is labeled `preview-deterministic-substrate` — the
+execution metadata carries `substrateOrigin` (caller keys preserved),
+every drive envelope carries the origin as its provenance cause, the
+sandbox evidence envelopes record the immutable runtime metadata
+(`runtime: "deterministic"`, `modelBacked: false`) and the truthful
+zero-cost facts (`costMicroUsd: "0"`, zero usage), and the verification
+result names the substrate as its strategy and recorder. The "output" is
+a fixed deterministic function of the task record that says plainly what
+it is (the summarize fixture states that no model was involved).
+
+**What it is NOT:** not a model-backed execution (no model credentials
+are bound on this plane — the economics and codebase-analysis seams stay
+honestly unbound), not a planner, not a verification authority, and not a
+second state machine. It engages ONLY the materialized composition — the
+unbound local/dev shapes never see it. On this plane it drives EVERY
+execution created through the public API (the preview plane IS the
+sandbox; there is no other runtime behind it). The `/executions/:id/results`
+cost summary stays `null` (the honest no-settled-facts projection: the
+budgets settlement surface is unbound here) — the zero-cost facts live on
+the ledger's `sandbox-completed` envelope, durable and inspectable
+through `/executions/:id/events` (note the wire events surface applies
+the platform's secret-scrub guard to token-shaped KEYS, so the usage
+token counts appear as `[redacted]` on that projection while the durable
+ledger keeps the true zero values).
+
+### 14.4 The operator sequence (the Lead's credentialed run, after merge)
+
+1. Materialize the authority set on the Vercel project (`zeck-preview-main`,
+   Production environment — NAMES only; values never transit this
+   repository): `ZECK_SECRET_TRANSPORT_TOKEN_REF`
+   (`zeck-secret://preview/transport-token`), `ZECK_TRANSPORT_TOKEN` (the
+   journey token material — credential-shaped, high-entropy), and
+   `ZECK_PREVIEW_APPLICATION_ID` (a fresh UUID — e.g. `uuidv7`), alongside
+   the already-contracted `ZECK_DATABASE_URL`.
+2. Redeploy the merged `main` through §13.3's sanctioned path
+   (`bun run deploy:build-vercel-output` → the local artifact proof →
+   `vercel deploy --prebuilt --prod`).
+3. Verify with §13.3's smoke; then verify the MATERIALIZED plane: the boot
+   document's `composition.authorityMaterialization` fact reads
+   `materialized (...)`, `/health` reports the relational authority ready,
+   and the credentialed journey re-run records real outcomes:
+
+   ```bash
+   ZECK_JOURNEY_TOKEN=<the materialized token> \
+   ZECK_JOURNEY_APPLICATION_ID=<the preview application id> \
+   bun tests/journey/run.ts --url https://zeck-preview-main.vercel.app \
+     --environment preview --branch main
+   ```
+
+4. To disable the credentialed journeys: revoke the transport credential
+   through `POST /credentials/<credentialId>/revoke` (the real, terminal
+   lifecycle effect — pinned on the real rail) or unset the
+   materialization variables and redeploy (the honest unbound shape
+   returns).
+
+The worker never deploys and holds no Neon/Vercel credentials: every
+live-Neon/live-Vercel step above is the Lead's credentialed run (the NOT
+RUN registry in `deploy/evidence/ppr-008.json`).
