@@ -34,6 +34,20 @@
  * CLI host is by construction and pinned by
  * tests/unit/deployment/vercel-adapter.test.ts.
  *
+ * PPR-008 — THE AUTHORITY MATERIALIZATION BINDING: when the environment
+ * materializes the preview authority set (ZECK_DATABASE_URL on
+ * preview/staging/production — ZECK_PG_ADMIN_URL on local, exactly the
+ * value /health's relational-state probe consumes — plus ZECK_TRANSPORT_TOKEN
+ * and ZECK_PREVIEW_APPLICATION_ID; see deploy/preview-authorities.ts), the
+ * composition binds the REAL domain seams over the relational DatabasePort
+ * (bearer authentication, SQL scope resolution, the credential lifecycle
+ * service, the execution service with the deterministic sandbox substrate,
+ * the agents inventory) — economics and codebase analysis stay honestly
+ * unbound (their routes keep today's 422s). ANY missing piece leaves
+ * EXACTLY today's unbound shape below (local/dev behavior unchanged; both
+ * shapes are pinned by tests). The boot document reports the truthful
+ * authorityMaterialization composition fact (derived, never hardcoded).
+ *
  * Usage:
  *   bun run deploy:api -- --environment local [--host 127.0.0.1] [--port 8787]
  *   bun run deploy:api -- --environment preview --branch work/DEP-001-x
@@ -42,7 +56,9 @@
  *   ZECK_ENVIRONMENT, ZECK_DEPLOY_GIT_REVISION (optional override),
  *   ZECK_API_HOST, ZECK_API_PORT, and the environment's dependency
  *   variables (ZECK_PG_ADMIN_URL / ZECK_DATABASE_URL + reference
- *   bindings) for the /health readiness facts.
+ *   bindings) for the /health readiness facts, plus the preview
+ *   authority materialization set (ZECK_TRANSPORT_TOKEN +
+ *   ZECK_PREVIEW_APPLICATION_ID) documented in deploy/PUBLIC-DEPLOYMENT.md.
  */
 
 import { readFileSync, realpathSync } from "node:fs";
@@ -75,6 +91,14 @@ import {
   REPOSITORY_ROOT,
   requireEnvironment,
 } from "./lib";
+import {
+  buildPreviewAuthorities,
+  type PreviewAuthorities,
+  type PreviewAuthorityMaterialization,
+  readPreviewAuthorityMaterialization,
+  relationalUrlVariableOf,
+} from "./preview-authorities";
+import { createDeterministicSubstrateExecutions } from "./preview-substrate";
 
 const DEFAULT_DATA_ROOT = join(
   process.env.XDG_DATA_HOME ?? join(process.env.HOME ?? "/tmp", ".local", "share"),
@@ -242,6 +266,13 @@ export interface BootstrapCompositionFacts {
   readonly transport: string;
   readonly deploymentSeams: string;
   readonly domainCapabilities: string;
+  /**
+   * PPR-008: the truthful authority-materialization composition fact —
+   * which authority set served (the honest unbound bootstrap vs the
+   * materialized preview authorities), DERIVED from the environment never
+   * hardcoded. Absent materialization variables are reported by NAME only.
+   */
+  readonly authorityMaterialization: string;
 }
 
 /**
@@ -268,6 +299,13 @@ export interface BootstrapApp {
   readonly composition: BootstrapCompositionFacts;
   /** The environment contract evaluation over the current process environment. */
   readonly environmentContract: EnvironmentContractEvaluation;
+  /**
+   * PPR-008: the materialized preview authorities (undefined in the honest
+   * unbound bootstrap shape). Present when the environment materialized the
+   * authority set — the CLI host drains the relational pool on shutdown;
+   * hosted isolates are recycled instead (never drained).
+   */
+  readonly previewAuthorities?: PreviewAuthorities;
 }
 
 /**
@@ -306,9 +344,23 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
   const revision = exactRevision();
   const identity = runtimeDeploymentIdentity(manifest, ledger, revision, environment, slug);
 
-  // The bootstrap composition: real transport + real deployment seams,
-  // unbound (honestly refusing) domain capabilities.
-  const authenticate: Authenticate = async () => {
+  // PPR-008 — THE MATERIALIZATION GATE: bind the REAL domain seams only
+  // when the environment materializes the preview authority set; any
+  // missing piece serves EXACTLY today's honest unbound composition.
+  const materialization: PreviewAuthorityMaterialization = readPreviewAuthorityMaterialization(
+    process.env,
+    environment,
+  );
+  const authorities = materialization.materialized
+    ? buildPreviewAuthorities({
+        environment,
+        databaseUrl: materialization.databaseUrl,
+        transportToken: materialization.transportToken,
+        applicationId: materialization.applicationId,
+      })
+    : undefined;
+
+  const unboundAuthenticate: Authenticate = async () => {
     throw new PlatformError({
       code: "AUTHENTICATION_FAILED",
       message:
@@ -317,18 +369,31 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
   };
 
   const server = createApiServer({
-    executions: unboundCapability("executions"),
-    agents: unboundCapability("agents"),
+    executions:
+      authorities === undefined
+        ? unboundCapability("executions")
+        : createDeterministicSubstrateExecutions({
+            inner: authorities.executions,
+            actor: authorities.substrateActor,
+            generateId: authorities.generateId,
+            now: authorities.now,
+          }),
+    agents: authorities === undefined ? unboundCapability("agents") : authorities.agents,
     economics: unboundCapability("economics"),
-    scopeResolver: unboundCapability("scopeResolver"),
-    authenticate,
-    listAgentIdsOfApplication: async () => {
-      throw new PlatformError({
-        code: "CAPABILITY_UNAVAILABLE",
-        message:
-          "the agents inventory capability is not bound in the bootstrap deployment composition",
-      });
-    },
+    ...(authorities === undefined ? {} : { credentials: authorities.credentials }),
+    scopeResolver:
+      authorities === undefined ? unboundCapability("scopeResolver") : authorities.scopeResolver,
+    authenticate: authorities === undefined ? unboundAuthenticate : authorities.authenticate,
+    listAgentIdsOfApplication:
+      authorities === undefined
+        ? async () => {
+            throw new PlatformError({
+              code: "CAPABILITY_UNAVAILABLE",
+              message:
+                "the agents inventory capability is not bound in the bootstrap deployment composition",
+            });
+          }
+        : authorities.listAgentIdsOfApplication,
     codebaseAnalyzer: unboundCapability("codebaseAnalyzer"),
     dependencyReadiness: async () => {
       const probes = await bootstrapDependencyProbes(manifest, environment);
@@ -362,6 +427,18 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
 
   const contract = evaluateEnvironmentContract(manifest, environment, process.env);
 
+  const composition: BootstrapCompositionFacts = {
+    transport: "real (createApiServer — the repository public route table)",
+    deploymentSeams: "real (runtime identity + dependency readiness)",
+    domainCapabilities:
+      authorities === undefined
+        ? "unbound (honest CAPABILITY_UNAVAILABLE / AUTHENTICATION_FAILED)"
+        : "materialized (the preview authority set over the relational DatabasePort: bearer authentication, SQL scope resolution, the credential lifecycle, the execution service with the deterministic sandbox substrate, the agents inventory; economics and codebase analysis honestly unbound)",
+    authorityMaterialization: materialization.materialized
+      ? `materialized (${relationalUrlVariableOf(environment)} + ZECK_TRANSPORT_TOKEN + ZECK_PREVIEW_APPLICATION_ID present; the durable preview seed converges idempotently at cold start; the deterministic sandbox substrate drives created executions to honest terminal receipts)`
+      : `unmaterialized (${materialization.missing.join(", ")} absent — exactly the honest unbound bootstrap shape; local/dev behavior unchanged)`,
+  };
+
   return {
     server,
     manifest,
@@ -371,12 +448,9 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
     revision,
     slug,
     identity,
-    composition: {
-      transport: "real (createApiServer — the repository public route table)",
-      deploymentSeams: "real (runtime identity + dependency readiness)",
-      domainCapabilities: "unbound (honest CAPABILITY_UNAVAILABLE / AUTHENTICATION_FAILED)",
-    },
+    composition,
     environmentContract: contract,
+    ...(authorities === undefined ? {} : { previewAuthorities: authorities }),
   };
 }
 
@@ -427,6 +501,7 @@ async function main(): Promise<void> {
       transport: app.composition.transport,
       deploymentSeams: app.composition.deploymentSeams,
       domainCapabilities: app.composition.domainCapabilities,
+      authorityMaterialization: app.composition.authorityMaterialization,
     },
     environmentContract: {
       satisfied: app.environmentContract.satisfied,
@@ -439,6 +514,11 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     console.log(JSON.stringify({ tool: "deploy/api", status: "shutting-down", signal }));
     await app.server.app.close();
+    // PPR-008: drain the materialized relational pool (a hosted isolate is
+    // recycled by the platform instead; the CLI host drains honestly).
+    if (app.previewAuthorities !== undefined) {
+      await app.previewAuthorities.close();
+    }
     process.exit(0);
   };
   process.once("SIGTERM", () => {

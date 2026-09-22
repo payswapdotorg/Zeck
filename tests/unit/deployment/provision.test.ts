@@ -188,7 +188,7 @@ describe("plan mode requires no credentials at all (AC1)", () => {
       "zeck-local-redis",
       "zeck-local-runner",
     ]);
-    expect(report.steps.secretReferenceScaffold.references).toBe(2);
+    expect(report.steps.secretReferenceScaffold.references).toBe(3);
     expect(report.steps.secretReferenceScaffold.externalOnly).toBe(true);
     expect(report.steps.sandboxAccountRecords.records).toEqual([
       {
@@ -491,7 +491,7 @@ describe("secret handling is external-only — hostile probes (AC2)", () => {
       doctrine: string;
       secretReferenceVariables: Array<{ reference: string; injectionPoint: string }>;
     };
-    expect(ciSkeleton.secretReferenceVariables).toHaveLength(2);
+    expect(ciSkeleton.secretReferenceVariables).toHaveLength(3);
     for (const entry of ciSkeleton.secretReferenceVariables) {
       expect(entry.reference).toMatch(/^zeck-secret:\/\/local\/[a-z0-9-]+$/);
       expect(entry.injectionPoint).toContain("external secret manager");

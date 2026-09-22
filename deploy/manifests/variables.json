@@ -598,6 +598,28 @@
       "credentialShaped": false,
       "holds": "zeck-secret://<environment>/otlp-auth-token",
       "description": "Reference to the environment's OTLP collector bearer token behind the telemetry exporter."
+    },
+    {
+      "name": "ZECK_SECRET_TRANSPORT_TOKEN_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/transport-token",
+      "description": "PPR-008: Reference to the environment's application transport credential — the bearer token the preview authority materialization binds for the bootstrap composition's authenticate seam (deploy/preview-authorities.ts; the preview application's principal/membership/credential rows are seeded idempotently from it)."
+    },
+    {
+      "name": "ZECK_TRANSPORT_TOKEN",
+      "type": "bearer-credential",
+      "required": false,
+      "credentialShaped": true,
+      "description": "PPR-008: Materialized value of the environment's transport-token secret (the Lead's directly-materialized journey token). Credential-shaped: environment-only storage, never committed, never logged. The non-secret reference binding is ZECK_SECRET_TRANSPORT_TOKEN_REF; the preview authority materialization consumes it immediately at composition build (constant-time comparison, never echoed)."
+    },
+    {
+      "name": "ZECK_PREVIEW_APPLICATION_ID",
+      "type": "zeck-identifier",
+      "required": false,
+      "credentialShaped": false,
+      "description": "PPR-008: The preview application id (UUID) whose durable scope the materialized preview authorities bind — the idempotent cold-start seed ensures the tenant, the application, the transport principal/membership and the transport credential rows exist on the migrated relational authority. Together with ZECK_TRANSPORT_TOKEN and the relational URL it forms the materialization gate: any missing piece leaves the bootstrap composition's honest unbound shape."
     }
   ]
 }
