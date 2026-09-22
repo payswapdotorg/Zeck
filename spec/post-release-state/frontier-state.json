@@ -2,18 +2,18 @@
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
   "status": "wave-c-open",
-  "currentBase": "85efbb7682971c0aed3a1825c7a952912a682c2b",
+  "currentBase": "a5cc9fa98a047f67dd525871fc69b3698591bc45",
   "delivered": [
     "PPR-001",
     "PPR-002",
     "PPR-003",
     "PPR-004",
     "PPR-005",
-    "PPR-006"
+    "PPR-006",
+    "PPR-008"
   ],
   "eligible": [
-    "PPR-007",
-    "PPR-008"
+    "PPR-007"
   ],
   "inFlight": [],
   "blocked": [],
