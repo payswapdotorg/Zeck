@@ -80,6 +80,51 @@ export { createPolicyMessagingAdmission } from "./policy-messaging-admission";
 export { createPolicyRealtimeAdmission } from "./policy-realtime-admission";
 export { createRealtimeExecutionLedgerAdapter } from "./realtime-execution-ledger";
 export { createRealtimeModalityAdapter } from "./realtime-modality-adapter";
+// PPR-010: the ALTERNATE REAL external realtime rail (the published
+// socket.io server package, embedded) + its environment composition
+// gate. Nothing vendor-shaped crosses these exports (all
+// socket.io/engine.io types stay inside the adapter file).
+export type {
+  SocketIoFailureClassification,
+  SocketIoFailureKind,
+  SocketIoRailClientAccess,
+  SocketIoRailClientAccessRequest,
+  SocketIoRailCredentialSource,
+  SocketIoRailEffectKind,
+  SocketIoRailEffectRecord,
+  SocketIoRailEmbeddedServer,
+  SocketIoRailIdempotencyLedger,
+  SocketIoRailServerObservation,
+  SocketIoRealtimeRail,
+  SocketIoRealtimeRailOptions,
+  StoredSocketIoRailAcknowledgment,
+} from "./socketio-realtime-rail";
+export {
+  bootEmbeddedSocketIoServer,
+  classifySocketIoFailure,
+  createEnvironmentSocketIoCredentialSource,
+  createInMemorySocketIoRailIdempotencyLedger,
+  createSocketIoRealtimeRail,
+  LOCAL_SOCKETIO_SERVER_LABEL,
+  SOCKETIO_CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  SOCKETIO_CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  SOCKETIO_FAILURE_NORMALIZATION,
+  SOCKETIO_RAIL_CAPABILITY_ID,
+  SOCKETIO_RAIL_DEFAULT_CHANNEL_KINDS,
+  socketIoChannelSessionRefOf,
+  socketIoClientAccessTtlOf,
+  socketIoUpstreamChannelNameOf,
+} from "./socketio-realtime-rail";
+export type {
+  SocketIoRailEnvironmentBinding,
+  SocketIoRailMaterialization,
+} from "./socketio-realtime-rail-binding";
+export {
+  bindEnvironmentSocketIoRail,
+  readSocketIoRailMaterialization,
+  SOCKETIO_ENV_CREDENTIAL_REFERENCE,
+  SOCKETIO_RAIL_ENV_VARIABLES,
+} from "./socketio-realtime-rail-binding";
 export { SqlDeploymentStore } from "./sql-deployment-store";
 export { SqlMediaStore } from "./sql-media-store";
 export { SqlMessagingStore } from "./sql-messaging-store";

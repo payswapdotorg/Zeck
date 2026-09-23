@@ -1369,3 +1369,100 @@ secret references on the target environment → redeploy through the
 journeys against the plane with real credentials → record the
 credentialed evidence. Until then the honest state stands: local-rail
 conformance green, external availability NOT RUN.
+
+## 16. The alternate realtime rail + the substitution drill (PPR-010 — GAP-003's level-5 rung)
+
+The provider-independence iron law (neutral capability port →
+conformance contract → provider adapter → provider/project) now has
+its SECOND REAL subject: `src/modules/deployments/adapters/socketio-realtime-rail.ts`
+implements the same `RealtimeRail` seam over the published, UNMODIFIED
+[`socket.io`](https://socket.io) server package (4.8.x, no fork),
+EMBEDDING a real socket.io server in process (the honest self-hosted
+form — the binding's `ZECK_SOCKETIO_URL` is the listen/attach
+coordinate). All socket.io/engine.io types stay inside the adapter;
+the port sees only neutral shapes; the channel identity is a
+deterministic opaque hash of the neutral coordinates.
+
+**The substitution/failover drill**
+(`tests/conformance/realtime-rail/rail-substitution.drill.test.ts`)
+is the maturity ladder's level-5 evidence (GAP-003: "no
+alternate-solution substitution drills"): the SAME durable session
+coordinates — the same neutral coordinates and the SAME stable
+rail-level idempotency keys — drive BOTH genuinely different REAL
+rails (the local `livekit-server` primary while the binary is
+present; the embedded socket.io alternate, ALWAYS real); when the
+primary is SIGSTOP-refused, the coordinates REPLAY against the
+alternate and converge: exactly-once upstream effects PER RAIL,
+identical neutral acknowledgment shapes, the five shared failure
+kinds carrying the EXACT same neutral reason strings on both rails.
+**Explicitly out of scope** (the drill's honest residual): the
+COMPOSITION-level auto-rebind policy — a preference order and
+automatic failover inside the composition touches the frozen
+admission ordering and can mask failures; this drill proves the
+SEAM-level substitutability any such policy would rest on, never the
+policy itself.
+
+**The honest availability state**: the socket.io rail is verified
+ONLY against its own LOCAL embedded server (label
+`local-socketio-server`) — a real WebSocket server (real handshakes,
+real rooms, real acknowledgments, real "went away" failure modes) on
+loopback inside this repository's suites. NO external, managed or
+production socket.io availability is claimed or implied anywhere;
+every external boundary is owned by a Lead credentialed run (the
+evidence record's notRun registry).
+
+**The environment contract** (append-only in
+`deploy/manifests/variables.json` +
+`deploy/manifests/secret-references.json`):
+
+| Variable | Role |
+|---|---|
+| `ZECK_SOCKETIO_URL` | the rail's listen/attach coordinate (non-secret; the embedded server binds it) |
+| `ZECK_SOCKETIO_AUTH_SECRET` | the rail's handshake-auth secret (credential-shaped; materialized from `ZECK_SECRET_SOCKETIO_AUTH_SECRET_REF`) |
+
+**The composition gate** (the established materialization-gate
+pattern): `src/modules/deployments/adapters/socketio-realtime-rail-binding.ts`
+binds the REAL alternate rail only when the environment materializes
+its set (URL + auth secret); any missing piece keeps EXACTLY the
+simulated rail behind the same neutral seam (both shapes pinned by
+tests). The gate binds ONE rail — it never auto-fails-over (the
+recorded residual above). The adapter materializes the secret INSIDE
+its own scope immediately before upstream calls — never in a port
+shape, a log line, or an acknowledgment.
+
+**The idempotency design** (which mechanism where): OPEN and CLOSE
+converge across full ADAPTER crashes WITHOUT any ledger because the
+channel's room name is a deterministic function of the stable key and
+the channel registry lives SERVER-side (the embedded server — or any
+socket.io server the adapter attaches to — survives the adapter
+instance); DELIVERY and TRANSFER (room-emit effects) converge through
+the ADAPTER's in-memory key ledger AND the rail protocol's own
+server-side key semantics. A durable ledger binding remains the
+composition's concern, recorded as the honest boundary in the
+evidence record (the PPR-009 residual, unchanged).
+
+**The delivery semantics** (honest): an EMPTY room completes the
+broadcast vacuously (exactly like publishing to a room with no
+participants); receivers present in the room that fail to acknowledge
+within the bounded window fail `no-receiver` (the socket.io seam's
+own honest condition).
+
+**The short-lived client-access seam**: the adapter's
+`mintClientAccess` issues a SHORT-LIVED (≤ the session policy's
+ceiling; default 600s, hard ceiling 3600s) single-purpose (join, not
+administer) HMAC-signed join grant redeemable in the socket.io
+handshake auth payload — scoped to ONE channel, expiring, honored
+only while that channel is open; the descriptor is vendor-neutral
+(`SocketIoRailClientAccess`), the grant value is vendor material by
+nature.
+
+**The operator sequence for a future credentialed/managed run** (the
+Lead's): provision a socket.io-compatible realtime server reachable
+from the plane (or accept the embedded self-hosted form) → set
+`ZECK_SOCKETIO_URL` + materialize the auth secret from the
+environment's secret reference on the target environment → redeploy
+through the §13.3/§13.6 pipeline → run the conformance suite + the
+realtime journeys against the plane → record the credentialed
+evidence. Until then the honest state stands: local-rail conformance
+green (all THREE subjects), the drill green, external availability
+NOT RUN.

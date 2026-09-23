@@ -50,8 +50,9 @@ describe("the environment contract over the real manifest (AC3/AC4)", () => {
     expect(evaluation.satisfied).toBe(true);
     // PPR-008 appended the transport-token reference and PPR-007 appended
     // the experience-token reference; PPR-009 appended the livekit
-    // keypair references (additive manifests, all preserved).
-    expect(evaluation.materializedReferences).toHaveLength(14);
+    // keypair references; PPR-010 appended the socketio auth-secret
+    // reference (additive manifests, all preserved).
+    expect(evaluation.materializedReferences).toHaveLength(15);
   });
 
   test("a missing required variable is reported", () => {

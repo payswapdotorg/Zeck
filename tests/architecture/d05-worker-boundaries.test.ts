@@ -227,7 +227,15 @@ describe("D-05 worker-fabric architecture boundaries (WORK-046)", () => {
     // LiveKit Server SDK — the realtime rail's vendor dependency,
     // confined to src/modules/deployments/adapters/ by the
     // SDK-boundary table; vendor types never cross the adapter).
-    expect([...packages].sort()).toStrictEqual(["fastify", "livekit-server-sdk", "pg"]);
+    // PPR-010 sanctions socket.io + socket.io-client (the ALTERNATE
+    // rail's server + dispatch client, same confinement).
+    expect([...packages].sort()).toStrictEqual([
+      "fastify",
+      "livekit-server-sdk",
+      "pg",
+      "socket.io",
+      "socket.io-client",
+    ]);
   });
 
   test("B8 the execution-compute provider is declared established with the port contract", () => {

@@ -245,7 +245,13 @@ describe("the D-04 durable-orchestration boundaries (WORK-045)", () => {
     // LiveKit Server SDK — the realtime rail's vendor dependency,
     // confined to src/modules/deployments/adapters/ by the SDK-boundary
     // table; vendor types never cross the adapter).
-    expect(allowedPackages).toEqual(["fastify", "livekit-server-sdk", "pg"]);
+    expect(allowedPackages).toEqual([
+      "fastify",
+      "livekit-server-sdk",
+      "pg",
+      "socket.io",
+      "socket.io-client",
+    ]);
     const violations = scanDependencyRules(files, { allowedPackages });
     expect(violations.map((v) => `${v.rule} @ ${v.path}`)).toEqual([]);
   });

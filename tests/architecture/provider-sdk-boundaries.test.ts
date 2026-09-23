@@ -49,8 +49,16 @@ describe("provider SDK boundaries", () => {
     // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
     // LiveKit Server SDK — the realtime rail's vendor dependency,
     // confined to src/modules/deployments/adapters/ by the SDK-boundary
-    // table; vendor types never cross the adapter).
-    expect([...sdkImports].sort()).toEqual(["fastify", "livekit-server-sdk", "pg"]);
+    // table; vendor types never cross the adapter). PPR-010 sanctions
+    // socket.io + socket.io-client (the published, UNMODIFIED alternate
+    // rail server + its dispatch client — same confinement).
+    expect([...sdkImports].sort()).toEqual([
+      "fastify",
+      "livekit-server-sdk",
+      "pg",
+      "socket.io",
+      "socket.io-client",
+    ]);
   });
 
   test("the SDK boundary table pins every known provider family to its owning adapter", () => {
@@ -83,6 +91,11 @@ describe("provider SDK boundaries", () => {
       // UNMODIFIED) boundary-confined to the deployments module's
       // realtime rail adapters — vendor types never cross the adapter.
       "livekit-server-sdk": "src/modules/deployments/adapters/",
+      // PPR-010: the socket.io ALTERNATE rail's vendor packages
+      // (the server + the dispatch client, published, UNMODIFIED) —
+      // same boundary confinement, vendor types never cross.
+      "socket.io": "src/modules/deployments/adapters/",
+      "socket.io-client": "src/modules/deployments/adapters/",
       "@workflowos/*": "src/integrations/workflowos/adapters/",
       // WORK-054: the substrate runtime adapter SDKs (E2B, Daytona,
       // Modal) boundary-confined to the substrate-economics adapter
