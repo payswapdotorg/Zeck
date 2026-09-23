@@ -36,6 +36,13 @@
  * routing carry passes through unchanged).
  */
 
+/// <reference types="node" />
+// The Vercel build synthesizes its transpilation config in a temp
+// directory, where the default @types auto-inclusion walk cannot see
+// the repository's node_modules — this explicit reference anchors the
+// node types for this function's whole import graph (the same anchor
+// the server.ts graph receives transitively through @types/pg).
+
 import { createServer } from "node:http";
 import { getExperienceHandler } from "../deploy/experience";
 
