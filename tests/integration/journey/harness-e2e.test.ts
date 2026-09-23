@@ -130,7 +130,13 @@ describe("PPR-003 AC1: the local-plane run (real deploy/api.ts, real HTTP)", () 
     expect(routeTable?.status).toBe("pass");
     expect(routeTable?.observed).toContain("26 routes probed");
     expect(routeTable?.observed).toContain("18 auth-boundary (401)");
-    expect(routeTable?.observed).toContain("7 capability-unbound (422)");
+    expect(routeTable?.observed).toContain("3 capability-unbound (422)");
+    // The credentials seams are composition-dependent (PPR-008): this
+    // local unbound plane answers the unbound composition's 422; the
+    // materialized composition's 401 is the same honest class.
+    expect(routeTable?.observed).toContain(
+      "4 capability-or-auth-boundary (4 unbound-composition 422 / 0 materialized-composition 401)",
+    );
     expect(routeTable?.observed).toContain("1 public-artifact (200)");
   });
 

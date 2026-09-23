@@ -33,7 +33,7 @@ import {
 } from "./context";
 import { carriesAvailabilityDisclosure, titleOf } from "./dom";
 import { excerptOf, fetchSurface } from "./http";
-import { ROUTE_PROBES, routeProbeProblem } from "./route-probes";
+import { capabilitySeamComposition, ROUTE_PROBES, routeProbeProblem } from "./route-probes";
 import type { JourneyRecord, StepEvidence } from "./types";
 
 /** One journey definition (id + title + the ordered steps). */
@@ -58,7 +58,7 @@ async function experienceStep(
   stepId: string,
   title: string,
   path: string,
-): Promise<void> {
+): Promise<"pass" | "fail" | "not-run"> {
   const audited = await auditSurface(ctx, path);
   const evidence = audited.fetch.evidence;
   if (!audited.fetch.ok) {
@@ -89,7 +89,7 @@ async function experienceStep(
       verificationRequirement:
         "re-run this harness: the experience surface must answer and the step must record its served state",
     });
-    return;
+    return "fail";
   }
   if (!audited.isHtml) {
     recordStep(ctx, {
@@ -106,7 +106,7 @@ async function experienceStep(
         owner: OWNERS.leadPostDeployment,
       },
     });
-    return;
+    return "not-run";
   }
   // Served HTML: run every dimension + findings for failures.
   raiseDimensionFindings(ctx, stepId, new URL(path, ctx.targetUrl).toString(), audited);
@@ -128,6 +128,7 @@ async function experienceStep(
     ...(dimensionFailure === undefined ? {} : { defectClass: dimensionFailure.defectClass }),
     dimensions: audited.dimensions,
   });
+  return dimensionFailure === undefined ? "pass" : "fail";
 }
 
 // ---------------------------------------------------------------------------
@@ -637,8 +638,12 @@ async function journeySandboxStart(ctx: HarnessContext): Promise<void> {
     return;
   }
   try {
-    const receipt = JSON.parse(created.body) as { id?: string };
-    ctx.artifacts.executionId = receipt.id ?? null;
+    // The pinned wire receipt contract (src/api/serialization.ts
+    // toWireReceipt) carries the execution's id as `executionId` —
+    // never `id` (the PPR-008 local materialized run recorded the
+    // harness-side parse mismatch; fixed here).
+    const receipt = JSON.parse(created.body) as { executionId?: string };
+    ctx.artifacts.executionId = receipt.executionId ?? null;
   } catch {
     // handled by the null check below
   }
@@ -650,9 +655,9 @@ async function journeySandboxStart(ctx: HarnessContext): Promise<void> {
     evidence: created.evidence,
     observed:
       ctx.artifacts.executionId !== null
-        ? `201 with execution id ${ctx.artifacts.executionId}`
-        : "201 without an execution id in the receipt",
-    expected: "201 with the execution receipt (id present)",
+        ? `201 with executionId ${ctx.artifacts.executionId}`
+        : "201 without an executionId in the receipt (the wire receipt contract carries executionId)",
+    expected: "201 with the execution receipt (executionId present — the wire receipt contract)",
     ...(ctx.artifacts.executionId !== null ? {} : { defectClass: "route-boundary" }),
   });
 }
@@ -714,17 +719,37 @@ async function journeyFirstExecution(ctx: HarnessContext): Promise<void> {
   }
   const verification = await fetchSurface(`${executionUrl}/verification`, { headers });
   let verificationOutcome = "unrecorded";
+  let verificationAllPass = false;
   if (verification.ok && verification.evidence.status === 200) {
     try {
-      const parsed = JSON.parse(verification.body) as { status?: string; outcome?: string };
-      verificationOutcome = parsed.outcome ?? parsed.status ?? "recorded";
+      const parsed: unknown = JSON.parse(verification.body);
+      // The wire contract: an ARRAY of verification results (each with a
+      // status — toWireVerification); the outcome records the distinct
+      // statuses (all-pass iff results are recorded and every one passes).
+      // A non-array body is recorded unparsed — never fabricated.
+      if (Array.isArray(parsed)) {
+        const statuses = [
+          ...new Set(
+            parsed.map((entry) =>
+              typeof entry === "object" && entry !== null
+                ? String((entry as { status?: unknown }).status ?? "?")
+                : "?",
+            ),
+          ),
+        ];
+        verificationOutcome =
+          parsed.length === 0 ? "none recorded" : `${statuses.join("/")} (${parsed.length})`;
+        verificationAllPass = parsed.length > 0 && statuses.length === 1 && statuses[0] === "PASS";
+      } else {
+        verificationOutcome = "recorded (unparsed)";
+      }
     } catch {
       verificationOutcome = "recorded (unparsed)";
     }
     ctx.artifacts.verificationOutcome = verificationOutcome;
   }
   ctx.artifacts.executionTerminalStatus = terminal ? status : null;
-  const passed = terminal && status === "COMPLETED" && verificationOutcome === "PASS";
+  const passed = terminal && status === "COMPLETED" && verificationAllPass;
   recordStep(ctx, {
     id: "execution-lifecycle",
     title: "The first text execution reaches a terminal state",
@@ -843,15 +868,16 @@ async function journeyEvidenceCost(ctx: HarnessContext): Promise<void> {
   if (ctx.credentials === null || ctx.artifacts.executionId === null) {
     recordStep(ctx, {
       id: "receipt-cost",
-      title: "The receipt carries the evidence and cost facts",
-      surface: "GET /executions/:id",
+      title: "The result package carries the evidence and cost facts",
+      surface: "GET /executions/:id/results",
       status: "not-run",
       evidence: null,
       observed:
         ctx.credentials === null
           ? "no transport credential is configured for this run"
           : "no execution was created by the sandbox-start journey",
-      expected: "the execution receipt carries usage/cost facts once settled",
+      expected:
+        "the result package carries the cost/usage projection over the ledger facts (honestly null until a governed writer settles usage)",
       notRun: {
         reason:
           ctx.credentials === null
@@ -865,9 +891,16 @@ async function journeyEvidenceCost(ctx: HarnessContext): Promise<void> {
       authorization: `Bearer ${ctx.credentials.token}`,
       "x-zeck-application": ctx.credentials.applicationId,
     };
+    // The result package (IMPLEMENTATION.md §6) is the designed home of
+    // the cost/usage facts — the projection over the durable ledger (the
+    // receipt surface's wire contract carries the identity/status facts
+    // only). The VALUES are honestly null until a governed writer
+    // settles usage facts (the PPR-008 evidence record's wire
+    // constraint) — the step verifies the projection is served and
+    // honest, never a fabricated number.
     const fetched = await fetchSurface(
       new URL(
-        `/executions/${encodeURIComponent(ctx.artifacts.executionId)}`,
+        `/executions/${encodeURIComponent(ctx.artifacts.executionId)}/results`,
         ctx.targetUrl,
       ).toString(),
       { headers },
@@ -877,26 +910,31 @@ async function journeyEvidenceCost(ctx: HarnessContext): Promise<void> {
     if (fetched.ok && fetched.evidence.status === 200) {
       try {
         const parsed = JSON.parse(fetched.body) as Record<string, unknown>;
-        carriesCost =
-          parsed.cost !== undefined ||
-          parsed.usage !== undefined ||
-          parsed.estimatedCost !== undefined ||
-          parsed.settledCost !== undefined;
+        carriesCost = "cost" in parsed && "usage" in parsed;
         observed = carriesCost
-          ? "the receipt carries cost/usage facts"
-          : `the receipt carries no cost/usage key (keys: ${Object.keys(parsed).slice(0, 12).join(", ")})`;
+          ? `the result package carries the cost/usage projection (cost: ${JSON.stringify(
+              parsed.cost ?? null,
+            )}, usage: ${JSON.stringify(parsed.usage ?? null)}${
+              parsed.cost == null || parsed.usage == null
+                ? " — honestly null until a governed writer settles usage facts"
+                : ""
+            })`
+          : `the result package carries no cost/usage projection (keys: ${Object.keys(parsed)
+              .slice(0, 12)
+              .join(", ")})`;
       } catch {
         observed = "200 with a non-JSON body";
       }
     }
     recordStep(ctx, {
       id: "receipt-cost",
-      title: "The receipt carries the evidence and cost facts",
-      surface: `GET /executions/${encodeURIComponent(ctx.artifacts.executionId)}`,
+      title: "The result package carries the evidence and cost facts",
+      surface: `GET /executions/${encodeURIComponent(ctx.artifacts.executionId)}/results`,
       status: carriesCost ? "pass" : "fail",
       evidence: fetched.evidence,
       observed,
-      expected: "the execution receipt carries usage/cost facts once settled",
+      expected:
+        "the result package carries the cost/usage projection over the ledger facts (honestly null until a governed writer settles usage)",
       ...(carriesCost ? {} : { defectClass: "route-boundary" }),
     });
   }
@@ -935,7 +973,7 @@ async function journeyCompare(ctx: HarnessContext): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function journeyExportReproduce(ctx: HarnessContext): Promise<void> {
-  await experienceStep(
+  const consoleState = await experienceStep(
     ctx,
     "export-console",
     "The reproducibility export surface",
@@ -943,6 +981,28 @@ async function journeyExportReproduce(ctx: HarnessContext): Promise<void> {
   );
   if (ctx.credentials !== null && ctx.artifacts.executionId !== null) {
     const id = encodeURIComponent(ctx.artifacts.executionId);
+    if (consoleState === "not-run") {
+      // The bundle is the EXPERIENCE surface's machine artifact (the
+      // console composition's export route): when the plane serves no
+      // experience composition the honest record is the not-run boundary
+      // — same owner as every experience step (the deployed plane's run).
+      recordStep(ctx, {
+        id: "export-bundle",
+        title: "The reproducibility bundle exports as verbatim JSON",
+        surface: `/console/executions/${id}/export/bundle.json`,
+        status: "not-run",
+        evidence: null,
+        observed:
+          "no HTML experience composition is served by this plane — the bundle is the experience surface's machine artifact",
+        expected: "the execution's reproducibility bundle exports",
+        notRun: {
+          reason:
+            "the target serves no HTML experience composition (the export console's own step records the honest not-served fact); the bundle is served by the experience surface only",
+          owner: OWNERS.leadPostDeployment,
+        },
+      });
+      return;
+    }
     const bundle = await auditSurface(ctx, `/console/executions/${id}/export/bundle.json`);
     const bundleOk =
       bundle.fetch.ok &&
@@ -1074,6 +1134,8 @@ async function journeyProductionDeployment(ctx: HarnessContext): Promise<void> {
   const problems: string[] = [];
   let authBoundary = 0;
   let capabilityUnbound = 0;
+  let capabilitySeamUnbound = 0;
+  let capabilitySeamMaterialized = 0;
   let publicArtifact = 0;
   for (const [index, probe] of ROUTE_PROBES.entries()) {
     const fetched = await fetchSurface(new URL(probe.path, ctx.targetUrl).toString(), {
@@ -1105,10 +1167,24 @@ async function journeyProductionDeployment(ctx: HarnessContext): Promise<void> {
       authBoundary += 1;
     } else if (probe.expect === "capability-unbound") {
       capabilityUnbound += 1;
+    } else if (probe.expect === "capability-or-auth-boundary") {
+      // Record WHICH composition class answered — the honest boundary is
+      // composition-dependent (unbound 422 / materialized 401) and the
+      // summary reports the observed composition fact.
+      const composition = capabilitySeamComposition(
+        fetched.evidence.status ?? 0,
+        errorCodeOf(fetched.body),
+      );
+      if (composition === "unbound") {
+        capabilitySeamUnbound += 1;
+      } else if (composition === "materialized") {
+        capabilitySeamMaterialized += 1;
+      }
     } else {
       publicArtifact += 1;
     }
   }
+  const capabilitySeamTotal = capabilitySeamUnbound + capabilitySeamMaterialized;
   recordStep(ctx, {
     id: "route-table",
     title: "Every public route answers its honest boundary",
@@ -1117,7 +1193,7 @@ async function journeyProductionDeployment(ctx: HarnessContext): Promise<void> {
     evidence: null,
     observed:
       problems.length === 0
-        ? `${ROUTE_PROBES.length} routes probed: ${authBoundary} auth-boundary (401), ${capabilityUnbound} capability-unbound (422), ${publicArtifact} public-artifact (200)`
+        ? `${ROUTE_PROBES.length} routes probed: ${authBoundary} auth-boundary (401), ${capabilityUnbound} capability-unbound (422), ${capabilitySeamTotal} capability-or-auth-boundary (${capabilitySeamUnbound} unbound-composition 422 / ${capabilitySeamMaterialized} materialized-composition 401), ${publicArtifact} public-artifact (200)`
         : problems.slice(0, 5).join("; ") +
           (problems.length > 5 ? ` (+${problems.length - 5} more)` : ""),
     expected: "the honest boundary semantics of the deployed public route table",

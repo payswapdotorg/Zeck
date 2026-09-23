@@ -47,7 +47,11 @@ import {
 } from "../../../tests/journey/dom";
 import { expectedRevisionOf, harnessRepositoryRoot } from "../../../tests/journey/identity-gate";
 import { JOURNEYS, journeyRecordsOf } from "../../../tests/journey/journeys";
-import { ROUTE_PROBES, routeProbeProblem } from "../../../tests/journey/route-probes";
+import {
+  capabilitySeamComposition,
+  ROUTE_PROBES,
+  routeProbeProblem,
+} from "../../../tests/journey/route-probes";
 import { NOT_RUN_BOUNDARIES, preflight } from "../../../tests/journey/runner";
 import { scanForSecrets, urlCarriesCredentials } from "../../../tests/journey/secret-safety";
 
@@ -207,9 +211,12 @@ describe("PPR-003: the public-route probe table (no second authority)", () => {
     expect(uncovered).toEqual([]);
   });
 
-  test("the honest expectation counts (18 auth / 7 unbound / 1 public artifact)", () => {
+  test("the honest expectation counts (18 auth / 3 unbound / 4 capability-or-auth / 1 public artifact)", () => {
     expect(ROUTE_PROBES.filter((probe) => probe.expect === "auth-boundary").length).toBe(18);
-    expect(ROUTE_PROBES.filter((probe) => probe.expect === "capability-unbound").length).toBe(7);
+    expect(ROUTE_PROBES.filter((probe) => probe.expect === "capability-unbound").length).toBe(3);
+    expect(
+      ROUTE_PROBES.filter((probe) => probe.expect === "capability-or-auth-boundary").length,
+    ).toBe(4);
     expect(ROUTE_PROBES.filter((probe) => probe.expect === "public-artifact").length).toBe(1);
     expect(ROUTE_PROBES.length).toBe(26);
   });
@@ -226,6 +233,31 @@ describe("PPR-003: the public-route probe table (no second authority)", () => {
     if (unboundProbe !== undefined) {
       expect(routeProbeProblem(unboundProbe, 422, "CAPABILITY_UNAVAILABLE")).toBeNull();
       expect(routeProbeProblem(unboundProbe, 200, "")).toContain("expected the honest 422");
+    }
+    // The credentials seams are composition-dependent (PPR-008): the
+    // unbound composition's 422 AND the materialized composition's 401
+    // are both honest boundaries; the composition classifier records
+    // which class answered.
+    const seamProbe = ROUTE_PROBES.find((probe) => probe.expect === "capability-or-auth-boundary");
+    expect(seamProbe).toBeDefined();
+    if (seamProbe !== undefined) {
+      expect(routeProbeProblem(seamProbe, 422, "CAPABILITY_UNAVAILABLE")).toBeNull();
+      expect(routeProbeProblem(seamProbe, 401, "AUTHENTICATION_FAILED")).toBeNull();
+      expect(routeProbeProblem(seamProbe, 200, "")).toContain("composition-dependent");
+      expect(routeProbeProblem(seamProbe, 500, "")).toContain("composition-dependent");
+      expect(capabilitySeamComposition(422, "CAPABILITY_UNAVAILABLE")).toBe("unbound");
+      expect(capabilitySeamComposition(401, "AUTHENTICATION_FAILED")).toBe("materialized");
+      expect(capabilitySeamComposition(200, "")).toBeNull();
+    }
+    // The credentials issue probe is WELL-FORMED (a valid role) so a
+    // materialized composition reaches the authenticate seam — the
+    // composition fact, never a body-validation coincidence.
+    const issueProbe = ROUTE_PROBES.find(
+      (probe) => probe.expect === "capability-or-auth-boundary" && probe.method === "POST",
+    );
+    expect(issueProbe).toBeDefined();
+    if (issueProbe !== undefined) {
+      expect(issueProbe.body).toContain('"role":"member"');
     }
     const artifactProbe = ROUTE_PROBES.find((probe) => probe.expect === "public-artifact");
     expect(artifactProbe).toBeDefined();

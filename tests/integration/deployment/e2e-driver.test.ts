@@ -130,7 +130,14 @@ describe.skipIf(E2E_PG_URL.length === 0 || !HAS_GIT)(
       const coverage = facts.routeCoverage as Record<string, number>;
       expect(coverage.probed).toBe(26);
       expect(coverage.authBoundaryEnforced).toBe(18);
-      expect(coverage.capabilityUnboundHonest).toBe(7);
+      // The credentials seams are composition-dependent (PPR-008): the
+      // unbound composition answers 422 (3 strictly-unbound sandbox
+      // seams + 4 credentials seams); the materialized composition's
+      // 401 is the same honest class.
+      expect(coverage.capabilityUnboundHonest).toBe(3);
+      expect(coverage.capabilitySeamHonest).toBe(4);
+      expect(coverage.capabilitySeamUnboundComposition).toBe(4);
+      expect(coverage.capabilitySeamMaterializedComposition).toBe(0);
       expect(coverage.publicArtifactBound).toBe(1);
 
       // The strict ready-authority smoke (200 — a fail-closed

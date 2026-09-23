@@ -28,9 +28,15 @@
  *     the executions/agents/economic-actions/codebase-analysis
  *     surfaces reach the authenticate seam and answer the honest 401
  *     AUTHENTICATION_FAILED (the bootstrap composition binds no
- *     credentials); the credentials/sandbox-governance surfaces wired
- *     to unbound authorities answer the honest 422
- *     CAPABILITY_UNAVAILABLE (never a fabricated fact); the public
+ *     credentials); the credentials seams (DEP-011) are composition-
+ *     dependent — the honest 422 CAPABILITY_UNAVAILABLE of the unbound
+ *     composition OR the honest 401 AUTHENTICATION_FAILED of the
+ *     materialized composition (PPR-008's preview authority set binds
+ *     the credential service; the probe's bearer is deliberately
+ *     invalid; never a fabricated fact); the sandbox-governance
+ *     surfaces wired to unbound authorities answer the honest 422
+ *     CAPABILITY_UNAVAILABLE (no current composition binds them); the
+ *     public
  *     sandbox data-policy artifact answers 200 with its digest;
  *  5. SHUTDOWN (local-boot mode): SIGTERM drains gracefully (the
  *     deployable-service proof).
@@ -132,7 +138,11 @@ const PROBE_REPOSITORY = "zeck-public-smoke/probe";
 const PROBE_REVISION = "0000000000000000000000000000000000000000";
 
 /** The honest answer classes of the bootstrap composition (fixed on main). */
-type RouteExpectation = "auth-boundary" | "capability-unbound" | "public-artifact";
+type RouteExpectation =
+  | "auth-boundary"
+  | "capability-unbound"
+  | "capability-or-auth-boundary"
+  | "public-artifact";
 
 interface RouteProbe {
   readonly route: string;
@@ -291,7 +301,11 @@ const ROUTE_PROBES: readonly RouteProbe[] = [
     body: JSON.stringify({ applicationId: PROBE_APPLICATION }),
     expect: "auth-boundary",
   },
-  // --- credentials (DEP-011 seams): the honest composition fact ------------
+  // --- credentials (DEP-011 seams): the composition-dependent honest
+  // boundary — the well-formed issue body (a VALID role) so a materialized
+  // composition reaches the authenticate seam and answers its honest 401
+  // (an invalid role would stop at body validation with a coincidentally
+  // same-coded 422 — never a composition fact) -----------------------------
   {
     route: "POST /credentials",
     method: "POST",
@@ -299,24 +313,29 @@ const ROUTE_PROBES: readonly RouteProbe[] = [
     body: JSON.stringify({
       applicationId: PROBE_APPLICATION,
       label: "public-smoke-probe",
-      role: "operator",
+      role: "member",
     }),
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
-  { route: "GET /credentials", method: "GET", path: "/credentials", expect: "capability-unbound" },
+  {
+    route: "GET /credentials",
+    method: "GET",
+    path: "/credentials",
+    expect: "capability-or-auth-boundary",
+  },
   {
     route: "POST /credentials/:credentialId/rotate",
     method: "POST",
     path: `/credentials/${PROBE_ID}/rotate`,
     body: "{}",
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
   {
     route: "POST /credentials/:credentialId/revoke",
     method: "POST",
     path: `/credentials/${PROBE_ID}/revoke`,
     body: "{}",
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
   // --- sandbox governance (DEP-014 seams): the honest composition fact -----
   {
@@ -351,6 +370,11 @@ interface RouteCoverage {
   readonly probed: number;
   readonly authBoundaryEnforced: number;
   readonly capabilityUnboundHonest: number;
+  /** The credentials seams (composition-dependent): how many answered
+   *  the unbound composition's 422 vs the materialized composition's 401. */
+  readonly capabilitySeamHonest: number;
+  readonly capabilitySeamUnboundComposition: number;
+  readonly capabilitySeamMaterializedComposition: number;
   readonly publicArtifactBound: number;
   readonly problems: readonly string[];
 }
@@ -360,6 +384,8 @@ async function probePublicRoutes(baseUrl: string): Promise<RouteCoverage> {
   const problems: string[] = [];
   let authBoundaryEnforced = 0;
   let capabilityUnboundHonest = 0;
+  let capabilitySeamUnbound = 0;
+  let capabilitySeamMaterialized = 0;
   let publicArtifactBound = 0;
   for (const [index, probe] of ROUTE_PROBES.entries()) {
     const headers: Record<string, string> = {
@@ -399,6 +425,25 @@ async function probePublicRoutes(baseUrl: string): Promise<RouteCoverage> {
       } else {
         capabilityUnboundHonest += 1;
       }
+    } else if (probe.expect === "capability-or-auth-boundary") {
+      // The credentials seams' honest boundary is composition-dependent:
+      // the unbound composition refuses with 422 CAPABILITY_UNAVAILABLE
+      // before any authority is consulted; the MATERIALIZED composition
+      // (PPR-008's preview authority set) binds the credential service and
+      // the well-formed probe reaches the authenticate seam, answering the
+      // honest 401 AUTHENTICATION_FAILED. Both are honest refusals — the
+      // coverage records which composition class answered.
+      const unboundComposition = result.status === 422 && code === "CAPABILITY_UNAVAILABLE";
+      const materializedComposition = result.status === 401 && code === "AUTHENTICATION_FAILED";
+      if (!unboundComposition && !materializedComposition) {
+        problems.push(
+          `${probe.route}: answered ${result.status} ${code || "(no code)"} (expected the honest 422 CAPABILITY_UNAVAILABLE of the unbound composition or the honest 401 AUTHENTICATION_FAILED of the materialized composition — the credentials seam's boundary is composition-dependent; never a fabricated fact)`,
+        );
+      } else if (unboundComposition) {
+        capabilitySeamUnbound += 1;
+      } else {
+        capabilitySeamMaterialized += 1;
+      }
     } else {
       let artifact = "";
       let digest = "";
@@ -422,6 +467,9 @@ async function probePublicRoutes(baseUrl: string): Promise<RouteCoverage> {
     probed: ROUTE_PROBES.length,
     authBoundaryEnforced,
     capabilityUnboundHonest,
+    capabilitySeamHonest: capabilitySeamUnbound + capabilitySeamMaterialized,
+    capabilitySeamUnboundComposition: capabilitySeamUnbound,
+    capabilitySeamMaterializedComposition: capabilitySeamMaterialized,
     publicArtifactBound,
     problems,
   };

@@ -231,7 +231,14 @@ describe.skipIf(!HAS_GIT)("PPR-006: the Vercel hosting entry on the local rail",
     const coverage = report.routeCoverage as Record<string, unknown>;
     expect(coverage.probed).toBe(26);
     expect(coverage.authBoundaryEnforced).toBe(18);
-    expect(coverage.capabilityUnboundHonest).toBe(7);
+    // The credentials seams are composition-dependent (PPR-008): this
+    // unbound entry-plane answers the unbound composition's 422 (3
+    // strictly-unbound sandbox seams + 4 credentials seams); the
+    // materialized composition's 401 is the same honest class.
+    expect(coverage.capabilityUnboundHonest).toBe(3);
+    expect(coverage.capabilitySeamHonest).toBe(4);
+    expect(coverage.capabilitySeamUnboundComposition).toBe(4);
+    expect(coverage.capabilitySeamMaterializedComposition).toBe(0);
     expect(coverage.publicArtifactBound).toBe(1);
 
     // The cold-start boot record (operational visibility of the singleton build).
