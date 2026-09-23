@@ -19,11 +19,11 @@
       "id": "GAP-001",
       "title": "the realtime rail has no real external implementation",
       "concern": "realtime-transport (the RealtimeRail port, WORK-024/MOD-005)",
-      "currentState": "level 2 — the provider-neutral port + the in-process simulated rail (the semantic reference); every realtime journey rests on fake-local evidence",
-      "targetState": "level 3 (a credentialed real rail) then level 5 (conformance + alternate)",
-      "evidence": "src/modules/deployments/ports/realtime-rail.ts documents 'REAL external realtime/telephony provider behavior is explicitly UNVERIFIED in this environment'",
-      "owner": "PPR-009 (authorized — the LiveKit rail + the conformance contract)",
-      "status": "in-flight"
+      "currentState": "level 3-on-local-rail — the conformance contract (C1-C12) + the LiveKit adapter green over a REAL local livekit-server 1.9.11 (label local-livekit-server, --dev public keypair; SIGSTOP/SIGCONT refusal injection; the independent server-side room-list corroboration); the simulated rail passes the SAME suite (the semantic reference). EXTERNAL/MANAGED LiveKit remains honestly NOT RUN (no credentials; none invented)",
+      "targetState": "level 3 (a CREDENTIALED external rail via the §15 operator sequence) then level 5 (a drilled alternate real rail)",
+      "evidence": "deploy/evidence/ppr-009.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/{realtime-rail-conformance,simulated-rail.conformance.test,livekit-rail.conformance.test}.ts; merged at 02fc6b4",
+      "owner": "PPR-009 (DELIVERED — merged 02fc6b4); the external rung: Lead credentialed run (§15 operator sequence)",
+      "status": "advanced-to-level-3-on-local-rail (external rung open — credential-bound)"
     },
     {
       "id": "GAP-002",

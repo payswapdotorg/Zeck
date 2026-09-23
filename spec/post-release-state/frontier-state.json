@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-d-open",
-  "currentBase": "945db86de82ddc29d6657a9fdc29b42bfe429c08",
+  "status": "wave-d-ppr-009-delivered",
+  "currentBase": "02fc6b4",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -11,14 +11,13 @@
     "PPR-005",
     "PPR-006",
     "PPR-007",
-    "PPR-008"
-  ],
-  "eligible": [
+    "PPR-008",
     "PPR-009"
   ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "WAVE D OPEN (2026-09-23, the Successor Tech Lead Directive): F1/F2 remain CLOSED (the exit-0 credentialed acceptance at a244e70; evidence deploy/evidence/f1-closure.json). The successor program's first governed evolution work order is AUTHORIZED: PPR-009 \u2014 the LiveKit realtime rail (the first REAL external RealtimeRail adapter + the shared conformance contract; spec/post-release-work-orders/PPR-009.md; the gap ledger's GAP-001). The \u00a713 evolution program files are stood up under spec/evolution/ (gap-ledger, solution-catalog, journey-taxonomy, journey-coverage, evolution-policy, promotion-policy, solution-conformance, runs/evo-001-bootstrap.json \u2014 the SHA reconciliation 338cc46\u2192945db86de82ddc29d6657a9fdc29b42bfe429c08 recorded there). Dispatch rule unchanged: max 3 concurrent workers, workers never merge, never from a stale base."
+  "context": "WAVE D — PPR-009 DELIVERED (2026-09-23): F1/F2 remain CLOSED (the exit-0 credentialed acceptance at a244e70; evidence deploy/evidence/f1-closure.json). The successor program's first governed evolution work order is DELIVERED: PPR-009 — the LiveKit realtime rail, MERGED at 02fc6b4 after the Lead's independent battery (typecheck 0; lint exact baseline; conformance 24/24 — 11 simulated + 13 over the REAL local livekit-server; unit 361f/6347t; architecture 140f/2240t; integration 175f/1297t; FULL suite EXIT 0 — 678+1sk files / 9908+26sk tests / 0 failed; governance OK; deploy:validate valid=true, 94 variables). GAP-001 advances level 2 -> level 3-on-local-rail (spec/evolution/gap-ledger.json; evidence deploy/evidence/ppr-009.json). The honest residual: any EXTERNAL/MANAGED LiveKit service is NOT RUN (owner: Lead credentialed run, the §15 operator sequence) and the durable idempotency-ledger binding awaits a future governed work order. Next governed moves: the §15 operator credential provisioning (outbox), the nightly-scan cadence (spec/evolution/evolution-policy.json), and the wave-E eligibility review. Dispatch rule unchanged: max 3 concurrent workers, workers never merge, never from a stale base."
 }
