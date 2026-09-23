@@ -33,7 +33,17 @@
  * experience entry against a locally-booted API plane — can be proven
  * before any deployment (the local-rail proof of the work order; on
  * the local rail requests arrive with their original paths and the
- * routing carry passes through unchanged).
+ * routing carry passes through unchanged). The guard fires on BOTH
+ * rails: the source rail (`api/experience.ts`) AND the BUILT ARTIFACT
+ * rail — the Vercel output's transpiled `api/experience.js`, the exact
+ * entrypoint §13.6's local artifact proof documents (`node
+ * api/experience.js` from inside `api/experience.func`); the
+ * transpiled file carries this guard verbatim, and there argv[1]
+ * ends with `.js`. On the platform the launcher imports the module
+ * for its default export (the guard stays dormant) or runs it as the
+ * main module (the bind is the serving path either way — the same
+ * "the platform captures the listen" shape the root server.ts entry
+ * proves unconditionally in production).
  */
 
 /// <reference types="node" />
@@ -52,8 +62,15 @@ const handler = getExperienceHandler();
 export default handler;
 
 // The local-rail affordance (mirrors root server.ts): boot the exact
-// composed listener as a real listener when the module is run directly.
-if (process.argv[1]?.endsWith("api/experience.ts") === true) {
+// composed listener as a real listener when the module is run directly —
+// on either rail: the source (`api/experience.ts`) or the Vercel
+// output's transpiled artifact (`api/experience.js`, §13.6's documented
+// artifact-proof entrypoint).
+const directRunEntry = process.argv[1] ?? "";
+const isDirectRun =
+  directRunEntry.endsWith("api/experience.ts") === true ||
+  directRunEntry.endsWith("api/experience.js") === true;
+if (isDirectRun) {
   const port = Number(process.env.PORT ?? 3001);
   const server = createServer(handler);
   server.listen(port, "127.0.0.1", () => {
