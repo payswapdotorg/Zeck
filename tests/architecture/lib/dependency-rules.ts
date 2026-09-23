@@ -170,6 +170,18 @@ export const PROVIDER_SDK_BOUNDARIES: readonly SdkBoundary[] = [
       "deployments module realtime rail adapters (PPR-009: the LiveKit rail — vendor types confined to the adapter)",
   },
   {
+    packagePattern: "socket.io",
+    allowedPathPrefix: "src/modules/deployments/adapters/",
+    owner:
+      "deployments module realtime rail adapters (PPR-010: the socket.io ALTERNATE rail — vendor types confined to the adapter)",
+  },
+  {
+    packagePattern: "socket.io-client",
+    allowedPathPrefix: "src/modules/deployments/adapters/",
+    owner:
+      "deployments module realtime rail adapters (PPR-010: the socket.io rail's dispatch client — vendor types confined to the adapter)",
+  },
+  {
     packagePattern: "@anthropic-ai/*",
     allowedPathPrefix: "src/modules/models/adapters/",
     owner: "models module provider adapters",

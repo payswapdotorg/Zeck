@@ -66,7 +66,7 @@ const FILES = collectFiles(DEPLOYMENTS_DIR);
 // vendor's identifiers (the whole point of the adapter boundary — vendor
 // vocabulary is confined THERE and nowhere else). Every RT rule that
 // scans for vendor identifiers excludes them by name.
-const VENDOR_ADAPTER_FILES = /livekit-realtime-rail(-binding)?\.ts$/;
+const VENDOR_ADAPTER_FILES = /((livekit|socketio)-realtime-rail)(-binding)?\.ts$/;
 const REALTIME_FILES = FILES.filter((file) =>
   /realtime|in-process-realtime|planner-subtask/.test(file),
 );
@@ -218,7 +218,11 @@ describe("architecture: the realtime voice-session boundary (WORK-024)", () => {
       if (PROVIDER_IDENTIFIER.test(text)) {
         violations.push(`${relative}: provider identifier`);
       }
-      if (/["'](twilio|vonage|livekit|daily|100ms|agora|slack|whatsapp|telegram)["']/i.test(text)) {
+      if (
+        /["'](twilio|vonage|livekit|daily|100ms|agora|slack|whatsapp|telegram|socket\.io|socketio)["']/i.test(
+          text,
+        )
+      ) {
         violations.push(`${relative}: vendor rail slug`);
       }
     }
@@ -261,7 +265,7 @@ describe("architecture: the realtime voice-session boundary (WORK-024)", () => {
     // PPR-009 sanctions livekit-server-sdk inside the deployments
     // adapters (the SDK-boundary table confines it there).
     const violations = scanDependencyRules(files, {
-      allowedPackages: ["fastify", "livekit-server-sdk"],
+      allowedPackages: ["fastify", "livekit-server-sdk", "socket.io", "socket.io-client"],
     });
     const realtimeViolations = violations.filter((v) =>
       v.path.startsWith("src/modules/deployments"),

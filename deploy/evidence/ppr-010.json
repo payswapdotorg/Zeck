@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-010",
+  "title": "The alternate realtime rail (socket.io) + the substitution/failover drill — GAP-003's level-5 rung",
+  "recordedBy": "Lead (the worker dispatch died at its context deadline leaving uncommitted adapter+binding drafts; the Lead completed the implementation per the established successor doctrine, then ran the independent battery)",
+  "environment": "local (the repository's own suites; the alternate rail = its own REAL embedded socket.io server on loopback; the drill's primary = the LOCAL open-source livekit-server)",
+  "date": "2026-09-23",
+  "branch": "work/PPR-010-alternate-realtime-rail",
+  "baseRevision": "0eb97b8a4b1ee42d42887e2d5dbc6f5f7bd04b66",
+  "doctrine": "The provider-independence iron law: neutral capability port → conformance contract → provider adapter. The conformance contract is what a new provider codes against — never a vendor's SDK shapes. No availability claim without credentialed evidence.",
+  "verifiedLocally": [
+    {
+      "proof": "REQUIREMENT 0 — the feasibility probe: the published socket.io server package (4.8.3, unmodified) boots under the battery runtime (bun 1.3.14 executing vitest) and serves a real WebSocket handshake + one acked emit round-trip (dispatch connection + grant-verified join connection)",
+      "result": "PASS — the probe's round-trip completed (open, minted-join, real receiver ack, server-side corroboration); the evo-003 recorded ws fallback was NOT needed; the throwaway probe was deleted after folding its assertions into the conformance subject"
+    },
+    {
+      "proof": "the conformance contract C1-C12 over the SOCKET.IO adapter against its REAL embedded server (label local-socketio-server; refusal injection via the server's own went-away mode stopServing/startServing with the listener closed and connections destroyed; the crash model via a fresh adapter instance attached to the SURVIVING server; the probes' vantage = the SERVER-side rail protocol's own observation surface — the upstream's truth, stronger than the adapter's effect log)",
+      "result": "15/15 tests green (tests/conformance/realtime-rail/socketio-rail.conformance.test.ts) — including the server-side registry corroboration of the effect counters, a REAL join round-trip (the minted grant redeems in the handshake; a garbage grant is refused), the grant's single-channel scope, and client access failing closed for a channel the rail never opened"
+    },
+    {
+      "proof": "THE SUBSTITUTION/FAILOVER DRILL (GAP-003's level-5 rung): the same durable coordinates + the SAME stable rail-level idempotency keys across BOTH real rails; the primary (local livekit-server 1.9.11 --dev, the public development keypair) SIGSTOP-refused; the coordinates REPLAYED against the alternate; convergence + exactly-once PER RAIL + identical neutral acknowledgment shapes",
+      "result": "2/2 tests green (tests/conformance/realtime-rail/rail-substitution.drill.test.ts) — the drill record: primaryRail=local-livekit-server (REAL), alternateRail=local-socketio-server (REAL—always), refusalInjection=sigstop-livekit-server, every leg pass; the shared-vocabulary test pins the five shared failure kinds to the EXACT same neutral reason strings on both rails"
+    },
+    {
+      "proof": "the whole conformance family — all THREE subjects through ONE contract",
+      "result": "41/41 green (11 simulated + 13 livekit + 15 socketio + 2 drill)"
+    },
+    {
+      "proof": "the adapter's unit proofs (vendor-type confinement for BOTH vendor packages: type-only module-scope imports, exactly one lazy dynamic import each, nothing re-exported; vendor-free exported surfaces; deterministic opaque derivations in distinct hash domains; the TTL bounds; the six-kind failure-normalization table with the LiveKit reasons pinned identical; the credential-envelope discipline fail-closed; the in-memory ledger; the composition gate pinned BOTH ways with secret hygiene; the stopped-listener unreachable normalization with the never-cached-refusal retry)",
+      "result": "28/28 tests green (tests/unit/deployments/socketio-realtime-rail.test.ts)"
+    },
+    {
+      "proof": "the deployment suites with the append-only manifest extension (variables.json 94→97: ZECK_SOCKETIO_URL/AUTH_SECRET + the reference variable; secret-references.json +socketio-auth-secret per environment: local 6→7, preview/staging/production 14→15; the additive pin updates in env-contract 14→15 / manifest 14→15 / provision 6→7 and 6→7)",
+      "result": "36 files / 672 tests green (tests/unit/deployment + tests/unit/deployments)"
+    },
+    {
+      "proof": "the architecture boundary pins (the SDK-boundary table +socket.io/+socket.io-client confined to src/modules/deployments/adapters/; the declared-runtime-package lists extended in d03/d04/d05/d06/dependency-direction/provider-sdk-boundaries; RT6's sanctioned vendor-adapter home extended to the socketio files + the slug vocabulary extended; RT9/deployment-fabric/messaging allowedPackages extended)",
+      "result": "139 passed + 1 skipped files / 2230 passed + 4 skipped tests / 0 failed — with the reconciliation proof: on pristine main (the adapter files present but the pins un-updated) exactly these 10 pin tests FAIL; the pin updates are the exact reconciliation, zero assertion weakening"
+    },
+    {
+      "proof": "typecheck",
+      "result": "0 errors (tsc --noEmit)"
+    },
+    {
+      "proof": "lint",
+      "result": "HEAD's exact 3 errors + 68 warnings + 8 infos — zero new from PPR-010 (the 3 errors are the pre-existing evidence-JSON format diffs ppr-003-live.json/ppr-006.json/ppr-009.json, each verified byte-identical to HEAD; the recorded '2 errors' of earlier sessions is stale — the honest current-HEAD baseline is 3)"
+    },
+    {
+      "proof": "integration battery (the PG rail live, ZECK_PG_TEST_URL only)",
+      "result": "175 passed + 1 skipped files / 1297 passed + 26 skipped tests / 0 failed"
+    },
+    {
+      "proof": "THE FULL SUITE (one inline run)",
+      "result": "681 passed + 1 skipped files / 9953 passed + 26 skipped tests / 0 failed / 558.78s — arithmetic exact: 9908 base + 15 socketio conformance + 2 drill + 28 unit"
+    },
+    {
+      "proof": "governance + the manifest validator",
+      "result": "Governance OK: 60 Work Orders, 110 requirements; deploy:validate valid=true, environments=4, variables=97"
+    }
+  ],
+  "reviewCorrections": [
+    "the worker dispatch (Task 81) died at its context deadline leaving UNCOMMITTED drafts (the adapter + the binding, ~1700 lines, no tests/manifests/barrel/docs); the Lead completed the delivery per the established successor doctrine (the Task-79/80 precedent)",
+    "the verifyGrant parts-narrowing fix (three noUncheckedIndexedAccess type errors: parts[1]/parts[2] are string|undefined after split)",
+    "THE DOUBLE-NORMALIZATION BUG (found by the unit battery): outcomeFailure re-classified already-normalized PlatformError messages — 'realtime rail upstream unreachable' matches no vendor pattern and collapsed into upstream-error; fixed by passing PlatformError through verbatim (the dispatch path's throw carries the neutral reason from the same table)",
+    "the honest-semantics corrections (empirically verified): an EMPTY room completes the broadcast vacuously (delivered:true with zero receivers — the same semantics as publishing to a LiveKit room with no participants); the no-receiver failure fires only when present receivers fail to acknowledge within the bounded window — the adapter header and failure-table comments corrected to state this truthfully",
+    "the drill's SIGSTOP settle window (empirically found): an immediate request after process.kill(SIGSTOP) can slip through the not-yet-frozen accept loop; a 300ms settle makes the refusal deterministic",
+    "the drill restructured to single-scope hooks (biome's noDuplicateTestHooks): the primary server's boot/teardown moved into the (b→e) test with try/finally + test.skipIf — same honest-skip record when the binary is absent",
+    "the barrel wiring: one value import initially mis-anchored into the livekit import block (duplicate identifier) — moved to its socketio block; socket.io-client moved from devDependencies to dependencies (the adapter's runtime dispatch import)"
+  ],
+  "leadIndependentBattery": [
+    {
+      "proof": "typecheck",
+      "result": "0 errors"
+    },
+    {
+      "proof": "lint",
+      "result": "HEAD-exact 3+68+8, zero new"
+    },
+    {
+      "proof": "conformance (all subjects + the drill)",
+      "result": "41/41 green"
+    },
+    {
+      "proof": "unit",
+      "result": "362 files / 6375 tests — 0 failed (6347 base + 28)"
+    },
+    {
+      "proof": "architecture + discrimination",
+      "result": "139+1sk files / 2230+4sk tests — 0 failed"
+    },
+    {
+      "proof": "integration (PG rail)",
+      "result": "175+1sk files / 1297+26sk tests — 0 failed"
+    },
+    {
+      "proof": "FULL suite",
+      "result": "681+1sk files / 9953+26sk tests / 0 failed / 558.78s"
+    },
+    {
+      "proof": "governance",
+      "result": "OK (60 Work Orders / 110 requirements)"
+    },
+    {
+      "proof": "deploy:validate",
+      "result": "valid=true, environments=4, variables=97"
+    }
+  ],
+  "notRun": [
+    {
+      "boundary": "any EXTERNAL or MANAGED socket.io service",
+      "owner": "Lead credentialed run (the §16 operator sequence in deploy/PUBLIC-DEPLOYMENT.md)",
+      "note": "the alternate rail's proof is LOCAL-real only (its own embedded server on loopback); no external availability is claimed or implied"
+    },
+    {
+      "boundary": "the COMPOSITION-level auto-rebind policy (a preference order + automatic failover inside the composition)",
+      "owner": "a future governed work order",
+      "note": "explicitly out of PPR-010's scope by the work order: it touches the frozen admission ordering and can mask failures; the drill proves the SEAM-level substitutability any such policy would rest on"
+    },
+    {
+      "boundary": "the DURABLE idempotency-ledger binding (both rails' shipped ledgers are in-memory)",
+      "owner": "a future governed work order (the PPR-009 recorded residual, unchanged)",
+      "note": "opens/closes converge across adapter crashes WITHOUT any ledger (deterministic room names + server-side registries); deliver/transfer convergence within the adapter process is in-memory"
+    }
+  ],
+  "notes": [
+    "DESIGN (per spec/evolution/runs/evo-003-wave-e-eligibility.json): socket.io 4.8.3 (registry-verified MIT) chosen as an INDEPENDENT third-party realtime server product (the engine.io protocol — its own handshake/sid, transports, ping liveness, rooms, disconnect semantics) — the strongest honest substitution evidence against LiveKit's signal protocol through ONE neutral port + ONE conformance contract; ws 8.21.3 was the recorded fallback (never needed); centrifugo deferred (no verifiable npm artifact under the zero-drift rule)",
+    "THE ADAPTER EMBEDS THE SERVER (the honest self-hosted form): the published socket.io server package boots IN PROCESS on loopback; the adapter is the privileged authority (the grant-verifying handshake middleware + the channel registry + the dispatch-only rail handlers) and performs every upstream side effect through a REAL dispatch connection (a socket.io client over loopback WebSocket, authenticated by a short-lived signed dispatch grant); the binding's ZECK_SOCKETIO_URL is the listen/attach coordinate",
+    "THE SUBSTITUTION INVARIANT: the five shared failure kinds carry the EXACT same neutral reason strings and codes as the LiveKit table (pinned by a unit test AND asserted by the drill) — a refusal means the same thing on every rail",
+    "THE DRILL'S HONEST LABELING: the drill record (logged by the suite) states exactly which rails were real; with the binary absent the primary leg is test.skipIf-skipped with an explicit honest-skip record and the ALTERNATE's proofs stand alone",
+    "THE FEASIBILITY PROBE's VERDICT is recorded here per the work order's requirement 0: socket.io serves real acked WebSocket round-trips under bun 1.3.14 + vitest — the primary choice stands, the ws fallback not exercised",
+    "THE OPERATOR SEQUENCE for a future credentialed/managed run: provision a socket.io-compatible realtime server reachable from the plane (or accept the embedded self-hosted form) → set ZECK_SOCKETIO_URL + materialize ZECK_SOCKETIO_AUTH_SECRET from ZECK_SECRET_SOCKETIO_AUTH_SECRET_REF on the target environment → redeploy through the §13.3/§13.6 pipeline → run the conformance suite + the realtime journeys against the plane → record the credentialed evidence"
+  ]
+}

@@ -219,7 +219,7 @@ describe("architecture: the deployment fabric boundary (WORK-023)", () => {
   test("D8: no rule violations over the deployments tree (the shared engine)", () => {
     const files = collectSourceFiles(REPO_ROOT);
     const violations = scanDependencyRules(files, {
-      allowedPackages: ["fastify", "livekit-server-sdk"],
+      allowedPackages: ["fastify", "livekit-server-sdk", "socket.io", "socket.io-client"],
     });
     const deploymentViolations = violations.filter((v) =>
       v.path.startsWith("src/modules/deployments"),

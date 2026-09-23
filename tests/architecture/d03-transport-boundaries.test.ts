@@ -205,8 +205,15 @@ describe("the D-03 transport boundaries (WORK-044)", () => {
     // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
     // LiveKit Server SDK — the realtime rail's vendor dependency,
     // confined to src/modules/deployments/adapters/ by the SDK-boundary
-    // table; vendor types never cross the adapter).
-    expect(allowedPackages).toEqual(["fastify", "livekit-server-sdk", "pg"]);
+    // table; vendor types never cross the adapter). PPR-010 sanctions
+    // socket.io + socket.io-client (the alternate rail, same rule).
+    expect(allowedPackages).toEqual([
+      "fastify",
+      "livekit-server-sdk",
+      "pg",
+      "socket.io",
+      "socket.io-client",
+    ]);
     const violations = scanDependencyRules(files, { allowedPackages });
     expect(violations.map((v) => `${v.rule} @ ${v.path}`)).toEqual([]);
   });

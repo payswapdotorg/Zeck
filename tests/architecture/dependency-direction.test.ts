@@ -25,9 +25,16 @@ describe("dependency direction over the real src/ tree", () => {
     // database driver, confined to src/platform/db/ by the same table.
     // PPR-009 adds livekit-server-sdk (the published, UNMODIFIED LiveKit
     // Server SDK — the realtime rail's vendor dependency, confined to
-    // src/modules/deployments/adapters/ by the same table).
-    // Everything else still fails closed.
-    expect(allowedPackages).toEqual(["fastify", "livekit-server-sdk", "pg"]);
+    // src/modules/deployments/adapters/ by the same table). PPR-010
+    // adds socket.io + socket.io-client (the ALTERNATE rail's server +
+    // dispatch client, same confinement). Everything else fails closed.
+    expect(allowedPackages).toEqual([
+      "fastify",
+      "livekit-server-sdk",
+      "pg",
+      "socket.io",
+      "socket.io-client",
+    ]);
   });
 
   test("no rule violations anywhere in src/", () => {

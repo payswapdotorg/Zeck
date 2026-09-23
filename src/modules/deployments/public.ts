@@ -107,6 +107,48 @@ import { createPolicyMessagingAdmission } from "./adapters/policy-messaging-admi
 import { createPolicyRealtimeAdmission } from "./adapters/policy-realtime-admission";
 import { createRealtimeExecutionLedgerAdapter } from "./adapters/realtime-execution-ledger";
 import { createRealtimeModalityAdapter } from "./adapters/realtime-modality-adapter";
+// PPR-010: the socket.io ALTERNATE realtime rail adapter's NEUTRAL
+// surface (all vendor package types stay inside the adapter file;
+// nothing vendor-shaped crosses this barrel).
+import type {
+  SocketIoFailureClassification,
+  SocketIoFailureKind,
+  SocketIoRailClientAccess,
+  SocketIoRailClientAccessRequest,
+  SocketIoRailCredentialSource,
+  SocketIoRailEffectKind,
+  SocketIoRailEffectRecord,
+  SocketIoRailEmbeddedServer,
+  SocketIoRailIdempotencyLedger,
+  SocketIoRailServerObservation,
+  SocketIoRealtimeRail,
+  SocketIoRealtimeRailOptions,
+  StoredSocketIoRailAcknowledgment,
+} from "./adapters/socketio-realtime-rail";
+import {
+  bootEmbeddedSocketIoServer,
+  classifySocketIoFailure,
+  createEnvironmentSocketIoCredentialSource,
+  createInMemorySocketIoRailIdempotencyLedger,
+  createSocketIoRealtimeRail,
+  LOCAL_SOCKETIO_SERVER_LABEL,
+  SOCKETIO_CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  SOCKETIO_CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  SOCKETIO_FAILURE_NORMALIZATION,
+  SOCKETIO_RAIL_CAPABILITY_ID,
+  SOCKETIO_RAIL_DEFAULT_CHANNEL_KINDS,
+  socketIoChannelSessionRefOf,
+  socketIoClientAccessTtlOf,
+  socketIoUpstreamChannelNameOf,
+} from "./adapters/socketio-realtime-rail";
+import {
+  bindEnvironmentSocketIoRail,
+  readSocketIoRailMaterialization,
+  SOCKETIO_ENV_CREDENTIAL_REFERENCE,
+  SOCKETIO_RAIL_ENV_VARIABLES,
+  type SocketIoRailEnvironmentBinding,
+  type SocketIoRailMaterialization,
+} from "./adapters/socketio-realtime-rail-binding";
 import { SqlDeploymentStore } from "./adapters/sql-deployment-store";
 import { SqlMediaStore } from "./adapters/sql-media-store";
 import { SqlMessagingStore } from "./adapters/sql-messaging-store";
@@ -834,11 +876,30 @@ export type {
   RealtimeTurnRouteRequest,
   RealtimeValidation,
   RetryMediaJobInput,
+  // PPR-010: the socket.io ALTERNATE rail adapter's neutral surface
+  // (the exports above this line are the module's pre-existing
+  // contracts; these are the new neutral adapter types — vendor
+  // shapes never cross).
+  SocketIoFailureClassification,
+  SocketIoFailureKind,
+  SocketIoRailClientAccess,
+  SocketIoRailClientAccessRequest,
+  SocketIoRailCredentialSource,
+  SocketIoRailEffectKind,
+  SocketIoRailEffectRecord,
+  SocketIoRailEmbeddedServer,
+  SocketIoRailEnvironmentBinding,
+  SocketIoRailIdempotencyLedger,
+  SocketIoRailMaterialization,
+  SocketIoRailServerObservation,
+  SocketIoRealtimeRail,
+  SocketIoRealtimeRailOptions,
   StartMessagingConversationInput,
   StartMessagingConversationOutcome,
   StartRealtimeSessionInput,
   StartRealtimeSessionOutcome,
   StoredLiveKitRailAcknowledgment,
+  StoredSocketIoRailAcknowledgment,
   SubmitMediaJobInput,
   SubmitMediaJobOutcome,
 };
@@ -847,6 +908,10 @@ export type {
 // provider SDK types never do).
 export {
   bindEnvironmentRealtimeRail,
+  bindEnvironmentSocketIoRail,
+  // PPR-010: the socket.io ALTERNATE realtime rail (the second REAL
+  // rail — GAP-003's level-5 substitution evidence) + its gate.
+  bootEmbeddedSocketIoServer,
   CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
   CLIENT_ACCESS_HARD_CEILING_SECONDS,
   canonicalPlanJson,
@@ -856,6 +921,7 @@ export {
   canTransitionMessagingConversation,
   canTransitionRealtimeSession,
   classifyLiveKitFailure,
+  classifySocketIoFailure,
   clientAccessTtlOf,
   createAgentInventoryAdapter,
   createBudgetMediaAdmission,
@@ -871,7 +937,9 @@ export {
   // PPR-009: the LiveKit realtime rail (the first REAL external rail)
   // + its environment composition gate.
   createEnvironmentLiveKitCredentialSource,
+  createEnvironmentSocketIoCredentialSource,
   createInMemoryLiveKitRailIdempotencyLedger,
+  createInMemorySocketIoRailIdempotencyLedger,
   createInProcessMediaRail,
   createInProcessMessagingRail,
   createInProcessRealtimeRail,
@@ -892,6 +960,7 @@ export {
   createRealtimeExecutionLedgerAdapter,
   createRealtimeModalityAdapter,
   createRealtimeSessionService,
+  createSocketIoRealtimeRail,
   createSqlEnvironmentResolver,
   createVerificationMediaGate,
   DEPLOYMENT_CHANNEL_KINDS,
@@ -953,6 +1022,7 @@ export {
   LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS,
   LIVEKIT_RAIL_ENV_VARIABLES,
   LOCAL_LIVEKIT_SERVER_LABEL,
+  LOCAL_SOCKETIO_SERVER_LABEL,
   liveKitChannelSessionRefOf,
   liveKitUpstreamChannelNameOf,
   MEDIA_ARTIFACT_ROLES,
@@ -1008,6 +1078,7 @@ export {
   REALTIME_SESSION_STATUSES,
   REALTIME_SESSION_TRANSITIONS,
   readLiveKitRailMaterialization,
+  readSocketIoRailMaterialization,
   realtimeContainsRawSecretValue,
   realtimeEventBodyDigestBase,
   realtimeOperationKey,
@@ -1017,10 +1088,20 @@ export {
   realtimeRailTransferKey,
   realtimeSessionCreationFingerprint,
   resolveMessagingOrdering,
+  SOCKETIO_CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  SOCKETIO_CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  SOCKETIO_ENV_CREDENTIAL_REFERENCE,
+  SOCKETIO_FAILURE_NORMALIZATION,
+  SOCKETIO_RAIL_CAPABILITY_ID,
+  SOCKETIO_RAIL_DEFAULT_CHANNEL_KINDS,
+  SOCKETIO_RAIL_ENV_VARIABLES,
   SqlDeploymentStore,
   SqlMediaStore,
   SqlMessagingStore,
   SqlRealtimeStore,
+  socketIoChannelSessionRefOf,
+  socketIoClientAccessTtlOf,
+  socketIoUpstreamChannelNameOf,
   validateCause,
   validateCreateDeploymentInput,
   validateDeploymentPlanInput,

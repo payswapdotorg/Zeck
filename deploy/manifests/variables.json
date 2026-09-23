@@ -689,6 +689,30 @@
       "credentialShaped": false,
       "holds": "zeck-secret://<environment>/livekit-api-secret",
       "description": "PPR-009: Reference to the environment's LiveKit API secret (the realtime rail's credential keypair, materialized as ZECK_LIVEKIT_API_SECRET)."
+    },
+    {
+      "name": "ZECK_SOCKETIO_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "http(s)://host:port of the ALTERNATE rail's embedded socket.io server listen coordinate",
+      "description": "PPR-010: The listen/attach coordinate of the realtime rail's ALTERNATE adapter (the published socket.io server package, self-hosted in process). Unbound (with the auth secret) means the composition keeps the simulated realtime rail behind the same neutral seam \u2014 never a fabricated realtime capability."
+    },
+    {
+      "name": "ZECK_SOCKETIO_AUTH_SECRET",
+      "type": "provider-credential",
+      "required": false,
+      "credentialShaped": true,
+      "holds": "the socket.io rail's handshake-auth secret",
+      "description": "PPR-010: The auth secret of the ALTERNATE rail's credential set (materialized from ZECK_SECRET_SOCKETIO_AUTH_SECRET_REF; the adapter materializes inside its own scope immediately before upstream calls \u2014 never in a port shape, log line, or acknowledgment)."
+    },
+    {
+      "name": "ZECK_SECRET_SOCKETIO_AUTH_SECRET_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/socketio-auth-secret",
+      "description": "PPR-010: Reference to the environment's socket.io rail auth secret (the ALTERNATE realtime rail's credential, materialized as ZECK_SOCKETIO_AUTH_SECRET)."
     }
   ]
 }
