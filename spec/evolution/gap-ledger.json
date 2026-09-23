@@ -19,11 +19,11 @@
       "id": "GAP-001",
       "title": "the realtime rail has no real external implementation",
       "concern": "realtime-transport (the RealtimeRail port, WORK-024/MOD-005)",
-      "currentState": "level 3-on-local-rail — the conformance contract (C1-C12) + the LiveKit adapter green over a REAL local livekit-server 1.9.11 (label local-livekit-server, --dev public keypair; SIGSTOP/SIGCONT refusal injection; the independent server-side room-list corroboration); the simulated rail passes the SAME suite (the semantic reference). EXTERNAL/MANAGED LiveKit remains honestly NOT RUN (no credentials; none invented)",
+      "currentState": "level 3-on-local-rail — the conformance contract (C1-C12) + the LiveKit adapter green over a REAL local livekit-server 1.9.11 (label local-livekit-server, --dev public keypair; SIGSTOP/SIGCONT refusal injection; the independent server-side room-list corroboration); the simulated rail passes the SAME suite (the semantic reference). 2026-09-23: the EXTERNAL participant-join plane is now CREDENTIALED and PROVEN — the owner-delivered 900s join grant accepted by the managed plane (wss://zeck-vuo9lv9v.livekit.cloud, server 1.13.7; the room materialized; the handshake through the WebRTC offer; evidence ppr-009-live-join.json); the ADMIN/server-SDK external rung + the §15 full sequence remain open (the API keypair SECRET was not delivered — only the key ID + a pre-minted single-purpose grant)",
       "targetState": "level 3 (a CREDENTIALED external rail via the §15 operator sequence) then level 5 (a drilled alternate real rail)",
-      "evidence": "deploy/evidence/ppr-009.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/{realtime-rail-conformance,simulated-rail.conformance.test,livekit-rail.conformance.test}.ts; merged at 02fc6b4",
-      "owner": "PPR-009 (DELIVERED — merged 02fc6b4); the external rung: Lead credentialed run (§15 operator sequence)",
-      "status": "advanced-to-level-3-on-local-rail (external rung open — credential-bound)"
+      "evidence": "deploy/evidence/ppr-009.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/{realtime-rail-conformance,simulated-rail.conformance.test,livekit-rail.conformance.test}.ts; merged at 02fc6b4; the external join-plane proof: deploy/evidence/ppr-009-live-join.json + scripts/lead-livekit-join-probe.ts",
+      "owner": "PPR-009 (DELIVERED — merged 02fc6b4); the external JOIN plane: Lead credentialed run DONE (2026-09-23, ppr-009-live-join.json); the admin/keypair rung + the §15 full sequence: the operator's ZECK_LIVEKIT_API_SECRET delivery, then the Lead",
+      "status": "external rung PARTIALLY credentialed — the participant-join plane proven (ppr-009-live-join.json); the keypair/admin rung + the §15 sequence open (credential-bound)"
     },
     {
       "id": "GAP-002",

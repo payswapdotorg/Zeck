@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-009",
+  "recordKind": "lead-credentialed-external-run (the addendum closing ppr-009.json notRun[0]'s join-plane portion)",
+  "title": "The LiveKit EXTERNAL participant-join proof — the owner-delivered short-lived grant over the managed plane",
+  "recordedBy": "Lead (the successor program's \u00a715 credentialed run)",
+  "environment": "EXTERNAL managed LiveKit Cloud — wss://zeck-vuo9lv9v.livekit.cloud (server 1.13.7, region Japan); non-loopback, real WSS/TLS transport",
+  "date": "2026-09-23",
+  "baseRevision": "9d87047d8511a3599c5ec3d1f35d52ba206a46ac",
+  "doctrine": "The evidence ladder's rule: record exactly what the delivered credentials permit, never more. The owner delivered the managed plane's endpoint + the API key ID + a PRE-MINTED short-lived (900s) single-purpose participant join grant — NOT the API keypair secret. The join plane is therefore credentialed and provable; the admin/server-SDK plane is not; no credential may be invented or repurposed (the grant is NOT a keypair and must never be written into the environment's secret references as one).",
+  "credentialFacts": {
+    "endpoint": "wss://zeck-vuo9lv9v.livekit.cloud",
+    "grantShape": "LiveKit JWT access token (HS256) — claims: identity 'zeck', room 'zeck', video grants roomJoin/canPublish/canSubscribe/canPublishData all true; TTL 900s (iat 1790186912 \u2192 exp 1790187812); issuer = the managed project's API key ID (held in the Lead's local credential store — never in this repository)",
+    "keypairSecretDelivered": false,
+    "tokenStorage": "the Lead's local credential store only; the token material and the API key ID appear nowhere in this repository"
+  },
+  "probe": {
+    "artifact": "scripts/lead-livekit-join-probe.ts (the reproducible probe — Bun's native WebSocket + @livekit/protocol's SignalResponse decoder)",
+    "transport": "WSS signaling join: GET <endpoint>/rtc?access_token=\u2026&auto_subscribe=0&sdk=js&version=2.13.5&protocol=17 with WebSocket subprotocol 'livekit'; the JoinResponse decoded from the first binary frame"
+  },
+  "runs": [
+    {
+      "run": 1,
+      "outcome": "joined (the server-side fact); the client-side record was lost to a serialization defect (JSON.stringify over protobuf BigInt fields — fixed before run 2)",
+      "corroboration": "the managed plane MATERIALIZED room 'zeck' at server epoch 1790187441 (run 2's JoinResponse.roomCreationTime) — the room exists because run 1's join created it; run 1's participant had already disconnected when run 2 joined (roomNumParticipants 0)"
+    },
+    {
+      "run": 2,
+      "outcome": "joined — the complete record",
+      "facts": {
+        "wsOpenMs": 215,
+        "joinAcknowledgedMs": 219,
+        "joinResponse": {
+          "roomName": "zeck",
+          "roomSid": "RM_SGQqk7KFQLTR",
+          "roomCreationTime": "1790187441",
+          "roomNumParticipants": 0,
+          "serverVersion": "1.13.7",
+          "serverRegion": "Japan",
+          "participantIdentity": "zeck",
+          "participantSid": "PA_7iSM6xbdP8ff"
+        },
+        "handshakeProgressedTo": ["roomUpdate", "update", "refreshToken", "offer", "trickle x4"],
+        "cleanClose": { "code": 1000, "reason": "" },
+        "totalElapsedMs": 520
+      },
+      "interpretation": "the plane authenticated the grant (signature-validated against the project's API key secret), admitted the participant under the token's grants, issued its WebRTC SDP offer + ICE candidates, and released the participant cleanly on the probe's leave"
+    }
+  ],
+  "verified": [
+    "the EXTERNAL managed plane is real and serving (LiveKit server 1.13.7, region Japan, WSS/TLS)",
+    "the owner-delivered grant was ACCEPTED end to end: authenticated, room-authorized, participant-admitted, the full signaling handshake progressed through the WebRTC offer",
+    "room materialization on the managed plane observed twice within the grant's TTL (created at 1790187441; re-joined at ~1790187471 with the room surviving between runs)"
+  ],
+  "notRun": [
+    {
+      "boundary": "the ADMIN/server-SDK external rung (RoomServiceClient room lifecycle — the adapter's openSession/closeSession upstream effects) and therefore the FULL \u00a715 sequence (materialize the keypair \u2192 redeploy \u2192 the conformance suite + realtime journeys on the plane)",
+      "reason": "the API keypair SECRET was not delivered (the key ID + a pre-minted 900s join grant were); none may be invented, and the grant is not a keypair",
+      "owner": "the operator (deliver ZECK_LIVEKIT_API_SECRET via ZECK_SECRET_LIVEKIT_API_SECRET_REF), then the Lead's \u00a715 continuation"
+    },
+    {
+      "boundary": "the composition binding on any environment (the livekit-realtime-rail-binding gate)",
+      "reason": "fail-closed by design: the credential set is incomplete without the API secret; the delivered grant MUST NOT be written into the secret references as a keypair",
+      "owner": "same as above"
+    },
+    {
+      "boundary": "the DATA-plane effects (deliverTurn over real data channels) and any REPEATABLE external journey (the level-4 rung)",
+      "reason": "data channels require a WebRTC client stack (RTCPeerConnection) the probe deliberately does not embed; the 900s single-purpose grant expired (exp 1790187812) and no mint authority (the keypair secret) was delivered to mint fresh per-test grants",
+      "owner": "the \u00a715 continuation (the keypair unlocks the adapter's own mintClientAccess seam)"
+    }
+  ],
+  "notes": [
+    "the evidence ladder position: GAP-001's external rung advances from NOT RUN to PARTIALLY credentialed — the participant-join plane is proven with real evidence; the admin rung and the \u00a715 full sequence remain open; the gap does NOT close and the maturity level does not advance past its honest state (no repeatable journey exists)",
+    "the probe exercised the SIGNALING plane only; the JoinResponse's offer/trickle messages prove the server was proceeding to media, but no media/data frame was exchanged",
+    "two joins, one room: run 1 created the room (the server-epoch corroboration), run 2 joined the surviving room — the plane's room-persistence behavior observed honestly, not asserted beyond what the JoinResponse carries"
+  ]
+}

@@ -1370,6 +1370,27 @@ journeys against the plane with real credentials → record the
 credentialed evidence. Until then the honest state stands: local-rail
 conformance green, external availability NOT RUN.
 
+**The credentialed-run addendum (2026-09-23 — the participant-join
+rung)**. The owner provisioned the managed plane and delivered the
+endpoint + the API key ID + a PRE-MINTED short-lived (900s) participant
+join grant — not the API keypair secret. The Lead's credentialed probe
+(`scripts/lead-livekit-join-probe.ts`) proved the EXTERNAL
+participant-join plane: the managed plane
+(`wss://zeck-vuo9lv9v.livekit.cloud`, LiveKit server 1.13.7, region
+Japan) authenticated the grant, materialized room `zeck`, admitted
+participant `zeck`, and progressed the handshake through its WebRTC SDP
+offer + ICE candidates (the join acknowledged in 219ms; a clean leave;
+the full record in `deploy/evidence/ppr-009-live-join.json` — GAP-001's
+external rung advances from NOT RUN to partially credentialed).
+**Still honestly NOT RUN**: the admin/server-SDK rung and the FULL §15
+sequence — the API keypair SECRET was not delivered (a join grant is
+not a keypair and must never be written into the secret references as
+one); the composition binding stays fail-closed exactly as designed;
+no repeatable external journey exists (the 900s single-purpose grant
+expired; no mint authority was delivered). The operator's next move to
+close the rung: deliver the API keypair through the environment's
+`ZECK_SECRET_LIVEKIT_API_KEY_REF` / `ZECK_SECRET_LIVEKIT_API_SECRET_REF`.
+
 ## 16. The alternate realtime rail + the substitution drill (PPR-010 — GAP-003's level-5 rung)
 
 The provider-independence iron law (neutral capability port →

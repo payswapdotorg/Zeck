@@ -102,7 +102,7 @@
       "conformance": "the realtime-rail conformance contract (C1-C12, delivered at PPR-009)",
       "substitutionTarget": "realtime infrastructure (self-hostable server; WebSocket-native)",
       "maturity": 3,
-      "notes": "the first REAL external rail adapter (PPR-009, merged 02fc6b4): local-rail conformance green (the level-3-on-local rung — a REAL local livekit-server, refusal injection + the crash model + the server-side corroboration); external/managed availability NOT RUN until the Lead's credentialed run (the §15 operator sequence)"
+      "notes": "the first REAL external rail adapter (PPR-009, merged 02fc6b4): local-rail conformance green (the level-3-on-local rung — a REAL local livekit-server, refusal injection + the crash model + the server-side corroboration); 2026-09-23 the EXTERNAL participant-join plane credentialed + proven (the owner-delivered 900s join grant accepted by the managed plane — evidence ppr-009-live-join.json); the keypair/admin external rung + the §15 sequence open (no API secret delivered)"
     },
     {
       "id": "simulated-realtime-rail",
