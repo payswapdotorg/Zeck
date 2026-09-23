@@ -344,6 +344,23 @@ describe("PPR-003: the secret-safety discipline", () => {
     ).toEqual([]);
   });
 
+  test("an elided provider key shape in recorded documentation is name-class (material required)", () => {
+    // The recorded validation sentences quote key SHAPES elided —
+    // prefix + ellipsis, no key material (docs/VALIDATION-REPORT.md:
+    // "the `sk-ws-…` shape is not a dashscope credential"). A shape
+    // mention is name-class under the kit's doctrine; a VALUE is
+    // prefix + material. The scan must fire only on material.
+    expect(
+      scanForSecrets("HTTP 401 auth-rejected (the `sk-ws-…` shape is not a dashscope credential)"),
+    ).toEqual([]);
+    // The same prefix WITH key material fires (runtime-built — no
+    // literal pattern in this file).
+    const withMaterial = ["sk-ws-", "a1b2c3d4", "e5f6"].join("");
+    const fired = scanForSecrets(`leaked ${withMaterial} in a page`);
+    expect(fired.length).toBeGreaterThanOrEqual(1);
+    expect(fired.some((m) => m.patternName.includes("provider key prefix"))).toBe(true);
+  });
+
   test("the URL-hygiene detector", () => {
     expect(urlCarriesCredentials("postgres://user:pass@host:5432/db")).toBe(true);
     expect(urlCarriesCredentials("https://user:pass@example.com")).toBe(true);

@@ -216,6 +216,22 @@ describe("the playground catalog (every workload family, honest availability)", 
     expect(html).toContain("examples/three-d-generation.ts");
   });
 
+  test("a provider-gated family page discloses the manifest's gate of record by name", async () => {
+    // The manifest's gatedBy is the gate authority; the family page
+    // must project it (a NAME only, never a value) even when the
+    // validation matrix's candidate-provider scan records different
+    // candidates — the discovery journey audits exactly this name.
+    const voice = await getHtml("/console/playground/voice");
+    expect(voice).toContain("Gate of record:");
+    expect(voice).toContain("QWEN_API_KEY");
+    const threeD = await getHtml("/console/playground/three-d");
+    expect(threeD).toContain("Gate of record:");
+    expect(threeD).toContain("ZECK_3D_API_KEY");
+    // A runnable family records no gate — no gate-of-record line.
+    const runnable = await getHtml("/console/playground/text");
+    expect(runnable).not.toContain("Gate of record:");
+  });
+
   test("the family page carries no provider selection anywhere", async () => {
     const html = await getHtml("/console/playground/text");
     for (const forbidden of [

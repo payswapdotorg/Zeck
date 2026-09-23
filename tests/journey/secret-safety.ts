@@ -37,9 +37,17 @@ export const SECRET_PATTERNS: readonly SecretPattern[] = Object.freeze([
     pattern: /["'](token|secret|password|api[_-]?key)["']\s*:\s*["'][^"']{12,}["']/i,
   },
   {
+    // MATERIAL IS REQUIRED after each provider prefix: a secret is
+    // prefix + key material (>= 8 chars, the same class as the
+    // apikey-/ak_/ck_ alternatives). An ELIDED SHAPE EXAMPLE in
+    // recorded documentation — "the `sk-ws-…` shape" (prefix + ellipsis,
+    // no material) — is name-class under the kit's own doctrine
+    // ("credential NAMES are allowed; VALUES are not", DEP-020 AC6)
+    // and must not fire. Every alternative in this pattern now
+    // requires the same material class.
     name: "provider key prefix literal (sk-or-v1/sk-proj/sk-ws/apikey-/ak_/ck_)",
     pattern:
-      /(sk-or-v1-|sk-proj-|sk-ws-|apikey-[A-Za-z0-9]{8}|ak_[A-Za-z0-9]{8}|ck_[A-Za-z0-9]{8})/,
+      /(sk-or-v1-[A-Za-z0-9]{8}|sk-proj-[A-Za-z0-9]{8}|sk-ws-[A-Za-z0-9]{8}|apikey-[A-Za-z0-9]{8}|ak_[A-Za-z0-9]{8}|ck_[A-Za-z0-9]{8})/,
   },
   {
     name: "bearer literal with long token",

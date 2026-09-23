@@ -59,9 +59,15 @@ const PATTERNS: readonly { readonly name: string; readonly pattern: RegExp }[] =
     pattern: /["'](token|secret|password|api[_-]?key)["']\s*:\s*["'][^"']{12,}["']/i,
   },
   {
+    // MATERIAL IS REQUIRED after each provider prefix (>= 8 chars —
+    // the same class as apikey-/ak_/ck_): an elided shape example in
+    // recorded documentation ("the `sk-ws-…` shape") is name-class
+    // under this scan's own doctrine ("credential NAMES are allowed;
+    // VALUES are not") and must not fire. Mirrors the journey
+    // harness's secret-safety scanner (tests/journey/secret-safety.ts).
     name: "provider key prefix literal (sk-or-v1/sk-proj/sk-ws/apikey-/ak_/ck_)",
     pattern:
-      /(sk-or-v1-|sk-proj-|sk-ws-|apikey-[A-Za-z0-9]{8}|ak_[A-Za-z0-9]{8}|ck_[A-Za-z0-9]{8})/,
+      /(sk-or-v1-[A-Za-z0-9]{8}|sk-proj-[A-Za-z0-9]{8}|sk-ws-[A-Za-z0-9]{8}|apikey-[A-Za-z0-9]{8}|ak_[A-Za-z0-9]{8}|ck_[A-Za-z0-9]{8})/,
   },
   {
     name: "bearer literal with long token",

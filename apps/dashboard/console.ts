@@ -351,9 +351,20 @@ export function classificationChip(classification: FamilyClassification): string
  * live completion depends on the deployment's authorized provider rails.
  */
 export function familyAvailabilitySection(family: ConsoleFamily): string {
+  // The gate of record: the credential ENV VAR NAME the machine
+  // manifest records on a provider-gated family (a NAME only, never a
+  // value — the same projection discipline as the sentence below).
+  // Rendered so the family's own page discloses its gate even when the
+  // validation matrix's candidate-provider scan (playground access
+  // section) records different candidates — the manifest is the gate
+  // authority, and the discovery journey audits exactly this name.
+  const gateOfRecord =
+    family.gatedBy === undefined
+      ? ""
+      : `\n  <p>Gate of record: <span class="mono">${esc(family.gatedBy)}</span> — the credential environment-variable name the machine capability manifest records for this family (a name only, never a value).</p>`;
   return `<section class="card">
   <h2>Availability</h2>
-  ${classificationChip(family.classification)}
+  ${classificationChip(family.classification)}${gateOfRecord}
   <p>${esc(family.availability)}</p>
   <p class="muted">Recorded by the validation program and carried by the machine capability manifest — the console projects it, never re-classifies it. In this console a run is submitted through the governed public API with the synthetic task below; live completion depends on the deployment's authorized provider rails, and real-rail rows without operator credentials are NOT RUN (an operator action, never silently converted into a pass).</p>
 </section>`;
