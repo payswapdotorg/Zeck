@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "fastify": "^5.12.1",
+    "livekit-server-sdk": "2.19.1",
     "pg": "8.16.3"
   }
 }
