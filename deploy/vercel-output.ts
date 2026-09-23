@@ -32,7 +32,9 @@
  *     resolving to a source DIRECTORY gains `/index.js` (`../src/api`
  *     → `../src/api/index.js` — Node ESM has no directory-index
  *     resolution). Absolute/bare specifiers (`node:*`, packages) are
- *     untouched;
+ *     untouched; and only REAL module edges are rewritten — the edges
+ *     come from an ESM lexer, so code-as-data (a template-literal
+ *     snippet containing `from "..."`) is never misread as an import;
  *  3. the function root's package.json becomes the minimal
  *     `{"type": "module"}` marker (scopes ONLY the emitted graph — every
  *     traced node_modules package keeps its own nearest package.json,
@@ -52,9 +54,40 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { initSync as initModuleLexer, parse as parseModuleSpecifiers } from "es-module-lexer";
 
-/** The `from "<specifier>"` shapes tsc emits (no dynamic/side-effect relative imports exist in the graph). */
-export const FROM_SPECIFIER = /(from\s+["'])(\.\.?\/[^"']+)(["'])/g;
+// The real-ESM lexer (synchronous WASM — works under both bun, the build
+// runtime, and node, the test runtime). Initialized once at module load.
+initModuleLexer();
+
+/** A real static import edge of an emitted file: the module name plus its
+ * unquoted text range in the source. Code-as-data — a template-literal
+ * snippet containing `from "..."` — is NOT an edge: the lexer is the
+ * oracle, a raw text regex is not (the DEP-025 playground snippet embedded
+ * in apps/dashboard/validation-lab.ts made a regex misread a served string
+ * as a module edge and refuse an honest build). */
+interface ModuleEdge {
+  /** The module name (unquoted — e.g. "./lib", "../src/api"). */
+  readonly name: string;
+  /** The specifier's start offset in the source (between the quotes). */
+  readonly start: number;
+  /** The specifier's end offset in the source (between the quotes). */
+  readonly end: number;
+}
+
+/** Enumerate an emitted file's REAL relative static import edges. */
+function staticModuleEdges(source: string): ModuleEdge[] {
+  const [imports] = parseModuleSpecifiers(source);
+  const edges: ModuleEdge[] = [];
+  for (const imported of imports) {
+    // 1 = ImportType.Static (import/export-from statements — the shapes tsc emits).
+    if (imported.t !== 1 || typeof imported.n !== "string" || !imported.n.startsWith(".")) {
+      continue;
+    }
+    edges.push({ name: imported.n, start: imported.s, end: imported.e });
+  }
+  return edges;
+}
 
 /** A specifier suffix that already carries a resolvable extension — never rewritten. */
 export const RESOLVED_SUFFIXES = [".js", ".json", ".mjs", ".cjs", ".wasm", ".node"] as const;
@@ -135,22 +168,23 @@ export function rewriteEmittedGraph(
   let rewrites = 0;
   for (const file of emittedJavaScriptFiles(functionRoot)) {
     const source = readFileSync(file, "utf8");
-    let fileRewrites = 0;
-    const corrected = source.replace(
-      FROM_SPECIFIER,
-      (match, lead: string, specifier: string, trail: string) => {
-        if (RESOLVED_SUFFIXES.some((suffix) => specifier.endsWith(suffix))) {
-          return match;
-        }
-        fileRewrites += 1;
-        return `${lead}${rewriteSpecifier(repositoryRoot, functionRoot, file, specifier)}${trail}`;
-      },
+    const unresolved = staticModuleEdges(source).filter(
+      (edge) => !RESOLVED_SUFFIXES.some((suffix) => edge.name.endsWith(suffix)),
     );
-    if (fileRewrites > 0) {
-      writeFileSync(file, corrected);
-      files += 1;
-      rewrites += fileRewrites;
+    if (unresolved.length === 0) {
+      continue;
     }
+    // Right-to-left offset surgery: earlier offsets stay valid as later
+    // (higher) specifiers are replaced first.
+    let corrected = source;
+    for (let i = unresolved.length - 1; i >= 0; i -= 1) {
+      const edge = unresolved[i] as ModuleEdge;
+      const replacement = rewriteSpecifier(repositoryRoot, functionRoot, file, edge.name);
+      corrected = corrected.slice(0, edge.start) + replacement + corrected.slice(edge.end);
+    }
+    writeFileSync(file, corrected);
+    files += 1;
+    rewrites += unresolved.length;
   }
   return { files, rewrites };
 }
@@ -168,15 +202,12 @@ export function verifyGraph(functionRoot: string): number {
   let remaining = 0;
   for (const file of emittedJavaScriptFiles(functionRoot)) {
     const source = readFileSync(file, "utf8");
-    for (const match of source.matchAll(FROM_SPECIFIER)) {
-      const specifier = match[2];
-      if (specifier === undefined) {
+    for (const edge of staticModuleEdges(source)) {
+      if (RESOLVED_SUFFIXES.some((suffix) => edge.name.endsWith(suffix))) {
         continue;
       }
-      if (!RESOLVED_SUFFIXES.some((suffix) => specifier.endsWith(suffix))) {
-        console.error(`  ✗ ${relative(functionRoot, file)}: "${specifier}" left extensionless`);
-        remaining += 1;
-      }
+      console.error(`  ✗ ${relative(functionRoot, file)}: "${edge.name}" left extensionless`);
+      remaining += 1;
     }
   }
   return remaining;

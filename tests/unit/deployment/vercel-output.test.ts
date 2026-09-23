@@ -212,6 +212,45 @@ describe("PPR-007: the build tool's two-function graph correction (synthetic-fix
     );
   });
 
+  test("code-as-data is never misread as an import edge (the DEP-025 playground snippet lesson)", () => {
+    // The emitted graph legitimately contains code-as-data: a template
+    // literal whose served text includes an import statement shape
+    // (apps/dashboard/validation-lab.ts's playground snippet embeds
+    // `import { createZeckClient } from "./sdk";`). A raw-text regex
+    // misread that string as a module edge and refused an honest build
+    // ("unresolvable relative import"); the ESM lexer is the oracle.
+    const { repoRoot, outputRoot } = buildFixture();
+    const experienceFunc = join(outputRoot, "functions", "api", "experience.func");
+    write(
+      experienceFunc,
+      "apps/dashboard/validation-lab.js",
+      [
+        'const snippet = `import { createZeckClient } from "./sdk";`;',
+        'import { http } from "./http";',
+        "export const lab = http + snippet.length;",
+      ].join("\n"),
+    );
+    const before = readFileSync(
+      join(experienceFunc, "apps", "dashboard", "validation-lab.js"),
+      "utf8",
+    );
+    expect(before).toContain('from "./sdk"'); // the data is present
+
+    const correction = correctVercelOutput(outputRoot, repoRoot);
+    const after = readFileSync(
+      join(experienceFunc, "apps", "dashboard", "validation-lab.js"),
+      "utf8",
+    );
+
+    // the REAL edge is rewritten; the string-embedded one is untouched
+    expect(after).toContain('from "./http.js"');
+    expect(after).toContain('from "./sdk"'); // still data, byte-identical
+    expect(after).not.toContain("./sdk.js"); // no extension injected into the data
+    for (const outcome of correction.functions) {
+      expect(outcome.remainingUnresolved).toBe(0);
+    }
+  });
+
   test("the correction refuses an output missing a required function graph (the routing contract)", () => {
     const { repoRoot, outputRoot } = buildFixture();
     rmSync(join(outputRoot, "functions", "api"), { recursive: true, force: true });
