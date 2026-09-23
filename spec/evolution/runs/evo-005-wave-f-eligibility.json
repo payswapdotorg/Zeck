@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "run": "evo-005",
+  "date": "2026-09-23",
+  "trigger": "event-triggered — the wave-F eligibility review (evo-004's recorded nextReview; the loop's RESEARCH -> COMPARE -> MAP -> AUTHORIZE steps for the three non-credential-bound candidates)",
+  "loop": "OBSERVE (evo-004) -> DETECT (GAP-004's recorded residual + the evo-002/evo-004 deferred dependency advances + PPR-010's explicitly-deferred auto-rebind residual) -> RESEARCH -> COMPARE -> MAP -> AUTHORIZE (PPR-011 + PPR-012 + PPR-013 issued — WAVE F)",
+  "research": {
+    "rule": "upstream truth collected from the registries/artifacts, never from memory (the zero-drift rule)",
+    "facts": [
+      "fastify (npm registry, live query at authorization): latest 5.12.5, MIT — the in-range advance over the installed ^5.12.1 resolution (the evo-002/evo-004 deferred candidate, unchanged since)",
+      "pg (npm registry, live query at authorization): latest 8.23.0, MIT — the minor-ladder advance over the installed exact pin 8.16.3 (the second deferred candidate)",
+      "the journey harness's redirect discipline (tests/journey/journeys.ts, journeyDiscover): the root audit uses the redirect:manual fact; the discover-landing step has exactly two shapes today (an HTML landing => the dimension audit; a non-HTML answer => the honest not-run owned by OWNERS.leadPostDeployment) — the redirect-following extension slots exactly there (GAP-004's own target state names this work order)",
+      "the two rail bindings exist and are pairwise-composable: src/modules/deployments/adapters/livekit-realtime-rail-binding.ts (bindEnvironmentRealtimeRail) + socketio-realtime-rail-binding.ts (bindEnvironmentSocketIoRail), each fail-closed on its own materialization gate; the substitution drill (tests/conformance/realtime-rail/rail-substitution.drill.test.ts) proved the same coordinates + the same stable keys converge exactly-once per rail across both — the composition-level policy is the recorded residual this wave takes",
+      "the sandbox capacity at authorization: 2 CPUs / ~4GB RAM / ~5.2G disk free — the dispatch is STAGED (2 workers concurrent, the third when a slot frees); the frontier's maxConcurrentWorkers=3 is a ceiling, never a resource assumption",
+      "no new credentials arrived for the model families or the LiveKit keypair since evo-004 — the credential-bound residuals (GAP-001's admin rung, GAP-002, GAP-003's live-plane rung) remain operator-owned (outbox record 4, updated by the 2026-09-23 join-plane proof)"
+    ]
+  },
+  "compare": {
+    "candidates": [
+      {
+        "id": "PPR-011 (the redirect-following landing audit)",
+        "verdict": "AUTHORIZED",
+        "reasoning": "GAP-004's target state names it verbatim ('a redirect-following landing audit as its own harness-contract work order'); zero credential dependency; the smallest blast radius (the journey harness + its proof fixtures); the user journey lands correctly today via the 307 bridge, so the risk is confined to the audit's own honesty"
+      },
+      {
+        "id": "PPR-012 (the governed dependency advance)",
+        "verdict": "AUTHORIZED",
+        "reasoning": "the evo-002-detected, evo-004-confirmed in-range advances — deferred twice because a bump is a governed IMPLEMENT step, never auto-promoted at autonomy level 2; a dependency-only diff (package.json + bun.lock) decided by the battery; the wave-level redeploy ships the advance on the plane (the §13.6 chain re-pins the head)"
+      },
+      {
+        "id": "PPR-013 (the composition auto-rebind policy)",
+        "verdict": "AUTHORIZED",
+        "reasoning": "PPR-010's explicitly-deferred residual — the drill proved seam-level substitutability and recorded the composition-level policy as its honest gap ('touches the frozen admission path and can mask failures — a future governed work order'); this order takes it WITH the frozen-seam guarantee (the policy binds BELOW the session service; the admission ordering untouched; disclosure via the serving rail's own railCapabilityId)"
+      },
+      {
+        "id": "GAP-006's economics/codebase-analysis bindings",
+        "verdict": "NOT A CANDIDATE THIS WAVE",
+        "reasoning": "each binding is its own authority work order over an unbound capability seam (the honest 422s are the correct current behavior); no research, operator input or design record exists for either yet — a future wave's RESEARCH step may open them"
+      }
+    ]
+  },
+  "map": {
+    "blastRadius": "PPR-011: tests/journey/ (the harness's discover extension) + a NEW fixture-matrix test + deploy/evidence/ppr-011.json + a PUBLIC-DEPLOYMENT APPEND; PPR-012: package.json + bun.lock + deploy/evidence/ppr-012.json; PPR-013: a NEW adapter-layer rebind binding + its unit proofs + the additive barrel/composition wiring + an OPTIONAL drill extension + deploy/evidence/ppr-013.json + a PUBLIC-DEPLOYMENT APPEND",
+    "conflictPartition": "the three orders' code surfaces are PAIRWISE DISJOINT (journey harness vs dependency manifests vs adapter binding layer); the shared surfaces are append-only (PUBLIC-DEPLOYMENT.md distinct sections, distinct evidence files, the worklog); the frozen surfaces for all three: the RealtimeRail port's shapes, the session service's admission ordering, the governance records (the Lead's alone)",
+    "mergeOrder": "the Lead merges sequentially in delivery order (011, 012, 013) with the independent battery as each merge's binding gate; ONE wave-level plane redeploy (the §13.6 chain) + ONE journey-harness MEASURE re-run after all three land (closing the a244e70 -> head revision lag honestly)"
+  },
+  "authorize": {
+    "workOrders": ["PPR-011 — the redirect-following landing audit (GAP-004's residual)", "PPR-012 — the governed dependency advance (fastify + pg, the evo-002 deferred candidates)", "PPR-013 — the composition auto-rebind policy (PPR-010's explicitly-deferred residual)"],
+    "neverAuthorizedListCheck": "no authority-chain change (all three are non-authoritative surfaces); no identity/policy/security semantics; no new secret-materialization path (PPR-013 derives from the EXISTING rails' materializations — zero new environment variables); no tenant isolation / payments / residency / irreversible migration; no verification weakening (each order EXTENDS proof: the landing audit, the advanced-dependency battery, the rebind proofs); no copyleft (MIT verified at the registry); no execution-success semantics change (the honest-failure discipline preserved — non-retryable failures never re-bind)",
+    "autonomyNote": "currentAutonomyLevel=2 (drafted): the PROGRAM prepared this research/comparison/map record; the AUTHORIZATION is the Lead's governed act under the Successor Tech Lead Directive (the same pattern as PPR-009/PPR-010 at the same level); the operator retains veto through the outbox/inbox channel"
+  },
+  "honestBoundaries": [
+    "the staged dispatch (2 concurrent, then 1) is a RESOURCE decision recorded here — the frontier's maxConcurrentWorkers=3 is a ceiling; the sandbox measured 2 CPUs / ~4GB RAM at authorization",
+    "the workers' batteries exclude the PG-rail integration + FULL suite (the Lead's independent battery on the merged tree is the binding merge gate — the PPR-009 standing precedent); PPR-011's worker may run the targeted harness-e2e file on the PG rail (the only PG consumer among the concurrent workers)",
+    "the live-plane MEASURE (the journey re-run at the exact attested revision) happens ONCE at the wave level after the three merges — never per order",
+    "the credential-bound residuals are UNCHANGED by this wave: GAP-001's admin rung (the LiveKit keypair secret), GAP-002's model families, GAP-003's live-plane rung — all operator-owned (outbox record 4)"
+  ],
+  "nextReview": "the wave-F deliveries (the Lead's VERIFY step: review + independent battery + sequential merges + the wave-level §13.6 redeploy + the MEASURE journey re-run + the LEARN ledger updates: GAP-004's residual state, the dependency-state refresh, the solution-catalog/journey-coverage refresh)"
+}
