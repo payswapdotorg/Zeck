@@ -39,11 +39,11 @@
       "id": "GAP-003",
       "title": "no alternate-solution substitution drills on the live plane",
       "concern": "provider independence (the maturity ladder's level-5 rung)",
-      "currentState": "level 4 — the public plane serves repeatable journeys at attested revisions; the HA topology has a governed failover procedure (deploy:drill, WORK-057) but no alternate PROVIDER has been substituted on the live plane",
-      "targetState": "level 5 — at least one durable concern served by an alternate solution through the same port, drilled",
-      "evidence": "deploy/manifests/providers.json redundancy blocks (the standby topology is provider-agnostic but undrilled live)",
-      "owner": "future governed work orders (the evolution program's AUTHORIZE step)",
-      "status": "open"
+      "currentState": "level 5-on-local-rail — the substitution/failover drill GREEN over BOTH real rails (the local livekit-server primary while the binary is present; the embedded socket.io alternate, ALWAYS real): the same durable coordinates and the SAME stable rail-level idempotency keys replayed across rails after the primary's SIGSTOP refusal, converging exactly-once PER RAIL with identical neutral acknowledgment shapes; the five shared failure kinds pinned to the EXACT same neutral reason strings on both rails (a refusal means the same thing on every rail)",
+      "targetState": "level 5 — at least one durable concern served by an alternate solution through the same port, drilled (the LIVE-plane rung once a real rail binds on the plane — credential-bound)",
+      "evidence": "deploy/evidence/ppr-010.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/rail-substitution.drill.test.ts; merged at 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d",
+      "owner": "PPR-010 (DELIVERED — merged 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d); the live-plane rung: a future governed work order after the operator credential provisioning",
+      "status": "advanced-to-level-5-on-local-rail (the live-plane rung open — credential-bound)"
     },
     {
       "id": "GAP-004",

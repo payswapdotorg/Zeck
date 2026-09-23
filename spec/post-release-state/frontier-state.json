@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-e-open",
-  "currentBase": "f4b1955",
+  "status": "wave-e-ppr-010-delivered",
+  "currentBase": "91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -12,7 +12,8 @@
     "PPR-006",
     "PPR-007",
     "PPR-008",
-    "PPR-009"
+    "PPR-009",
+    "PPR-010"
   ],
   "eligible": [
     "PPR-010"
@@ -21,5 +22,5 @@
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "WAVE E — OPEN (2026-09-23): PPR-010 AUTHORIZED — the alternate realtime rail (socket.io 4.8.3, registry-verified MIT) + the substitution/failover drill: GAP-003's level-5 rung (multi-provider replaceable + failure drills) over the fresh PPR-009 conformance contract. The eligibility review is recorded (spec/evolution/runs/evo-003-wave-e-eligibility.json: RESEARCH from live registry queries — socket.io 4.8.3 MIT chosen as an independent third-party realtime server product; ws 8.21.3 the recorded fallback ONLY if the socket.io server cannot boot under the battery runtime (the work order's requirement-0 feasibility probe decides); centrifugo deferred — no verifiable npm artifact; COMPARE + MAP with the frozen surfaces and the explicitly-out-of-scope composition auto-rebind policy recorded; AUTHORIZE with the never-authorized list checked). The drill: BOTH real rails (local livekit-server primary while the binary is present; the socket.io alternate ALWAYS real) through the same neutral coordinates — primary refusal injected, the same stable idempotency keys replayed against the alternate, exactly-once upstream effects per rail proven. Background unchanged: F1/F2 CLOSED (exit-0 credentialed acceptance at a244e70); PPR-009 delivered (02fc6b4, GAP-001 level 3-on-local-rail); evo-002 OBSERVE on record (fastify/pg in-range advances deferred to a governed bump); origin/main SYNCED at f4b1955. The credential-bound residuals await the operator (outbox record 4: LiveKit external keypair for GAP-001's external rung + the model families for GAP-002). Dispatch rule unchanged: max 3 concurrent workers, workers never merge, never from a stale base."
+  "context": "WAVE E — PPR-010 DELIVERED (2026-09-23): the alternate realtime rail (the published socket.io 4.8.3 server, embedded, registry-verified MIT) + the substitution/failover drill — GAP-003's level-5 rung over the fresh PPR-009 conformance contract. MERGED at 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d after the Lead's independent battery (typecheck 0; lint HEAD-exact 3+68+8 zero new; conformance 41/41 — 11 simulated + 13 livekit + 15 socketio + 2 drill, ALL THREE subjects through ONE contract; unit 362f/6375t; architecture+discrimination 139+1sk f/2230+4sk t with the pristine-main reconciliation proof; integration on the PG rail 175+1sk f/1297+26sk t; FULL suite 681+1sk f/9953+26sk t/0 failed/558.78s; governance OK; deploy:validate valid=true, 97 variables). GAP-003 advances to level-5-on-local-rail (spec/evolution/gap-ledger.json; evidence deploy/evidence/ppr-010.json): the same durable coordinates + the same stable keys replayed across BOTH real rails after primary refusal, exactly-once per rail, identical neutral shapes, the shared failure vocabulary pinned identical. The honest residuals: the LIVE-plane substitution drill (credential-bound — no real rail binds on the plane until the §15/§16 operator sequences), the composition auto-rebind policy (a future governed work order), and the durable idempotency-ledger binding (the PPR-009 residual, unchanged). The worker dispatch (Task 81) died at its context deadline; the Lead completed the delivery per the successor doctrine (the evidence's reviewCorrections record every correction). Next governed moves: the evo-004 post-delivery OBSERVE scan; the remaining non-credential-bound candidates (GAP-004's bare-root HTML — low priority; the fastify/pg governed bump deferred at evo-002); the §15 operator credential provisioning (outbox record 4: LiveKit external keypair + the model families). Dispatch rule unchanged: max 3 concurrent workers, workers never merge, never from a stale base."
 }

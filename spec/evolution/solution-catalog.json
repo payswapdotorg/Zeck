@@ -99,20 +99,30 @@
       "concern": "realtime-transport",
       "authorityRole": "non-authoritative",
       "port": "src/modules/deployments/ports/realtime-rail.ts (RealtimeRail)",
-      "conformance": "the PPR-009 conformance contract (in flight)",
+      "conformance": "the realtime-rail conformance contract (C1-C12, delivered at PPR-009)",
       "substitutionTarget": "realtime infrastructure (self-hostable server; WebSocket-native)",
-      "maturity": 1,
-      "notes": "authorized as PPR-009 — the first REAL external rail adapter; no credentialed availability until the Lead's run"
+      "maturity": 3,
+      "notes": "the first REAL external rail adapter (PPR-009, merged 02fc6b4): local-rail conformance green (the level-3-on-local rung — a REAL local livekit-server, refusal injection + the crash model + the server-side corroboration); external/managed availability NOT RUN until the Lead's credentialed run (the §15 operator sequence)"
     },
     {
       "id": "simulated-realtime-rail",
       "concern": "realtime-transport",
       "authorityRole": "non-authoritative",
       "port": "src/modules/deployments/ports/realtime-rail.ts (RealtimeRail)",
-      "conformance": "the PPR-009 conformance contract (the semantic reference implementation)",
+      "conformance": "the realtime-rail conformance contract (the semantic reference implementation)",
       "substitutionTarget": "none (the fake)",
       "maturity": 2,
       "notes": "the in-process simulated rail — the conformance suite's semantic reference"
+    },
+    {
+      "id": "socketio",
+      "concern": "realtime-transport",
+      "authorityRole": "non-authoritative",
+      "port": "src/modules/deployments/ports/realtime-rail.ts (RealtimeRail)",
+      "conformance": "the realtime-rail conformance contract (C1-C12 — the SECOND real subject, plus the cross-rail substitution drill)",
+      "substitutionTarget": "realtime infrastructure (self-hostable in-process server; WebSocket-native)",
+      "maturity": 3,
+      "notes": "the ALTERNATE real rail (PPR-010, merged 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d): the published socket.io 4.8.3 server EMBEDDED in process (registry-verified MIT, unmodified); local-rail conformance green + the substitution/failover drill green over BOTH real rails (GAP-003 level 5-on-local-rail); external/managed availability NOT RUN (the §16 operator sequence)"
     }
   ]
 }
