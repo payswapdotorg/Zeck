@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The solution-conformance registry (the Successor Tech Lead Directive §13): each (concern, solution) pair's conformance status against its contract — the provider-replaceability proof. A solution is SUBSTITUTABLE only when its conformance record is green at a recorded revision; a conformance regression freezes substitution until re-proven.",
+  "records": [
+    {
+      "concern": "relational-state",
+      "contract": "tests/integration/postgres/ (the real-rail suite)",
+      "solutions": [
+        { "id": "neon", "status": "green", "evidence": "the PG-rail suites green at 945db86 (175+1skip files / 1297+26skip tests); live-bound on the preview plane" }
+      ]
+    },
+    {
+      "concern": "experience-delivery",
+      "contract": "deploy:public-smoke + the journey harness at the exact attested revision",
+      "solutions": [
+        { "id": "vercel", "status": "green", "evidence": "f1-closure.json — the exit-0 acceptance at a244e70 (26/26 routes honest, identity verified)" }
+      ]
+    },
+    {
+      "concern": "realtime-transport",
+      "contract": "the PPR-009 conformance contract (IN FLIGHT — not yet established)",
+      "solutions": [
+        { "id": "simulated-realtime-rail", "status": "pending-contract", "evidence": "the semantic reference implementation; conformance recorded once PPR-009 lands the shared suite" },
+        { "id": "livekit", "status": "pending-implementation", "evidence": "PPR-009 authorized; no conformance claim until the adapter passes the shared suite (and no availability claim until the Lead's credentialed run)" }
+      ]
+    },
+    {
+      "concern": "model rails",
+      "contract": "the validation program's live-proven rail probes (VAL-009)",
+      "solutions": [
+        { "id": "openrouter", "status": "green-for-text-families", "evidence": "live-proven (meta-llama/llama-3.3-70b-instruct); the per-family availability sentences are the manifest's truth" }
+      ]
+    }
+  ],
+  "rules": [
+    "the conformance suite is SHARED across every solution of a concern (the fake and every real adapter pass the SAME contract)",
+    "a conformance claim cites the suite run's revision + numbers",
+    "vendor SDK shapes never define the contract — the neutral port does",
+    "a new solution of an existing concern enters through the conformance suite FIRST (the provider-independence iron law)"
+  ]
+}

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "roadmap-complete",
-  "currentBase": "a244e703d881fc2e14169a653f285855f8d3dccd",
+  "status": "wave-d-open",
+  "currentBase": "945db86de82ddc29d6657a9fdc29b42bfe429c08",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -13,10 +13,12 @@
     "PPR-007",
     "PPR-008"
   ],
-  "eligible": [],
+  "eligible": [
+    "PPR-009"
+  ],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "ROADMAP COMPLETE (2026-09-23): F1 and F2 are CLOSED on the public plane. The §13.6 chain executed end to end after the credential re-provision: corrections #3-#7 (the build's ESM/data-carry/listener/gate-of-record/secret-safety findings) + correction #8 (a244e70: the dead root rewrite → the redirects bridge; the cached cold-start seeding failure → the retryable gate with the real-rail TCP-bridge proof; the unmaterialized experience token → the environment-only materialization over the preview transport credential + the materialized preview application). The deployed plane https://zeck-preview-main.vercel.app attests a244e703d881fc2e (bound, preview, deployment dpl_7eAJpHdgzLCrVcxWuVvj2LHFnv8X). The credentialed journey re-run: EXIT 0 — 12 journeys / 28 steps (27 pass / 0 fail / 1 honest not-run — the landing's 307 platform bridge) / 0 findings / identity gate verified at the exact revision; all 10 experience-surface steps PASS; all 22 workload-family disclosures SERVED (F1 closed); the credentialed execution gate PASSES over the materialized preview authorities with the export bundle serving 200 JSON (F2 closed). deploy:public-smoke EXIT 0 — 26/26 routes honest (18 auth-boundary 401 / 3 capability-unbound 422 / 4 materialized-composition 401 / 1 public-artifact 200), zero problems. Evidence: deploy/evidence/f1-closure.json (+ f1-closure-journey.json + f1-closure-smoke.json). The honest residual: the bare-root landing answers 307 (the platform's filesystem-phase fact — browsers land on /console; a redirect-following landing audit would be its own harness-contract work order), and the maturity ladder's level-5+ drills (alternate-solution substitution, failure drills, sustained production observation) remain future governed work beyond this roadmap."
+  "context": "WAVE D OPEN (2026-09-23, the Successor Tech Lead Directive): F1/F2 remain CLOSED (the exit-0 credentialed acceptance at a244e70; evidence deploy/evidence/f1-closure.json). The successor program's first governed evolution work order is AUTHORIZED: PPR-009 \u2014 the LiveKit realtime rail (the first REAL external RealtimeRail adapter + the shared conformance contract; spec/post-release-work-orders/PPR-009.md; the gap ledger's GAP-001). The \u00a713 evolution program files are stood up under spec/evolution/ (gap-ledger, solution-catalog, journey-taxonomy, journey-coverage, evolution-policy, promotion-policy, solution-conformance, runs/evo-001-bootstrap.json \u2014 the SHA reconciliation 338cc46\u2192945db86de82ddc29d6657a9fdc29b42bfe429c08 recorded there). Dispatch rule unchanged: max 3 concurrent workers, workers never merge, never from a stale base."
 }

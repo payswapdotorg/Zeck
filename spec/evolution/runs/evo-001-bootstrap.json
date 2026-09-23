@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "runId": "evo-001",
+  "kind": "program-bootstrap + reconciliation",
+  "date": "2026-09-23",
+  "recordedBy": "Successor Tech Lead (the Successor Tech Lead Directive's §1 recovery executed)",
+  "recoverySequence": [
+    "AGENTS.md + AI_CONTINUATION.md + the architect handoff navigation read",
+    "the post-release program state verified: frontier roadmap-complete at 945db86, F1/F2 CLOSED with the exit-0 credentialed acceptance (deploy/evidence/f1-closure.json)",
+    "governance check OK (60 Work Orders, 110 requirements, inFlight=[], frontier=[])",
+    "live GitHub refs inspected; the local main is ahead of origin/main (the pushes are the operator's/Lead's channel decision — recorded, not blocking)"
+  ],
+  "shaReconciliation": {
+    "directiveStatedBase": "338cc46c1f6081c1cbfa9de94e607982a74a159d",
+    "actualGovernedHead": "945db86 (via a244e70 → 3e9ec7a → dcdbcc6 → … → 0646890 → fa9f1ab → 0ca0819 → d74c2e2 → 338cc46)",
+    "resolution": "the actual governed main head is authoritative (the directive's own rule: never dispatch from a stale base); the delta is the wave-C completion + the §13.6 corrections #3-#8 + the F1/F2 closure — all Lead-verified with the full battery at every step",
+    "divergenceFindings": "none — every commit between 338cc46 and 945db86 carries its evidence; the directive's wave-C expectations (PPR-007/PPR-008) are delivered and Lead-verified"
+  },
+  "pprStatusVerification": {
+    "PPR-007": "DELIVERED (merge d74c2e2; the experience surface live on the public plane; all 10 experience steps + 22 disclosures SERVED at the exit-0 acceptance)",
+    "PPR-008": "DELIVERED (merge a5cc9fa; the preview authorities live-bound — the credentialed journey PASSES end-to-end; the substrate drives honest terminal receipts)",
+    "residual": "none dispatchable from the completed roadmap — the successor program's first work order is NEW (PPR-009)"
+  },
+  "actions": [
+    "PPR-009 AUTHORIZED (the LiveKit realtime rail + the conformance contract) — spec/post-release-work-orders/PPR-009.md; the gap ledger's GAP-001 mapped to it",
+    "the §13 evolution program files stood up: gap-ledger, solution-catalog, journey-taxonomy, journey-coverage, evolution-policy, promotion-policy, solution-conformance + this runs/ directory",
+    "the frontier refreshed: wave D open (PPR-009 eligible, base 945db86)"
+  ],
+  "nextLoopState": "OBSERVE — the nightly scan's baseline is this record; the event triggers arm (journey regressions, smoke failures, upstream releases); the weekly deep dive's first concern: realtime-transport (GAP-001, in flight via PPR-009)"
+}

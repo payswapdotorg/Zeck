@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The architectural/user-journey gap ledger (the Successor Tech Lead Directive §13): every known gap between the current state and the level-6 maturity target, each with its evidence, owner and status. Gaps are ADDED and TRANSITIONED, never silently deleted — a gap closes only with recorded evidence at the level its claim requires.",
+  "maturityModel": {
+    "levels": {
+      "0": "absent — no contract, no code, no evidence",
+      "1": "architecture contract — the neutral port/seam exists and is pinned, no implementation",
+      "2": "fake-local proof — a simulated/in-process implementation passes the contract; honest labels, no real-external claims",
+      "3": "credentialed real-external proof — a real provider answers over the real transport with the operator's credentials; every boundary honestly NOT RUN otherwise",
+      "4": "repeatable public journey — the capability serves a real user journey end-to-end on a public plane at an exact attested revision",
+      "5": "provider-replaceable + failure-tested — a conformance contract plus at least one alternate solution, with failure drills and governed failover",
+      "6": "production-grade — sustained observation, monitoring, recovery and cost accounting under real load"
+    },
+    "rule": "levels are never collapsed to PASS/FAIL; every level-3+ claim cites its evidence record"
+  },
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "title": "the realtime rail has no real external implementation",
+      "concern": "realtime-transport (the RealtimeRail port, WORK-024/MOD-005)",
+      "currentState": "level 2 — the provider-neutral port + the in-process simulated rail (the semantic reference); every realtime journey rests on fake-local evidence",
+      "targetState": "level 3 (a credentialed real rail) then level 5 (conformance + alternate)",
+      "evidence": "src/modules/deployments/ports/realtime-rail.ts documents 'REAL external realtime/telephony provider behavior is explicitly UNVERIFIED in this environment'",
+      "owner": "PPR-009 (authorized — the LiveKit rail + the conformance contract)",
+      "status": "in-flight"
+    },
+    {
+      "id": "GAP-002",
+      "title": "capability families gated on unresolved external rails",
+      "concern": "model rails (voice/image/video/3d families)",
+      "currentState": "level 2-3 mixed — text families live-proven over the openrouter rail; voice's qwen rail and the 3d gate unresolved at the operator boundary; OpenAI region-blocked from this environment; the console projects the gate-of-record line (correction #7)",
+      "targetState": "level 3 for every runnable family or an honest gated disclosure (never a fabricated capability)",
+      "evidence": "docs/VALIDATION-REPORT.md + the capability manifest's per-family availability sentences + the console's gate-of-record projection",
+      "owner": "operator credential provisioning, then the Lead's credentialed re-runs",
+      "status": "open — credential-bound"
+    },
+    {
+      "id": "GAP-003",
+      "title": "no alternate-solution substitution drills on the live plane",
+      "concern": "provider independence (the maturity ladder's level-5 rung)",
+      "currentState": "level 4 — the public plane serves repeatable journeys at attested revisions; the HA topology has a governed failover procedure (deploy:drill, WORK-057) but no alternate PROVIDER has been substituted on the live plane",
+      "targetState": "level 5 — at least one durable concern served by an alternate solution through the same port, drilled",
+      "evidence": "deploy/manifests/providers.json redundancy blocks (the standby topology is provider-agnostic but undrilled live)",
+      "owner": "future governed work orders (the evolution program's AUTHORIZE step)",
+      "status": "open"
+    },
+    {
+      "id": "GAP-004",
+      "title": "the bare-root landing answers a redirect, not HTML",
+      "concern": "experience-delivery routing (the platform's filesystem-phase fact)",
+      "currentState": "level 4 with an honest residual — '/' answers 307 → /console (the framework's root function owns '/'; browsers land on the composition); the harness's redirect:manual discipline records the honest not-run",
+      "targetState": "either accept the platform bridge as the design (documented) or a redirect-following landing audit as its own harness-contract work order",
+      "evidence": "deploy/evidence/f1-closure.json notRun[0] + correction #8 (§13.7)",
+      "owner": "the evolution program's RESCAN loop (low priority — the user journey lands correctly)",
+      "status": "recorded residual"
+    },
+    {
+      "id": "GAP-005",
+      "title": "one plane, one environment",
+      "concern": "experience-delivery (the public preview is the only served environment)",
+      "currentState": "level 4 on the preview plane (zeck-preview-main.vercel.app, bound at the exact revision); staging/production environments and custom domains do not exist",
+      "targetState": "level 6 requires the production environment with sustained observation",
+      "evidence": "deploy/evidence/f1-closure.json chain[4] + the frontier state's honest residual",
+      "owner": "future governed work orders (beyond the current roadmap)",
+      "status": "open"
+    },
+    {
+      "id": "GAP-006",
+      "title": "economics and codebase-analysis seams unbound on the preview plane",
+      "concern": "the bootstrap composition's honestly-unbound capabilities",
+      "currentState": "level 1-2 — the seams answer the honest 422 CAPABILITY_UNAVAILABLE with the composition split recorded (PPR-008's boot document)",
+      "targetState": "bound authorities when their work orders are issued (the materialization-gate pattern)",
+      "evidence": "deploy/api.ts's composition facts + the journey route-table's composition split",
+      "owner": "future governed work orders",
+      "status": "open"
+    }
+  ]
+}

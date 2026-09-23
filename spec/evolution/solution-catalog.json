@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The solution catalog (the Successor Tech Lead Directive §13): every SOLUTION that can serve a durable concern, mapped through its neutral port + conformance contract — the provider-independence iron law (Zeck neutral capability port → conformance contract → provider adapter → provider/project; never Zeck domain → vendor SDK). Seeded from deploy/manifests/providers.json (the established truth) + the module ports; the evolution program's RESEARCH/COMPARE steps extend it.",
+  "ironLaw": [
+    "vendor types, credentials, room/session ids and error strings never leave the adapter",
+    "the only optimization authority is the Execution Compiler — a solution never becomes a routing/optimization authority",
+    "a solution enters the catalog only with its port contract + conformance status recorded",
+    "the conformance contract is what a new provider codes against — never another provider's SDK shapes"
+  ],
+  "solutions": [
+    {
+      "id": "neon",
+      "concern": "relational-state",
+      "authorityRole": "authoritative",
+      "port": "src/platform/db/port.ts (DatabasePort)",
+      "conformance": "tests/integration/postgres/ (the real-rail suite every adapter must pass)",
+      "substitutionTarget": "any managed PostgreSQL provider",
+      "maturity": 3,
+      "notes": "live-bound on the preview plane; the HA standby topology is provider-agnostic (WORK-057)"
+    },
+    {
+      "id": "cloudflare-r2",
+      "concern": "artifact-bytes",
+      "authorityRole": "bytes-only",
+      "port": "the object-store port (S3-compatible)",
+      "conformance": "the object-store integration suite",
+      "substitutionTarget": "any S3-compatible object store",
+      "maturity": 2,
+      "notes": "declared on the plane's manifests; live probe state recorded by deploy:smoke"
+    },
+    {
+      "id": "cloudflare-queues",
+      "concern": "async-transport",
+      "authorityRole": "non-authoritative",
+      "port": "the queue port",
+      "conformance": "the queue integration suite",
+      "substitutionTarget": "managed queue / broker",
+      "maturity": 2
+    },
+    {
+      "id": "cloudflare-workflows",
+      "concern": "durable-orchestration",
+      "authorityRole": "non-authoritative",
+      "port": "the workflow port",
+      "conformance": "the workflow protocol suite",
+      "substitutionTarget": "durable workflow engine",
+      "maturity": 2
+    },
+    {
+      "id": "upstash-redis",
+      "concern": "ephemeral-coordination",
+      "authorityRole": "non-authoritative",
+      "port": "the coordination port (Redis-compatible)",
+      "conformance": "the coordination integration suite",
+      "substitutionTarget": "Redis-compatible service",
+      "maturity": 2
+    },
+    {
+      "id": "vercel",
+      "concern": "experience-delivery",
+      "authorityRole": "delivery-only",
+      "port": "the hosting adapters (deploy/vercel.ts + deploy/experience.ts over the Build Output API)",
+      "conformance": "deploy:public-smoke + the journey harness at the exact attested revision",
+      "substitutionTarget": "any Build-Output-compatible host",
+      "maturity": 4,
+      "notes": "the public plane serves repeatable journeys (f1-closure.json)"
+    },
+    {
+      "id": "zeck-container-runner",
+      "concern": "execution-compute",
+      "authorityRole": "non-authoritative",
+      "port": "the execution-substrate port (E2B/Daytona/Modal are adapters, not authorities)",
+      "conformance": "the substrate integration suites",
+      "substitutionTarget": "execution substrate adapters",
+      "maturity": 2
+    },
+    {
+      "id": "otel-export",
+      "concern": "observability-export",
+      "authorityRole": "non-authoritative",
+      "port": "the observability sink port",
+      "conformance": "the observability suite",
+      "substitutionTarget": "OTLP-compatible sinks",
+      "maturity": 2
+    },
+    {
+      "id": "openrouter",
+      "concern": "model rails (text/vision/vlm families)",
+      "authorityRole": "non-authoritative",
+      "port": "the model rail ports",
+      "conformance": "the validation program's live-proven rails (VAL-009 probes)",
+      "substitutionTarget": "open-weights model routing",
+      "maturity": 3,
+      "notes": "live-proven for the text families; the availability sentences live in the capability manifest"
+    },
+    {
+      "id": "livekit",
+      "concern": "realtime-transport",
+      "authorityRole": "non-authoritative",
+      "port": "src/modules/deployments/ports/realtime-rail.ts (RealtimeRail)",
+      "conformance": "the PPR-009 conformance contract (in flight)",
+      "substitutionTarget": "realtime infrastructure (self-hostable server; WebSocket-native)",
+      "maturity": 1,
+      "notes": "authorized as PPR-009 — the first REAL external rail adapter; no credentialed availability until the Lead's run"
+    },
+    {
+      "id": "simulated-realtime-rail",
+      "concern": "realtime-transport",
+      "authorityRole": "non-authoritative",
+      "port": "src/modules/deployments/ports/realtime-rail.ts (RealtimeRail)",
+      "conformance": "the PPR-009 conformance contract (the semantic reference implementation)",
+      "substitutionTarget": "none (the fake)",
+      "maturity": 2,
+      "notes": "the in-process simulated rail — the conformance suite's semantic reference"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The journey-coverage matrix (the Successor Tech Lead Directive §13): each taxonomy journey's CURRENT maturity level (the 0-6 model, never collapsed to PASS/FAIL) with its latest evidence. Refreshed by the evolution program's MEASURE step at every acceptance run; a coverage REGRESSION is a finding, never a silent state.",
+  "asOf": "2026-09-23T14:30:00Z",
+  "asOfRevision": "945db86",
+  "planeEvidence": "deploy/evidence/f1-closure.json (+ f1-closure-journey.json + f1-closure-smoke.json) — the exit-0 credentialed acceptance at a244e70 on https://zeck-preview-main.vercel.app",
+  "coverage": [
+    { "journey": "discover", "level": 4, "evidence": "reachability/identity/health/public-artifact PASS at the exact revision; discover-landing honestly not-run (the 307 platform bridge, GAP-004)" },
+    { "journey": "capability-discovery", "level": 4, "evidence": "22/22 family disclosures SERVED with the gate-of-record projection (correction #7)" },
+    { "journey": "sandbox-start", "level": 4, "evidence": "the credentialed start PASSES over the materialized preview authorities (201 + terminal COMPLETED + verification PASS)" },
+    { "journey": "first-text-execution", "level": 4, "evidence": "execution-lifecycle PASS credentialed (the deterministic sandbox substrate — honestly labeled, not model-backed)" },
+    { "journey": "execution-inspection", "level": 4, "evidence": "receipt/events/verification/results all 200 + the console surface PASS" },
+    { "journey": "evidence-cost", "level": 4, "evidence": "receipt-cost PASS (honest null-until-settled) + usage-console PASS" },
+    { "journey": "validation-rerun", "level": 4, "evidence": "validation-lab + validation-agent PASS" },
+    { "journey": "compare", "level": 4, "evidence": "compare-console PASS" },
+    { "journey": "export-reproduce", "level": 4, "evidence": "export-bundle PASS — 200 JSON through the materialized experience token (correction #8's materialization)" },
+    { "journey": "trust-limits", "level": 4, "evidence": "trust surfaces PASS + limits-envelope honest 422" },
+    { "journey": "agent-onboarding", "level": 4, "evidence": "agent-quickstart + 7 machine artifacts PASS" },
+    { "journey": "production-deployment", "level": 4, "evidence": "route-table 26/26 honest (18×401 / 3×422 / 4 materialized 401 / 1×200) + public-smoke EXIT 0" }
+  ],
+  "missingJourneys": [
+    { "journey": "realtime-voice conversation", "level": 0, "note": "no journey exists yet — GAP-001; enters the taxonomy when a real rail serves one (the extension rule)" }
+  ],
+  "regressionRule": "a level drop is a finding with owner + evidence; it never silently persists"
+}

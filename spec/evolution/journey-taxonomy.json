@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The user-journey taxonomy (the Successor Tech Lead Directive §13): the canonical journey vocabulary the program measures coverage against. Seeded from the public acceptance harness's own 12 journeys (tests/journey/journeys.ts — the same taxonomy the deployed plane is accepted by); the evolution program's RESCAN step may propose EXTENSIONS (a new journey enters the taxonomy through a governed work order, never by edit-in-place silently).",
+  "source": "tests/journey/journeys.ts (the PPR-003 harness — 12 journeys / 28 steps)",
+  "taxonomies": {
+    "operator": "the Lead's credentialed journey (deployment, verification, smoke)",
+    "developer": "the agent-onboarding journey (machine artifacts, SDK, wire surface)",
+    "endUser": "the console journeys (discover, capability, sandbox, execution, inspection, evidence, validation, compare, export, trust)"
+  },
+  "journeys": [
+    { "id": "discover", "title": "Discover Zeck", "class": "endUser", "steps": ["reachability", "discover-landing", "identity-facts", "health", "public-artifact"] },
+    { "id": "capability-discovery", "title": "Discover capabilities", "class": "endUser", "steps": ["matrix-integrity", "matrix-target-disclosure", "capability-catalog"] },
+    { "id": "sandbox-start", "title": "Start the sandbox safely", "class": "endUser", "steps": ["sandbox-envelope", "unauthenticated-start-boundary", "authenticated-start"] },
+    { "id": "first-text-execution", "title": "First text execution", "class": "endUser", "steps": ["execution-lifecycle"] },
+    { "id": "execution-inspection", "title": "Inspect the execution", "class": "endUser", "steps": ["inspection-surfaces", "inspection-console"] },
+    { "id": "evidence-cost", "title": "Inspect evidence and cost", "class": "endUser", "steps": ["receipt-cost", "usage-console"] },
+    { "id": "validation-rerun", "title": "Validation rerun", "class": "endUser", "steps": ["validation-lab", "validation-agent"] },
+    { "id": "compare", "title": "Compare", "class": "endUser", "steps": ["compare-console"] },
+    { "id": "export-reproduce", "title": "Export / reproduce", "class": "endUser", "steps": ["export-console", "export-bundle"] },
+    { "id": "trust-limits", "title": "Trust and limits", "class": "endUser", "steps": ["trust-evidence", "trust-limits-policies", "limits-envelope"] },
+    { "id": "agent-onboarding", "title": "Agent onboarding", "class": "developer", "steps": ["agent-quickstart", "machine-artifacts"] },
+    { "id": "production-deployment", "title": "Production deployment acceptance", "class": "operator", "steps": ["route-table", "deployment-docs"] }
+  ],
+  "extensionRule": "a NEW journey (e.g. a realtime-voice conversation journey once a real rail serves one) enters through a governed work order that extends the harness — the taxonomy file records the addition with its work-order id"
+}

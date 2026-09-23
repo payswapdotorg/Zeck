@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The evolution policy (the Successor Tech Lead Directive §13): how the repository observes, researches, authorizes and implements change — reusing Zeck's EXISTING authorities (identity/policy/capabilities/budget/execution/verification/evidence/learning). There is NO independent 'evolution authority': the evolution program is a GOVERNANCE LOOP over the same seams, the same work-order discipline and the same evidence rules as every other program.",
+  "loop": [
+    "OBSERVE — the nightly scan + event triggers collect the observable facts (dependency releases, route/manifest drift, journey-coverage state, the gap ledger)",
+    "DETECT — a delta becomes a CANDIDATE change only when it maps to a gap-ledger entry or a journey-coverage regression (no speculative rewrites)",
+    "RESEARCH — the candidate's upstream truth is collected (release notes, docs, the provider's own artifacts) and recorded in the run log; never from memory (the zero-drift rule)",
+    "COMPARE — the candidate is mapped against the solution catalog + the conformance contracts (is an existing solution's substitution the answer, or a new adapter?)",
+    "MAP — the blast radius is computed: which ports, adapters, manifests, tests, docs and journeys the change touches (the conflict-partition discipline)",
+    "AUTHORIZE — a governed work order is issued (or an existing one amended); the never-authorized list below is absolute",
+    "IMPLEMENT — the worker rules: one branch, one work order, no self-merge, no spec/development-state edits, battery-verified",
+    "VERIFY — the Lead's review + independent battery (the merge gate)",
+    "CANARY — the change lands on the preview plane first (the §13.6 chain), never straight to a wider surface",
+    "MEASURE — the journey coverage + public-smoke re-run at the exact attested revision; regressions are findings",
+    "PROMOTE / ROLLBACK — per the promotion policy (promotion-policy.json)",
+    "LEARN — the run record + the gap ledger + the solution catalog are updated with the outcome",
+    "RESCAN — the loop re-arms"
+  ],
+  "cadence": {
+    "nightlyScan": "dependency + manifest + route drift (the OBSERVE step's routine sweep)",
+    "eventTriggered": "a journey-coverage regression, a public-smoke failure, an upstream breaking release, or an operator notice",
+    "weeklyDeepDive": "one architectural concern per week examined at depth (rotating through the gap ledger)"
+  },
+  "triggerAuthority": "external cron/schedules are TRIGGERS only — the scheduler is never the authority; authorization is always the governed work order",
+  "autonomyLevels": {
+    "0": "manual — every change is a human/operator-approved work order",
+    "1": "observed — the program collects facts and files findings, changes nothing",
+    "2": "drafted — the program may prepare research + comparison records for a human decision",
+    "3": "gated — the program may prepare a work-order DRAFT for the Lead's authorization",
+    "4": "pre-authorized low-risk — adapter-internal changes (dependency pins within a semver-compatible range, conformance-suite extensions) may be auto-promoted through the canary + measure gates, with rollback armed",
+    "5": "delegated — broader autonomy, only ever granted by an explicit operator-recorded decision"
+  },
+  "currentAutonomyLevel": 2,
+  "neverAutomaticallyPromoted": [
+    "the authority chain (identity, policy, capabilities, budget, execution, verification)",
+    "identity/policy/security semantics",
+    "secrets and credential materialization paths",
+    "tenant/sandbox isolation",
+    "payments and money movement",
+    "data residency",
+    "irreversible migrations",
+    "customer-domain state",
+    "any change that weakens verification or evidence rules",
+    "copyleft-licensed dependencies",
+    "any change that alters what counts as execution success"
+  ],
+  "evidenceRules": "the maturity model's evidence chain governs every claim: neutral contract → fake conformance → local integration → real credentialed execution → repeatable journey → failure drill → alternate solution → production observation; an unavailable external is recorded NOT RUN, never a PASS by simulation"
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-governed-evolution",
+  "description": "The promotion policy (the Successor Tech Lead Directive §13): how a verified change moves from the canary plane to wider surfaces, and how it rolls back. Promotion is EVIDENCE-GATED at every step; rollback is always armed before promotion begins.",
+  "surfaces": [
+    { "id": "branch", "description": "the worker's branch (one work order, one branch, no self-merge)" },
+    { "id": "main", "description": "the governed main head (the Lead's review + independent battery + merge)" },
+    { "id": "preview-plane", "description": "the public preview plane (the §13.6 chain: build-vercel-output → local artifact proof → vercel deploy --prebuilt --prod → revision re-pin)" },
+    { "id": "wider-surfaces", "description": "staging/production environments and custom domains (do not exist yet — GAP-005; creating them is its own governed work order)" }
+  ],
+  "promotionGates": {
+    "branch-to-main": [
+      "the work order's verification battery green on the real rails where the sandbox permits",
+      "the Lead's review (surface boundaries, manifests append-only, no secret values, real test contracts, evidence consistency)",
+      "the Lead's independent battery re-run (the binding merge gate)",
+      "governance check OK + deploy:validate valid"
+    ],
+    "main-to-preview-plane": [
+      "the exact-revision pin (ZECK_DEPLOY_GIT_REVISION) set BEFORE the deploy",
+      "the local artifact proof for every function (the §13.6 documented entrypoints)",
+      "the plane attests the exact revision after deploy (/identity bound)",
+      "the credentialed journey re-run at the exact revision EXIT 0 with 0 findings",
+      "deploy:public-smoke EXIT 0 (the route table honest)"
+    ],
+    "preview-to-wider": [
+      "the coverage matrix shows NO regression for at least one full observation window",
+      "the never-automatically-promoted list (evolution-policy.json) is clear",
+      "an explicit operator-recorded promotion decision"
+    ]
+  },
+  "rollback": {
+    "armed": "the previous READY production deployment is always the rollback target (vercel's deployment history); the plane's revision pin re-pins to the rolled-back revision",
+    "triggers": [
+      "a journey-coverage regression at the exact revision",
+      "a public-smoke failure (any route dishonest, any problem recorded)",
+      "an identity-gate refusal on the live plane (drift or tampering)",
+      "an operator decision"
+    ],
+    "procedure": "redeploy the previous prebuilt artifact (or vercel redeploy of the previous READY deployment) → re-pin the revision → re-run the journey + public-smoke at the rolled-back revision → record the rollback in the run log + gap ledger",
+    "postMortem": "every rollback produces a LEARN entry: root cause, the gate that caught it, the gap-ledger update"
+  },
+  "forbidden": [
+    "promoting on a timer without the evidence gates",
+    "widening a promotion mid-flight (each surface transition re-runs its gates)",
+    "rolling forward past a failed gate 'to fix it in production'",
+    "any promotion that the never-automatically-promoted list covers, without an explicit operator decision"
+  ]
+}
