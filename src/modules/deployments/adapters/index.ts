@@ -80,6 +80,20 @@ export { createPolicyMessagingAdmission } from "./policy-messaging-admission";
 export { createPolicyRealtimeAdmission } from "./policy-realtime-admission";
 export { createRealtimeExecutionLedgerAdapter } from "./realtime-execution-ledger";
 export { createRealtimeModalityAdapter } from "./realtime-modality-adapter";
+// PPR-013: the composition auto-rebind policy over the two REAL
+// rails (PPR-010's explicitly-deferred residual). Additive only — the
+// port, the session service and the admission ordering are untouched.
+export type {
+  RealtimeRailRebindBindingKind,
+  RealtimeRailRebindComposition,
+  RealtimeRailRebindEnvironmentBinding,
+  RealtimeRailRebindEvent,
+  RealtimeRebindRailKind,
+} from "./realtime-rail-rebind-binding";
+export {
+  bindEnvironmentRealtimeRailWithRebind,
+  createRealtimeRailRebindComposition,
+} from "./realtime-rail-rebind-binding";
 // PPR-010: the ALTERNATE REAL external realtime rail (the published
 // socket.io server package, embedded) + its environment composition
 // gate. Nothing vendor-shaped crosses these exports (all

@@ -1487,3 +1487,55 @@ realtime journeys against the plane → record the credentialed
 evidence. Until then the honest state stands: local-rail conformance
 green (all THREE subjects), the drill green, external availability
 NOT RUN.
+
+## 17. The composition auto-rebind policy (PPR-013 — PPR-010's deferred residual)
+
+**The env contract is DERIVED, not extended**: the policy adds ZERO
+environment variables and ZERO manifest entries. It composes the two
+existing materialization gates (§15's LiveKit set: `ZECK_LIVEKIT_URL`
++ `ZECK_LIVEKIT_API_KEY` + `ZECK_LIVEKIT_API_SECRET`; §16's socket.io
+set: `ZECK_SOCKETIO_URL` + `ZECK_SOCKETIO_AUTH_SECRET`) into a
+preference order: the LiveKit set materializes ⇒ PREFERRED, the
+socket.io set ⇒ ALTERNATE, only-socket.io ⇒ the alternate stands
+alone, NOTHING ⇒ EXACTLY the simulated terminal fallback of §15/§16
+(the in-process rail behind the same neutral seam, no policy in
+effect). Composition consumers bind
+`bindEnvironmentRealtimeRailWithRebind` (exported through the
+deployments barrel) instead of a single gate.
+
+**The bounded-failover semantics**: per `openSession` invocation, on a
+RETRYABLE normalized failure (the neutral `PlatformError` vocabulary
+both real rails normalize onto) from the preferred rail, AT MOST ONE
+re-bind onto a MATERIALIZED alternate under the SAME coordinates and
+the SAME stable rail-level idempotency key — the §16 drill's proven
+convergence (exactly-once per rail). The alternate's answer returns
+through the same neutral shapes, and the serving rail's own
+`railCapabilityId` is the honest disclosure (the composed rail's
+descriptor names the rail that served the most recent open; the
+binding-level `servedBy`/`rebinds` accessors carry the per-session
+truth). NON-retryable failures (authentication, not-found) NEVER
+re-bind — an authentication failure is not a capacity event, and
+masking it would violate the honest-failure discipline. When the
+alternate also fails, its normalized failure surfaces with the
+preferred's retained as the cause. There is NO failover onto the
+simulated rail — a fake is never a substitution for a dead real rail.
+
+**No mid-session flapping**: a session lives on the rail that opened
+it — `deliverTurn`/`transferCall`/`closeSession` follow a per-session
+affinity record; only `openSession` may re-bind, and every new open
+starts at the standing preference (a recovered preferred is retried,
+never permanently failed over). The honest boundary: the affinity
+record is in-memory per binding instance — a post-crash frame for a
+ref the current process never opened routes to the standing preferred
+and fails neutrally there; the durable cross-rail ledger that would
+close this remains PPR-009's recorded residual.
+
+**The honest availability state**: the policy's real-rail evidence is
+LOCAL-real (a dead preferred LiveKit endpoint re-binding onto the REAL
+embedded socket.io server; the §16 drill extended through the policy
+seam with the REAL local livekit-server refusing for real). No
+live-plane failover has run — that rung belongs to the Lead after a
+real rail binds on the deployed plane, per the §13.6/§15/§16 operator
+sequences. No composition consumer binds a realtime rail today; the
+binding ships ready for the composition root through the additive
+barrel exports.
