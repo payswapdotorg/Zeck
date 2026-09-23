@@ -223,7 +223,11 @@ describe("D-05 worker-fabric architecture boundaries (WORK-046)", () => {
         }
       }
     }
-    expect([...packages].sort()).toStrictEqual(["fastify", "pg"]);
+    // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
+    // LiveKit Server SDK — the realtime rail's vendor dependency,
+    // confined to src/modules/deployments/adapters/ by the
+    // SDK-boundary table; vendor types never cross the adapter).
+    expect([...packages].sort()).toStrictEqual(["fastify", "livekit-server-sdk", "pg"]);
   });
 
   test("B8 the execution-compute provider is declared established with the port contract", () => {

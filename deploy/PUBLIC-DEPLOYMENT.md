@@ -1294,3 +1294,78 @@ drills, sustained production observation) remain future governed work
 beyond this roadmap. The full chain evidence is
 `deploy/evidence/f1-closure.json` (+ `f1-closure-journey.json` +
 `f1-closure-smoke.json`).
+
+## 15. The LiveKit realtime rail (PPR-009 — the first REAL external RealtimeRail)
+
+The provider-neutral `RealtimeRail` port (WORK-024/MOD-005) now has a
+REAL external adapter: `src/modules/deployments/adapters/livekit-realtime-rail.ts`
+implements the seam over a real [LiveKit](https://livekit.io) server
+through the published, UNMODIFIED `livekit-server-sdk` package (no
+fork). All vendor types stay inside the adapter; the port sees only
+neutral shapes; the channel identity is a deterministic opaque hash of
+the neutral coordinates (never user-provided strings verbatim).
+
+**The conformance contract** (`tests/conformance/realtime-rail/`) is
+the provider-independence proof: ONE suite (C1-C12 — neutral
+descriptor vocabulary, opaque coordinates, key convergence on
+open/deliver/transfer/close, exactly-once upstream effects including
+through the crash-restart model, failure normalization with neutral
+reasons and no cached refusals, secret hygiene, no fabricated
+metadata) that the SIMULATED rail (the semantic reference) and the
+LiveKit adapter BOTH pass. A new realtime provider codes against this
+contract — never another vendor's SDK shapes.
+
+**The honest availability state**: the LiveKit adapter is verified
+ONLY against a LOCAL open-source `livekit-server` (label
+`local-livekit-server`) — the conformance suite boots one on loopback
+in `--dev` mode (the public development keypair) when the binary is
+available (`ZECK_LIVEKIT_SERVER_BIN`, default `/tmp/livekit-server`;
+the binary is the official `livekit_…_linux_amd64.tar.gz` release).
+NO managed or production LiveKit availability is claimed or implied
+anywhere; every external boundary is owned by a Lead credentialed
+run (the evidence record's notRun registry).
+
+**The environment contract** (append-only in
+`deploy/manifests/variables.json` +
+`deploy/manifests/secret-references.json`):
+
+| Variable | Role |
+|---|---|
+| `ZECK_LIVEKIT_URL` | the LiveKit server base URL (non-secret; the open-source server) |
+| `ZECK_LIVEKIT_API_KEY` | the server's API key (credential-shaped; materialized from `ZECK_SECRET_LIVEKIT_API_KEY_REF`) |
+| `ZECK_LIVEKIT_API_SECRET` | the server's API secret (credential-shaped; materialized from `ZECK_SECRET_LIVEKIT_API_SECRET_REF`) |
+
+**The composition gate** (the PPR-008 materialization-gate pattern):
+`src/modules/deployments/adapters/livekit-realtime-rail-binding.ts`
+binds the REAL rail only when the environment materializes the full
+LiveKit credential set (URL + key + secret); any missing piece keeps
+EXACTLY the simulated rail behind the same neutral seam (both shapes
+pinned by tests). The adapter materializes the keypair INSIDE its own
+scope immediately before upstream calls — never in a port shape, a
+log line, or an acknowledgment.
+
+**The idempotency design** (which mechanism where): OPEN and CLOSE
+converge across full process crashes through the server's own
+room-identity semantics (the channel name is a deterministic function
+of the stable rail-level idempotency key; a re-open asks the server
+whether the channel exists and converges); DELIVERY and TRANSFER (data
+effects) converge through the ADAPTER's key ledger — the shipped
+default is in-memory (retries and replays within the adapter process;
+a durable ledger binding is the composition's concern, recorded as the
+honest boundary in the evidence record).
+
+**The short-lived client-access seam**: the adapter's
+`mintClientAccess` issues a SHORT-LIVED (≤ the session policy's
+ceiling; default 600s, hard ceiling 3600s) single-purpose (join, not
+administer) client access grant for an OPEN, admitted rail session —
+the descriptor is vendor-neutral (`RealtimeRailClientAccess`), the
+grant value is vendor material by nature.
+
+**The operator sequence for a future credentialed run** (the Lead's):
+provision a LiveKit server (self-hosted or managed) → set
+`ZECK_LIVEKIT_URL` + materialize the keypair from the environment's
+secret references on the target environment → redeploy through the
+§13.3/§13.6 pipeline → run the conformance suite + the realtime
+journeys against the plane with real credentials → record the
+credentialed evidence. Until then the honest state stands: local-rail
+conformance green, external availability NOT RUN.

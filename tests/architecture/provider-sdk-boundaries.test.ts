@@ -46,7 +46,11 @@ describe("provider SDK boundaries", () => {
     // src/platform/db/ — the D-02 production database path); it must
     // remain one of the ONLY bare imports in src/ and confined by
     // the provider-sdk-outside-adapter rule (proven below).
-    expect([...sdkImports].sort()).toEqual(["fastify", "pg"]);
+    // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
+    // LiveKit Server SDK — the realtime rail's vendor dependency,
+    // confined to src/modules/deployments/adapters/ by the SDK-boundary
+    // table; vendor types never cross the adapter).
+    expect([...sdkImports].sort()).toEqual(["fastify", "livekit-server-sdk", "pg"]);
   });
 
   test("the SDK boundary table pins every known provider family to its owning adapter", () => {
@@ -75,6 +79,10 @@ describe("provider SDK boundaries", () => {
       "cohere-ai": "src/modules/models/adapters/",
       "groq-sdk": "src/modules/models/adapters/",
       "@azure/openai": "src/modules/models/adapters/",
+      // PPR-009: the LiveKit realtime rail's vendor SDK (published,
+      // UNMODIFIED) boundary-confined to the deployments module's
+      // realtime rail adapters — vendor types never cross the adapter.
+      "livekit-server-sdk": "src/modules/deployments/adapters/",
       "@workflowos/*": "src/integrations/workflowos/adapters/",
       // WORK-054: the substrate runtime adapter SDKs (E2B, Daytona,
       // Modal) boundary-confined to the substrate-economics adapter

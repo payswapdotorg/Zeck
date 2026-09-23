@@ -189,8 +189,9 @@ describe("plan mode requires no credentials at all (AC1)", () => {
       "zeck-local-runner",
     ]);
     // PPR-008 appended the transport-token reference and PPR-007 appended
-    // the experience-token reference (additive manifests, both preserved).
-    expect(report.steps.secretReferenceScaffold.references).toBe(4);
+    // the experience-token reference; PPR-009 appended the livekit keypair
+    // references (additive manifests, all preserved).
+    expect(report.steps.secretReferenceScaffold.references).toBe(6);
     expect(report.steps.secretReferenceScaffold.externalOnly).toBe(true);
     expect(report.steps.sandboxAccountRecords.records).toEqual([
       {
@@ -493,8 +494,9 @@ describe("secret handling is external-only — hostile probes (AC2)", () => {
       doctrine: string;
       secretReferenceVariables: Array<{ reference: string; injectionPoint: string }>;
     };
-    // PPR-008's transport-token + PPR-007's experience-token (additive, both preserved).
-    expect(ciSkeleton.secretReferenceVariables).toHaveLength(4);
+    // PPR-008's transport-token + PPR-007's experience-token + PPR-009's
+    // livekit keypair (additive, all preserved).
+    expect(ciSkeleton.secretReferenceVariables).toHaveLength(6);
     for (const entry of ciSkeleton.secretReferenceVariables) {
       expect(entry.reference).toMatch(/^zeck-secret:\/\/local\/[a-z0-9-]+$/);
       expect(entry.injectionPoint).toContain("external secret manager");

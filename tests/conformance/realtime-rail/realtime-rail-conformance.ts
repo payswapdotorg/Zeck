@@ -66,18 +66,18 @@
  */
 
 import { describe, expect, test } from "vitest";
-import type {
-  RealtimeRail,
-  RealtimeRailDelivery,
-  RealtimeRailDeliveryOutcome,
-  RealtimeRailSessionRequest,
-} from "../../../src/modules/deployments/ports/realtime-rail";
 import {
   realtimeRailCloseKey,
   realtimeRailDeliverKey,
   realtimeRailOpenKey,
   realtimeRailTransferKey,
 } from "../../../src/modules/deployments/domain/realtime";
+import type {
+  RealtimeRail,
+  RealtimeRailDelivery,
+  RealtimeRailDeliveryOutcome,
+  RealtimeRailSessionRequest,
+} from "../../../src/modules/deployments/ports/realtime-rail";
 
 /**
  * The closed neutral rail-metadata vocabulary (C12). A conformant rail
@@ -169,7 +169,7 @@ function delivery(
     sessionId,
     channelSessionRef,
     channelEpoch: 1,
-    routeClass: "agent-answer",
+    routeClass: "generative",
     idempotencyKey,
     responseRef: "artifact://realtime/turns/turn-0001",
     responsePreview: "bounded preview of the response media (never the bytes)",
@@ -217,7 +217,16 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
       for (const kind of descriptor.channelKinds) {
         expect(kind).toMatch(/^[a-z][a-z0-9-]*$/);
       }
-      assertNoVendorMarkers(JSON.stringify(descriptor), "the descriptor");
+      // A rail NAMES itself (the models module's `openrouter` precedent:
+      // the rail capability id is the neutral self-designation and may
+      // carry the provider's name — it is NOT an SDK identifier). The
+      // vendor-marker discipline applies to every OTHER descriptor
+      // member and to every runtime shape below (sessions, outcomes,
+      // reasons, metadata) — never to the self-designation.
+      assertNoVendorMarkers(
+        JSON.stringify({ channelKinds: descriptor.channelKinds }),
+        "the descriptor's channel kinds",
+      );
     });
 
     test("C2: openSession returns opaque neutral coordinates", async () => {
@@ -231,13 +240,18 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
     });
 
     test("C3 + C4: the same open key converges on one upstream channel", async () => {
+      const openedBefore =
+        subject.probes === undefined ? null : await subject.probes.countOpenSideEffects();
       const first = await subject.rail.openSession(openRequest(openKey, callerMarker));
       const second = await subject.rail.openSession(openRequest(openKey, callerMarker));
       expect(second.channelSessionRef).toBe(first.channelSessionRef);
       expect(second.channelEpoch).toBe(first.channelEpoch);
       expect(second.replayed).toBe(true);
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countOpenSideEffects()).toBe(1);
+      if (subject.probes !== undefined && openedBefore !== null) {
+        // DELTA-BASED (the Lead's review correction): the re-opens must
+        // add ZERO upstream channels — the count assertions are flow-
+        // independent (a rail's world may carry other channels).
+        expect(await subject.probes.countOpenSideEffects()).toBe(openedBefore);
       }
       if (subject.restart !== undefined) {
         // The crash model: the adapter process dies; the upstream (and
@@ -247,13 +261,15 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
         const third = await restarted.openSession(openRequest(openKey, callerMarker));
         expect(third.channelSessionRef).toBe(first.channelSessionRef);
         expect(third.channelEpoch).toBe(first.channelEpoch);
-        if (subject.probes !== undefined) {
-          expect(await subject.probes.countOpenSideEffects()).toBe(1);
+        if (subject.probes !== undefined && openedBefore !== null) {
+          expect(await subject.probes.countOpenSideEffects()).toBe(openedBefore);
         }
       }
     });
 
     test("C5: deliverTurn converges on the original acknowledgment", async () => {
+      const deliveredBefore =
+        subject.probes === undefined ? null : await subject.probes.countDeliverSideEffects();
       const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
       const frame = delivery("session-0001", session.channelSessionRef, deliverKey);
       const first = await subject.rail.deliverTurn(frame);
@@ -271,12 +287,14 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
         expect(second.replayed).toBe(true);
         expect(second.deliveredAt).toBe(first.deliveredAt);
       }
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countDeliverSideEffects()).toBe(1);
+      if (subject.probes !== undefined && deliveredBefore !== null) {
+        expect(await subject.probes.countDeliverSideEffects()).toBe(deliveredBefore + 1);
       }
     });
 
     test("C6: transferCall converges on the original acknowledgment", async () => {
+      const transferredBefore =
+        subject.probes === undefined ? null : await subject.probes.countTransferSideEffects();
       const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
       const frame = delivery("session-0001", session.channelSessionRef, transferKey);
       const first = await subject.rail.transferCall(frame);
@@ -287,12 +305,14 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
         expect(second.replayed).toBe(true);
         expect(second.deliveredAt).toBe(first.deliveredAt);
       }
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countTransferSideEffects()).toBe(1);
+      if (subject.probes !== undefined && transferredBefore !== null) {
+        expect(await subject.probes.countTransferSideEffects()).toBe(transferredBefore + 1);
       }
     });
 
     test("C7: closeSession converges on the original acknowledgment", async () => {
+      const closedBefore =
+        subject.probes === undefined ? null : await subject.probes.countCloseSideEffects();
       const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
       const reference = {
         applicationId,
@@ -310,13 +330,21 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
         expect(second.replayed).toBe(true);
         expect(second.deliveredAt).toBe(first.deliveredAt);
       }
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countCloseSideEffects()).toBe(1);
+      if (subject.probes !== undefined && closedBefore !== null) {
+        expect(await subject.probes.countCloseSideEffects()).toBe(closedBefore + 1);
       }
     });
 
     test("C8: a distinct key is a distinct upstream effect", async () => {
-      const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
+      // The Lead's review correction: C8+ open under FRESH keys — a
+      // delivery after C7's close would be a session-sequencing error
+      // the rail contract must never rely on (the simulated world
+      // tolerates it; a real server deletes the upstream channel).
+      const deliveredBefore =
+        subject.probes === undefined ? null : await subject.probes.countDeliverSideEffects();
+      const session = await subject.rail.openSession(
+        openRequest(realtimeRailOpenKey("conformance-open-0002"), callerMarker),
+      );
       const frameA = delivery(
         "session-0002",
         session.channelSessionRef,
@@ -327,13 +355,17 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
       if (a.delivered) {
         expect(a.replayed).toBe(false);
       }
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countDeliverSideEffects()).toBe(2);
+      if (subject.probes !== undefined && deliveredBefore !== null) {
+        expect(await subject.probes.countDeliverSideEffects()).toBe(deliveredBefore + 1);
       }
     });
 
     test("C9: a refused upstream normalizes neutrally and is never cached under the key", async () => {
-      const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
+      const deliveredBefore =
+        subject.probes === undefined ? null : await subject.probes.countDeliverSideEffects();
+      const session = await subject.rail.openSession(
+        openRequest(realtimeRailOpenKey("conformance-open-0003"), callerMarker),
+      );
       const frame = delivery(
         "session-0003",
         session.channelSessionRef,
@@ -355,8 +387,8 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
       if (retried.delivered) {
         expect(retried.replayed).toBe(false);
       }
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countDeliverSideEffects()).toBe(3);
+      if (subject.probes !== undefined && deliveredBefore !== null) {
+        expect(await subject.probes.countDeliverSideEffects()).toBe(deliveredBefore + 1);
       }
     });
 
@@ -367,20 +399,26 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
       if (subject.armRefusal === undefined || subject.disarmRefusal === undefined) {
         return;
       }
+      const openedBefore =
+        subject.probes === undefined ? null : await subject.probes.countOpenSideEffects();
       const key = realtimeRailOpenKey("conformance-open-refused-0001");
       await subject.armRefusal();
       await expect(subject.rail.openSession(openRequest(key, null))).rejects.toThrow();
       await subject.disarmRefusal();
       const session = await subject.rail.openSession(openRequest(key, null));
       expect(session.replayed).toBe(false);
-      if (subject.probes !== undefined) {
-        expect(await subject.probes.countOpenSideEffects()).toBe(2);
+      if (subject.probes !== undefined && openedBefore !== null) {
+        // The refused open left NO upstream channel: exactly the one
+        // successful open was added by this test.
+        expect(await subject.probes.countOpenSideEffects()).toBe(openedBefore + 1);
       }
     });
 
     test("C11: credential canaries never cross the seam", async () => {
       const canaries = subject.secretCanaryValues ?? [];
-      const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
+      const session = await subject.rail.openSession(
+        openRequest(realtimeRailOpenKey("conformance-open-0004"), callerMarker),
+      );
       const frame = delivery(
         "session-0004",
         session.channelSessionRef,
@@ -408,7 +446,9 @@ export function defineRealtimeRailConformance(subject: RealtimeRailConformanceSu
     });
 
     test("C12: acknowledgments carry no fabricated facts", async () => {
-      const session = await subject.rail.openSession(openRequest(openKey, callerMarker));
+      const session = await subject.rail.openSession(
+        openRequest(realtimeRailOpenKey("conformance-open-0005"), callerMarker),
+      );
       const outcomes: RealtimeRailDeliveryOutcome[] = [];
       const frame = delivery(
         "session-0005",

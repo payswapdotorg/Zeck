@@ -18,17 +18,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { PlatformError } from "../../../src/shared/errors";
 import {
-  bindEnvironmentRealtimeRail,
-  readLiveKitRailMaterialization,
-  LIVEKIT_RAIL_ENV_VARIABLES,
-} from "../../../src/modules/deployments/adapters/livekit-realtime-rail-binding";
-import {
-  classifyLiveKitFailure,
-  clientAccessTtlOf,
   CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
   CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  classifyLiveKitFailure,
+  clientAccessTtlOf,
   createEnvironmentLiveKitCredentialSource,
   createInMemoryLiveKitRailIdempotencyLedger,
   createLiveKitRealtimeRail,
@@ -38,7 +32,13 @@ import {
   liveKitChannelSessionRefOf,
   liveKitUpstreamChannelNameOf,
 } from "../../../src/modules/deployments/adapters/livekit-realtime-rail";
+import {
+  bindEnvironmentRealtimeRail,
+  LIVEKIT_RAIL_ENV_VARIABLES,
+  readLiveKitRailMaterialization,
+} from "../../../src/modules/deployments/adapters/livekit-realtime-rail-binding";
 import type { RealtimeRailSessionRequest } from "../../../src/modules/deployments/ports/realtime-rail";
+import { PlatformError } from "../../../src/shared/errors";
 
 const ADAPTER_PATH = join(
   process.cwd(),
@@ -211,9 +211,9 @@ describe("livekit realtime rail — the failure normalization table", () => {
       kind: "unreachable",
       retryable: true,
     });
-    expect(classifyLiveKitFailure(new Error("connect ECONNREFUSED 127.0.0.1:7880"))).toMatchObject(
-      { kind: "unreachable" },
-    );
+    expect(classifyLiveKitFailure(new Error("connect ECONNREFUSED 127.0.0.1:7880"))).toMatchObject({
+      kind: "unreachable",
+    });
     expect(classifyLiveKitFailure(new Error("connect ETIMEDOUT upstream"))).toMatchObject({
       kind: "unreachable",
     });
@@ -354,7 +354,7 @@ describe("livekit realtime rail — the unreachable upstream (full-path normaliz
       sessionId: "session-unit-1",
       channelSessionRef: "rtch-unit-dead-channel",
       channelEpoch: 1,
-      routeClass: "agent-answer",
+      routeClass: "generative",
       idempotencyKey: "rtrail:deliver:unit-dead-1",
       responseRef: "artifact://realtime/turns/unit-1",
       responsePreview: "bounded unit preview",

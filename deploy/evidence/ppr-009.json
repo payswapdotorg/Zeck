@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-009",
+  "title": "The LiveKit realtime rail — the first REAL external RealtimeRail adapter + the shared conformance contract",
+  "recordedBy": "worker (implementation) + Lead (review corrections, real-rail conformance run, completion)",
+  "environment": "local (the repository's own suites; the real rail = a LOCAL open-source livekit-server on loopback)",
+  "date": "2026-09-23",
+  "branch": "work/PPR-009-livekit-realtime-rail",
+  "baseRevision": "59dd3409d3e5e32a5a709dc01a203e00a0bd20d9",
+  "doctrine": "The provider-independence iron law: neutral capability port → conformance contract → provider adapter. The conformance contract is what a new provider codes against — never a vendor's SDK shapes. No availability claim without credentialed evidence.",
+  "verifiedLocally": [
+    {
+      "proof": "the conformance contract C1-C12 over the SIMULATED rail (the semantic reference)",
+      "result": "11/11 tests green (tests/conformance/realtime-rail/simulated-rail.conformance.test.ts)"
+    },
+    {
+      "proof": "the conformance contract C1-C12 over the LIVEKIT adapter against a REAL local livekit-server 1.9.11 (label local-livekit-server; --dev mode, the public development keypair; refusal injection via SIGSTOP/SIGCONT; the crash-restart model via a fresh adapter instance against the surviving server)",
+      "result": "13/13 tests green (tests/conformance/realtime-rail/livekit-rail.conformance.test.ts) — including the independent server-side room-list corroboration of the adapter's effect log and the short-lived client-access seam proof (purpose join, TTL ≤ 3600s, vendor-neutral descriptor, no secret material in the shape)"
+    },
+    {
+      "proof": "the adapter's unit proofs (vendor-type confinement: no runtime SDK import outside the adapter, vendor-free exported surfaces; deterministic opaque derivations; the TTL bounds table; the failure-normalization table with retryable semantics; the environment credential source fail-closed; the composition gate both ways: materialized binds the REAL rail / any missing piece keeps EXACTLY the simulated shape; dead-upstream neutral shapes; unbound/malformed credential fail-closed)",
+      "result": "25/25 tests green (tests/unit/deployments/livekit-realtime-rail.test.ts)"
+    },
+    {
+      "proof": "the deployment suites with the append-only manifest extension (variables.json 89→94: ZECK_LIVEKIT_URL/API_KEY/API_SECRET + the two reference variables; secret-references.json +livekit-api-key/+livekit-api-secret per environment: local 4→6, preview/staging/production 12→14; the additive pin updates in env-contract/manifest/provision)",
+      "result": "341/341 tests green (tests/unit/deployment/)"
+    },
+    {
+      "proof": "typecheck",
+      "result": "0 errors (tsc --noEmit)"
+    },
+    {
+      "proof": "lint",
+      "result": "the base's exact 2 errors + 68 warnings + 8 infos — zero new (the worker's residual format/import-order issues fixed at review)"
+    }
+  ],
+  "reviewCorrections": [
+    "the conformance suite's count assertions made DELTA-BASED (flow-independent) and C8+ re-keyed to fresh open keys — a delivery after C7's close is a session-sequencing error the rail contract must never rely on (the simulated world tolerates it; a real server deletes the upstream channel)",
+    "C1's vendor-marker scope narrowed to the descriptor's non-self-designation members — a rail NAMES itself (the models module's openrouter precedent); the self-designation is not an SDK identifier",
+    "the worker's residual lint fixes (import order, unused import, format) — the worker's dispatch hit its context deadline before its own lint pass",
+    "the successor-Lead completion pass (the review segment died mid-refactor before committing): LOCAL_LIVEKIT_SERVER_LABEL added as the honest local-proof label constant the barrels reference; the public.ts barrel's value imports wired (the interrupted refactor had left 17 value re-exports with no imports in scope + bogus type modifiers); the two test fixtures' routeClass corrected 'agent-answer' → 'generative' (an invalid literal against the frozen MOD-007 vocabulary REALTIME_ROUTE_CLASSES — runtime passed because vitest does not typecheck; the static gate caught it); the conformance synthetic credential source's materialize() completed to the full VaultMaterialization shape {reference, plaintext}; biome format parity restored on the 7 architecture files + the barrel (2 baseline errors + 68 warnings + 8 infos — exact)"
+  ],
+  "leadIndependentBattery": [
+    { "proof": "typecheck", "result": "0 errors (tsc --noEmit) after the completion corrections" },
+    { "proof": "lint", "result": "the base's exact 2 errors + 68 warnings + 8 infos — zero new (biome check; the 2 errors are the pre-existing evidence-JSON format diffs)" },
+    { "proof": "the conformance suites re-run on the final tree", "result": "24/24 green (11 simulated + 13 livekit over the real local livekit-server booted by the suite on 127.0.0.1:7891, --dev public keypair, SIGSTOP/SIGCONT refusal injection included)" },
+    { "proof": "unit", "result": "361 files / 6347 tests — 0 failed (6322 base + 25 adapter proofs)" },
+    { "proof": "architecture (PG rail 127.0.0.1:55432)", "result": "140 files / 2240 tests — 0 failed (the provider-sdk/realtime boundary pins now active for livekit-server-sdk)" },
+    { "proof": "integration (PG rail)", "result": "175 files + 1 skipped / 1297 tests + 26 skipped — 0 failed" },
+    { "proof": "the FULL suite (the binding merge gate; PG rail, single inline run)", "result": "EXIT 0 — 678 files + 1 skipped (679) / 9908 tests + 26 skipped (9934) / 0 failed / 545.77s" },
+    { "proof": "governance + deploy:validate", "result": "Governance OK (60 Work Orders, 110 requirements, inFlight=[], frontier=[]); deploy:validate valid=true, environments=4, variables=94 (89→94 — the LiveKit manifest extension)" }
+  ],
+  "notRun": [
+    {
+      "boundary": "any EXTERNAL/MANAGED LiveKit service (LiveKit Cloud or any non-loopback server)",
+      "reason": "no LiveKit credentials exist for this repository's environments and none may be invented",
+      "owner": "Lead credentialed run (the §15 operator sequence: provision → materialize the keypair from the environment's secret references → redeploy → the conformance suite + realtime journeys with real credentials)"
+    },
+    {
+      "boundary": "a DURABLE idempotency ledger for the delivery/transfer data effects (the shipped default is the in-memory ledger — convergent within the adapter process; open/close converge across process crashes through the server's own room-identity semantics)",
+      "reason": "the durable ledger binding is the composition's concern (the same pattern as the preview authorities' materialization gate)",
+      "owner": "a future governed work order when a deployed plane binds the real rail"
+    },
+    {
+      "boundary": "the full sequential battery (architecture / integration / full suite) ON THIS BRANCH by the worker",
+      "reason": "the worker's dispatch hit its context deadline after the conformance + unit + deployment suites; the Lead's independent battery on the merged tree is the binding merge gate (the repository's standing rule)",
+      "owner": "Lead",
+      "resolution": "CLOSED — the successor-Lead ran the complete independent battery on the final branch tree (leadIndependentBattery above; all gates green) before the merge"
+    }
+  ],
+  "notes": [
+    "the conformance contract's design: ONE suite, TWO green subjects (the semantic reference + the first real rail) — the level-3 rung of the maturity ladder for the realtime-transport concern (spec/evolution/gap-ledger.json GAP-001 advances from level 2 to level 3-on-local-rail)",
+    "the SDK is the published livekit-server-sdk 2.19.1, UNMODIFIED (no fork); its requestTimeout option is in SECONDS (verified against the SDK's own ClientOptions typing + TwirpRPC implementation)",
+    "the SIGSTOP/SIGCONT refusal injection freezes the server process — TCP connections stay open but no request is answered, so the adapter's bounded request timeout fires (the honest transient-upstream shape); SIGCONT recovers it with all upstream state intact",
+    "the independent room-list corroboration: the server's own listRooms() must hold EXACTLY the channels the adapter's effect log says are open-but-not-closed — the adapter's exactly-once observable cross-checked against the server's truth",
+    "the honest delivery semantics: data-channel effects are at-least-once at the transport level under client-side timeouts (a timed-out send may still complete server-side); the adapter's ledger converges the ACKNOWLEDGMENT (the retry under the same key returns the original) — the port's documented contract"
+  ]
+}

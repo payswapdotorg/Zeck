@@ -27,17 +27,17 @@
  * side effect), so the simulated binding never imports vendor code.
  */
 
+import type { RealtimeRail } from "../ports/realtime-rail";
 import { createInProcessRealtimeRail } from "./in-process-realtime-rail";
-import {
-  createEnvironmentLiveKitCredentialSource,
-  createLiveKitRealtimeRail,
-} from "./livekit-realtime-rail";
 import type {
   LiveKitRailIdempotencyLedger,
   LiveKitRealtimeRail,
   LiveKitRealtimeRailOptions,
 } from "./livekit-realtime-rail";
-import type { RealtimeRail } from "../ports/realtime-rail";
+import {
+  createEnvironmentLiveKitCredentialSource,
+  createLiveKitRealtimeRail,
+} from "./livekit-realtime-rail";
 
 /** The env variable names of the LiveKit materialization gate. */
 export const LIVEKIT_RAIL_ENV_VARIABLES = {

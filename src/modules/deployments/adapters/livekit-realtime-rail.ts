@@ -77,11 +77,10 @@
  */
 
 import { createHash } from "node:crypto";
-import { PlatformError } from "../../../shared/errors";
 import type { ErrorCode } from "../../../shared/errors";
+import { PlatformError } from "../../../shared/errors";
 import type { CredentialMaterializer } from "../../connections/public";
 import type {
-  RealtimeRail,
   RealtimeRailDelivery,
   RealtimeRailDeliveryOutcome,
   RealtimeRailDescriptor,
@@ -104,6 +103,13 @@ type LiveKitServerSdkModule = typeof import("livekit-server-sdk");
 
 /** The neutral rail identity this adapter binds (the openrouter precedent). */
 export const LIVEKIT_RAIL_CAPABILITY_ID = "livekit-realtime-rail";
+
+/**
+ * The honest label of the LOCAL open-source server proof (PPR-009): the
+ * conformance evidence's subject is a loopback livekit-server in --dev
+ * mode with the PUBLIC development keypair — never a managed service.
+ */
+export const LOCAL_LIVEKIT_SERVER_LABEL = "local-livekit-server";
 
 /** The channel kinds a plain self-hosted server serves without SIP trunks. */
 export const LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS: readonly string[] = ["web", "in-app"];
@@ -369,10 +375,7 @@ function clampDurationSeconds(maxSessionDurationMs: number): number {
  * ceiling, never above the one-hour hard ceiling, never below one
  * second, defaulting MINUTES (600s), not hours.
  */
-export function clientAccessTtlOf(
-  maxSessionDurationMs: number,
-  defaultTtlSeconds: number,
-): number {
+export function clientAccessTtlOf(maxSessionDurationMs: number, defaultTtlSeconds: number): number {
   const policyCeilingSeconds = Math.ceil(maxSessionDurationMs / 1000);
   return Math.max(
     1,
@@ -504,7 +507,9 @@ export function createLiveKitRealtimeRail(
     return sdkModule;
   }
 
-  async function materializeCredential(scope: CredentialScope): Promise<MaterializedRailCredential> {
+  async function materializeCredential(
+    scope: CredentialScope,
+  ): Promise<MaterializedRailCredential> {
     if (credential !== null) {
       return credential;
     }
@@ -600,7 +605,11 @@ export function createLiveKitRealtimeRail(
           ? binding.roomName
           : liveKitUpstreamChannelNameOf(frame.applicationId, `ref:${frame.channelSessionRef}`);
       const roomClient = await openClient(
-        bindingScopeOf(frame.applicationId, frame.channelSessionRef, `${kind}:${frame.idempotencyKey}`),
+        bindingScopeOf(
+          frame.applicationId,
+          frame.channelSessionRef,
+          `${kind}:${frame.idempotencyKey}`,
+        ),
       );
       const sdk = await loadSdk();
       const payload = JSON.stringify({
@@ -659,7 +668,11 @@ export function createLiveKitRealtimeRail(
       const roomName = liveKitUpstreamChannelNameOf(request.applicationId, request.idempotencyKey);
       const channelSessionRef =
         request.channelSessionRef ??
-        liveKitChannelSessionRefOf(request.applicationId, request.idempotencyKey, request.channelKind);
+        liveKitChannelSessionRefOf(
+          request.applicationId,
+          request.idempotencyKey,
+          request.channelKind,
+        );
       const railMetadata = {
         channelKind: request.channelKind,
         sessionPolicy: { ...request.sessionPolicy },
@@ -729,7 +742,11 @@ export function createLiveKitRealtimeRail(
     },
 
     async closeSession(reference) {
-      const stored = await ledger.lookup("close", reference.applicationId, reference.idempotencyKey);
+      const stored = await ledger.lookup(
+        "close",
+        reference.applicationId,
+        reference.idempotencyKey,
+      );
       if (stored !== null) {
         return { delivered: true, deliveredAt: stored.deliveredAt, replayed: true };
       }
@@ -737,7 +754,10 @@ export function createLiveKitRealtimeRail(
       const roomName =
         binding !== undefined && binding.applicationId === reference.applicationId
           ? binding.roomName
-          : liveKitUpstreamChannelNameOf(reference.applicationId, `ref:${reference.channelSessionRef}`);
+          : liveKitUpstreamChannelNameOf(
+              reference.applicationId,
+              `ref:${reference.channelSessionRef}`,
+            );
       try {
         const roomClient = await openClient(
           bindingScopeOf(

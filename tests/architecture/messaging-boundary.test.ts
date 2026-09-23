@@ -288,7 +288,9 @@ describe("architecture: the provider-neutral messaging boundary (WORK-025)", () 
 
   test("MG9: no rule violations over the messaging tree (the shared engine)", () => {
     const files = collectSourceFiles(REPO_ROOT);
-    const violations = scanDependencyRules(files, { allowedPackages: ["fastify"] });
+    const violations = scanDependencyRules(files, {
+      allowedPackages: ["fastify", "livekit-server-sdk"],
+    });
     const messagingViolations = violations.filter((v) =>
       v.path.startsWith("src/modules/deployments"),
     );

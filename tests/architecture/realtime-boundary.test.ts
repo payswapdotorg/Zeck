@@ -62,6 +62,11 @@ function collectFiles(dir: string): string[] {
 }
 
 const FILES = collectFiles(DEPLOYMENTS_DIR);
+// PPR-009: the LiveKit rail ADAPTER files are the sanctioned home of the
+// vendor's identifiers (the whole point of the adapter boundary — vendor
+// vocabulary is confined THERE and nowhere else). Every RT rule that
+// scans for vendor identifiers excludes them by name.
+const VENDOR_ADAPTER_FILES = /livekit-realtime-rail(-binding)?\.ts$/;
 const REALTIME_FILES = FILES.filter((file) =>
   /realtime|in-process-realtime|planner-subtask/.test(file),
 );
@@ -203,6 +208,12 @@ describe("architecture: the realtime voice-session boundary (WORK-024)", () => {
     const violations: string[] = [];
     for (const file of FILES) {
       const relative = file.slice(REPO_ROOT.length + 1);
+      if (VENDOR_ADAPTER_FILES.test(relative)) {
+        // The sanctioned adapter home (PPR-009): the LiveKit adapter's
+        // own files carry the vendor vocabulary by design — the rule
+        // guards every OTHER file of the tree.
+        continue;
+      }
       const text = readFileSync(file, "utf8");
       if (PROVIDER_IDENTIFIER.test(text)) {
         violations.push(`${relative}: provider identifier`);
@@ -247,7 +258,11 @@ describe("architecture: the realtime voice-session boundary (WORK-024)", () => {
 
   test("RT9: no rule violations over the realtime tree (the shared engine)", () => {
     const files = collectSourceFiles(REPO_ROOT);
-    const violations = scanDependencyRules(files, { allowedPackages: ["fastify"] });
+    // PPR-009 sanctions livekit-server-sdk inside the deployments
+    // adapters (the SDK-boundary table confines it there).
+    const violations = scanDependencyRules(files, {
+      allowedPackages: ["fastify", "livekit-server-sdk"],
+    });
     const realtimeViolations = violations.filter((v) =>
       v.path.startsWith("src/modules/deployments"),
     );
