@@ -62,7 +62,10 @@
  * `ready` promise; the bound seams await the ready gate first and fail
  * closed (PROVIDER_ERROR, never a fabricated success) if the seeding failed.
  * GET /health independently reports the relational dependency's honest
- * state.
+ * state. A FAILED seeding attempt is never a permanent isolate sentence
+ * (the live plane's finding): the gate retries on the next `awaitReady()`
+ * call — runtime-idempotent seeding + converging republish make every
+ * retry safe — and keeps failing closed while the dependency is down.
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
@@ -491,22 +494,52 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
   };
 
   // The cold-start seeding gate: the durable seed + the baseline policy set.
-  const ready: Promise<PreviewAuthorityReadyState> = (async () => {
-    try {
-      await seedPreviewAuthorities(db, plan);
-      await policyAuthority.publish({
-        id: "preview-baseline",
-        version: 1,
-        documents: [{ scope: "platform", selector: {}, restrictions: {} }],
-      });
-      return { ok: true, failure: null };
-    } catch (error) {
-      // Credential-shaped values never enter the recorded failure.
-      return { ok: false, failure: redactConnectionString((error as Error).message) };
-    }
-  })();
+  // RETRY-ON-FAILURE (the live plane's §13.6 finding, 2026-09-23): a
+  // TRANSIENT relational failure at cold start — the free-tier endpoint's
+  // autosuspend wake-up racing the isolate's first connect ("Connection
+  // terminated due to connection timeout") — must not permanently degrade
+  // the isolate: the original single-shot gate cached its failure for the
+  // isolate's whole lifetime while GET /health (which probes independently)
+  // reported the dependency reachable again. The gate now REPLACES every
+  // failed attempt with exactly one new attempt, started by the first
+  // awaitReady() caller that observes the failure (concurrent callers share
+  // the SAME in-flight replacement — no stacked retries). The retry is safe
+  // by the seeding's own design: runtime-idempotent guarded inserts (ON
+  // CONFLICT DO NOTHING) and the identical policy republish converges — a
+  // retry either converges on the SAME rows or fails closed again with the
+  // honest PROVIDER_ERROR (a revoked transport credential is still never
+  // resurrected: the conflicting insert is skipped and the authenticator
+  // reports the durable row's status).
+  const startReadyAttempt = (): Promise<PreviewAuthorityReadyState> =>
+    (async () => {
+      try {
+        await seedPreviewAuthorities(db, plan);
+        await policyAuthority.publish({
+          id: "preview-baseline",
+          version: 1,
+          documents: [{ scope: "platform", selector: {}, restrictions: {} }],
+        });
+        return { ok: true, failure: null };
+      } catch (error) {
+        // Credential-shaped values never enter the recorded failure.
+        return { ok: false, failure: redactConnectionString((error as Error).message) };
+      }
+    })();
+  let closed = false;
+  let ready: Promise<PreviewAuthorityReadyState> = startReadyAttempt();
   const awaitReady = async (): Promise<void> => {
-    const state = await ready;
+    let attempt = ready;
+    let state = await attempt;
+    if (!state.ok && !closed) {
+      // The failed attempt is replaced EXACTLY ONCE: the first caller to
+      // observe the failure of the CURRENT gate starts the replacement;
+      // callers observing an already-replaced gate join it instead.
+      if (ready === attempt) {
+        ready = startReadyAttempt();
+      }
+      attempt = ready;
+      state = await attempt;
+    }
     if (!state.ok) {
       throw new PlatformError({
         code: "PROVIDER_ERROR",
@@ -533,7 +566,6 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
     return { actorId: plan.transportActorId };
   });
 
-  let closed = false;
   return {
     applicationId: plan.applicationId,
     tenantId: plan.tenantId,
@@ -548,7 +580,12 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
     substrateActor: { actorId: plan.substrateActorId, tenantId: plan.tenantId },
     generateId,
     now,
-    ready,
+    // The LIVE gate (a getter, not a captured promise): the current
+    // attempt's resolved state — after a failed attempt + a successful
+    // retry this resolves ok (the retry's whole purpose).
+    get ready(): Promise<PreviewAuthorityReadyState> {
+      return ready;
+    },
     awaitReady,
     async close(): Promise<void> {
       if (closed) {

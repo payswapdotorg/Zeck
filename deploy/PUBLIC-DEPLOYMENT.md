@@ -1038,6 +1038,61 @@ disclosure, the responsive plan, the resource integrity including
 acceptance (`deploy:public-smoke --url <public-url>`) must stay green
 (the API side of the split is unchanged).
 
+### 13.7 Correction #8 — the live credentialed run's residual findings (2026-09-23)
+
+The §13.6 credentialed journey re-run against revision `3e9ec7a`
+(`https://zeck-preview-main.vercel.app`, identity gate verified at the
+exact revision, the 10 experience-surface steps and all 22 family
+disclosures SERVED) recorded three residual findings; all three are
+fixed at their truth sources:
+
+1. **THE DEAD ROOT REWRITE** (the routing layer's platform fact). The
+   `vercel.json` rewrite `{"source": "/"}` never fired on the
+   platform: the framework build's root `index.func` is a FILESYSTEM
+   match for `/`, and `rewrites` run AFTER the filesystem phase — `/`
+   answered the API plane's Fastify 404 JSON while `/console` served
+   the experience composition. The correction: the root now lands
+   through a `redirects` entry (redirects run BEFORE the filesystem
+   phase) — `/` → `307` → `/console` → the experience function's
+   composition. The dead rewrite is removed and the routing-split
+   truth-table pin
+   (`tests/unit/deployment/experience-adapter.test.ts`) carries the
+   platform fact.
+
+2. **THE CACHED COLD-START SEEDING FAILURE** (the isolate's
+   availability; §14.1's gate). The preview authority gate seeded ONCE
+   per isolate and cached the failure: a single transient relational
+   failure at cold start — the Neon free-tier autosuspend wake-up
+   racing the isolate's first connect ("Connection terminated due to
+   connection timeout") — permanently degraded that isolate (every
+   authority-dependent route answered 502 `PROVIDER_ERROR`) while
+   `GET /health`, an independent probe, reported the dependency
+   reachable again. The correction (`deploy/preview-authorities.ts`):
+   every FAILED seeding attempt is replaced with exactly one new
+   attempt on the next `awaitReady()` call (concurrent callers share
+   the in-flight replacement); the seeding is runtime-idempotent and
+   the identical policy republish converges, so every retry either
+   converges on the same rows or fails closed again with the honest
+   `PROVIDER_ERROR`. The real-rail proof is
+   `tests/integration/postgres/preview-authorities.test.ts`'s
+   refusing-port → TCP-bridge → retry-converges test.
+
+3. **THE UNMATERIALIZED EXPERIENCE TOKEN** (the projection's
+   credential). `ZECK_EXPERIENCE_TOKEN` was never materialized on the
+   project (only `ZECK_SECRET_EXPERIENCE_TOKEN_REF` existed) — the
+   experience function served §13.5's honest UNBOUND mode and the
+   reproducibility bundle (the projection's credentialed read)
+   rendered the designed 403 "Not authorized" page. The correction is
+   environment-only (no repository change): the token is materialized
+   as the preview transport credential (§14.1's sanctioned binding
+   path — "the Lead's directly-materialized token"), and
+   `ZECK_EXPERIENCE_APPLICATION_ID` points at the MATERIALIZED preview
+   application (`ZECK_PREVIEW_APPLICATION_ID`'s application — the one
+   whose durable scope the preview authorities seed; the canonical
+   local-rail id pinned in the integration test remains the local
+   plane's own scope, unchanged). The bound mode is the sanctioned
+   evolution of §13.5's "MAY BE UNBOUND" initial state.
+
 ## 14. The preview credential issuance & the deterministic sandbox substrate (PPR-008)
 
 The bootstrap composition (`deploy/api.ts`'s `buildBootstrapApp` — the SAME

@@ -31,6 +31,7 @@
  * credentialed re-run is the Lead's — recorded honestly).
  */
 
+import { connect, createServer } from "node:net";
 import { afterAll, expect, test } from "vitest";
 import { buildBootstrapApp } from "../../../deploy/api";
 import {
@@ -683,5 +684,99 @@ definePgSuite("the preview authority materialization over real PostgreSQL", (ctx
         expect(successorCreate.json<{ status: string }>().status).toBe("COMPLETED");
       },
     );
+  });
+
+  test("a transient relational failure at cold start does not sentence the isolate — the gate retries on the next awaitReady and converges (the live plane's finding)", async () => {
+    // THE FINDING (the §13.6 credentialed run, 2026-09-23): a Neon
+    // autosuspend wake-up raced the isolate's first connect ("Connection
+    // terminated due to connection timeout") and the single-shot gate
+    // cached the failure for the isolate's whole lifetime while GET
+    // /health (an independent probe) reported the dependency reachable
+    // again. THE PROOF on the real rail: authorities built against a
+    // REFUSING port (nothing listening — the honest transient shape)
+    // fail their first attempt; a TCP forwarder then bridges that port
+    // to the real PostgreSQL rail (the dependency "recovers"), and the
+    // NEXT awaitReady() retries through it and converges — the seeded
+    // authority rows are then live in the real database.
+    const realUrl = new URL(testDatabaseUrl(ctx));
+    // Reserve a free port, then leave it REFUSING (nothing listens).
+    const reserve = createServer();
+    const refusalPort = await new Promise<number>((resolvePort, rejectPort) => {
+      reserve.once("error", rejectPort);
+      reserve.listen(0, "127.0.0.1", () => {
+        const address = reserve.address();
+        resolvePort(typeof address === "object" && address !== null ? address.port : 0);
+      });
+    });
+    await new Promise<void>((resolveClose, rejectClose) => {
+      reserve.once("error", rejectClose);
+      reserve.close(() => resolveClose());
+    });
+    const bridgedUrl = new URL(realUrl.toString());
+    bridgedUrl.port = String(refusalPort);
+
+    const retryToken = `zeck-ppr008-retry-${uuidv7()}`;
+    const retryApplicationId = uuidv7();
+    const authorities = buildPreviewAuthorities({
+      environment: "local",
+      databaseUrl: bridgedUrl.toString(),
+      transportToken: retryToken,
+      applicationId: retryApplicationId,
+    });
+    closers.push({ close: () => authorities.close() });
+
+    // The first attempt fails against the refusing port (fail closed,
+    // credential-shaped values never in the recorded failure).
+    const first = await authorities.ready;
+    expect(first.ok).toBe(false);
+    expect(first.failure).not.toContain(retryToken);
+
+    // awaitReady against the STILL-REFUSING port: the gate retries (not a
+    // cached sentence) and fails closed again — the honest PROVIDER_ERROR
+    // while the dependency is down.
+    await expect(authorities.awaitReady()).rejects.toMatchObject({
+      code: "PROVIDER_ERROR",
+    });
+
+    // Bridge the port to the real rail — the dependency "recovers".
+    const bridge = createServer((socket) => {
+      const upstream = connect({ port: Number(realUrl.port), host: realUrl.hostname });
+      socket.pipe(upstream);
+      upstream.pipe(socket);
+      const teardown = (): void => {
+        socket.destroy();
+        upstream.destroy();
+      };
+      socket.on("error", teardown);
+      upstream.on("error", teardown);
+    });
+    await new Promise<void>((resolveListen, rejectListen) => {
+      bridge.once("error", rejectListen);
+      bridge.listen(refusalPort, "127.0.0.1", () => resolveListen());
+    });
+    closers.push({
+      close: () =>
+        new Promise<void>((resolveClose) => {
+          bridge.close(() => resolveClose());
+        }),
+    });
+
+    // The next awaitReady RETRIES through the bridge and converges (the
+    // single-shot gate would have thrown the cached failure here).
+    await expect(authorities.awaitReady()).resolves.toBeUndefined();
+    const recovered = await authorities.ready;
+    expect(recovered.ok).toBe(true);
+
+    // The retried authority set is REAL: the seeded rows are live in the
+    // real database (the transport credential ACTIVE over its reference).
+    const plan = authorities.seed;
+    const credentials = await ctx.port.execute<{ status: string; secret_reference: string }>({
+      sql: `SELECT status, secret_reference FROM identity.application_credentials
+            WHERE credential_id = $1`,
+      parameters: [plan.transportCredentialId],
+    });
+    expect(credentials.rows).toHaveLength(1);
+    expect(credentials.rows[0]?.status).toBe("active");
+    expect(credentials.rows[0]?.secret_reference).toBe("zeck-secret://local/transport-token");
   });
 });

@@ -43,6 +43,11 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 interface VercelJson {
   readonly framework: string;
+  readonly redirects: readonly {
+    readonly source: string;
+    readonly destination: string;
+    readonly permanent: boolean;
+  }[];
   readonly rewrites: readonly {
     readonly source: string;
     readonly destination: string;
@@ -269,7 +274,6 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
 
   test("every experience path routes to the experience function with its original path carried", () => {
     const experiencePaths = [
-      "/",
       "/console",
       "/console/playground",
       "/console/playground/text",
@@ -320,7 +324,6 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
     }
     // The exact-path rewrites carry the original path bit-for-bit (the
     // reconstruction the adapter reverses):
-    expect(matchingRewrite("/")?.destination).toBe(`/api/experience?${EXPERIENCE_PATH_QUERY}=/`);
     expect(matchingRewrite("/console")?.destination).toBe(
       `/api/experience?${EXPERIENCE_PATH_QUERY}=/console`,
     );
@@ -337,6 +340,30 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
     expect(matchingRewrite("/console/playground/text")?.destination).toBe(
       `/api/experience?${EXPERIENCE_PATH_QUERY}=/console/:path*`,
     );
+  });
+
+  test("the root lands on the experience surface through the platform redirect (the live plane's finding: the framework's root function shadows any root rewrite)", () => {
+    // THE FINDING (the §13.6 credentialed run, 2026-09-23): the root
+    // `index.func` of the framework build is a FILESYSTEM match for "/",
+    // and vercel.json rewrites run AFTER the filesystem phase — the
+    // original `"source": "/"` rewrite was DEAD on the platform ("/"
+    // answered the API plane's Fastify 404 JSON while /console served
+    // the experience composition). Redirects run BEFORE the filesystem
+    // phase, so the root now lands on /console — whose rewrite carries
+    // the composition the landing was always meant to serve.
+    expect(VERCEL_JSON.redirects).toHaveLength(1);
+    const rootRedirect = VERCEL_JSON.redirects[0];
+    expect(rootRedirect?.source).toBe("/");
+    expect(rootRedirect?.destination).toBe("/console");
+    expect(rootRedirect?.permanent).toBe(false);
+    // No dead rewrite remains: every rewrite destination is the experience
+    // function, and none of them sources the root.
+    for (const rewrite of VERCEL_JSON.rewrites) {
+      expect(rewrite.source).not.toBe("/");
+    }
+    // The redirect's target routes to the experience function (the
+    // landing resolves to the composition over the real routing chain).
+    expect(routesToExperience(rootRedirect?.destination ?? "")).toBe(true);
   });
 
   test("EVERY public API route falls through to the existing API function (unchanged)", () => {

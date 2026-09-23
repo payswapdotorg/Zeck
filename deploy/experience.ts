@@ -30,13 +30,14 @@
  *    `experienceRequestPath` reconstructs it before the dashboard
  *    dispatch (on a LOCAL rail, requests arrive with their original
  *    paths and pass through unchanged);
- *  - the routing split: /console/*, /trust/*, /admin/*, the root / and
- *    the composition's own static asset /assets/client.js route to the
- *    experience function (the asset is required by the served shell —
- *    the journey harness's resource-integrity dimension; the API plane
- *    serves NO /assets path, so no API route changes); EVERY other
- *    path routes to the existing API function (PPR-006's entry),
- *    unchanged in behavior.
+ *  - the routing split: /console/*, /trust/*, /admin/* and the
+ *    composition's own static asset /assets/client.js route to the
+ *    experience function; the ROOT / lands here through vercel.json's
+ *    `redirects` entry (→ /console — redirects run BEFORE the filesystem
+ *    phase; the framework build's root index.func is a filesystem match
+ *    for "/" and SHADOWS any root rewrite — the live plane's finding,
+ *    correction #8); EVERY other path routes to the existing API function
+ *    (PPR-006's entry), unchanged in behavior.
  *
  * THE ENVIRONMENT INPUTS (names only — values never transit this
  * repository; see deploy/PUBLIC-DEPLOYMENT.md §13.4 for the deployment

@@ -1,6 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "fastify",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/console",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/console",
@@ -29,10 +36,6 @@
     {
       "source": "/assets/client.js",
       "destination": "/api/experience?path=/assets/client.js"
-    },
-    {
-      "source": "/",
-      "destination": "/api/experience?path=/"
     }
   ]
 }

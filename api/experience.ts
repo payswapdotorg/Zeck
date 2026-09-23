@@ -12,10 +12,13 @@
  * serves every non-experience path exactly as before, and vercel.json's
  * `rewrites` (the platform's sanctioned same-application routing
  * layer — https://vercel.com/docs/routing/rewrites) dispatch
- * /console/*, /trust/*, /admin/*, the root / and the composition's own
- * static asset /assets/client.js to THIS function, carrying the
- * ORIGINAL experience path in the `path` query parameter (the
- * documented capture-to-query conversion).
+ * /console/*, /trust/*, /admin/* and the composition's own static
+ * asset /assets/client.js to THIS function, carrying the ORIGINAL
+ * experience path in the `path` query parameter (the documented
+ * capture-to-query conversion); the ROOT / lands here through the
+ * `redirects` entry (→ /console — the framework's root function is a
+ * filesystem match for "/" and shadows any root rewrite; the live
+ * plane's finding, correction #8).
  *
  * THE COMPOSITION (once per isolate — cold start builds, warm requests
  * reuse): deploy/experience.ts's getExperienceHandler() builds PPR-001's
