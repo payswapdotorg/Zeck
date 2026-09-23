@@ -505,6 +505,26 @@ import type {
   RealtimeRailSession,
   RealtimeRailSessionRequest,
 } from "./ports/realtime-rail";
+// PPR-009: the LiveKit realtime rail adapter's NEUTRAL surface (all
+// vendor SDK types stay inside the adapter file; nothing vendor-shaped
+// crosses this barrel).
+import type {
+  LiveKitFailureClassification,
+  LiveKitFailureKind,
+  LiveKitRailCredentialSource,
+  LiveKitRailEffectKind,
+  LiveKitRailEffectRecord,
+  LiveKitRailIdempotencyLedger,
+  LiveKitRealtimeRail,
+  LiveKitRealtimeRailOptions,
+  RealtimeRailClientAccess,
+  RealtimeRailClientAccessRequest,
+  StoredLiveKitRailAcknowledgment,
+} from "./adapters/livekit-realtime-rail";
+import type {
+  LiveKitRailMaterialization,
+  RealtimeRailEnvironmentBinding,
+} from "./adapters/livekit-realtime-rail-binding";
 import type {
   RealtimeEventAppendInput,
   RealtimeEventAppendOutcome,
@@ -754,9 +774,12 @@ export type {
   RealtimePolicyAdmissionRequest,
   RealtimeRail,
   RealtimeRailCallback,
+  RealtimeRailClientAccess,
+  RealtimeRailClientAccessRequest,
   RealtimeRailDelivery,
   RealtimeRailDeliveryOutcome,
   RealtimeRailDescriptor,
+  RealtimeRailEnvironmentBinding,
   RealtimeRailSession,
   RealtimeRailSessionRequest,
   RealtimeRouteClass,
@@ -786,6 +809,19 @@ export type {
   StartRealtimeSessionOutcome,
   SubmitMediaJobInput,
   SubmitMediaJobOutcome,
+  // PPR-009: the LiveKit rail adapter's neutral surface (the exports
+  // above this line are the module's pre-existing contracts; these are
+  // the new neutral adapter types — vendor shapes never cross).
+  LiveKitFailureClassification,
+  LiveKitFailureKind,
+  LiveKitRailCredentialSource,
+  LiveKitRailEffectKind,
+  LiveKitRailEffectRecord,
+  LiveKitRailIdempotencyLedger,
+  LiveKitRailMaterialization,
+  LiveKitRealtimeRail,
+  LiveKitRealtimeRailOptions,
+  StoredLiveKitRailAcknowledgment,
 };
 // Adapters are re-exported for composition roots (the WORK-003/005/007
 // precedent: factories and provider-neutral adapters cross the barrel;
@@ -807,6 +843,25 @@ export {
   createConnectionsMediaSecretMediation,
   createConnectionsMessagingSecretMediation,
   createConnectionsRealtimeSecretMediation,
+  // PPR-009: the LiveKit realtime rail (the first REAL external rail)
+  // + its environment composition gate.
+  createEnvironmentLiveKitCredentialSource,
+  createInMemoryLiveKitRailIdempotencyLedger,
+  createLiveKitRealtimeRail,
+  classifyLiveKitFailure,
+  clientAccessTtlOf,
+  bindEnvironmentRealtimeRail,
+  CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  LIVEKIT_ENV_CREDENTIAL_REFERENCE,
+  LIVEKIT_FAILURE_NORMALIZATION,
+  LIVEKIT_RAIL_CAPABILITY_ID,
+  LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS,
+  LIVEKIT_RAIL_ENV_VARIABLES,
+  liveKitChannelSessionRefOf,
+  liveKitUpstreamChannelNameOf,
+  LOCAL_LIVEKIT_SERVER_LABEL,
+  readLiveKitRailMaterialization,
   createDeploymentService,
   createInProcessMediaRail,
   createInProcessMessagingRail,
