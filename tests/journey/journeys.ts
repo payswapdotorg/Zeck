@@ -24,6 +24,8 @@ import {
   matrixIntegrityProblems,
 } from "./capability-matrix";
 import {
+  type AuditedSurface,
+  auditFetchedSurface,
   auditSurface,
   type HarnessContext,
   OWNERS,
@@ -33,6 +35,13 @@ import {
 } from "./context";
 import { carriesAvailabilityDisclosure, titleOf } from "./dom";
 import { excerptOf, fetchSurface } from "./http";
+import {
+  followLandingChain,
+  isLandingRedirectStatus,
+  landingChainDescription,
+  landingChainEvidence,
+  MAX_LANDING_REDIRECT_HOPS,
+} from "./landing-chain";
 import { capabilitySeamComposition, ROUTE_PROBES, routeProbeProblem } from "./route-probes";
 import type { JourneyRecord, StepEvidence } from "./types";
 
@@ -131,6 +140,134 @@ async function experienceStep(
   return dimensionFailure === undefined ? "pass" : "fail";
 }
 
+/**
+ * Record the discover-landing step for a SERVED HTML landing — the same
+ * full treatment for a direct landing and a chain-landed surface
+ * (PPR-011): the dimension audit's findings first, then the step, with
+ * the followed chain disclosed in the observed when the landing was
+ * reached over redirects (chainPrefix is "" for a direct landing).
+ */
+function recordHtmlLanding(
+  ctx: HarnessContext,
+  landing: {
+    readonly audited: AuditedSurface;
+    readonly url: string;
+    readonly surface: string;
+    readonly findingStepId: string;
+    readonly chainPrefix: string;
+  },
+): void {
+  raiseDimensionFindings(ctx, landing.findingStepId, landing.url, landing.audited);
+  const failure = landing.audited.dimensions.find((dimension) => dimension.status === "fail");
+  recordStep(ctx, {
+    id: "discover-landing",
+    title: "The newcomer's landing surface",
+    surface: landing.surface,
+    status: failure === undefined ? "pass" : "fail",
+    evidence: landing.audited.fetch.evidence,
+    observed:
+      failure === undefined
+        ? `${landing.chainPrefix}HTML landing served (title: ${titleOf(landing.audited.fetch.body).slice(0, 80)}) with every audited dimension passing`
+        : `${landing.chainPrefix}HTML landing served, dimensions failed: ${landing.audited.dimensions
+            .filter((dimension) => dimension.status === "fail")
+            .map((dimension) => dimension.dimension)
+            .join(", ")}`,
+    expected: "an HTML landing passing every audited dimension",
+    ...(failure === undefined ? {} : { defectClass: failure.defectClass }),
+    dimensions: landing.audited.dimensions,
+  });
+}
+
+/**
+ * PPR-011 — the redirect-following landing: the root answered a redirect
+ * status with a Location header, so the plane's own bridge is followed
+ * manually (bounded, same-origin) and the surface the newcomer actually
+ * lands on gets the honest treatment for the chain's result — the landed
+ * HTML surface the full audit; the non-HTML terminal and the cross-origin
+ * hop the honest not-run; the loop, the over-budget chain and the
+ * unreachable hop a landing-chain FINDING (a real browser fails to land
+ * too).
+ */
+async function recordChainLanding(ctx: HarnessContext, rootEvidence: StepEvidence): Promise<void> {
+  const chain = await followLandingChain(ctx, new URL("/", ctx.targetUrl).toString());
+  const prefix = landingChainDescription(chain.hops);
+  if (chain.kind === "html") {
+    // The landed surface gets the EXACT treatment a direct HTML landing
+    // gets — the full audit over the chain's own terminal fetch.
+    const audited = await auditFetchedSurface(ctx, chain.url, chain.response);
+    recordHtmlLanding(ctx, {
+      audited,
+      url: chain.url,
+      surface: "/",
+      findingStepId: "discover-landing",
+      chainPrefix: prefix,
+    });
+    return;
+  }
+  if (chain.kind === "non-html") {
+    recordStep(ctx, {
+      id: "discover-landing",
+      title: "The newcomer's landing surface",
+      surface: "/",
+      status: "not-run",
+      evidence: chain.evidence,
+      observed: `${prefix}answered ${chain.terminalStatus} ${chain.contentType ?? "(no content type)"} — no HTML landing is served by this plane`,
+      expected: "an HTML landing when the deployment serves the experience composition",
+      notRun: {
+        reason: `the landing chain terminates in a non-HTML answer (${chain.terminalStatus} ${chain.contentType ?? "?"})`,
+        owner: OWNERS.leadPostDeployment,
+      },
+    });
+    return;
+  }
+  if (chain.kind === "cross-origin") {
+    recordStep(ctx, {
+      id: "discover-landing",
+      title: "The newcomer's landing surface",
+      surface: "/",
+      status: "not-run",
+      evidence: rootEvidence,
+      observed: `${prefix}the chain's next hop ${chain.hopUrl} leaves the plane's origin — cross-origin following is out of audit scope`,
+      expected:
+        "an HTML landing on the plane's own origin when the deployment serves the experience composition",
+      notRun: {
+        reason: `the landing chain leaves the plane's origin (a hop redirects to ${chain.hopUrl}); cross-origin following is out of audit scope`,
+        owner: OWNERS.leadPostDeployment,
+      },
+    });
+    return;
+  }
+  // loop | budget-exceeded | unreachable — the chain fails to land.
+  const observed =
+    chain.kind === "loop"
+      ? `${prefix}the landing chain loops back to ${chain.loopUrl} — a real browser fails to land too`
+      : chain.kind === "budget-exceeded"
+        ? `${prefix}the landing chain exceeds the ${MAX_LANDING_REDIRECT_HOPS}-hop budget without reaching a served HTML surface — a real browser fails to land too`
+        : `${prefix}the chain's hop ${chain.hopUrl} did not answer (transport failure: ${chain.transportError})`;
+  raiseFinding(ctx, {
+    step: "discover-landing",
+    surface: "/",
+    observed,
+    expected: `the landing chain terminates in a served HTML surface within ${MAX_LANDING_REDIRECT_HOPS} same-origin hops`,
+    severity: "major",
+    defectClass: "landing-chain",
+    evidence: landingChainEvidence(chain.hops),
+    viableSolutions: ["fix the route chain (loop/over-budget redirects)"],
+    recommendedSolution: "repair the redirect chain, then re-run this harness",
+    verificationRequirement: "the harness's discover journey records discover-landing = pass",
+  });
+  recordStep(ctx, {
+    id: "discover-landing",
+    title: "The newcomer's landing surface",
+    surface: "/",
+    status: "fail",
+    evidence: rootEvidence,
+    observed,
+    expected: `the landing chain terminates in a served HTML surface within ${MAX_LANDING_REDIRECT_HOPS} same-origin hops`,
+    defectClass: "landing-chain",
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Journey 1 — discover
 // ---------------------------------------------------------------------------
@@ -180,25 +317,22 @@ async function journeyDiscover(ctx: HarnessContext): Promise<void> {
   });
   if (rootHtml) {
     // A served HTML landing: the discovery surface itself is audited.
-    raiseDimensionFindings(ctx, "reachability", new URL("/", ctx.targetUrl).toString(), root);
-    const failure = root.dimensions.find((dimension) => dimension.status === "fail");
-    recordStep(ctx, {
-      id: "discover-landing",
-      title: "The newcomer's landing surface",
+    recordHtmlLanding(ctx, {
+      audited: root,
+      url: new URL("/", ctx.targetUrl).toString(),
       surface: "/",
-      status: failure === undefined ? "pass" : "fail",
-      evidence: rootEvidence,
-      observed:
-        failure === undefined
-          ? `HTML landing served (title: ${titleOf(root.fetch.body).slice(0, 80)}) with every audited dimension passing`
-          : `HTML landing served, dimensions failed: ${root.dimensions
-              .filter((d) => d.status === "fail")
-              .map((d) => d.dimension)
-              .join(", ")}`,
-      expected: "an HTML landing passing every audited dimension",
-      ...(failure === undefined ? {} : { defectClass: failure.defectClass }),
-      dimensions: root.dimensions,
+      findingStepId: "reachability",
+      chainPrefix: "",
     });
+  } else if (
+    rootEvidence.status !== null &&
+    isLandingRedirectStatus(rootEvidence.status) &&
+    rootEvidence.location !== undefined
+  ) {
+    // PPR-011 — the plane's own redirect bridge: the root answered a
+    // redirect with a Location header, so the chain is followed manually
+    // (bounded, same-origin) and the landed surface audited.
+    await recordChainLanding(ctx, rootEvidence);
   } else {
     recordStep(ctx, {
       id: "discover-landing",

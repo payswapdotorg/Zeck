@@ -235,6 +235,20 @@ export async function auditSurface(
 ): Promise<AuditedSurface> {
   const url = new URL(path, ctx.targetUrl).toString();
   const fetched = await fetchSurface(url, options);
+  return auditFetchedSurface(ctx, url, fetched);
+}
+
+/**
+ * Run the full cross-cutting audit over an ALREADY-FETCHED surface
+ * (PPR-011: the landing chain's terminal fetch is audited here so the
+ * landed surface gets the exact audit a directly-fetched landing gets,
+ * without a second request for the same surface).
+ */
+export async function auditFetchedSurface(
+  ctx: HarnessContext,
+  url: string,
+  fetched: SurfaceFetch,
+): Promise<AuditedSurface> {
   const dimensions: DimensionOutcome[] = [];
 
   if (!fetched.ok) {
