@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-007+PPR-008",
+  "title": "The F1 closure record — the §13.6 credentialed deployment chain executed end to end on the public plane",
+  "recordedBy": "Lead (credentialed run)",
+  "environment": "preview (the public plane https://zeck-preview-main.vercel.app, Vercel project zeck-preview-main, production target)",
+  "date": "2026-09-23",
+  "doctrine": "The maturity ladder's evidence chain: a public journey re-run at the exact deployed revision is the level-4 proof (a repeatable public journey); every executed step records its honest state and NOT RUN is an honest boundary, never a failure.",
+  "deployedRevision": "a244e703d881fc2e14169a653f285855f8d3dccd",
+  "deploymentUid": "dpl_7eAJpHdgzLCrVcxWuVvj2LHFnv8X",
+  "chain": [
+    {
+      "step": "correction #8 (the live run's residual findings)",
+      "fact": "the dead root rewrite (filesystem shadowing) → the redirects bridge; the cached cold-start seeding failure → the retryable gate; the unmaterialized experience token → the environment-only materialization (ZECK_EXPERIENCE_TOKEN = the preview transport credential; ZECK_EXPERIENCE_APPLICATION_ID = the materialized preview application)"
+    },
+    {
+      "step": "build",
+      "fact": "bun run deploy:build-vercel-output — both function graphs corrected (api/experience.func 178 files / 589 specifiers / 785 data files; index.func 105 files / 355 specifiers)"
+    },
+    {
+      "step": "the local artifact proof (both functions, the §13.6 documented entrypoints)",
+      "fact": "index.func node server.js: boot record gitRevision a244e703d881fc2e, /identity bound at a244e703d881fc2e (preview), /health honest, POST /executions (invalid bearer) answered 401 AUTHENTICATION_FAILED; api/experience.func node api/experience.js: tokenBound false (the honest unbound local rail), /console and / served as HTML"
+    },
+    {
+      "step": "deploy",
+      "fact": "vercel deploy --prebuilt --prod (dpl_7eAJpHdgzLCrVcxWuVvj2LHFnv8X READY); ZECK_DEPLOY_GIT_REVISION re-pinned to a244e703d881fc2e14169a653f285855f8d3dccd BEFORE the deploy (the plane attests the pin: /identity bound at a244e703)"
+    },
+    {
+      "step": "the credentialed journey re-run",
+      "fact": "bun tests/journey/run.ts --url https://zeck-preview-main.vercel.app --environment preview --branch main --expected-revision a244e703d881fc2e14169a653f285855f8d3dccd — EXIT 0: 12 journeys / 28 steps — 27 pass / 0 fail / 1 honest not-run (discover-landing: the plane answers 307 at / — the platform's sanctioned redirect bridge; browsers land on /console; the harness's redirect:manual URL-hygiene records the honest fact) — findings 0/0/0, identity gate VERIFIED at the exact revision; the report is f1-closure-journey.json"
+    },
+    {
+      "step": "the API plane acceptance",
+      "fact": "bun run deploy:public-smoke -- --url https://zeck-preview-main.vercel.app --environment preview --branch main — EXIT 0, problems []: 26 routes probed (18 auth-boundary 401 / 3 capability-unbound 422 / 4 capability-or-auth-boundary ALL materialized-composition 401 / 1 public-artifact 200), plane attestation verified (runtimeIdentityId d334da55e04f5bf3013c2c7b4c2be44bc9d7ac55cc0ba1dfb33c72a869f86fcc)"
+    }
+  ],
+  "gateChecklist": [
+    {
+      "gate": "F1: the experience surface serves its public deployment",
+      "status": "pass",
+      "evidence": "all 10 experience-surface journey steps PASS with every audited dimension; all 22 workload-family disclosures SERVED (familiesNotServed 0, familiesDisclosureFailed 0); / redirects 307 → /console (the framework's root function owns / on the platform — the redirects bridge is the sanctioned routing layer)"
+    },
+    {
+      "gate": "F2: the credentialed journey steps run on the preview credential issuance path",
+      "status": "pass",
+      "evidence": "the 'first sandbox execution works' gate PASS credentialed (terminal COMPLETED + verification PASS over the materialized preview authorities); executions inspectable (receipt/events/verification/results all 200); export/reproduce reachable with a 200 JSON bundle (the materialized experience token's credentialed read); route sweep: 4/4 credentials seams answered the materialized-composition 401"
+    },
+    {
+      "gate": "the API plane's acceptance stays green",
+      "status": "pass",
+      "evidence": "deploy:public-smoke EXIT 0 — 26/26 routes honest, zero problems, identity verified at the pinned revision"
+    }
+  ],
+  "findings": [],
+  "notRun": [
+    {
+      "boundary": "discover-landing (the HTML landing at the bare root)",
+      "reason": "the plane answers 307 at / (the redirects bridge to /console — the framework's root function is the platform's filesystem match for the bare root and rewrites run after the filesystem phase; correction #8's documented platform fact)",
+      "owner": "the platform's routing shape is the honest answer; a same-origin-redirect-following landing audit would be a harness contract change (its own work order, if ever wanted)"
+    },
+    {
+      "boundary": "the zone beyond this record (staging/production environments, custom domains, the full maturity ladder's level-5+ drills)",
+      "reason": "outside the public preview plane this record covers; the roadmap's governed scope",
+      "owner": "future governed work orders"
+    }
+  ]
+}

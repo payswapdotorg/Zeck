@@ -1,0 +1,1294 @@
+{
+  "tool": "tests/journey/run (PPR-003 public user-journey acceptance harness)",
+  "schemaVersion": 1,
+  "mode": "url",
+  "targetUrl": "https://zeck-preview-main.vercel.app",
+  "expectedRevision": "a244e703d881fc2e14169a653f285855f8d3dccd",
+  "environment": "preview",
+  "allowDegraded": false,
+  "startedAt": "2026-09-23T13:31:09.091Z",
+  "finishedAt": "2026-09-23T13:34:43.122Z",
+  "durationMs": 214031,
+  "identityGate": {
+    "verified": true,
+    "planeUrl": "https://zeck-preview-main.vercel.app",
+    "expectedRevision": "a244e703d881fc2e14169a653f285855f8d3dccd",
+    "attested": {
+      "runtimeIdentityId": "d334da55e04f5bf3013c2c7b4c2be44bc9d7ac55cc0ba1dfb33c72a869f86fcc",
+      "gitRevision": "a244e703d881fc2e14169a653f285855f8d3dccd",
+      "manifestDigest": "dde933d6fd3908401916acee1abbdd0bc37b5ba5aa7b26ddae8778294b9fd9be",
+      "topologyDigest": "876d40ac7be57076fee57096502439953e23cf74cce8cdea751031166e20061c",
+      "environment": "preview"
+    }
+  },
+  "journeys": [
+    {
+      "id": "discover",
+      "title": "Discover Zeck",
+      "steps": [
+        {
+          "id": "reachability",
+          "journey": "discover",
+          "title": "The public URL is reachable",
+          "surface": "/",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/",
+            "method": "GET",
+            "status": 307,
+            "contentType": "text/plain",
+            "bodySha256": "7c040f8633b8823d72ed63da9b3b2dfe9846e912c66a64c9433ec9c4815d76c2",
+            "durationMs": 9
+          },
+          "observed": "answered 307 text/plain",
+          "expected": "the public URL answers over HTTP (any honest answer class)"
+        },
+        {
+          "id": "discover-landing",
+          "journey": "discover",
+          "title": "The newcomer's landing surface",
+          "surface": "/",
+          "status": "not-run",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/",
+            "method": "GET",
+            "status": 307,
+            "contentType": "text/plain",
+            "bodySha256": "7c040f8633b8823d72ed63da9b3b2dfe9846e912c66a64c9433ec9c4815d76c2",
+            "durationMs": 9
+          },
+          "observed": "answered 307 text/plain — no HTML landing is served by this plane",
+          "expected": "an HTML landing when the deployment serves the experience composition",
+          "notRun": {
+            "reason": "the target serves no HTML landing at / (answered 307 text/plain)",
+            "owner": "Lead post-deployment run (point the harness at the deployed public URL + the exact revision)"
+          }
+        },
+        {
+          "id": "identity-facts",
+          "journey": "discover",
+          "title": "The deployment identity is newcomer-visible",
+          "surface": "/identity",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/identity",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "c928e160129e5f98bafa11462f3a6842df9ed7c5f9875d2e65c92822cc52d258",
+            "durationMs": 231
+          },
+          "observed": "runtime identity d334da55e04f5bf3 at revision a244e703d881",
+          "expected": "GET /identity answers 200 with the runtime identity document"
+        },
+        {
+          "id": "health",
+          "journey": "discover",
+          "title": "Health semantics (control plane / dependency distinction)",
+          "surface": "/health",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/health",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "5693ad7fb67b388b22267a7f92748da4818d7bf69598a04954b25cb51882ba5d",
+            "durationMs": 267
+          },
+          "observed": "answered 200 with status degraded, controlPlane ready",
+          "expected": "the honest health vocabulary with the control plane ready"
+        },
+        {
+          "id": "public-artifact",
+          "journey": "discover",
+          "title": "The public governed data-policy artifact",
+          "surface": "/sandbox/data-policy",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/data-policy",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "d1d5a9ea495561eefc8ef29aebacf4fa07677f7bba93d4e0b0fa3e2b273970bf",
+            "durationMs": 228
+          },
+          "observed": "the versioned policy artifact with its digest",
+          "expected": "200 with the versioned policy artifact + digest (the one unauthenticated public document)"
+        }
+      ]
+    },
+    {
+      "id": "capability-discovery",
+      "title": "Discover capabilities",
+      "steps": [
+        {
+          "id": "matrix-integrity",
+          "journey": "capability-discovery",
+          "title": "The 22-family coverage matrix derives cleanly from the machine manifest",
+          "surface": "docs/developer/machine/capability-manifest.json",
+          "status": "pass",
+          "evidence": null,
+          "observed": "22 workload families, every example path existing, classifications in the honest vocabulary, gates as env var names",
+          "expected": "every family maps to discovery location, availability state, example path and provider/access explanation"
+        },
+        {
+          "id": "matrix-target-disclosure",
+          "journey": "capability-discovery",
+          "title": "Every family's discovery surface discloses its honest availability state",
+          "surface": "/console/playground/:family (22 routes)",
+          "status": "pass",
+          "evidence": null,
+          "observed": "22 family pages served with honest disclosure, 0 not served (no console composition), 0 disclosure failures",
+          "expected": "every served family page names its family, discloses an availability state and shows its gate; provider-gated is never presented as live success"
+        },
+        {
+          "id": "capability-catalog",
+          "journey": "capability-discovery",
+          "title": "The capability catalog surface",
+          "surface": "/console/playground",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/playground",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "2b18fa88469a555b2929f3523f1b53a8eac1149d45c54b9ffbaefd7321d5577e",
+            "durationMs": 1041
+          },
+          "observed": "HTML experience page served (title: Zeck — Playground) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sandbox-start",
+      "title": "Start the sandbox safely",
+      "steps": [
+        {
+          "id": "sandbox-envelope",
+          "journey": "sandbox-start",
+          "title": "The sandbox safety envelope answers honestly",
+          "surface": "/sandbox/quotas",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/quotas",
+            "method": "GET",
+            "status": 422,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
+            "durationMs": 232
+          },
+          "observed": "answered 422 CAPABILITY_UNAVAILABLE",
+          "expected": "the honest answer class (200 when the governance capability is bound, 422 CAPABILITY_UNAVAILABLE when unbound)"
+        },
+        {
+          "id": "unauthenticated-start-boundary",
+          "journey": "sandbox-start",
+          "title": "An unauthenticated sandbox start is refused honestly",
+          "surface": "POST /executions",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/executions",
+            "method": "POST",
+            "status": 401,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "696e377e197b180418104188986bac08be41baa13b14f56ead83e240fc16bf3d",
+            "durationMs": 235
+          },
+          "observed": "answered 401 AUTHENTICATION_FAILED",
+          "expected": "the honest 401 AUTHENTICATION_FAILED (the auth boundary is enforced; no capability is fabricated)"
+        },
+        {
+          "id": "authenticated-start",
+          "journey": "sandbox-start",
+          "title": "The guided sandbox start creates a real execution",
+          "surface": "POST /executions",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/executions",
+            "method": "POST",
+            "status": 201,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "7b987c18039ce7d778e17246ab5599dfe02e3943bb0e2ad08311e8ab9c1ae7a9",
+            "durationMs": 592
+          },
+          "observed": "201 with executionId 01a0ce78-cf79-7000-9f60-bdd279c16286",
+          "expected": "201 with the execution receipt (executionId present — the wire receipt contract)"
+        }
+      ]
+    },
+    {
+      "id": "first-text-execution",
+      "title": "First text execution",
+      "steps": [
+        {
+          "id": "execution-lifecycle",
+          "journey": "first-text-execution",
+          "title": "The first text execution reaches a terminal state",
+          "surface": "https://zeck-preview-main.vercel.app/executions/01a0ce78-cf79-7000-9f60-bdd279c16286",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/executions/01a0ce78-cf79-7000-9f60-bdd279c16286",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "2e51ef9c5ca3de9e69bcd88fd57cab76db804fc3ba212fd391abce66be796a38",
+            "durationMs": 232
+          },
+          "observed": "terminal: true, status: COMPLETED, verification: PASS (1)",
+          "expected": "COMPLETED with a PASS verification outcome (the acceptance gate: the first sandbox execution works)"
+        }
+      ]
+    },
+    {
+      "id": "execution-inspection",
+      "title": "Inspect the execution",
+      "steps": [
+        {
+          "id": "inspection-surfaces",
+          "journey": "execution-inspection",
+          "title": "Result, activity and verification are inspectable",
+          "surface": "GET /executions/01a0ce78-cf79-7000-9f60-bdd279c16286{,/events,/verification,/results}",
+          "status": "pass",
+          "evidence": null,
+          "observed": "receipt: 200, events: 200 (0 events), verification: 200, results: 200",
+          "expected": "every inspection surface answers 200 (the 'How Zeck did it' hierarchy)"
+        },
+        {
+          "id": "inspection-console",
+          "journey": "execution-inspection",
+          "title": "The execution explorer console surface",
+          "surface": "/console/executions/01a0ce78-cf79-7000-9f60-bdd279c16286",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/executions/01a0ce78-cf79-7000-9f60-bdd279c16286",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "7c8d87e9f8a2bde09635794191e3d97d337dae81e36ee5f35013271da81dce50",
+            "durationMs": 614
+          },
+          "observed": "HTML experience page served (title: Zeck — Execution 01a0ce78-cf79-7000-9f60-bdd279c16286) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "evidence-cost",
+      "title": "Inspect evidence and cost",
+      "steps": [
+        {
+          "id": "receipt-cost",
+          "journey": "evidence-cost",
+          "title": "The result package carries the evidence and cost facts",
+          "surface": "GET /executions/01a0ce78-cf79-7000-9f60-bdd279c16286/results",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/executions/01a0ce78-cf79-7000-9f60-bdd279c16286/results",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "46353b77636d5cf2b6ce457f4e5f0a9d545faece8433979ad7bc97f4ec9625a6",
+            "durationMs": 225
+          },
+          "observed": "the result package carries the cost/usage projection (cost: null, usage: null — honestly null until a governed writer settles usage facts)",
+          "expected": "the result package carries the cost/usage projection over the ledger facts (honestly null until a governed writer settles usage)"
+        },
+        {
+          "id": "usage-console",
+          "journey": "evidence-cost",
+          "title": "The usage/economics console surface",
+          "surface": "/console/applications/usage",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/applications/usage",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "3fa0d09e5308acc3ec7d1012daec848e73b98b7127a3284554d8777c4f7a77c0",
+            "durationMs": 248
+          },
+          "observed": "HTML experience page served (title: Zeck — Usage) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "validation-rerun",
+      "title": "Validation rerun",
+      "steps": [
+        {
+          "id": "validation-lab",
+          "journey": "validation-rerun",
+          "title": "The Validation Lab surface",
+          "surface": "/console/validation",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/validation",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "de162e9e62c821ca2bc7091ee5186ad53a950e19c77d2d83ca163f11217520dc",
+            "durationMs": 432
+          },
+          "observed": "HTML experience page served (title: Zeck — Validation Lab) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        },
+        {
+          "id": "validation-agent",
+          "journey": "validation-rerun",
+          "title": "The agent-facing validation view",
+          "surface": "/console/validation/agent",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/validation/agent",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "5bbad29e5fbfc5f010b3b5f5ea2ec765fc4c9b14ccd8edfa6ae7641fb4ee29cc",
+            "durationMs": 236
+          },
+          "observed": "HTML experience page served (title: Zeck — Validation Lab agent interface) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Compare",
+      "steps": [
+        {
+          "id": "compare-console",
+          "journey": "compare",
+          "title": "The compare surface",
+          "surface": "/console/compare",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/compare",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "6dd8b554ad3a79b3519a47fdb9974dac45e1adca3f6957f2d92992a66c91e8b8",
+            "durationMs": 241
+          },
+          "observed": "HTML experience page served (title: Zeck — Compare runs) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "export-reproduce",
+      "title": "Export / reproduce",
+      "steps": [
+        {
+          "id": "export-console",
+          "journey": "export-reproduce",
+          "title": "The reproducibility export surface",
+          "surface": "/console/executions",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/executions",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "9c900b8108b1d4a4b0ce35c57b93a2eba3bef50312a354690bd3614f4bf2b1c7",
+            "durationMs": 236
+          },
+          "observed": "HTML experience page served (title: Zeck — Executions) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        },
+        {
+          "id": "export-bundle",
+          "journey": "export-reproduce",
+          "title": "The reproducibility bundle exports as verbatim JSON",
+          "surface": "/console/executions/01a0ce78-cf79-7000-9f60-bdd279c16286/export/bundle.json",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/executions/01a0ce78-cf79-7000-9f60-bdd279c16286/export/bundle.json",
+            "method": "GET",
+            "status": 200,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "baaa484752d39b503fa50967594ba9611d0cba76834ee8b6fbca3c1f1871bac3",
+            "durationMs": 414
+          },
+          "observed": "answered 200 with a JSON bundle",
+          "expected": "the verbatim-JSON reproducibility bundle (the machine view plus recipe)"
+        }
+      ]
+    },
+    {
+      "id": "trust-limits",
+      "title": "Trust and limits",
+      "steps": [
+        {
+          "id": "trust-evidence",
+          "journey": "trust-limits",
+          "title": "The trust evidence surface",
+          "surface": "/trust/evidence",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/trust/evidence",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "d9e01a7066241c7bacb28e582b28b00a04df96fe463fde4296eab828099dfcf8",
+            "durationMs": 407
+          },
+          "observed": "HTML experience page served (title: Zeck — Evidence) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        },
+        {
+          "id": "trust-limits-policies",
+          "journey": "trust-limits",
+          "title": "The policy surface",
+          "surface": "/admin/policies",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/admin/policies",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "17213c33ab3c05cc9ea4ce7d341fce4348b62e04764193dd16f68a83bf8cee08",
+            "durationMs": 225
+          },
+          "observed": "HTML experience page served (title: Zeck — Rules and controls) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        },
+        {
+          "id": "limits-envelope",
+          "journey": "trust-limits",
+          "title": "The limits envelope is reachable",
+          "surface": "/sandbox/quotas",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/sandbox/quotas",
+            "method": "GET",
+            "status": 422,
+            "contentType": "application/json; charset=utf-8",
+            "bodySha256": "4eb2397c1d4eff876490c404c2351a591cc1cff7250e7be20e4a9ad91890a251",
+            "durationMs": 239
+          },
+          "observed": "answered 422 CAPABILITY_UNAVAILABLE",
+          "expected": "the sandbox governance seam answers (200 bound or the honest 422 unbound)"
+        }
+      ]
+    },
+    {
+      "id": "agent-onboarding",
+      "title": "Agent onboarding",
+      "steps": [
+        {
+          "id": "agent-quickstart",
+          "journey": "agent-onboarding",
+          "title": "The agent quickstart surface",
+          "surface": "/console/quickstart",
+          "status": "pass",
+          "evidence": {
+            "url": "https://zeck-preview-main.vercel.app/console/quickstart",
+            "method": "GET",
+            "status": 200,
+            "contentType": "text/html; charset=utf-8",
+            "bodySha256": "5fbc4e60e876b29d03c1a793123a30edba27dd606721ba662d3d1220f0de8aba",
+            "durationMs": 445
+          },
+          "observed": "HTML experience page served (title: Zeck — Quickstart) with every audited dimension passing",
+          "expected": "an HTML experience page passing every audited cross-cutting dimension",
+          "dimensions": [
+            {
+              "dimension": "keyboard/focus",
+              "status": "pass",
+              "observed": "skip link, main landmark, primary nav and aria-current active semantics present"
+            },
+            {
+              "dimension": "desktop/tablet/mobile",
+              "status": "pass",
+              "observed": "mobile and tablet/desktop media-query classes present in the served CSS"
+            },
+            {
+              "dimension": "reduced-motion",
+              "status": "pass",
+              "observed": "prefers-reduced-motion rule present in the served CSS"
+            },
+            {
+              "dimension": "browser-console-errors (resource integrity)",
+              "status": "pass",
+              "observed": "1 referenced resources all answered 2xx/3xx"
+            },
+            {
+              "dimension": "navigation",
+              "status": "pass",
+              "observed": "20 internal navigation targets all answered < 500"
+            }
+          ]
+        },
+        {
+          "id": "machine-artifacts",
+          "journey": "agent-onboarding",
+          "title": "The machine onboarding artifacts are present and parseable",
+          "surface": "docs/developer/machine/*.json",
+          "status": "pass",
+          "evidence": null,
+          "observed": "7 machine artifacts present and JSON-parseable (validated against the wire contract by the kit's own suite)",
+          "expected": "every machine artifact exists and parses (the agent's onboarding truth)"
+        }
+      ]
+    },
+    {
+      "id": "production-deployment",
+      "title": "Production / deployment path",
+      "steps": [
+        {
+          "id": "route-table",
+          "journey": "production-deployment",
+          "title": "Every public route answers its honest boundary",
+          "surface": "the public route table (26 routes)",
+          "status": "pass",
+          "evidence": null,
+          "observed": "26 routes probed: 18 auth-boundary (401), 3 capability-unbound (422), 4 capability-or-auth-boundary (0 unbound-composition 422 / 4 materialized-composition 401), 1 public-artifact (200)",
+          "expected": "the honest boundary semantics of the deployed public route table"
+        },
+        {
+          "id": "deployment-docs",
+          "journey": "production-deployment",
+          "title": "The production/deployment path documentation is present",
+          "surface": "deploy/PUBLIC-DEPLOYMENT.md (+ runbooks)",
+          "status": "pass",
+          "evidence": null,
+          "observed": "the public deployment runbook, the deploy README and the production guide are present",
+          "expected": "the deployment path is documented (the runbook the Lead's provisioning follows)"
+        }
+      ]
+    }
+  ],
+  "capabilityMatrix": [
+    {
+      "family": "text",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY).",
+      "examplePath": "examples/text-summarization.ts",
+      "capabilityRequirements": ["model:text"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/text",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "structured",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "deterministic rows proven with byte-exact comparison oracles.",
+      "examplePath": "examples/structured-invoice-extraction.ts",
+      "capabilityRequirements": ["model:text", "algorithm:json-schema-validation"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/structured",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: deterministic rows proven with byte-exact comparison oracles.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "rag",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "retrieval is a seeded deterministic tool capability; family proven in the validation program.",
+      "examplePath": "examples/rag-grounded-answers.ts",
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/rag",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: retrieval is a seeded deterministic tool capability; family proven in the validation program.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "tools",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "tool-agent family live-proven over the openrouter rail.",
+      "examplePath": "examples/tool-augmented-lookup.ts",
+      "capabilityRequirements": ["model:text"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/tools",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: tool-agent family live-proven over the openrouter rail.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "workflow",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "durable orchestration proven over the transport (Cloudflare Workflows protocol suite).",
+      "examplePath": "examples/workflow-orchestration.ts",
+      "capabilityRequirements": ["model:text"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/workflow",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: durable orchestration proven over the transport (Cloudflare Workflows protocol suite).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "long-running",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "checkpoint/resume semantics proven over REAL PostgreSQL (integration suites).",
+      "examplePath": "examples/long-running-batch.ts",
+      "capabilityRequirements": ["runtime:process-sandbox"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/long-running",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: checkpoint/resume semantics proven over REAL PostgreSQL (integration suites).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "voice",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "ASR/TTS live-proven over the qwen dashscope-international rail (qwen3-asr-flash/qwen3-tts-flash); the openai candidate is region-blocked (HTTP 403).",
+      "examplePath": "examples/voice-transcription.ts",
+      "capabilityRequirements": ["model:asr"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/voice",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "realtime-voice",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only).",
+      "examplePath": "examples/realtime-voice-session.ts",
+      "capabilityRequirements": ["model:realtime-voice"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/realtime-voice",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "image-generation",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "live-proven over the qwen rail (qwen-image-2.0); the openai candidate is region-blocked (403).",
+      "examplePath": "examples/image-generation.ts",
+      "capabilityRequirements": ["model:image-generation"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/image-generation",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "video-media",
+      "classification": "provider-gated",
+      "gatedBy": "QWEN_API_KEY",
+      "availability": "three live generations proven (wan2.2-t2v-plus, ~88 s each); further live rows NOT RUN — free-tier quota exhausted (AllocationQuota.FreeTierOnly); ark/seedance candidates DNS-failed.",
+      "examplePath": "examples/video-generation.ts",
+      "capabilityRequirements": ["model:video-generation"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/video-media",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "qwen (QWEN_API_KEY, name only): live-proven (dashscope-international: ASR/TTS qwen3-*-flash, raster qwen-image-2.0, video wan2.2-t2v-plus — further video rows quota-blocked)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "image-recognition",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "vision candidates: openrouter (live-proven) and openai (region-blocked 403).",
+      "examplePath": "examples/image-recognition.ts",
+      "capabilityRequirements": ["model:vision"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/image-recognition",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "vlm",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "VLM candidates: openrouter (live-proven) and openai (region-blocked 403).",
+      "examplePath": "examples/vlm-image-qa.ts",
+      "capabilityRequirements": ["model:vlm"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/vlm",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "audio-understanding",
+      "classification": "provider-gated",
+      "gatedBy": "OPENAI_API_KEY",
+      "availability": "NOT RUN — the only authorized audio-input candidate (openai) is region-blocked (HTTP 403 unsupported_country_region_territory).",
+      "examplePath": "examples/audio-understanding.ts",
+      "capabilityRequirements": ["model:audio-understanding"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/audio-understanding",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openai (OPENAI_API_KEY, name only): NOT RUN — HTTP 403 region block (unsupported_country_region_territory) from the recorded egress",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "multimodal",
+      "classification": "provider-gated",
+      "gatedBy": "OPENROUTER_API_KEY",
+      "availability": "chained rows live-proven (vision over openrouter, derived raster over qwen-image-2.0); one honest FAILED row (corrupted source, chain-abort).",
+      "examplePath": "examples/multimodal-transformation.ts",
+      "capabilityRequirements": ["model:vlm", "model:image-generation"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/multimodal",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "openrouter (OPENROUTER_API_KEY, name only): live-proven (text/tool-agent/agentic; meta-llama/llama-3.3-70b-instruct)",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "three-d",
+      "classification": "provider-gated",
+      "gatedBy": "ZECK_3D_API_KEY",
+      "availability": "NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: []).",
+      "examplePath": "examples/three-d-generation.ts",
+      "capabilityRequirements": ["model:three-d"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/three-d",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "gated by the ZECK_3D_API_KEY credential (name only); no providerAccess row carries that name — the recorded availability stands verbatim: NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: []).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "customer-service",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "triage is deterministic over pinned ticket fixtures; reply generation follows the text rail.",
+      "examplePath": "examples/customer-service-triage.ts",
+      "capabilityRequirements": ["model:text"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/customer-service",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: triage is deterministic over pinned ticket fixtures; reply generation follows the text rail.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "browser-use",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail.",
+      "examplePath": "examples/browser-use-agent.ts",
+      "capabilityRequirements": ["agent:browser"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/browser-use",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "computer-use",
+      "classification": "provider-gated",
+      "gatedBy": null,
+      "availability": "fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail.",
+      "examplePath": "examples/computer-use-agent.ts",
+      "capabilityRequirements": ["agent:computer-use"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/computer-use",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (provider-gated)"
+      }
+    },
+    {
+      "family": "research",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "retrieval is deterministic; synthesis follows the live-proven text rail.",
+      "examplePath": "examples/research-synthesis.ts",
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/research",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: retrieval is deterministic; synthesis follows the live-proven text rail.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "coding",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "family exercised by the validation program over pinned function specs.",
+      "examplePath": "examples/coding-assistant.ts",
+      "capabilityRequirements": ["model:text"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/coding",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: family exercised by the validation program over pinned function specs.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "operations",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "runbook steps are deterministic tool invocations over pinned operational fixtures.",
+      "examplePath": "examples/operations-runbook.ts",
+      "capabilityRequirements": ["tool:document-retrieval"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/operations",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: runbook steps are deterministic tool invocations over pinned operational fixtures.",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    },
+    {
+      "family": "hitl",
+      "classification": "runnable",
+      "gatedBy": null,
+      "availability": "gate discipline is deterministic (approval-before-action event ordering is the oracle).",
+      "examplePath": "examples/human-review-gate.ts",
+      "capabilityRequirements": ["human:human-review"],
+      "discoveryLocation": {
+        "consoleRoute": "/console/playground/hitl",
+        "machineManifest": "docs/developer/machine/capability-manifest.json"
+      },
+      "providerAccessExplanation": "runnable — the family's recorded provenance: gate discipline is deterministic (approval-before-action event ordering is the oracle).",
+      "targetProbe": {
+        "status": "pass",
+        "observed": "HTML family page served with the honest availability disclosure (runnable)"
+      }
+    }
+  ],
+  "findings": [],
+  "notRun": [
+    {
+      "check": "The final acceptance run against the real public Zeck URL (the deployed PPR-002 preview) at its exact revision",
+      "reason": "The public URL does not exist at harness-delivery time (PPR-002's live provisioning is the Lead's credentialed run, in parallel). The harness is proven end to end against a locally-booted Zeck plane (the deploy chain's local mode) and the repository's machine manifests; the final run is the Lead's, the moment the preview is live.",
+      "owner": "Lead post-deployment run"
+    },
+    {
+      "check": "Credentialed journey steps (guided sandbox start, first text execution lifecycle, inspection, export) without transport credentials",
+      "reason": "The harness accepts a bearer credential + application id through ZECK_JOURNEY_TOKEN / ZECK_JOURNEY_APPLICATION_ID; without them every credentialed step records the honest not-run state with this owner (the bootstrap plane's auth boundary itself IS asserted — the 401 step).",
+      "owner": "Lead credentialed re-run (transport credential for the public preview)"
+    },
+    {
+      "check": "Live provider rails for provider-gated workload families (voice/image/video/vision/3D/browser/computer-use live rows)",
+      "reason": "No provider credentials exist in this environment, and a provider-gated family is never reported as live success without the required access — the harness asserts the honest disclosure, never the completion (docs/developer/AVAILABILITY.md).",
+      "owner": "Lead credentialed re-run (provider rails)"
+    },
+    {
+      "check": "A real browser session's console-error capture and interactive keyboard/focus traversal",
+      "reason": "The harness is an HTTP/DOM-level acceptance harness (the repository's own assertion grammar). It records the HTTP-observable proxies (resource integrity, structural focus affordances); the interactive browser pass is the Lead's post-deployment verification.",
+      "owner": "Lead post-deployment browser pass (a real browser session; the harness's HTTP-observable proxies are recorded here)"
+    },
+    {
+      "check": "The /health ready state on a plane whose authoritative relational dependency is unprovisioned (the no-PG local plane)",
+      "reason": "The local plane supports the deploy chain's documented no-PG degradation: /health answers the honest fail-closed 503 down with controlPlane ready. The harness records that state exactly (with the run's explicit degraded allowance); the ready state is the provisioned deployment's fact.",
+      "owner": "Harness operator (configure the environment's dependency, or run with the explicit degraded allowance)"
+    }
+  ],
+  "gates": [
+    {
+      "gate": "public URL reachable",
+      "status": "pass",
+      "evidence": "answered 307 text/plain (/)"
+    },
+    {
+      "gate": "exact revision attested",
+      "status": "pass",
+      "evidence": "runtime identity d334da55e04f5bf3 at revision a244e703d881 (/identity)"
+    },
+    {
+      "gate": "/health verified",
+      "status": "pass",
+      "evidence": "answered 200 with status degraded, controlPlane ready (/health)"
+    },
+    {
+      "gate": "/identity verified",
+      "status": "pass",
+      "evidence": "runtime identity d334da55e04f5bf3 at revision a244e703d881 (/identity)"
+    },
+    {
+      "gate": "first sandbox execution works",
+      "status": "pass",
+      "evidence": "terminal: true, status: COMPLETED, verification: PASS (1) (https://zeck-preview-main.vercel.app/executions/01a0ce78-cf79-7000-9f60-bdd279c16286)"
+    },
+    {
+      "gate": "all 22 capability families discoverable",
+      "status": "pass",
+      "evidence": "22 family pages served with honest disclosure, 0 not served (no console composition), 0 disclosure failures (/console/playground/:family (22 routes))"
+    },
+    {
+      "gate": "executions inspectable (result/evidence/cost)",
+      "status": "pass",
+      "evidence": "receipt: 200, events: 200 (0 events), verification: 200, results: 200 (GET /executions/01a0ce78-cf79-7000-9f60-bdd279c16286{,/events,/verification,/results})"
+    },
+    {
+      "gate": "compare reachable",
+      "status": "pass",
+      "evidence": "HTML experience page served (title: Zeck — Compare runs) with every audited dimension passing (/console/compare)"
+    },
+    {
+      "gate": "export/reproduce reachable",
+      "status": "pass",
+      "evidence": "answered 200 with a JSON bundle (/console/executions/01a0ce78-cf79-7000-9f60-bdd279c16286/export/bundle.json)"
+    },
+    {
+      "gate": "agent integration discoverable",
+      "status": "pass",
+      "evidence": "7 machine artifacts present and JSON-parseable (validated against the wire contract by the kit's own suite) (docs/developer/machine/*.json)"
+    },
+    {
+      "gate": "provider/free-tier state truthful (route boundaries honest)",
+      "status": "pass",
+      "evidence": "26 routes probed: 18 auth-boundary (401), 3 capability-unbound (422), 4 capability-or-auth-boundary (0 unbound-composition 422 / 4 materialized-composition 401), 1 public-artifact (200) (the public route table (26 routes))"
+    },
+    {
+      "gate": "trust/limits reachable",
+      "status": "pass",
+      "evidence": "answered 422 CAPABILITY_UNAVAILABLE (/sandbox/quotas)"
+    }
+  ],
+  "summary": {
+    "journeys": 12,
+    "stepsTotal": 28,
+    "stepsPassed": 27,
+    "stepsFailed": 0,
+    "stepsNotRun": 1,
+    "findingsBySeverity": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "familiesTotal": 22,
+    "familiesWithServedDisclosure": 22,
+    "familiesNotServed": 0,
+    "familiesDisclosureFailed": 0
+  },
+  "selfScan": {
+    "checked": "the harness's own serialized report",
+    "clean": true,
+    "note": "no secret-shaped value appears in the report (redaction held at every finding)"
+  },
+  "problems": []
+}

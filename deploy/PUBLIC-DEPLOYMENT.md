@@ -1258,3 +1258,39 @@ ledger keeps the true zero values).
 The worker never deploys and holds no Neon/Vercel credentials: every
 live-Neon/live-Vercel step above is the Lead's credentialed run (the NOT
 RUN registry in `deploy/evidence/ppr-008.json`).
+
+### 13.8 The F1/F2 closure record (2026-09-23 — the roadmap's credential-bound tail executed)
+
+The §13.6 chain is COMPLETE on the public plane after the credential
+re-provision: the deployed plane `https://zeck-preview-main.vercel.app`
+attests revision `a244e703d881fc2e` (bound, preview — deployment
+`dpl_7eAJpHdgzLCrVcxWuVvj2LHFnv8X`, `ZECK_DEPLOY_GIT_REVISION`
+re-pinned before the deploy so the plane attests the exact head).
+
+**The acceptance**: the credentialed journey re-run at the exact
+revision — `bun tests/journey/run.ts --url … --environment preview
+--branch main --expected-revision a244e703…` — exits 0: 12 journeys /
+28 steps (27 pass / 0 fail / 1 honest not-run), ZERO findings, the
+identity gate verified. All 10 experience-surface journey steps PASS
+with every audited dimension; all 22 workload-family disclosures are
+SERVED (F1 closed). The credentialed execution gate PASSES over the
+materialized preview authorities — a well-formed `POST /executions`
+drives to terminal COMPLETED with verification PASS, every inspection
+surface answers, and the reproducibility bundle exports as 200 JSON
+through the materialized experience token (F2 closed).
+`deploy:public-smoke --url …` exits 0: 26/26 routes honest (18
+auth-boundary 401 / 3 capability-unbound 422 / 4 credentials seams ALL
+materialized-composition 401 / 1 public-artifact 200), zero problems.
+
+**The honest residual** (recorded, owned): the bare root `/` answers
+`307 → /console` — the platform's filesystem-phase fact (the
+framework's root function owns `/`; correction #8's redirects bridge)
+— and the harness's `redirect: "manual"` URL-hygiene records the
+honest not-run for an HTML landing at the bare root; browsers land on
+the console composition. A redirect-following landing audit would be
+its own harness-contract work order if ever wanted. The maturity
+ladder's level-5+ drills (alternate-solution substitution, failure
+drills, sustained production observation) remain future governed work
+beyond this roadmap. The full chain evidence is
+`deploy/evidence/f1-closure.json` (+ `f1-closure-journey.json` +
+`f1-closure-smoke.json`).

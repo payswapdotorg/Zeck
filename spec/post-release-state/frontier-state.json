@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-c-complete",
-  "currentBase": "0ca08198ec3cc58eca6a7ca7e26f1a1db87c03bf",
+  "status": "roadmap-complete",
+  "currentBase": "a244e703d881fc2e14169a653f285855f8d3dccd",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -18,5 +18,5 @@
   "blocked": [],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "WAVE C COMPLETE (2026-09-22): PPR-007 (the experience-surface deployment) and PPR-008 (the preview credential issuance + deterministic sandbox substrate) both delivered and Lead-verified. PPR-007 merged at d74c2e2 (branch battery 9/9: no-rail 4/4 + with-rail 5/5) with the cosmetic 22-route-probe label fixed at merge; post-merge reconciliation 0ca0819 (e11 C9 ancestry-proof ref preference \u2014 the unpushed-clone false-trip, zero assertion changes) closed the only post-merge red; full suite on the final tree: 675+1skip files / 9852+26skip tests / 0 failed / 481s with the PG rail live (23:13 UTC). Remaining (the Lead's plane, credential-bound): the \u00a713.6 redeploy (build-vercel-output + two-function local artifact proof + vercel deploy --prebuilt --prod) awaits VERCEL_TOKEN re-provision \u2014 the secrets file was lost in the last sandbox reset; operator notice posted to the agent outbox. After the redeploy: the journey harness re-run (10 experience steps + 22 family disclosures) + deploy:public-smoke to close F1, and the experience-token materialization path per PPR-008's evidence record."
+  "context": "ROADMAP COMPLETE (2026-09-23): F1 and F2 are CLOSED on the public plane. The §13.6 chain executed end to end after the credential re-provision: corrections #3-#7 (the build's ESM/data-carry/listener/gate-of-record/secret-safety findings) + correction #8 (a244e70: the dead root rewrite → the redirects bridge; the cached cold-start seeding failure → the retryable gate with the real-rail TCP-bridge proof; the unmaterialized experience token → the environment-only materialization over the preview transport credential + the materialized preview application). The deployed plane https://zeck-preview-main.vercel.app attests a244e703d881fc2e (bound, preview, deployment dpl_7eAJpHdgzLCrVcxWuVvj2LHFnv8X). The credentialed journey re-run: EXIT 0 — 12 journeys / 28 steps (27 pass / 0 fail / 1 honest not-run — the landing's 307 platform bridge) / 0 findings / identity gate verified at the exact revision; all 10 experience-surface steps PASS; all 22 workload-family disclosures SERVED (F1 closed); the credentialed execution gate PASSES over the materialized preview authorities with the export bundle serving 200 JSON (F2 closed). deploy:public-smoke EXIT 0 — 26/26 routes honest (18 auth-boundary 401 / 3 capability-unbound 422 / 4 materialized-composition 401 / 1 public-artifact 200), zero problems. Evidence: deploy/evidence/f1-closure.json (+ f1-closure-journey.json + f1-closure-smoke.json). The honest residual: the bare-root landing answers 307 (the platform's filesystem-phase fact — browsers land on /console; a redirect-following landing audit would be its own harness-contract work order), and the maturity ladder's level-5+ drills (alternate-solution substitution, failure drills, sustained production observation) remain future governed work beyond this roadmap."
 }

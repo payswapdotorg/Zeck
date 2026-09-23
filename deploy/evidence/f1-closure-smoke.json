@@ -1,0 +1,28 @@
+{
+  "tool": "deploy/public-smoke",
+  "mode": "url",
+  "environment": "preview",
+  "previewSlug": "main",
+  "planeUrl": "https://zeck-preview-main.vercel.app",
+  "expectedRevision": "a244e703d881fc2e14169a653f285855f8d3dccd",
+  "attestation": {
+    "transportReachable": true,
+    "identityBound": true,
+    "identityVerified": true,
+    "healthStatus": 200,
+    "healthCheck": "degraded",
+    "authBoundaryEnforced": true
+  },
+  "routeCoverage": {
+    "probed": 26,
+    "authBoundaryEnforced": 18,
+    "capabilityUnboundHonest": 3,
+    "capabilitySeamHonest": 4,
+    "capabilitySeamUnboundComposition": 0,
+    "capabilitySeamMaterializedComposition": 4,
+    "publicArtifactBound": 1,
+    "problems": []
+  },
+  "runtimeIdentityId": "d334da55e04f5bf3013c2c7b4c2be44bc9d7ac55cc0ba1dfb33c72a869f86fcc",
+  "problems": []
+}
