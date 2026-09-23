@@ -15,9 +15,7 @@
     "PPR-009",
     "PPR-010"
   ],
-  "eligible": [
-    "PPR-010"
-  ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [],
   "maxConcurrentWorkers": 3,
