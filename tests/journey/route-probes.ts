@@ -14,14 +14,27 @@
  *    analysis surfaces reach the authenticate seam and answer the
  *    honest 401 AUTHENTICATION_FAILED (well-formed probes — no
  *    capability is ever fabricated);
- *  - capability-unbound: the credentials + sandbox-governance seams
- *    answer the honest 422 CAPABILITY_UNAVAILABLE of the unbound
- *    composition;
+ *  - capability-unbound: the sandbox-governance seams answer the honest
+ *    422 CAPABILITY_UNAVAILABLE of the unbound composition (no current
+ *    composition binds them — the strict pin);
+ *  - capability-or-auth-boundary: the credentials seams (DEP-011) are
+ *    COMPOSITION-DEPENDENT — the honest boundary of the unbound
+ *    composition is the 422 CAPABILITY_UNAVAILABLE (the authority is
+ *    absent), and the honest boundary of the MATERIALIZED composition
+ *    (PPR-008's preview authority set) is the 401 AUTHENTICATION_FAILED
+ *    of the reached authenticate seam (the probe's bearer is
+ *    deliberately invalid; the reading/mutation routes require a valid
+ *    credential). Both are honest refusals — the probe records which
+ *    composition class answered and never fabricates a capability;
  *  - public-artifact: the one unauthenticated 200 — the versioned
  *    sandbox data-policy document with its digest.
  */
 
-export type RouteExpectation = "auth-boundary" | "capability-unbound" | "public-artifact";
+export type RouteExpectation =
+  | "auth-boundary"
+  | "capability-unbound"
+  | "capability-or-auth-boundary"
+  | "public-artifact";
 
 export interface RouteProbe {
   readonly route: string;
@@ -178,7 +191,11 @@ export const ROUTE_PROBES: readonly RouteProbe[] = Object.freeze([
     body: JSON.stringify({ applicationId: PROBE_APPLICATION }),
     expect: "auth-boundary",
   },
-  // --- credentials (DEP-011 seams): the honest composition fact ------------
+  // --- credentials (DEP-011 seams): the composition-dependent honest
+  // boundary — the well-formed issue body (a VALID role) so a materialized
+  // composition reaches the authenticate seam and answers its honest 401
+  // (an invalid role would stop at body validation with a coincidentally
+  // same-coded 422 — never a composition fact) -----------------------------
   {
     route: "POST /credentials",
     method: "POST",
@@ -186,24 +203,29 @@ export const ROUTE_PROBES: readonly RouteProbe[] = Object.freeze([
     body: JSON.stringify({
       applicationId: PROBE_APPLICATION,
       label: "journey-probe",
-      role: "operator",
+      role: "member",
     }),
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
-  { route: "GET /credentials", method: "GET", path: "/credentials", expect: "capability-unbound" },
+  {
+    route: "GET /credentials",
+    method: "GET",
+    path: "/credentials",
+    expect: "capability-or-auth-boundary",
+  },
   {
     route: "POST /credentials/:credentialId/rotate",
     method: "POST",
     path: `/credentials/${PROBE_ID}/rotate`,
     body: "{}",
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
   {
     route: "POST /credentials/:credentialId/revoke",
     method: "POST",
     path: `/credentials/${PROBE_ID}/revoke`,
     body: "{}",
-    expect: "capability-unbound",
+    expect: "capability-or-auth-boundary",
   },
   // --- sandbox governance (DEP-014 seams): the honest composition fact -----
   {
@@ -248,8 +270,33 @@ export function routeProbeProblem(probe: RouteProbe, status: number, code: strin
     }
     return null;
   }
+  if (probe.expect === "capability-or-auth-boundary") {
+    const unbound = status === 422 && code === "CAPABILITY_UNAVAILABLE";
+    const materialized = status === 401 && code === "AUTHENTICATION_FAILED";
+    if (!unbound && !materialized) {
+      return `${probe.route}: answered ${status} ${code || "(no code)"} (expected the honest 422 CAPABILITY_UNAVAILABLE of the unbound composition or the honest 401 AUTHENTICATION_FAILED of the materialized composition — the credentials seam's boundary is composition-dependent; never a fabricated fact)`;
+    }
+    return null;
+  }
   if (status !== 200) {
     return `${probe.route}: answered ${status} (expected 200 with the versioned policy artifact — the public governed document)`;
+  }
+  return null;
+}
+
+/**
+ * The composition class a capability-or-auth-boundary probe's answer
+ * reveals (for the honest route-table summary — which composition served).
+ */
+export function capabilitySeamComposition(
+  status: number,
+  code: string,
+): "unbound" | "materialized" | null {
+  if (status === 422 && code === "CAPABILITY_UNAVAILABLE") {
+    return "unbound";
+  }
+  if (status === 401 && code === "AUTHENTICATION_FAILED") {
+    return "materialized";
   }
   return null;
 }

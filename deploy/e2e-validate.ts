@@ -1261,10 +1261,18 @@ async function main(): Promise<void> {
             );
           }
           const coverage = doc.routeCoverage;
+          // The credentials seams are composition-dependent (PPR-008):
+          // 3 strictly-unbound sandbox seams + 4 composition-dependent
+          // credentials seams; on this unbound local plane the seams
+          // answer the unbound composition's 422 (the materialized
+          // composition's 401 is the same honest class).
           if (
             coverage.probed !== 26 ||
             coverage.authBoundaryEnforced !== 18 ||
-            coverage.capabilityUnboundHonest !== 7 ||
+            coverage.capabilityUnboundHonest !== 3 ||
+            coverage.capabilitySeamHonest !== 4 ||
+            coverage.capabilitySeamUnboundComposition !== 4 ||
+            coverage.capabilitySeamMaterializedComposition !== 0 ||
             coverage.publicArtifactBound !== 1
           ) {
             throw new Error(
