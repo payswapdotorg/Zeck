@@ -1,11 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "fastify",
-  "functions": {
-    "api/experience.ts": {
-      "includeFiles": ["benchmarks/**", "docs/**", "spec/**", "examples/**"]
-    }
-  },
   "rewrites": [
     {
       "source": "/console",

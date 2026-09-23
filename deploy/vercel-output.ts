@@ -40,7 +40,23 @@
  *     traced node_modules package keeps its own nearest package.json,
  *     so CJS packages stay CJS);
  *  4. a fail-closed verification pass: zero extensionless relative
- *     specifiers may remain, or the build refuses.
+ *     specifiers may remain, or the build refuses;
+ *  5. the DATA CARRY (the 2026-09-23 two-function artifact-proof
+ *     finding): the experience composition reads repository DATA at
+ *     runtime through dynamically constructed paths (app READMEs under
+ *     benchmarks/validation/apps/*, governed work-order specs under
+ *     spec/validation-work-orders/*, evidence + developer docs under
+ *     docs/**, playground example sources under examples/*). Static
+ *     `new URL(..., import.meta.url)` literals are file-traced; dynamic
+ *     constructions are NOT — the traced bundle shipped no README and
+ *     the isolate failed closed at cold start (ENOENT — the honest
+ *     refusal, never a fabricated catalog). The carry copies the four
+ *     runtime-read roots into the experience function root verbatim
+ *     (source files as data; the roots carry no .js, so the module
+ *     surgery and the fail-closed verification are untouched). The
+ *     platform's own includeFiles mechanism cannot express this: the
+ *     config schema accepts a single glob string and a brace-union
+ *     matches nothing (both empirically proved 2026-09-23).
  *
  * This module is the TESTABLE core (the worker holds NO Vercel
  * credentials — `vercel build` cannot run in the worker pod — so the
@@ -52,7 +68,15 @@
  * deploy/build-vercel-output.ts.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { initSync as initModuleLexer, parse as parseModuleSpecifiers } from "es-module-lexer";
 
@@ -100,6 +124,8 @@ export interface FunctionGraphOutcome {
   readonly specifierRewrites: number;
   /** The fail-closed verification: extensionless relative specifiers remaining (0 = pass). */
   readonly remainingUnresolved: number;
+  /** Runtime-read data files carried into this function root (the experience composition's read roots; 0 elsewhere). */
+  readonly dataFilesCarried: number;
 }
 
 /** The whole output correction's outcome. */
@@ -244,6 +270,62 @@ export function* functionDirectories(functionsRoot: string): Generator<string> {
 export const REQUIRED_FUNCTIONS: readonly string[] = ["index", "api/experience"];
 
 /**
+ * The ONE function whose composition reads repository DATA at runtime
+ * (the console composition's dynamically constructed read paths). The
+ * API plane's own 26-route smoke proves it needs none of the carried
+ * roots — the carry is scoped to exactly this function.
+ */
+export const RUNTIME_DATA_CARRY_FUNCTION = "api/experience";
+
+/**
+ * The repository data roots the experience composition reads at
+ * runtime (apps' READMEs/configs/evidence, governed work-order specs,
+ * evidence + developer docs, playground example sources). Alphabetical;
+ * every root MUST exist in the repository (a missing root is a drifted
+ * contract — the correction refuses rather than silently narrowing the
+ * carry). The roots carry no .js files (pinned by the unit proof), so
+ * the carry never disturbs the module surgery or its verification.
+ */
+export const RUNTIME_DATA_ROOTS: readonly string[] = ["benchmarks", "docs", "examples", "spec"];
+
+/**
+ * Copy one repository root into a function root verbatim (data as
+ * data — no transpilation, no module surgery), creating directories on
+ * demand and overwriting any traced same-path file with the source
+ * truth. Returns the number of files carried.
+ */
+export function carryRuntimeDataRoot(
+  repositoryRoot: string,
+  functionRoot: string,
+  root: string,
+): number {
+  const sourceRoot = join(repositoryRoot, root);
+  if (!existsSync(sourceRoot)) {
+    throw new Error(
+      `runtime data root "${root}" does not exist in the repository — the carry contract drifted`,
+    );
+  }
+  let carried = 0;
+  const stack: string[] = [sourceRoot];
+  while (stack.length > 0) {
+    const dir = stack.pop() as string;
+    for (const entry of readdirSync(dir)) {
+      const source = join(dir, entry);
+      const stats = statSync(source);
+      if (stats.isDirectory()) {
+        stack.push(source);
+        continue;
+      }
+      const target = join(functionRoot, relative(repositoryRoot, source));
+      mkdirSync(dirname(target), { recursive: true });
+      copyFileSync(source, target);
+      carried += 1;
+    }
+  }
+  return carried;
+}
+
+/**
  * Apply the correction to EVERY function graph of a Vercel build output
  * (fail-closed on the required function set): each function directory
  * gets its relative import specifiers made Node-ESM-resolvable, its
@@ -270,12 +352,21 @@ export function correctVercelOutput(
   for (const name of [...present].sort()) {
     const functionRoot = join(functionsRoot, `${name}.func`);
     const { files, rewrites } = rewriteEmittedGraph(repositoryRoot, functionRoot);
+    // The data carry: the experience composition's runtime-read roots,
+    // carried verbatim into exactly the one function that reads them.
+    let carried = 0;
+    if (name === RUNTIME_DATA_CARRY_FUNCTION) {
+      for (const root of RUNTIME_DATA_ROOTS) {
+        carried += carryRuntimeDataRoot(repositoryRoot, functionRoot, root);
+      }
+    }
     writeModuleMarker(functionRoot);
     outcomes.push({
       functionDir: name,
       filesRewritten: files,
       specifierRewrites: rewrites,
       remainingUnresolved: verifyGraph(functionRoot),
+      dataFilesCarried: carried,
     });
   }
   return { functions: outcomes, requiredFunctions: required };

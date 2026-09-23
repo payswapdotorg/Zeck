@@ -298,10 +298,10 @@ describe("PPR-006: the module-level singleton (once per isolate)", () => {
 });
 
 describe("PPR-006: the hosting contract files", () => {
-  test("vercel.json pins the framework detection and scopes the functions key to the experience function's data carry", () => {
+  test("vercel.json pins the framework detection and carries no functions-key entry pattern", () => {
     const config = JSON.parse(readFileSync(join(REPO_ROOT, "vercel.json"), "utf8")) as {
       framework?: string;
-      functions?: Record<string, { includeFiles?: string[] }>;
+      functions?: Record<string, unknown>;
     };
     // The zero-config Fastify entrypoint detection, pinned explicitly so
     // a future framework reshuffle cannot silently change the hosting
@@ -312,34 +312,20 @@ describe("PPR-006: the hosting contract files", () => {
     // only match Serverless Functions inside the `api` directory
     // ("The pattern \"server.ts\" defined in `functions` doesn't match
     // any Serverless Functions inside the `api` directory."). The
-    // ROOT/framework entry therefore carries no functions-key
-    // configuration: its default file tracing ships
-    // deploy/manifests/*.json into the function bundle (verified in the
-    // built .vercel/output/functions bundle of the same run).
+    // detected entry needs no functions-key configuration: the build's
+    // default file tracing ships deploy/manifests/*.json into the
+    // function bundle (verified in the built .vercel/output/functions
+    // bundle of the same run).
     //
-    // The ONE functions entry is the experience function's DATA CARRY
-    // (the 2026-09-23 two-function artifact-proof finding): the console
-    // composition reads repository DATA at runtime through dynamically
-    // constructed paths — app READMEs + config + evidence under
-    // benchmarks/validation/apps/** and benchmarks/**, governed
-    // work-order specs under spec/validation-work-orders/**, evidence
-    // and developer docs under docs/**, playground example sources
-    // under examples/**. Static `new URL(..., import.meta.url)`
-    // literals are file-traced; DYNAMIC constructions are not (the
-    // traced bundle shipped transpiled app sources + config.json but
-    // NO README, and the isolate failed closed at cold start with
-    // ENOENT — the honest refusal, never a fabricated catalog). The
-    // platform's includeFiles glob is the sanctioned carry: every
-    // runtime-read root MUST appear here or the artifact cold-start
-    // fails closed; a new read root without a glob here is a drift
-    // this pin exists to catch.
-    expect(Object.keys(config.functions ?? {})).toEqual(["api/experience.ts"]);
-    expect(config.functions?.["api/experience.ts"]?.includeFiles).toEqual([
-      "benchmarks/**",
-      "docs/**",
-      "spec/**",
-      "examples/**",
-    ]);
+    // The 2026-09-23 data-carry experiment closed the remaining
+    // includeFiles question: the platform config schema accepts a
+    // single glob string only (an array is rejected) and a brace-union
+    // string matches nothing — the mechanism cannot express the
+    // experience composition's four runtime-read roots. The carry
+    // therefore lives in the correction core (deploy/vercel-output.ts's
+    // RUNTIME_DATA_ROOTS, pinned by
+    // tests/unit/deployment/vercel-output.test.ts), not here.
+    expect(config.functions).toBeUndefined();
   });
 
   test("server.ts satisfies Vercel's Fastify entrypoint detection and the documented listen shape", () => {

@@ -33,13 +33,15 @@
  *    never rewritten).
  */
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, test } from "vitest";
 import {
   correctVercelOutput,
   REQUIRED_FUNCTIONS,
+  RUNTIME_DATA_CARRY_FUNCTION,
+  RUNTIME_DATA_ROOTS,
   rewriteSpecifier,
   verifyGraph,
 } from "../../../deploy/vercel-output";
@@ -76,6 +78,11 @@ function buildFixture(): { readonly repoRoot: string; readonly outputRoot: strin
   write(repoRoot, "apps/dashboard/index.ts", "export const dashboard = 1;\n");
   write(repoRoot, "apps/dashboard/http.ts", "export const http = 1;\n");
   write(repoRoot, "sdk/index.ts", "export const sdk = 1;\n");
+  // The runtime-read data roots exist in every repository (the carry's
+  // fail-closed contract) — empty here; the carry tests populate them.
+  for (const root of RUNTIME_DATA_ROOTS) {
+    mkdirSync(join(repoRoot, root), { recursive: true });
+  }
 
   // --- the emitted output mirror: the framework function graph ---
   const indexFunc = join(outputRoot, "functions", "index.func");
@@ -249,6 +256,60 @@ describe("PPR-007: the build tool's two-function graph correction (synthetic-fix
     for (const outcome of correction.functions) {
       expect(outcome.remainingUnresolved).toBe(0);
     }
+  });
+
+  test("the data carry: the runtime-read roots are carried verbatim into the experience function, and only it", () => {
+    // The 2026-09-23 artifact-proof lesson: the composition's
+    // dynamically constructed reads (app READMEs, work-order specs,
+    // developer docs, example sources) are invisible to file tracing —
+    // the bundle shipped without them and the isolate failed closed
+    // (ENOENT at cold start). The correction carries the four roots
+    // into exactly the one function that reads them.
+    const { repoRoot, outputRoot } = buildFixture();
+    write(repoRoot, "benchmarks/validation/apps/demo/README.md", "# demo app\n");
+    write(repoRoot, "docs/developer/GUIDE.md", "# guide\n");
+    write(repoRoot, "examples/sample.ts", "export const sample = 1;\n");
+    write(repoRoot, "spec/validation-work-orders/VAL-001.md", "# VAL-001\n");
+    const experienceFunc = join(outputRoot, "functions", "api", "experience.func");
+    const indexFunc = join(outputRoot, "functions", "index.func");
+
+    const correction = correctVercelOutput(outputRoot, repoRoot);
+
+    // carried verbatim (byte-identical source truth)
+    expect(
+      readFileSync(join(experienceFunc, "benchmarks/validation/apps/demo/README.md"), "utf8"),
+    ).toBe("# demo app\n");
+    expect(readFileSync(join(experienceFunc, "docs/developer/GUIDE.md"), "utf8")).toBe("# guide\n");
+    expect(readFileSync(join(experienceFunc, "examples/sample.ts"), "utf8")).toBe(
+      "export const sample = 1;\n",
+    );
+    expect(
+      readFileSync(join(experienceFunc, "spec/validation-work-orders/VAL-001.md"), "utf8"),
+    ).toBe("# VAL-001\n");
+    // scoped: the API plane's function receives NOTHING (its own
+    // 26-route smoke proves it needs none of the carried roots)
+    expect(existsSync(join(indexFunc, "benchmarks"))).toBe(false);
+    expect(existsSync(join(indexFunc, "docs"))).toBe(false);
+    // the outcome reports the carry honestly
+    const experience = correction.functions.find((f) => f.functionDir === "api/experience");
+    const index = correction.functions.find((f) => f.functionDir === "index");
+    expect(experience?.dataFilesCarried).toBe(4);
+    expect(index?.dataFilesCarried).toBe(0);
+    // the contract is pinned: the roots and the one carrying function
+    expect(RUNTIME_DATA_ROOTS).toEqual(["benchmarks", "docs", "examples", "spec"]);
+    expect(RUNTIME_DATA_CARRY_FUNCTION).toBe("api/experience");
+  });
+
+  test("the data carry refuses a drifted root (never a silent narrowing of the carry)", () => {
+    const { repoRoot, outputRoot } = buildFixture();
+    write(repoRoot, "benchmarks/validation/apps/demo/README.md", "# demo app\n");
+    write(repoRoot, "docs/developer/GUIDE.md", "# guide\n");
+    write(repoRoot, "examples/sample.ts", "export const sample = 1;\n");
+    write(repoRoot, "spec/validation-work-orders/VAL-001.md", "# VAL-001\n");
+    rmSync(join(repoRoot, "docs"), { recursive: true, force: true });
+    expect(() => correctVercelOutput(outputRoot, repoRoot)).toThrow(
+      /runtime data root "docs" does not exist/,
+    );
   });
 
   test("the correction refuses an output missing a required function graph (the routing contract)", () => {

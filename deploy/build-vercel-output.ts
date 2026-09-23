@@ -35,7 +35,13 @@
  *     every traced node_modules package keeps its own nearest
  *     package.json, so CJS packages stay CJS);
  *  4. a fail-closed verification pass: zero extensionless relative
- *     specifiers may remain, or the build refuses.
+ *     specifiers may remain, or the build refuses;
+ *  5. the DATA CARRY: the experience composition's runtime-read data
+ *     roots (benchmarks/, docs/, examples/, spec/) are copied verbatim
+ *     into the experience function root — dynamically constructed read
+ *     paths are invisible to the platform's file tracing (the
+ *     2026-09-23 artifact-proof ENOENT finding; the full fact is
+ *     documented on deploy/vercel-output.ts step 5).
  *
  * THE DEPLOYMENT MECHANISM this enables: the corrected output is
  * deployed with `vercel deploy --prebuilt --prod` — the artifact is
@@ -96,7 +102,7 @@ function main(): number {
   const correction = correctVercelOutput(OUTPUT_ROOT, REPOSITORY_ROOT);
   for (const outcome of correction.functions) {
     console.log(
-      `  ${outcome.functionDir}.func: ${outcome.filesRewritten} files, ${outcome.specifierRewrites} specifiers rewritten`,
+      `  ${outcome.functionDir}.func: ${outcome.filesRewritten} files, ${outcome.specifierRewrites} specifiers rewritten, ${outcome.dataFilesCarried} data files carried`,
     );
   }
   console.log("▸ writing the ESM module markers (per-function-root package.json)");
