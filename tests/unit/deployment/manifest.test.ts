@@ -167,12 +167,15 @@ describe("the real repository manifest set (WORK-042 D-01)", () => {
       "container-runner-token",
       "database-url",
       // PPR-008 appended the transport-token reference (additive manifest);
-      // PPR-007 appended the experience-token reference (additive manifest).
+      // PPR-007 appended the experience-token reference (additive manifest);
+      // PPR-009 appended the livekit keypair references (additive manifest).
       "experience-token",
+      "livekit-api-key",
+      "livekit-api-secret",
       "transport-token",
     ]);
     for (const environment of ["preview", "staging", "production"] as const) {
-      expect(manifest.secretReferences[environment]).toHaveLength(12);
+      expect(manifest.secretReferences[environment]).toHaveLength(14);
     }
     // Reference namespaces are environment-scoped by construction: the
     // same logical name exists per environment, but the URI namespace

@@ -202,7 +202,11 @@ describe("the D-03 transport boundaries (WORK-044)", () => {
   test("B7: no new provider SDK — the sanctioned runtime import set is unchanged", () => {
     const files = collectSourceFiles(REPO_ROOT);
     const allowedPackages = declaredRuntimePackages(REPO_ROOT);
-    expect(allowedPackages).toEqual(["fastify", "pg"]);
+    // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
+    // LiveKit Server SDK — the realtime rail's vendor dependency,
+    // confined to src/modules/deployments/adapters/ by the SDK-boundary
+    // table; vendor types never cross the adapter).
+    expect(allowedPackages).toEqual(["fastify", "livekit-server-sdk", "pg"]);
     const violations = scanDependencyRules(files, { allowedPackages });
     expect(violations.map((v) => `${v.rule} @ ${v.path}`)).toEqual([]);
   });

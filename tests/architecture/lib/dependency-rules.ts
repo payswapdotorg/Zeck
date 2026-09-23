@@ -164,6 +164,12 @@ export const PROVIDER_SDK_BOUNDARIES: readonly SdkBoundary[] = [
     owner: "models module provider adapters",
   },
   {
+    packagePattern: "livekit-server-sdk",
+    allowedPathPrefix: "src/modules/deployments/adapters/",
+    owner:
+      "deployments module realtime rail adapters (PPR-009: the LiveKit rail — vendor types confined to the adapter)",
+  },
+  {
     packagePattern: "@anthropic-ai/*",
     allowedPathPrefix: "src/modules/models/adapters/",
     owner: "models module provider adapters",

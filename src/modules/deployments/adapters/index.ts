@@ -27,6 +27,47 @@ export { InMemoryRealtimeStore } from "./in-memory-realtime-store";
 export { createInProcessMediaRail } from "./in-process-media-rail";
 export { createInProcessMessagingRail } from "./in-process-messaging-rail";
 export { createInProcessRealtimeRail } from "./in-process-realtime-rail";
+export type {
+  LiveKitFailureClassification,
+  LiveKitFailureKind,
+  LiveKitRailCredentialSource,
+  LiveKitRailEffectKind,
+  LiveKitRailEffectRecord,
+  LiveKitRailIdempotencyLedger,
+  LiveKitRealtimeRail,
+  LiveKitRealtimeRailOptions,
+  RealtimeRailClientAccess,
+  RealtimeRailClientAccessRequest,
+  StoredLiveKitRailAcknowledgment,
+} from "./livekit-realtime-rail";
+export {
+  CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  classifyLiveKitFailure,
+  clientAccessTtlOf,
+  createEnvironmentLiveKitCredentialSource,
+  createInMemoryLiveKitRailIdempotencyLedger,
+  createLiveKitRealtimeRail,
+  LIVEKIT_FAILURE_NORMALIZATION,
+  LIVEKIT_RAIL_CAPABILITY_ID,
+  LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS,
+  LOCAL_LIVEKIT_SERVER_LABEL,
+  liveKitChannelSessionRefOf,
+  liveKitUpstreamChannelNameOf,
+} from "./livekit-realtime-rail";
+export type {
+  LiveKitRailMaterialization,
+  RealtimeRailEnvironmentBinding,
+} from "./livekit-realtime-rail-binding";
+// PPR-009: the first REAL external realtime rail (LiveKit) + the
+// environment composition gate. Nothing vendor-shaped crosses these
+// exports (all SDK types stay inside the adapter file).
+export {
+  bindEnvironmentRealtimeRail,
+  LIVEKIT_ENV_CREDENTIAL_REFERENCE,
+  LIVEKIT_RAIL_ENV_VARIABLES,
+  readLiveKitRailMaterialization,
+} from "./livekit-realtime-rail-binding";
 export { createMediaArtifactAuthorityAdapter } from "./media-artifact-authority";
 export { createMediaExecutionLedgerAdapter } from "./media-execution-ledger";
 export { createMediaModalityAdapter } from "./media-modality-adapter";

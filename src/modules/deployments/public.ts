@@ -56,6 +56,45 @@ import { InMemoryRealtimeStore } from "./adapters/in-memory-realtime-store";
 import { createInProcessMediaRail } from "./adapters/in-process-media-rail";
 import { createInProcessMessagingRail } from "./adapters/in-process-messaging-rail";
 import { createInProcessRealtimeRail } from "./adapters/in-process-realtime-rail";
+// PPR-009: the LiveKit realtime rail adapter's NEUTRAL surface (all
+// vendor SDK types stay inside the adapter file; nothing vendor-shaped
+// crosses this barrel).
+import type {
+  LiveKitFailureClassification,
+  LiveKitFailureKind,
+  LiveKitRailCredentialSource,
+  LiveKitRailEffectKind,
+  LiveKitRailEffectRecord,
+  LiveKitRailIdempotencyLedger,
+  LiveKitRealtimeRail,
+  LiveKitRealtimeRailOptions,
+  RealtimeRailClientAccess,
+  RealtimeRailClientAccessRequest,
+  StoredLiveKitRailAcknowledgment,
+} from "./adapters/livekit-realtime-rail";
+import {
+  CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  CLIENT_ACCESS_HARD_CEILING_SECONDS,
+  classifyLiveKitFailure,
+  clientAccessTtlOf,
+  createEnvironmentLiveKitCredentialSource,
+  createInMemoryLiveKitRailIdempotencyLedger,
+  createLiveKitRealtimeRail,
+  LIVEKIT_FAILURE_NORMALIZATION,
+  LIVEKIT_RAIL_CAPABILITY_ID,
+  LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS,
+  LOCAL_LIVEKIT_SERVER_LABEL,
+  liveKitChannelSessionRefOf,
+  liveKitUpstreamChannelNameOf,
+} from "./adapters/livekit-realtime-rail";
+import {
+  bindEnvironmentRealtimeRail,
+  LIVEKIT_ENV_CREDENTIAL_REFERENCE,
+  LIVEKIT_RAIL_ENV_VARIABLES,
+  type LiveKitRailMaterialization,
+  type RealtimeRailEnvironmentBinding,
+  readLiveKitRailMaterialization,
+} from "./adapters/livekit-realtime-rail-binding";
 import { createMediaArtifactAuthorityAdapter } from "./adapters/media-artifact-authority";
 import { createMediaExecutionLedgerAdapter } from "./adapters/media-execution-ledger";
 import { createMediaModalityAdapter } from "./adapters/media-modality-adapter";
@@ -561,6 +600,18 @@ export type {
   EnvironmentRef,
   GuardedMutation,
   JournalAppendInput,
+  // PPR-009: the LiveKit rail adapter's neutral surface (the exports
+  // above this line are the module's pre-existing contracts; these are
+  // the new neutral adapter types — vendor shapes never cross).
+  LiveKitFailureClassification,
+  LiveKitFailureKind,
+  LiveKitRailCredentialSource,
+  LiveKitRailEffectKind,
+  LiveKitRailEffectRecord,
+  LiveKitRailIdempotencyLedger,
+  LiveKitRailMaterialization,
+  LiveKitRealtimeRail,
+  LiveKitRealtimeRailOptions,
   MediaActor,
   MediaAdmissionEvidence,
   MediaArtifactAdoptionInput,
@@ -754,9 +805,12 @@ export type {
   RealtimePolicyAdmissionRequest,
   RealtimeRail,
   RealtimeRailCallback,
+  RealtimeRailClientAccess,
+  RealtimeRailClientAccessRequest,
   RealtimeRailDelivery,
   RealtimeRailDeliveryOutcome,
   RealtimeRailDescriptor,
+  RealtimeRailEnvironmentBinding,
   RealtimeRailSession,
   RealtimeRailSessionRequest,
   RealtimeRouteClass,
@@ -784,6 +838,7 @@ export type {
   StartMessagingConversationOutcome,
   StartRealtimeSessionInput,
   StartRealtimeSessionOutcome,
+  StoredLiveKitRailAcknowledgment,
   SubmitMediaJobInput,
   SubmitMediaJobOutcome,
 };
@@ -791,12 +846,17 @@ export type {
 // precedent: factories and provider-neutral adapters cross the barrel;
 // provider SDK types never do).
 export {
+  bindEnvironmentRealtimeRail,
+  CLIENT_ACCESS_DEFAULT_TTL_SECONDS,
+  CLIENT_ACCESS_HARD_CEILING_SECONDS,
   canonicalPlanJson,
   canonicalProfileJson,
   canTransitionDeployment,
   canTransitionMediaJob,
   canTransitionMessagingConversation,
   canTransitionRealtimeSession,
+  classifyLiveKitFailure,
+  clientAccessTtlOf,
   createAgentInventoryAdapter,
   createBudgetMediaAdmission,
   createBudgetMessagingAdmission,
@@ -808,9 +868,14 @@ export {
   createConnectionsMessagingSecretMediation,
   createConnectionsRealtimeSecretMediation,
   createDeploymentService,
+  // PPR-009: the LiveKit realtime rail (the first REAL external rail)
+  // + its environment composition gate.
+  createEnvironmentLiveKitCredentialSource,
+  createInMemoryLiveKitRailIdempotencyLedger,
   createInProcessMediaRail,
   createInProcessMessagingRail,
   createInProcessRealtimeRail,
+  createLiveKitRealtimeRail,
   createMediaArtifactAuthorityAdapter,
   createMediaExecutionLedgerAdapter,
   createMediaGenerationService,
@@ -882,6 +947,14 @@ export {
   isTerminalMessagingConversationStatus,
   isTerminalMessagingDeliveryStatus,
   isTerminalRealtimeSessionStatus,
+  LIVEKIT_ENV_CREDENTIAL_REFERENCE,
+  LIVEKIT_FAILURE_NORMALIZATION,
+  LIVEKIT_RAIL_CAPABILITY_ID,
+  LIVEKIT_RAIL_DEFAULT_CHANNEL_KINDS,
+  LIVEKIT_RAIL_ENV_VARIABLES,
+  LOCAL_LIVEKIT_SERVER_LABEL,
+  liveKitChannelSessionRefOf,
+  liveKitUpstreamChannelNameOf,
   MEDIA_ARTIFACT_ROLES,
   MEDIA_GENERATION_KINDS,
   MEDIA_JOB_STATUSES,
@@ -934,6 +1007,7 @@ export {
   REALTIME_ROUTE_CLASSES,
   REALTIME_SESSION_STATUSES,
   REALTIME_SESSION_TRANSITIONS,
+  readLiveKitRailMaterialization,
   realtimeContainsRawSecretValue,
   realtimeEventBodyDigestBase,
   realtimeOperationKey,

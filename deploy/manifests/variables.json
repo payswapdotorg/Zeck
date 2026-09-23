@@ -605,7 +605,7 @@
       "required": false,
       "credentialShaped": false,
       "holds": "zeck-secret://<environment>/transport-token",
-      "description": "PPR-008: Reference to the environment's application transport credential — the bearer token the preview authority materialization binds for the bootstrap composition's authenticate seam (deploy/preview-authorities.ts; the preview application's principal/membership/credential rows are seeded idempotently from it)."
+      "description": "PPR-008: Reference to the environment's application transport credential \u2014 the bearer token the preview authority materialization binds for the bootstrap composition's authenticate seam (deploy/preview-authorities.ts; the preview application's principal/membership/credential rows are seeded idempotently from it)."
     },
     {
       "name": "ZECK_TRANSPORT_TOKEN",
@@ -619,28 +619,28 @@
       "type": "zeck-identifier",
       "required": false,
       "credentialShaped": false,
-      "description": "PPR-008: The preview application id (UUID) whose durable scope the materialized preview authorities bind — the idempotent cold-start seed ensures the tenant, the application, the transport principal/membership and the transport credential rows exist on the migrated relational authority. Together with ZECK_TRANSPORT_TOKEN and the relational URL it forms the materialization gate: any missing piece leaves the bootstrap composition's honest unbound shape."
+      "description": "PPR-008: The preview application id (UUID) whose durable scope the materialized preview authorities bind \u2014 the idempotent cold-start seed ensures the tenant, the application, the transport principal/membership and the transport credential rows exist on the migrated relational authority. Together with ZECK_TRANSPORT_TOKEN and the relational URL it forms the materialization gate: any missing piece leaves the bootstrap composition's honest unbound shape."
     },
     {
       "name": "ZECK_EXPERIENCE_API_URL",
       "type": "http-url",
       "required": false,
       "credentialShaped": false,
-      "description": "PPR-007 — the API plane base URL the experience function (the console composition at /console/*, /trust/*, /admin/* and the root /) projects through. Same origin as the experience surface in the preview deployment. Required by the experience entry: absent, the isolate fails closed at cold start (an experience surface with no API to project is a structural misconfiguration)."
+      "description": "PPR-007 \u2014 the API plane base URL the experience function (the console composition at /console/*, /trust/*, /admin/* and the root /) projects through. Same origin as the experience surface in the preview deployment. Required by the experience entry: absent, the isolate fails closed at cold start (an experience surface with no API to project is a structural misconfiguration)."
     },
     {
       "name": "ZECK_EXPERIENCE_TOKEN",
       "type": "bearer-credential",
       "required": false,
       "credentialShaped": true,
-      "description": "PPR-007 — the materialized transport credential of the experience function's reads (the console composition's projection credential). Credential-shaped: environment-only storage, never committed. MAY BE UNBOUND: with an absent/empty token the experience surface STILL SERVES and renders its designed honest unauthenticated/permission states (nothing fabricates). The non-secret reference binding is ZECK_SECRET_EXPERIENCE_TOKEN_REF."
+      "description": "PPR-007 \u2014 the materialized transport credential of the experience function's reads (the console composition's projection credential). Credential-shaped: environment-only storage, never committed. MAY BE UNBOUND: with an absent/empty token the experience surface STILL SERVES and renders its designed honest unauthenticated/permission states (nothing fabricates). The non-secret reference binding is ZECK_SECRET_EXPERIENCE_TOKEN_REF."
     },
     {
       "name": "ZECK_EXPERIENCE_APPLICATION_ID",
       "type": "zeck-identifier",
       "required": false,
       "credentialShaped": false,
-      "description": "PPR-007 — the application whose scope authorizes the experience function's scoped reads (the console composition's deployment scope, sent as the canonical X-Zeck-Application header the API requires). Required by the experience entry: a scopeless dashboard cannot exist by construction, so the isolate fails closed at cold start."
+      "description": "PPR-007 \u2014 the application whose scope authorizes the experience function's scoped reads (the console composition's deployment scope, sent as the canonical X-Zeck-Application header the API requires). Required by the experience entry: a scopeless dashboard cannot exist by construction, so the isolate fails closed at cold start."
     },
     {
       "name": "ZECK_SECRET_EXPERIENCE_TOKEN_REF",
@@ -648,7 +648,47 @@
       "required": false,
       "credentialShaped": false,
       "holds": "zeck-secret://<environment>/experience-token",
-      "description": "Reference to the environment's experience-surface transport credential (the console composition's projection token; materialized as ZECK_EXPERIENCE_TOKEN immediately before the experience function's reads — distinct from experience-deploy-token, which is the Vercel deployment credential)."
+      "description": "Reference to the environment's experience-surface transport credential (the console composition's projection token; materialized as ZECK_EXPERIENCE_TOKEN immediately before the experience function's reads \u2014 distinct from experience-deploy-token, which is the Vercel deployment credential)."
+    },
+    {
+      "name": "ZECK_LIVEKIT_URL",
+      "type": "http-url",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "http(s)://host:port of a LiveKit server",
+      "description": "PPR-009: The LiveKit server base URL the realtime rail adapter targets (the open-source livekit-server, self-hosted). Unbound (with the keypair) means the composition keeps the simulated realtime rail behind the same neutral seam \u2014 never a fabricated realtime capability."
+    },
+    {
+      "name": "ZECK_LIVEKIT_API_KEY",
+      "type": "provider-credential",
+      "required": false,
+      "credentialShaped": true,
+      "holds": "the LiveKit server's API key",
+      "description": "PPR-009: The LiveKit server API key of the realtime rail's credential keypair (materialized from ZECK_SECRET_LIVEKIT_API_KEY_REF; the adapter materializes inside its own scope immediately before upstream calls \u2014 never in a port shape, log line, or acknowledgment)."
+    },
+    {
+      "name": "ZECK_LIVEKIT_API_SECRET",
+      "type": "provider-credential",
+      "required": false,
+      "credentialShaped": true,
+      "holds": "the LiveKit server's API secret",
+      "description": "PPR-009: The LiveKit server API secret of the realtime rail's credential keypair (materialized from ZECK_SECRET_LIVEKIT_API_SECRET_REF; same secret-mediation discipline as the API key)."
+    },
+    {
+      "name": "ZECK_SECRET_LIVEKIT_API_KEY_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/livekit-api-key",
+      "description": "PPR-009: Reference to the environment's LiveKit API key (the realtime rail's credential keypair, materialized as ZECK_LIVEKIT_API_KEY)."
+    },
+    {
+      "name": "ZECK_SECRET_LIVEKIT_API_SECRET_REF",
+      "type": "secret-reference",
+      "required": false,
+      "credentialShaped": false,
+      "holds": "zeck-secret://<environment>/livekit-api-secret",
+      "description": "PPR-009: Reference to the environment's LiveKit API secret (the realtime rail's credential keypair, materialized as ZECK_LIVEKIT_API_SECRET)."
     }
   ]
 }

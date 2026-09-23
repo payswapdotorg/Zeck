@@ -199,7 +199,11 @@ describe("D-06 release/observability architecture boundaries (WORK-047)", () => 
     }
     const declared = declaredRuntimePackages(REPO_ROOT);
     expect([...packages].sort()).toEqual([...new Set([...declared])].sort());
-    expect([...packages].sort()).toEqual(["fastify", "pg"]);
+    // PPR-009 sanctions livekit-server-sdk (the published, UNMODIFIED
+    // LiveKit Server SDK — the realtime rail's vendor dependency,
+    // confined to src/modules/deployments/adapters/ by the SDK-boundary
+    // table; vendor types never cross the adapter).
+    expect([...packages].sort()).toEqual(["fastify", "livekit-server-sdk", "pg"]);
   });
 
   test("B6 the observability-export provider is declared established with the port contract and degraded mode", () => {
