@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "run": "evo-004",
+  "date": "2026-09-23",
+  "trigger": "event-triggered — PPR-010 delivered (the program's second post-delivery OBSERVE step)",
+  "loop": "OBSERVE -> DETECT (recorded; no AUTHORIZE this run)",
+  "observed": [
+    {
+      "scan": "dependency drift (npm registry vs the lockfile, the deployment-critical focus set)",
+      "results": [
+        "socket.io 4.8.3 installed = 4.8.3 latest — the new alternate-rail dependency is CURRENT",
+        "socket.io-client 4.8.3 installed = 4.8.3 latest — the dispatch client CURRENT",
+        "livekit-server-sdk 2.19.1 installed = 2.19.1 latest — the primary rail dependency still CURRENT",
+        "fastify ^5.12.1 (5.12.5 latest) + pg 8.16.3 (8.23.0 latest) — the evo-002 deferred in-range advances UNCHANGED (a bump remains a governed IMPLEMENT step, not auto-promoted at autonomy level 2)"
+      ]
+    },
+    {
+      "scan": "manifest validity (the env contract + secret references)",
+      "results": [
+        "deploy:validate valid=true — environments=4, variables=97 (the PPR-010 extension)"
+      ]
+    },
+    {
+      "scan": "route drift (the deployed plane vs main)",
+      "results": [
+        "the public plane attests a244e70 (revision-pinned, honest); main is ada0d1e",
+        "a244e70..ada0d1e touches NO route-serving code (the realtime rail adapters, the conformance/drill suites, the manifest/pin extensions, the governance records) — the route TABLE is unchanged; no drift",
+        "the next redeploy's natural moment remains the operator credential materialization (the §15 LiveKit keypair and/or the §16 socket.io set — the composition gates keep the deployed shape exactly today's unbound forms until then)"
+      ]
+    }
+  ],
+  "detected": [
+    "no new candidates this run: the dependency set is current, the manifest is valid, no route drift; the deferred fastify/pg advances remain the only open (deferred) candidates"
+  ],
+  "authorizedThisRun": [],
+  "honestBoundaries": [
+    "the nightly cadence is POLICY (spec/evolution/evolution-policy.json) — this sandbox has no durable scheduler; scans run when a governed session is active (the trigger authority is the loop, never the clock)"
+  ],
+  "nextReview": "the remaining non-credential-bound candidates: GAP-004's bare-root HTML landing (low priority — the user journey lands correctly via the 307 bridge), the deferred fastify/pg governed bump (a full-battery IMPLEMENT step), and the composition auto-rebind policy work order (now unmapped by PPR-010's residual); the credential-bound residuals (GAP-001's external rung, GAP-002's model families, GAP-003's live-plane rung) await the operator (outbox record 4)"
+}
