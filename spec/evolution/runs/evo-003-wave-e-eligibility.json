@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "run": "evo-003",
+  "date": "2026-09-23",
+  "trigger": "event-triggered — the wave-E eligibility review (evo-002's recorded nextReview; the loop's RESEARCH -> COMPARE -> MAP -> AUTHORIZE steps for the realtime-ALTERNATE rail)",
+  "loop": "OBSERVE (evo-002) -> DETECT (GAP-003, the gap ledger) -> RESEARCH -> COMPARE -> MAP -> AUTHORIZE (PPR-010 issued)",
+  "research": {
+    "rule": "upstream truth collected from the registries/artifacts, never from memory (the zero-drift rule)",
+    "facts": [
+      "socket.io (npm registry, live query): latest 4.8.3, MIT license, 7 dependencies — a REAL independent third-party realtime server implementation (the engine.io protocol: its own handshake/sid, polling+websocket transports, ping/pong liveness, server-side rooms/namespaces, disconnect reasons)",
+      "ws (npm registry, live query): latest 8.21.3, MIT license, 0 dependencies — the Node RFC 6455 reference transport library (pure transport; a rail over it would be adapter-owned channel semantics)",
+      "centrifugo (npm registry, live query): NO dist-tags / no usable package artifact — the real Centrifugo is a Go binary distributed outside npm; its license and behavior CANNOT be verified under the zero-drift rule without a binary download — DEFERRED, not chosen",
+      "the local livekit-server binary survives at /tmp/livekit-server (the PPR-009 conformance subject's server, 1.9.11, --dev mode) — the drill's primary rail is available REAL",
+      "the sandbox test runtime: bun 1.3.14 executing vitest (node 24.21.0 also present); the PG rail (127.0.0.1:55432) is UP for the integration battery",
+      "the repository has NO existing ws/socket.io dependency (bun.lock) — the alternate rail adds one NEW published dependency, unmodified, exactly like livekit-server-sdk did"
+    ]
+  },
+  "compare": {
+    "candidates": [
+      {
+        "id": "socket.io",
+        "verdict": "CHOSEN",
+        "reasoning": "an independent third-party realtime SERVER product with its own wire protocol and failure modes — the strongest honest substitution evidence against LiveKit (two genuinely different realtime solutions serving ONE neutral port through ONE conformance contract); MIT (registry-verified, no copyleft — the never-automatically-promoted list is respected); self-hostable IN-PROCESS (no external binary, no external credentials — the frontier's 'no external credentials required' is satisfied exactly); codes against the PPR-009 conformance contract C1-C12, never another provider's SDK shapes (the iron law)"
+      },
+      {
+        "id": "ws",
+        "verdict": "RECORDED FALLBACK",
+        "reasoning": "registry-verified MIT and maximally real as a TRANSPORT, but a rail over raw ws makes the adapter itself the channel-semantics owner — a weaker provider-independence proof ('we replaced the vendor with ourselves'); it is the recorded honest fallback ONLY if the socket.io server cannot boot under the battery runtime (the feasibility probe decides)"
+      },
+      {
+        "id": "centrifugo",
+        "verdict": "DEFERRED",
+        "reasoning": "no verifiable npm artifact (the registry query returned no dist-tags); verifying the Go binary's license and behavior is heavier research with marginal gain over socket.io — a future RESEARCH step may revisit it"
+      }
+    ]
+  },
+  "map": {
+    "blastRadius": "NEW files: the socket.io rail adapter + its composition binding + its conformance subject + the rail-substitution drill; APPEND-ONLY: variables.json (94 -> 97: ZECK_SOCKETIO_URL, ZECK_SOCKETIO_AUTH_SECRET, ZECK_SECRET_SOCKETIO_AUTH_SECRET_REF), secret-references.json (+socketio-auth-secret), the barrel exports, the additive env-contract/manifest/provision pins, the architecture boundary pins for the socket.io dependency, deploy/PUBLIC-DEPLOYMENT.md's alternate-rail section, deploy/evidence/ppr-010.json",
+    "frozenSurfaces": "the RealtimeRail port's shapes; the session service's frozen admission ordering (POLICY -> CAPABILITY -> BUDGET -> SECRET MEDIATION -> adapter); PPR-009's adapter/conformance files (read-only reconciliation subjects); every other order's surfaces",
+    "explicitlyOutOfScope": "the composition-level AUTO-REBIND policy (a rail preference order + automatic failover inside the composition touches the frozen admission path and can mask failures — a future governed work order, recorded as the drill's honest residual); the durable idempotency-ledger binding (PPR-009's recorded residual, unchanged)"
+  },
+  "authorize": {
+    "workOrder": "PPR-010 — the alternate realtime rail (socket.io) + the substitution/failover drill (GAP-003's level-5 rung over the fresh conformance contract)",
+    "neverAuthorizedListCheck": "no authority-chain change (the rail is non-authoritative transport); no identity/policy/security semantics; no new secret-materialization path (the established vault/env-source pattern only); no tenant isolation change; no payments/residency/irreversible migration; no verification weakening (the conformance contract EXTENDS to a third subject); no copyleft (MIT, registry-verified); no execution-success semantics change",
+    "autonomyNote": "currentAutonomyLevel=2 (drafted): the PROGRAM prepared this research/comparison/map record; the AUTHORIZATION is the Lead's governed act under the Successor Tech Lead Directive (the same pattern as PPR-009 at the same level); the operator retains veto through the outbox/inbox channel"
+  },
+  "honestBoundaries": [
+    "socket.io-under-Bun runtime feasibility is NOT assumed: the work order's requirement 0 is a minimal server-boot probe under the battery runtime BEFORE any design commitment; if it fails, the recorded ws fallback applies (and the run record is amended)",
+    "the drill's primary rail is the REAL local livekit-server while the binary is present; if absent, the drill runs with the SIMULATED reference as primary and labels it honestly (the alternate is ALWAYS real)",
+    "external/managed socket.io availability is NOT RUN and never claimed — the alternate's proof is local-real, exactly like PPR-009's local-livekit-server rung"
+  ],
+  "nextReview": "PPR-010 delivery (the Lead's VERIFY step: independent battery + merge + the LEARN ledger updates: gap-ledger GAP-003 advancement, solution-catalog maturity, journey-coverage); GAP-001's external rung + GAP-002 remain operator-credential-bound (outbox record 4)"
+}
