@@ -1388,6 +1388,33 @@ evidence deliveryNotes) and GAP-004's live rung. What remains open is
 credential-bound only (§15's operator sequence: the LiveKit API
 keypair; GAP-002's model families).
 
+**The exact-head follow-up (2026-09-24, the verification pass).** The
+post-deployment audit found main had advanced past the deployed
+revision by the records commit `077f068` — an artifact-only delta of
+exactly two carried spec data files (the gap-ledger + the
+frontier-state closure records), with zero runtime consumers (the
+console composition's spec reads — validation-state,
+validation-work-orders, docs, benchmarks — were all unchanged; the
+serving behavior is identical). Per the exact-head discipline the
+chain was re-executed: the artifact rebuilt at `077f068`, the revision
+re-pinned on both targets, the two-function local artifact proof
+PASSED — and the deploy was **refused three times** at the per-user
+hobby deployment quota (`api-deployments-free-per-day`). The
+forensics (in the master record): the quota is per-user across every
+scope; the visible in-window count is 80 against the counter's >100
+— a stable hidden mass of ~21–29 in-window deployments no API list
+can enumerate (deleted deployments still count; the sibling projects
+delete theirs). The sibling churn (~7/hour) outpaces the visible
+aging (8 expiries over the next 6 hours), so the window frees only
+when the sibling projects pause. The plane stays live, healthy, and
+fully verified at `25e11f9` (journey 28/28 with zero not-runs; smoke
+26/26 with zero problems; the relational authority ready); the
+`077f068` redeploy chain is staged and proven, and re-attempts when
+the churn pauses (rebuild if the tree moved). The pins point at
+`077f068` for that future deployment — they affect only future
+deployments (the running deployment keeps its own snapshot; no
+runtime inconsistency).
+
 ## 15. The LiveKit realtime rail (PPR-009 — the first REAL external RealtimeRail)
 
 The provider-neutral `RealtimeRail` port (WORK-024/MOD-005) now has a
