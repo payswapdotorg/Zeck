@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "WAVE-F-TAIL",
+  "title": "The wave-F redeploy closure record — the quota-bound tail executed (the §13.6 chain completed at the exact governed head)",
+  "recordedBy": "Lead (credentialed run)",
+  "environment": "preview (the public plane https://zeck-preview-main.vercel.app, Vercel project zeck-preview-main, production target)",
+  "date": "2026-09-24",
+  "doctrine": "The §4 no-silent-paid-overage rule: the team's free-tier rolling-24h deployment quota is an external boundary, honestly recorded when refused and honestly re-attempted when the window frees — never upgraded, never worked around. The maturity ladder: the redeploy carries wave F's merged surface (PPR-011's landing-audit harness + PPR-012's advanced dependency set + PPR-013's auto-rebind policy) to the public plane, and the journey MEASURE re-run is the live proof.",
+  "deployedRevision": "25e11f9c0b3c3a5cbb9e8c3bb5683949e73f5091",
+  "deploymentUid": "dpl_4stUVFACDjVgSB6smGdZm6DKcVvn",
+  "chain": [
+    {
+      "step": "the quota refusal (2026-09-24 ~02:00 UTC, the prior attempt)",
+      "fact": "vercel deploy --prebuilt --prod over the artifact built + re-pinned at 6297071 REFUSED: 'Resource is limited - try again in 1 day (more than 100, code: api-deployments-free-perday)' — the team's free-tier rolling-24h deployment quota, the burn mostly sibling projects (aurum-chat 36, webflix+webflix-api 25, roamlink 9 in the then-window; zeck-preview-main itself 3); recorded in the frontier context + outbox record 6; the plane stayed live and healthy at a244e70"
+    },
+    {
+      "step": "the window check (2026-09-24 05:44 UTC)",
+      "fact": "the rolling-24h window re-queried through the deployments API before any re-attempt: 71 in-window deployments (aurum-chat 35, webflix 13, roamlink 10, webflix-api 9, zeck-preview-main 3, aise 1) — capacity freed by the Sep 23 02:00-06:06 aging; the re-attempt sanctioned"
+    },
+    {
+      "step": "rebuild at the exact head",
+      "fact": "the tree had advanced past the refused attempt's pin (6297071 -> 25e11f9, the LEARN record — spec/ only, no serving-surface delta), so the artifact was REBUILT at the head: bun run deploy:build-vercel-output green (index.func 105 files / 355 specifiers; api/experience.func 178 files / 589 specifiers / 803 data files — the +1 data file vs the refused build is the evo-006 observe record, the head legitimately reaching the artifact)"
+    },
+    {
+      "step": "the revision re-pin",
+      "fact": "ZECK_DEPLOY_GIT_REVISION re-pinned to 25e11f9c0b3c3a5cbb9e8c3bb5683949e73f5091 on BOTH env targets (production zjvUx2ETjlRFE6fp + preview qiBiy1MqpNEqLwyq) BEFORE the deploy — both PATCHes OK (the encrypted envelopes rotated)"
+    },
+    {
+      "step": "the two-function local artifact proof (the §13.6 documented entrypoints, the exact shipped bytes)",
+      "fact": "index.func node server.js (ZECK_ENVIRONMENT=preview, ZECK_DEPLOY_GIT_REVISION=25e11f9..., VERCEL_GIT_COMMIT_REF=main, port 8891): boot record gitRevision 25e11f9c0b3c, environmentContract satisfied, /identity BOUND at 25e11f9 (preview, runtimeIdentityId f6624c86...), /health the honest fail-closed 503 (relational-state unavailable without the materialized dependency; the non-authoritative set in its declared degraded modes), POST /executions the honest 422 boundary (CAPABILITY_UNAVAILABLE, the Idempotency-Key contract); api/experience.func node api/experience.js (ZECK_EXPERIENCE_API_URL=<plane>, port 8892): tokenBound false (the honest unbound local rail), /console and / served as 200 HTML (title 'Zeck — Developer console'); both proof servers stopped cleanly (graceful SIGTERM shutdown records, ports freed, no stale squatters)"
+    },
+    {
+      "step": "deploy",
+      "fact": "vercel deploy --prebuilt --prod — dpl_4stUVFACDjVgSB6smGdZm6DKcVvn READY in 14s, aliased to https://zeck-preview-main.vercel.app; the a244e70 -> head revision lag CLOSED (the plane now attests the exact governed main head)"
+    },
+    {
+      "step": "the journey MEASURE re-run (the credentialed live proof)",
+      "fact": "bun tests/journey/run.ts --url https://zeck-preview-main.vercel.app --environment preview --branch main --expected-revision 25e11f9... — EXIT 0: 12 journeys / 28 steps — 28 pass / 0 fail / 0 NOT-RUN (the program's first journey record with ZERO not-runs), findings 0, identity gate verified at 25e11f9, duration 214.4s, 22/22 workload-family disclosures SERVED, the self-scan clean; THE LANDING-CHAIN PROOF: discover-landing now records '307 / -> /console (1 hop); HTML landing served (title: Zeck — Developer console) with every audited dimension passing' — PPR-011's follower followed the plane's own redirect bridge and audited the landed surface (keyboard/focus, responsive, reduced-motion, resource integrity 1/1, navigation 20/20) — the F1 closure's honest not-run CLOSED on the live plane (output captured /home/z/journey-measure-25e11f9.txt)"
+    },
+    {
+      "step": "the API plane acceptance",
+      "fact": "bun run deploy:public-smoke -- --url https://zeck-preview-main.vercel.app --environment preview --branch main — EXIT 0, problems []: 26 routes probed (18 auth-boundary 401 / 3 capability-unbound 422 / 4 capability-seam ALL materialized-composition 401 / 1 public-artifact 200), transportReachable, identityBound + identityVerified at 25e11f9, healthStatus 200 with the honest degraded health (the F1-closure precedent shape — the declared degraded modes of the unbound non-authoritative set), runtimeIdentityId f6624c86... (output captured /home/z/smoke-25e11f9.txt)"
+    }
+  ],
+  "closes": [
+    "PPR-011 notRun[0]: the live-plane landing re-run — the plane's / -> 307 /console bridge actually followed to the console landing (the journey record above)",
+    "PPR-012 notRun[1]: the live-plane redeploy on the advanced dependency set — the plane now serves fastify 5.12.5 + pg 8.23.0 (the journey + smoke green over them is the behavior-identity evidence)",
+    "the frontier's quota-bound tail: the §13.6 redeploy + journey MEASURE re-run executed; GAP-004's live rung closed (the gap-ledger updated)"
+  ],
+  "stillOpen": [
+    "PPR-013 notRun[0]: the LIVE-PLANE failover — requires a real rail bound on the plane (the LiveKit API keypair, outbox record 4; the §15 operator sequence)",
+    "PPR-013 notRun[1] / PPR-009's residual: the durable cross-rail idempotency ledger",
+    "GAP-002: the model-family credentials (operator-owned)"
+  ],
+  "operatorNotice": "outbox record 7 (the closure notice completing record 6's refusal notice)"
+}

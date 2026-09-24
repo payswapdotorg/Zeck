@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "workOrder": "PPR-012",
-  "title": "The governed dependency advance \u2014 fastify + pg (the evo-002 deferred candidates)",
+  "title": "The governed dependency advance — fastify + pg (the evo-002 deferred candidates)",
   "recordedBy": "PPR-012 worker (Task F-b dispatch; the wave-F staged worker)",
   "environment": "local (the repository's own suites in the isolated worktree; no database services started; no live plane touched)",
   "date": "2026-09-23",
   "branch": "work/PPR-012-dependency-advance",
   "baseRevision": "6f17e012df265053b3a58c89cd1bac567c549940",
-  "doctrine": "Requirement 0 first: the zero-drift rule \u2014 the registry facts re-verified LIVE from the npm packuments and the packages' own changelogs/release notes at implementation time, never from memory. One clean dependency-only diff; the honest fallback ladder if the battery surfaces a break.",
+  "doctrine": "Requirement 0 first: the zero-drift rule — the registry facts re-verified LIVE from the npm packuments and the packages' own changelogs/release notes at implementation time, never from memory. One clean dependency-only diff; the honest fallback ladder if the battery surfaces a break.",
   "requirement0RegistryFacts": {
     "queriedLive": "curl https://registry.npmjs.org/fastify and https://registry.npmjs.org/pg (the registry packuments, 2026-09-23) + the packages' own release-notes artifacts (github.com/fastify/fastify releases + repo security advisories; github.com/brianc/node-postgres CHANGELOG.md raw)",
     "fastify": {
@@ -40,30 +40,30 @@
         "8.23.0 (2026-08-08)"
       ]
     },
-    "driftSinceAuthorization": "NONE \u2014 the live facts match the evo-005 authorization record exactly (fastify 5.12.5 MIT; pg 8.23.0 MIT); the advance targets the CURRENT latest, not a stale one"
+    "driftSinceAuthorization": "NONE — the live facts match the evo-005 authorization record exactly (fastify 5.12.5 MIT; pg 8.23.0 MIT); the advance targets the CURRENT latest, not a stale one"
   },
   "theAdvance": {
-    "fastify": "lockfile resolution 5.12.1 \u2192 5.12.5 (advanced via `bun update fastify`); package.json's range STAYS ^5.12.1 \u2014 5.12.5 is in-range, so the spec's minimal-range-advance branch was NOT needed (recorded: bun update also rewrites the range in package.json by default; the range was restored to ^5.12.1 so the advance is lockfile-only for fastify, exactly as the work order specifies)",
-    "pg": "the exact pin advances 8.16.3 \u2192 8.23.0 in package.json AND bun.lock",
+    "fastify": "lockfile resolution 5.12.1 → 5.12.5 (advanced via `bun update fastify`); package.json's range STAYS ^5.12.1 — 5.12.5 is in-range, so the spec's minimal-range-advance branch was NOT needed (recorded: bun update also rewrites the range in package.json by default; the range was restored to ^5.12.1 so the advance is lockfile-only for fastify, exactly as the work order specifies)",
+    "pg": "the exact pin advances 8.16.3 → 8.23.0 in package.json AND bun.lock",
     "installedAfter": "node_modules/fastify 5.12.5 MIT; node_modules/pg 8.23.0 MIT (verified from the installed package manifests)"
   },
   "diffScope": {
-    "files": "package.json + bun.lock ONLY \u2014 zero source changes, zero test changes, zero manifest/governance changes",
-    "packageJson": "1 line: the pg pin 8.16.3 \u2192 8.23.0",
-    "bunLock": "the fastify resolution entry (5.12.1 \u2192 5.12.5, identical transitive ranges); the pg resolution entry (8.16.3 \u2192 8.23.0 with its own 8.23.0 manifest's declared transitive ranges: pg-connection-string ^2.9.1\u2192^2.14.0, pg-pool ^3.10.1\u2192^3.14.0, pg-protocol ^1.10.3\u2192^1.16.0, optional pg-cloudflare ^1.2.7\u2192^1.4.0); and the root-block pg pin mirror",
-    "honestNormalization": "the baseline `bun install` in the fresh worktree normalized bun.lock's stale root block: socket.io-client listed under devDependencies at HEAD while package.json (as committed by PPR-010) carries it in dependencies \u2014 the lockfile root block now mirrors package.json; a PLACEMENT normalization only, zero version change (both ^4.8.3)",
-    "transitiveNote": "the pg-family transitive RESOLUTIONS were already current before the advance (pg-connection-string 2.14.0, pg-pool 3.14.0, pg-protocol 1.16.0, pg-cloudflare 1.4.0, pg-types 2.2.0, pgpass 1.0.5 \u2014 verified identical before/after); the advance updates pg's DECLARED ranges to its 8.23.0 manifest, the resolved set is unchanged",
-    "versionPinSurvey": "NO test pins the old versions: Grep for `8.16.3` and `5.12.x` across the tree finds only the historical work-item records (docs/work-items/WORK-002.md, WORK-043.md \u2014 historical evidence, not touched) and the spec/ governance records (evo-002/evo-004/evo-005 + the PPR-012 work order itself \u2014 never touched); the architecture boundary tests pin package NAMES (allowedPackages lists), not versions \u2014 no additive pin updates were needed",
+    "files": "package.json + bun.lock ONLY — zero source changes, zero test changes, zero manifest/governance changes",
+    "packageJson": "1 line: the pg pin 8.16.3 → 8.23.0",
+    "bunLock": "the fastify resolution entry (5.12.1 → 5.12.5, identical transitive ranges); the pg resolution entry (8.16.3 → 8.23.0 with its own 8.23.0 manifest's declared transitive ranges: pg-connection-string ^2.9.1→^2.14.0, pg-pool ^3.10.1→^3.14.0, pg-protocol ^1.10.3→^1.16.0, optional pg-cloudflare ^1.2.7→^1.4.0); and the root-block pg pin mirror",
+    "honestNormalization": "the baseline `bun install` in the fresh worktree normalized bun.lock's stale root block: socket.io-client listed under devDependencies at HEAD while package.json (as committed by PPR-010) carries it in dependencies — the lockfile root block now mirrors package.json; a PLACEMENT normalization only, zero version change (both ^4.8.3)",
+    "transitiveNote": "the pg-family transitive RESOLUTIONS were already current before the advance (pg-connection-string 2.14.0, pg-pool 3.14.0, pg-protocol 1.16.0, pg-cloudflare 1.4.0, pg-types 2.2.0, pgpass 1.0.5 — verified identical before/after); the advance updates pg's DECLARED ranges to its 8.23.0 manifest, the resolved set is unchanged",
+    "versionPinSurvey": "NO test pins the old versions: Grep for `8.16.3` and `5.12.x` across the tree finds only the historical work-item records (docs/work-items/WORK-002.md, WORK-043.md — historical evidence, not touched) and the spec/ governance records (evo-002/evo-004/evo-005 + the PPR-012 work order itself — never touched); the architecture boundary tests pin package NAMES (allowedPackages lists), not versions — no additive pin updates were needed",
     "diffStat": "package.json 1 insertion + 1 deletion; bun.lock 5 insertions + 5 deletions"
   },
   "researchRecord": {
-    "fastify_5_12_2": "SECURITY release (2026-09-04): fixes for GHSA-9q9j-q6p8-xq58 / CVE-2026-84428 (high \u2014 header validation bypass via incomplete schema case normalization), GHSA-hwr6-493r-vm6h / CVE-2026-84469 (high \u2014 request validation bypass via skipped boolean false schemas), GHSA-p68q-wchp-6fh7 / CVE-2026-76169 (high \u2014 authentication bypass via malformed URLs reaching encapsulated not-found handlers), GHSA-667r-xxjv-c9mm / CVE-2026-84504 (high \u2014 request body replacement via an async validation result collision); plus the backported fix: callNotFound runs the not-found preHandler regardless of registration order (PR 6973) and an npm-ignore chore (PR 7003)",
-    "fastify_5_12_3": "version-bump only \u2014 no functional changelog entry (published as part of the version-mismatch repair)",
-    "fastify_5_12_4": "release note: 'Fixed the fastify.js version mismatch' \u2014 the tag compare v5.12.2...v5.12.4 contains only the two 'Bumped v5.12.3'/'Bumped v5.12.4' commits",
-    "fastify_5_12_5": "SECURITY release (2026-09-16): fix for GHSA-4mh8-r7rc-xpvc / CVE-2026-92081 (medium \u2014 DoS via unhandled exception on HTTP/2 trailer responses); plus backported perf: reduce content-type parser overhead (PR 7019) and avoid redundant request-part reads during validation (PR 7020)",
-    "fastify_usageSurface": "src/api/server.ts + src/api/routes/* use addHook(onRoute/onRequest/onResponse), standard route registration and error mapping; the test planes use fastify.inject. The 5.12.x fixes strengthen exactly the repo's exercised surfaces \u2014 schema/body validation (the honest 401/422 boundaries), the not-found handler path (the honest 404s), and header handling \u2014 with zero API-shape changes; all are patch-level backports inside ^5.12.1",
-    "pg_ladder": "8.17.0: throw the correct error when database URL parsing fails; 8.17.1/8.17.2: break-fix patches (undocumented in the changelog per its stated 'no break-fix versions in this file' policy; no release-note bodies on the repo tags); 8.18.0: connect() returns the client instance (previously void \u2014 additive); 8.19.0: the internal query queue is deprecated + connection parameters are passed to the password callback; 8.20.0: onConnect callback in pg.Pool constructor options (async initialization of newly created & connected pooled clients); 8.21.0: SASL SCRAM server error responses handled properly + node@26 support + the scramMaxIterations config option + client.getTransactionStatus(); 8.22.0: sslnegotiation=direct for PostgreSQL 17+; 8.23.0: query pipelining support (PR 3652)",
-    "pg_usageSurface": "src/platform/db/pg-database-port.ts uses new Pool(...), pool.connect(), client.query(sql, params) and BEGIN/COMMIT/ROLLBACK transaction blocks; the integration harness (the Lead's rail) uses Client + Pool. Every pg change in the span is additive (new options, new methods, error-handling fixes) \u2014 none alters the repo's call shapes; the SASL SCRAM error-handling fix improves the auth path on the PG rail"
+    "fastify_5_12_2": "SECURITY release (2026-09-04): fixes for GHSA-9q9j-q6p8-xq58 / CVE-2026-84428 (high — header validation bypass via incomplete schema case normalization), GHSA-hwr6-493r-vm6h / CVE-2026-84469 (high — request validation bypass via skipped boolean false schemas), GHSA-p68q-wchp-6fh7 / CVE-2026-76169 (high — authentication bypass via malformed URLs reaching encapsulated not-found handlers), GHSA-667r-xxjv-c9mm / CVE-2026-84504 (high — request body replacement via an async validation result collision); plus the backported fix: callNotFound runs the not-found preHandler regardless of registration order (PR 6973) and an npm-ignore chore (PR 7003)",
+    "fastify_5_12_3": "version-bump only — no functional changelog entry (published as part of the version-mismatch repair)",
+    "fastify_5_12_4": "release note: 'Fixed the fastify.js version mismatch' — the tag compare v5.12.2...v5.12.4 contains only the two 'Bumped v5.12.3'/'Bumped v5.12.4' commits",
+    "fastify_5_12_5": "SECURITY release (2026-09-16): fix for GHSA-4mh8-r7rc-xpvc / CVE-2026-92081 (medium — DoS via unhandled exception on HTTP/2 trailer responses); plus backported perf: reduce content-type parser overhead (PR 7019) and avoid redundant request-part reads during validation (PR 7020)",
+    "fastify_usageSurface": "src/api/server.ts + src/api/routes/* use addHook(onRoute/onRequest/onResponse), standard route registration and error mapping; the test planes use fastify.inject. The 5.12.x fixes strengthen exactly the repo's exercised surfaces — schema/body validation (the honest 401/422 boundaries), the not-found handler path (the honest 404s), and header handling — with zero API-shape changes; all are patch-level backports inside ^5.12.1",
+    "pg_ladder": "8.17.0: throw the correct error when database URL parsing fails; 8.17.1/8.17.2: break-fix patches (undocumented in the changelog per its stated 'no break-fix versions in this file' policy; no release-note bodies on the repo tags); 8.18.0: connect() returns the client instance (previously void — additive); 8.19.0: the internal query queue is deprecated + connection parameters are passed to the password callback; 8.20.0: onConnect callback in pg.Pool constructor options (async initialization of newly created & connected pooled clients); 8.21.0: SASL SCRAM server error responses handled properly + node@26 support + the scramMaxIterations config option + client.getTransactionStatus(); 8.22.0: sslnegotiation=direct for PostgreSQL 17+; 8.23.0: query pipelining support (PR 3652)",
+    "pg_usageSurface": "src/platform/db/pg-database-port.ts uses new Pool(...), pool.connect(), client.query(sql, params) and BEGIN/COMMIT/ROLLBACK transaction blocks; the integration harness (the Lead's rail) uses Client + Pool. Every pg change in the span is additive (new options, new methods, error-handling fixes) — none alters the repo's call shapes; the SASL SCRAM error-handling fix improves the auth path on the PG rail"
   },
   "verifiedLocally": [
     {
@@ -72,15 +72,15 @@
     },
     {
       "proof": "lint",
-      "result": "EXACTLY the HEAD baseline: 3 errors + 68 warnings + 8 infos \u2014 ZERO NEW (the 3 errors are the pre-existing evidence-JSON format diffs ppr-003-live/ppr-006/ppr-009; the new ppr-012.json is biome-format-clean, verified)"
+      "result": "EXACTLY the HEAD baseline: 3 errors + 68 warnings + 8 infos — ZERO NEW (the 3 errors are the pre-existing evidence-JSON format diffs ppr-003-live/ppr-006/ppr-009; the new ppr-012.json is biome-format-clean, verified)"
     },
     {
       "proof": "the unit suite",
-      "result": "362 test files / 6375 tests \u2014 0 failed, 0 skipped (111.92s)"
+      "result": "362 test files / 6375 tests — 0 failed, 0 skipped (111.92s)"
     },
     {
       "proof": "the targeted deployment suites (tests/unit/deployment)",
-      "result": "36 test files / 672 tests \u2014 0 failed (15.61s)"
+      "result": "36 test files / 672 tests — 0 failed (15.61s)"
     },
     {
       "proof": "governance",
@@ -91,23 +91,24 @@
       "result": "deploy:validate valid=true, problems=0, environments=4, variables=97"
     }
   ],
-  "fallbackLadder": "NOT NEEDED \u2014 no breaking change surfaced anywhere in the battery; the advance stands at the current latest for BOTH packages (fastify 5.12.5, pg 8.23.0); no version was walked back",
+  "fallbackLadder": "NOT NEEDED — no breaking change surfaced anywhere in the battery; the advance stands at the current latest for BOTH packages (fastify 5.12.5, pg 8.23.0); no version was walked back",
   "notRun": [
     {
       "boundary": "the PG-rail integration battery + the FULL suite on the advanced dependency set",
-      "owner": "the Lead's binding merge gate (the standing rule \u2014 a database driver's real evidence is the real rail)",
+      "owner": "the Lead's binding merge gate (the standing rule — a database driver's real evidence is the real rail)",
       "note": "the worker's scope excludes both by the work order; pg 8.23.0's real-rail proof lands with the Lead's independent battery at merge"
     },
     {
       "boundary": "the live-plane redeploy on the advanced dependency set",
-      "owner": "the Lead's wave-F redeploy (the wave-level \u00a713.6 redeploy)",
+      "owner": "the Lead's wave-F redeploy (the wave-level §13.6 redeploy)",
       "note": "the live plane still attests a244e70; the wave-level redeploy + journey MEASURE re-run close the revision lag for the whole wave at once"
     }
   ],
   "notes": [
-    "Memory pressure (the documented sandbox pattern): the first typecheck run was SIGKILLed by the OOM killer; two ORPHANED stale `bun deploy/api.ts` test-plane servers (PPID 1, cwd /home/z/Zeck \u2014 exactly the Task-80/81 stale-server pattern) were retired per precedent (~130MB freed) and the battery then ran clean; the ring (the replay2 control plane) was untouched per doctrine.",
-    "bun 1.3.14 executed the battery (vitest 4.1.11); the sandbox's postgres checkpointer was already running (a predecessor's rail) \u2014 NOT started by this worker, not touched.",
-    "The advance's security substance: fastify 5.12.1 itself was a security release; the advance to 5.12.5 picks up FIVE more fixed advisories (four high in 5.12.2, one medium in 5.12.5) \u2014 the dependency advance is also a security-relevant hardening of the API boundary.",
-    "DELIVERY (the Lead's merge, 2026-09-23): merged --no-ff at c8399f1 with bun install syncing node_modules (installed verified: fastify 5.12.5 MIT, pg 8.23.0 MIT); the Lead's independent battery ON THE ADVANCED SET \u2014 typecheck 0 errors; lint EXACTLY 3+68+8 HEAD-exact zero new; the FULL suite on the PG rail EXIT 0 (682+1sk files / 9960+26sk tests / 0 failed / 525.90s, output captured at /home/z/battery-full-pgrail-pg823.txt) \u2014 THE DRIVER GATE: the real rail is a database driver's real evidence, and every postgres integration path (the Pool / pool.connect / client.query / BEGIN-COMMIT-ROLLBACK shapes) ran green over pg 8.23.0 against the real PostgreSQL 16 rail; governance OK (60 WOs / 110 requirements); deploy:validate valid=true / 0 problems / 97 variables. The notRun entries owned by 'the Lead's binding merge gate' are hereby CLOSED; the live-plane redeploy notRun stands owned by the wave-F \u00a713.6 redeploy (the advance reaches the plane there)."
-  ]
+    "Memory pressure (the documented sandbox pattern): the first typecheck run was SIGKILLed by the OOM killer; two ORPHANED stale `bun deploy/api.ts` test-plane servers (PPID 1, cwd /home/z/Zeck — exactly the Task-80/81 stale-server pattern) were retired per precedent (~130MB freed) and the battery then ran clean; the ring (the replay2 control plane) was untouched per doctrine.",
+    "bun 1.3.14 executed the battery (vitest 4.1.11); the sandbox's postgres checkpointer was already running (a predecessor's rail) — NOT started by this worker, not touched.",
+    "The advance's security substance: fastify 5.12.1 itself was a security release; the advance to 5.12.5 picks up FIVE more fixed advisories (four high in 5.12.2, one medium in 5.12.5) — the dependency advance is also a security-relevant hardening of the API boundary.",
+    "DELIVERY (the Lead's merge, 2026-09-23): merged --no-ff at c8399f1 with bun install syncing node_modules (installed verified: fastify 5.12.5 MIT, pg 8.23.0 MIT); the Lead's independent battery ON THE ADVANCED SET — typecheck 0 errors; lint EXACTLY 3+68+8 HEAD-exact zero new; the FULL suite on the PG rail EXIT 0 (682+1sk files / 9960+26sk tests / 0 failed / 525.90s, output captured at /home/z/battery-full-pgrail-pg823.txt) — THE DRIVER GATE: the real rail is a database driver's real evidence, and every postgres integration path (the Pool / pool.connect / client.query / BEGIN-COMMIT-ROLLBACK shapes) ran green over pg 8.23.0 against the real PostgreSQL 16 rail; governance OK (60 WOs / 110 requirements); deploy:validate valid=true / 0 problems / 97 variables. The notRun entries owned by 'the Lead's binding merge gate' are hereby CLOSED; the live-plane redeploy notRun stands owned by the wave-F §13.6 redeploy (the advance reaches the plane there)."
+  ],
+  "deliveryNote": "DELIVERED LIVE (2026-09-24, the wave-F redeploy dpl_4stUVFACDjVgSB6smGdZm6DKcVvn at the head 25e11f9): notRun[1] is hereby CLOSED — the plane now attests 25e11f9 and serves the advanced dependency set (fastify 5.12.5 + pg 8.23.0); the journey MEASURE re-run (28/28, zero not-runs) + deploy:public-smoke (26 routes, zero problems) over the advanced set are the live behavior-identity evidence; the master record is deploy/evidence/wave-f-redeploy.json"
 }

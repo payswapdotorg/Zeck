@@ -1333,6 +1333,61 @@ bridge manually and audits the surface the newcomer actually lands on:
   followed to the console landing) is the Lead's MEASURE step at the
   wave-F redeploy — honestly not-run until then.
 
+### 13.10 The wave-F redeploy record (2026-09-24 — the quota-bound tail closed)
+
+The wave-F §13.6 redeploy chain was first REFUSED (2026-09-24 ~02:00
+UTC) at the team's free-tier rolling-24h deployment quota — the
+program's first non-credential external boundary, honestly recorded
+(the burn was mostly sibling projects in the team; the plane stayed
+live and healthy at `a244e70`; the operator was notified through
+outbox record 6). The rolling window was re-queried through the
+deployments API before any re-attempt: at 05:44 UTC the in-window
+count stood at 71 (capacity freed by the early-window aging) and the
+chain was re-executed at the **exact governed head**:
+
+- **Rebuild at the head** (the tree had advanced past the refused
+  attempt's pin by the spec-only LEARN record): both function graphs
+  corrected (index 105 files/355 specifiers; experience 178
+  files/589 specifiers/803 data files — the +1 data file is the
+  evo-006 observe record, the head legitimately reaching the
+  artifact);
+  `ZECK_DEPLOY_GIT_REVISION` re-pinned to
+  `25e11f9c0b3c3a5cbb9e8c3bb5683949e73f5091` on **both** env targets
+  before the deploy.
+- **The two-function local artifact proof PASSED** at `25e11f9`:
+  `/identity` bound (preview), `/health` the honest fail-closed 503
+  without the materialized relational dependency, `POST /executions`
+  the honest 422 Idempotency-Key boundary; the experience function
+  honest-unbound (`tokenBound: false`) serving `/console` as HTML.
+- **Deploy**: `vercel deploy --prebuilt --prod` —
+  `dpl_4stUVFACDjVgSB6smGdZm6DKcVvn` aliased to
+  `https://zeck-preview-main.vercel.app`; the `a244e70` → head
+  revision lag is closed, and the plane now serves wave F's merged
+  surface (the landing-audit-capable harness's own journey runner,
+  the advanced dependency set — fastify 5.12.5 + pg 8.23.0 — and the
+  composition auto-rebind policy).
+- **The journey MEASURE re-run** (the credentialed live proof,
+  `--expected-revision 25e11f9…`): **12 journeys / 28 steps — 28
+  pass / 0 fail / 0 not-run** — the program's first journey record
+  with ZERO not-runs — findings 0, all 22 workload-family
+  disclosures SERVED, the identity gate verified at the exact
+  revision. §13.9's promise is kept on the live plane:
+  `discover-landing` now records *"307 / → /console (1 hop); HTML
+  landing served (title: Zeck — Developer console) with every
+  audited dimension passing"* — the follower walked the plane's own
+  redirect bridge and audited the landed console surface.
+- **The API plane acceptance** (`deploy:public-smoke`): EXIT 0,
+  26 routes probed, zero problems (18 auth-boundary / 3
+  capability-unbound / 4 materialized-composition seam / 1
+  public-artifact), the honest-degraded health shape identical to
+  the F1-closure precedent.
+
+The master record is `deploy/evidence/wave-f-redeploy.json`; the
+closure completes PPR-011's and PPR-012's live-plane notRuns (their
+evidence deliveryNotes) and GAP-004's live rung. What remains open is
+credential-bound only (§15's operator sequence: the LiveKit API
+keypair; GAP-002's model families).
+
 ## 15. The LiveKit realtime rail (PPR-009 — the first REAL external RealtimeRail)
 
 The provider-neutral `RealtimeRail` port (WORK-024/MOD-005) now has a
