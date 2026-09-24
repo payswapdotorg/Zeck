@@ -66,7 +66,13 @@ const FILES = collectFiles(DEPLOYMENTS_DIR);
 // vendor's identifiers (the whole point of the adapter boundary — vendor
 // vocabulary is confined THERE and nowhere else). Every RT rule that
 // scans for vendor identifiers excludes them by name.
-const VENDOR_ADAPTER_FILES = /((livekit|socketio)-realtime-rail)(-binding)?\.ts$/;
+// PPR-013: the rebind COMPOSITION binding joins the sanctioned homes —
+// it composes the two REAL rails behind the same neutral port, so it
+// necessarily names both (the preference kinds "livekit" | "socketio",
+// the RealtimeRebindRailKind slug vocabulary, the two binding imports);
+// the vendor vocabulary it carries is the composed rails' own disclosure,
+// confined to the adapter tree exactly like the rails it wraps.
+const VENDOR_ADAPTER_FILES = /((livekit|socketio)-realtime-rail)(-binding)?\.ts$|realtime-rail-rebind-binding\.ts$/;
 const REALTIME_FILES = FILES.filter((file) =>
   /realtime|in-process-realtime|planner-subtask/.test(file),
 );
