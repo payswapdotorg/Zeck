@@ -72,7 +72,8 @@ const FILES = collectFiles(DEPLOYMENTS_DIR);
 // the RealtimeRebindRailKind slug vocabulary, the two binding imports);
 // the vendor vocabulary it carries is the composed rails' own disclosure,
 // confined to the adapter tree exactly like the rails it wraps.
-const VENDOR_ADAPTER_FILES = /((livekit|socketio)-realtime-rail)(-binding)?\.ts$|realtime-rail-rebind-binding\.ts$/;
+const VENDOR_ADAPTER_FILES =
+  /((livekit|socketio)-realtime-rail)(-binding)?\.ts$|realtime-rail-rebind-binding\.ts$/;
 const REALTIME_FILES = FILES.filter((file) =>
   /realtime|in-process-realtime|planner-subtask/.test(file),
 );
