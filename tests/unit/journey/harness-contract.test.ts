@@ -308,12 +308,13 @@ describe("PPR-003: the findings contract (the 8-field format)", () => {
   });
 
   test("the defect-class vocabulary is closed and described", () => {
-    expect(DEFECT_CLASSES.length).toBe(14);
+    expect(DEFECT_CLASSES.length).toBe(15);
     for (const defectClass of DEFECT_CLASSES) {
       expect(defectClass.id.length).toBeGreaterThan(0);
       expect(defectClass.description.length).toBeGreaterThan(20);
     }
     expect(isDefectClass("reachability")).toBe(true);
+    expect(isDefectClass("landing-chain")).toBe(true);
     expect(isDefectClass("not-a-class")).toBe(false);
   });
 });

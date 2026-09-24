@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-011",
+  "title": "The redirect-following landing audit — GAP-004's recorded residual",
+  "recordedBy": "worker (F-a-4a implementation) + stage-2 (verification/finalization)",
+  "environment": "local (the fixture matrix; no live plane)",
+  "date": "2026-09-23",
+  "branch": "work/PPR-011-landing-audit",
+  "baseRevision": "6f17e01",
+  "doctrine": "The honest-evidence law: nothing is auto-followed, masked or assumed — every redirect hop is fetched manually (redirect: \"manual\") and recorded with its status + Location; the 307 platform bridge is DISCLOSED in the evidence, never hidden behind an auto-follow; no live-plane claim is made from local fixtures.",
+  "verifiedLocally": [
+    "typecheck: 0 errors (tsc --noEmit over the full tree; the native compiler run under the F-c-2-documented memory-limit invocation GOMEMLIMIT=1300MiB GOGC=30 after retiring the two orphaned stale §13.6 artifact-proof servers on 8891/8892 — the Task-76 precedent — the plain invocation was OOM-SIGKILLed twice under the standing sandbox pressure with the operator console resident)",
+    "lint: EXACTLY 3 errors + 68 warnings + 8 infos — HEAD-exact parity with the 6f17e01 base, ZERO NEW (the 3 errors are the pre-existing evidence-JSON format diffs ppr-003-live/ppr-006/ppr-009; every new/touched code file biome-clean)",
+    "unit suite: 362 files / 6375 tests / 0 failed (108.64s) — exact base parity (PPR-011 adds no unit files; the harness-contract pin update lives inside the existing file)",
+    "journey integration on the PG rail (127.0.0.1:55432 via ZECK_PG_TEST_URL only, the established invocation): tests/integration/journey — 2 files / 16 tests / 0 failed — harness-e2e 9/9 (the local-plane run, real deploy/api.ts over real HTTP, the two discover-landing shapes unchanged) + landing-audit 7/7 (the six-scenario fixture matrix + the named-constant hop-budget pin)",
+    "governance:check: OK — 60 Work Orders / 110 requirements / inFlight=[] / frontier=[]",
+    "deploy:validate: valid=true / 0 problems / 4 environments / 97 variables — NO manifest delta (the audit reads no new environment)"
+  ],
+  "notRun": [
+    {
+      "boundary": "the live-plane re-run (the plane's / -> 307 /console bridge actually followed to the console landing)",
+      "reason": "the wave-level redeploy + journey MEASURE re-run is the Lead's",
+      "owner": "the Lead's wave-F redeploy + journey re-run"
+    },
+    {
+      "boundary": "the FULL integration battery on the branch",
+      "reason": "the work order's verification section assigns the worker the targeted-file run; the full integration battery is the Lead's binding merge gate per the standing rule",
+      "owner": "the Lead's independent merge battery"
+    }
+  ],
+  "notes": [
+    "STAGE SPLIT (honest, CLOSED): F-a-4a delivered the stage-1 implementation (the chain follower, the landed-surface audit, the landing-chain finding, the fixture matrix) with this record as an EMPTY-by-design skeleton; stage 2 (this finalization, executed directly by the Lead after four dispatch deaths — F-a turn-ceiling, F-a-2 tool-outage, F-a-3 turn-ceiling, then the healthy F-a-4a stage-1) ran the full verification battery with the exact numbers now in verifiedLocally, appended the PUBLIC-DEPLOYMENT.md §13.9 landing-audit addendum, and banked the push + PR per the completion protocol.",
+    "DESIGN — the 3-hop budget (MAX_LANDING_REDIRECT_HOPS = 3, the named constant): one fetch per iteration, the start URL itself counted; a chain is followable only if it terminates within 3 same-origin fetches (307->HTML = 2 fetches, 307->307->HTML = 3, one redirect more = budget-exceeded).",
+    "DESIGN — same-origin only: each hop's Location is resolved against the current URL and its origin compared with the harness's ctx.targetUrl origin; a cross-origin hop STOPS the chain (kind \"cross-origin\", the honest not-run — cross-origin following is out of audit scope, owner the Lead) and is NEVER fetched.",
+    "DESIGN — the landing-chain finding class (severity major, defectClass \"landing-chain\", added to the closed defect-class vocabulary 14 -> 15 with the contract test's count pin moved): a redirect LOOP, an over-budget chain or an unreachable hop means a real browser fails to land too — a FINDING plus a fail step, never a silent not-run.",
+    "DESIGN — the honest terminal shapes: an HTML terminal gets the EXACT existing discover-landing treatment (the full dimension audit + titleOf, over the chain's own terminal fetch — auditSurface was split into fetch + auditFetchedSurface so no second landing request is made, and the direct HTML landing path stays byte-equivalent through the shared recordHtmlLanding); a non-HTML terminal keeps today's honest not-run extended with the chain facts; the cross-origin hop records the honest not-run with the Lead owner.",
+    "DESIGN — the \"unreachable\" chain kind: the work order's three terminal shapes do not enumerate a mid-chain transport failure; the follower records it honestly (the landing-chain finding with the transport error in the observed) rather than misclassifying it as a served non-HTML terminal.",
+    "DESIGN — the evidence disclosure: StepEvidence gained an optional \"location\" field, set only when an answer carries a Location header (non-redirect answers stay byte-identical to HEAD); every hop's status + raw Location is disclosed in the step's observed string and the finding's evidence string.",
+    "THE FIXTURE MATRIX (tests/integration/journey/landing-audit.test.ts): six scenarios on a local random-port fixture server — /direct (200 HTML), /one-hop (307 -> /direct), /two-hops (307 -> 307 -> /direct), /loop-a <-> /loop-b (the cycle), /over-budget (the 5-redirect chain ob1..ob4 -> /direct), /cross-origin (307 -> http://external.example.invalid/landing) — driving followLandingChain DIRECTLY (DB-free, no journey run); the LIVE re-run is the Lead's MEASURE step at the wave's redeploy.",
+    "DISPATCH HISTORY: F-a died at its turn ceiling at 0% (no artifacts); F-a-2 died in a tool-session outage at 0% (no artifacts); F-a-3 died at its turn ceiling at 0% (no artifacts — the F-survey-2 ground truth confirmed the same clean base each time); F-a-4a is THIS stage-1 implementation (code + fixture matrix + this skeleton, one local commit; the battery + push + PR are the later stages')."
+  ]
+}

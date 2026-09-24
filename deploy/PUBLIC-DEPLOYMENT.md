@@ -1295,6 +1295,44 @@ beyond this roadmap. The full chain evidence is
 `deploy/evidence/f1-closure.json` (+ `f1-closure-journey.json` +
 `f1-closure-smoke.json`).
 
+### 13.9 The landing-audit addendum (PPR-011 — §13.7/§13.8's recorded residual, 2026-09-23)
+
+§13.8's honest residual — "a redirect-following landing audit would be
+its own harness-contract work order if ever wanted" — is now that work
+order, delivered. The journey harness follows the plane's own redirect
+bridge manually and audits the surface the newcomer actually lands on:
+
+- **The chain follower** (`tests/journey/landing-chain.ts`): a bounded,
+  same-origin, `redirect: "manual"` walker — `MAX_LANDING_REDIRECT_HOPS
+  = 3` (the named budget; one fetch per hop, the start URL counted).
+  Every hop's status + raw `Location` header is disclosed in the step
+  evidence (`StepEvidence.location`): the 307 platform bridge is
+  DISCLOSED, never masked — nothing is auto-followed by fetch.
+- **The landed-surface audit**: an HTML chain terminal gets the EXACT
+  direct-landing treatment (the full dimension audit + `titleOf`) over
+  the chain's own terminal fetch — no second landing request is made;
+  the direct-HTML path stays byte-equivalent (the shared
+  `recordHtmlLanding`).
+- **The honest terminal shapes**: a non-HTML terminal keeps the honest
+  not-run, extended with the chain facts; a redirect LOOP or an
+  over-budget chain is a FINDING (`defectClass "landing-chain"`,
+  severity major — a real browser fails to land too; the closed
+  defect-class vocabulary extends 14 → 15 with the harness-contract pin
+  moved); a CROSS-ORIGIN hop stops the chain unfetched (out of audit
+  scope, owner the Lead); a mid-chain transport failure is recorded as
+  the landing-chain finding, never misclassified as a served terminal.
+- **The proof**: the six-scenario fixture matrix
+  (`tests/integration/journey/landing-audit.test.ts` — direct HTML,
+  one-hop 307, two-hop 307, a redirect loop, an over-budget chain, a
+  cross-origin hop) green alongside the harness-e2e local-plane suite
+  on the PG rail; the full worker battery (typecheck 0 / lint at the
+  exact 3+68+8 baseline / unit 362f-6375t / governance OK /
+  `deploy:validate` valid at 97 variables) is
+  `deploy/evidence/ppr-011.json`.
+- **The live re-run** (the plane's `/` → `307 /console` bridge actually
+  followed to the console landing) is the Lead's MEASURE step at the
+  wave-F redeploy — honestly not-run until then.
+
 ## 15. The LiveKit realtime rail (PPR-009 — the first REAL external RealtimeRail)
 
 The provider-neutral `RealtimeRail` port (WORK-024/MOD-005) now has a

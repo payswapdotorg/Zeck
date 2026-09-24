@@ -37,7 +37,9 @@ export function sha256Of(input: string): string {
  * Fetch one surface over real HTTP. Transport failures are OBSERVED
  * (ok=false, evidence.transportError carries the exact reason) — the
  * caller records the reachability fact; the harness never crashes on
- * an unreachable target.
+ * an unreachable target. Redirect answers are NEVER auto-followed
+ * (redirect: "manual"); when the answer carries a Location header it
+ * is recorded in the evidence (PPR-011's landing-chain disclosure).
  */
 export async function fetchSurface(
   url: string,
@@ -55,11 +57,13 @@ export async function fetchSurface(
       signal: controller.signal,
     });
     const body = await response.text();
+    const locationHeader = response.headers.get("location");
     const evidence: StepEvidence = {
       url,
       method: request.method ?? "GET",
       status: response.status,
       contentType: response.headers.get("content-type"),
+      ...(locationHeader === null ? {} : { location: locationHeader }),
       bodySha256: sha256Of(body),
       durationMs: Date.now() - started,
     };

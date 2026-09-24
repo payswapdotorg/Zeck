@@ -36,6 +36,11 @@ export const DEFECT_CLASSES: readonly DefectClass[] = Object.freeze([
       "a public route answered outside its honest boundary semantics (expected 401 AUTHENTICATION_FAILED, 422 CAPABILITY_UNAVAILABLE or the 200 public artifact)",
   },
   {
+    id: "landing-chain",
+    description:
+      "a landing redirect-chain defect on the plane's root bridge (a loop, a chain exceeding the hop budget or an unreachable hop — a real browser fails to land too)",
+  },
+  {
     id: "navigation",
     description:
       "an experience-surface link graph defect (a served page's internal navigation target does not answer, or a required structural navigation landmark is absent)",

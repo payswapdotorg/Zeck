@@ -33,6 +33,8 @@ export interface StepEvidence {
   readonly method: string;
   readonly status: number | null;
   readonly contentType: string | null;
+  /** Present only when the answer carries a Location header (PPR-011's manual-redirect disclosure). */
+  readonly location?: string;
   readonly bodySha256: string | null;
   readonly durationMs: number;
   /** Present only when transport failed (the fail-closed reachability fact). */
