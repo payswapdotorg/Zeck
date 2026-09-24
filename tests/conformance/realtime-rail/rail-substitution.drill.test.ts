@@ -38,14 +38,17 @@ import { createInProcessRealtimeRail } from "../../../src/modules/deployments/ad
 import {
   createLiveKitRealtimeRail,
   LIVEKIT_FAILURE_NORMALIZATION,
+  LIVEKIT_RAIL_CAPABILITY_ID,
   type LiveKitRealtimeRail,
   LOCAL_LIVEKIT_SERVER_LABEL,
 } from "../../../src/modules/deployments/adapters/livekit-realtime-rail";
+import { createRealtimeRailRebindComposition } from "../../../src/modules/deployments/adapters/realtime-rail-rebind-binding";
 import {
   bootEmbeddedSocketIoServer,
   createSocketIoRealtimeRail,
   LOCAL_SOCKETIO_SERVER_LABEL,
   SOCKETIO_FAILURE_NORMALIZATION,
+  SOCKETIO_RAIL_CAPABILITY_ID,
   type SocketIoRailEmbeddedServer,
   type SocketIoRealtimeRail,
 } from "../../../src/modules/deployments/adapters/socketio-realtime-rail";
@@ -416,6 +419,248 @@ describe("the rail substitution drill (GAP-003's level-5 rung)", () => {
       // proven by its own conformance subject; the primary leg needs
       // the open-source livekit-server binary
       // (ZECK_LIVEKIT_SERVER_BIN, default /tmp/livekit-server).
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// THE POLICY SEAM (PPR-013 — this drill's recorded residual, now a
+// governed work order delivered): the same substitution scenario
+// driven through the composition AUTO-REBIND POLICY instead of the
+// operator's hands. The rails are the same REAL pair as the drill
+// above; the difference is WHO performs the substitution — the
+// POLICY, inside the composition, behind the same neutral port:
+// the preference (LiveKit preferred, socket.io alternate), ONE
+// bounded re-bind per open on a RETRYABLE normalized refusal under
+// the same coordinates + the same stable key, and NO mid-session
+// flapping (a session lives on the rail that opened it).
+// ---------------------------------------------------------------------------
+describe("the rail substitution drill — the POLICY seam (PPR-013)", () => {
+  const POLICY_LIVEKIT_PORT = 7897; // NOT 7895 (this file's drill) nor 7891 (the livekit conformance suite).
+
+  test.skipIf(!livekitAvailable)(
+    "(f→h) prefer the primary, ONE bounded re-bind on a real refusal, no mid-session flapping",
+    { timeout: 30_000 },
+    async () => {
+      let server: ChildProcess | null = null;
+      let alternateHost: SocketIoRailEmbeddedServer | null = null;
+      let alternate: SocketIoRealtimeRail | null = null;
+      try {
+        server = spawn(LIVEKIT_SERVER_BIN, [
+          "--dev",
+          "--port",
+          String(POLICY_LIVEKIT_PORT),
+          "--bind",
+          "127.0.0.1",
+        ]);
+        server.on("error", () => {
+          server = null;
+        });
+        const deadline = Date.now() + 10_000;
+        for (;;) {
+          if (Date.now() > deadline) {
+            throw new Error(
+              "the policy drill's local livekit-server did not become reachable within 10s",
+            );
+          }
+          const reachable = await new Promise<boolean>((resolve) => {
+            const socket = createConnection(
+              { host: "127.0.0.1", port: POLICY_LIVEKIT_PORT, timeout: 500 },
+              () => {
+                socket.destroy();
+                resolve(true);
+              },
+            );
+            socket.on("error", () => resolve(false));
+            socket.on("timeout", () => {
+              socket.destroy();
+              resolve(false);
+            });
+          });
+          if (reachable) {
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+        if (server?.pid === undefined) {
+          throw new Error("the policy drill's livekit-server process is not running");
+        }
+        const primary = createLiveKitRealtimeRail({
+          serverUrl: `http://127.0.0.1:${POLICY_LIVEKIT_PORT}`,
+          credentialSource: livekitCredentialSource,
+          requestTimeoutSeconds: 2,
+        });
+        alternateHost = await bootEmbeddedSocketIoServer({});
+        alternate = createSocketIoRealtimeRail({
+          listenUrl: alternateHost.url,
+          embeddedServer: alternateHost,
+          credentialSource: {
+            resolve: async () => ({
+              connectionId: "policy-drill-socketio-connection",
+              credentialRef: "zeck-secret://local/socketio-auth-secret",
+            }),
+            materialize: async (reference: string) => ({
+              reference,
+              plaintext: JSON.stringify({
+                authSecret: "sk-socketio-policy-drill-0000000000000003",
+              }),
+            }),
+          },
+          requestTimeoutMs: 1_500,
+        });
+        const { rail, rebinds, servedBy } = createRealtimeRailRebindComposition({
+          preferred: primary,
+          alternate,
+        });
+
+        // (f) OPEN through the POLICY on the preferred (the REAL local
+        // livekit-server) — no rebind, the preferred disclosed.
+        const openKeyOne = realtimeRailOpenKey("policy-drill-open-0001");
+        const first = await rail.openSession(drillOpenRequest(openKeyOne));
+        expect(first.replayed).toBe(false);
+        expect(rebinds()).toEqual([]);
+        expect(servedBy(first.channelSessionRef)).toBe(LIVEKIT_RAIL_CAPABILITY_ID);
+        expect(rail.descriptor.railCapabilityId).toBe(LIVEKIT_RAIL_CAPABILITY_ID);
+
+        // (g) REFUSE the preferred for real: TERMINATE the
+        // livekit-server — new connections are then REFUSED, the
+        // honest retryable capacity event (ECONNREFUSED → the neutral
+        // unreachable class). NOT SIGSTOP: a frozen-but-listening
+        // upstream turns the bounded request timeout into a TimeoutError
+        // that normalizes as upstream-error — NON-retryable, and the
+        // policy CORRECTLY never re-binds on it (verified during this
+        // drill's development). Then OPEN a NEW session through the
+        // POLICY: ONE bounded re-bind onto the REAL alternate under
+        // the new key's own coordinates, the alternate disclosed.
+        const exited = new Promise<void>((resolve) => {
+          if (server === null) {
+            resolve();
+            return;
+          }
+          server.once("exit", () => resolve());
+        });
+        process.kill(server.pid, "SIGTERM");
+        await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 3_000))]);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const openKeyTwo = realtimeRailOpenKey("policy-drill-open-0002");
+        const second = await rail.openSession(drillOpenRequest(openKeyTwo));
+        expect(second.replayed).toBe(false);
+        expect(servedBy(second.channelSessionRef)).toBe(SOCKETIO_RAIL_CAPABILITY_ID);
+        expect(rail.descriptor.railCapabilityId).toBe(SOCKETIO_RAIL_CAPABILITY_ID);
+        const events = rebinds();
+        expect(events).toHaveLength(1);
+        expect(events[0]).toEqual({
+          idempotencyKey: openKeyTwo,
+          fromRailCapabilityId: LIVEKIT_RAIL_CAPABILITY_ID,
+          toRailCapabilityId: SOCKETIO_RAIL_CAPABILITY_ID,
+          reason: "realtime rail upstream unreachable",
+        });
+
+        // (h) NO MID-SESSION FLAPPING: session one's frames STILL follow
+        // its (now dead) primary and are refused NEUTRALLY there — the
+        // policy does NOT flap them onto the healthy alternate that
+        // just won the re-bind (masking a dead rail would violate the
+        // honest-failure discipline); session two serves on the
+        // alternate that opened it.
+        const deliverKeyOne = realtimeRailDeliverKey("policy-drill-deliver-0001");
+        const firstDelivery = await rail.deliverTurn(
+          drillDelivery("policy-drill-session", first.channelSessionRef, deliverKeyOne),
+        );
+        expect(firstDelivery.delivered).toBe(false);
+        if (!firstDelivery.delivered) {
+          expect(firstDelivery.reason).toBe("realtime rail upstream unreachable");
+          expect(firstDelivery.reason).not.toMatch(/livekit|twirp|grpc|webrtc|participant/i);
+        }
+        // The alternate served NOTHING for session one — no flap. (The
+        // observation readers are live per protocol-state generation,
+        // and this host's state was installed by the re-bind open —
+        // the ABSOLUTE count on this fresh host is the honest check.)
+        expect(alternateHost.observe().countDeliveriesCompleted()).toBe(0);
+        const deliverKeyTwo = realtimeRailDeliverKey("policy-drill-deliver-0002");
+        const secondDelivery = await rail.deliverTurn(
+          drillDelivery("policy-drill-session", second.channelSessionRef, deliverKeyTwo),
+        );
+        expect(secondDelivery.delivered).toBe(true);
+        // ...and exactly ONE delivery EVER on this fresh host: session
+        // two's. Session one's frame never reached it.
+        expect(alternateHost.observe().countDeliveriesCompleted()).toBe(1);
+
+        // CLOSE both sessions through the POLICY — each on its own
+        // rail: session two closes on the live alternate; session
+        // one's close follows its dead primary and is refused
+        // neutrally (the same no-flap rule, honestly recorded).
+        const closeKeyOne = realtimeRailCloseKey("policy-drill-close-0001");
+        const closeKeyTwo = realtimeRailCloseKey("policy-drill-close-0002");
+        const firstClose = await rail.closeSession({
+          applicationId: DRILL_APPLICATION,
+          sessionId: "policy-drill-session",
+          channelSessionRef: first.channelSessionRef,
+          channelEpoch: first.channelEpoch,
+          idempotencyKey: closeKeyOne,
+          cause: "policy drill complete",
+        });
+        const secondClose = await rail.closeSession({
+          applicationId: DRILL_APPLICATION,
+          sessionId: "policy-drill-session",
+          channelSessionRef: second.channelSessionRef,
+          channelEpoch: second.channelEpoch,
+          idempotencyKey: closeKeyTwo,
+          cause: "policy drill complete",
+        });
+        expect(firstClose.delivered).toBe(false);
+        if (!firstClose.delivered) {
+          expect(firstClose.reason).toBe("realtime rail upstream unreachable");
+        }
+        expect(secondClose.delivered).toBe(true);
+        // The primary's own effect log holds exactly its ONE successful
+        // open — session one's refused frame and close performed no
+        // upstream effect there (a refusal is not a side effect), and
+        // the alternate's registry holds session two's effects only.
+        expect(primary.upstreamEffects.filter((effect) => effect.kind === "open")).toHaveLength(1);
+
+        // The policy drill record — the honest summary of exactly what ran.
+        // eslint-disable-next-line no-console
+        console.log(
+          "policy-seam drill record:",
+          JSON.stringify(
+            {
+              preferredRail: `${LOCAL_LIVEKIT_SERVER_LABEL} (REAL)`,
+              alternateRail: `${LOCAL_SOCKETIO_SERVER_LABEL} (REAL — always)`,
+              refusalInjection:
+                "sigterm-livekit-server (connection refused ⇒ retryable unreachable)",
+              boundedRebind: "one-per-open-invocation",
+              midSessionFlapping:
+                "none — session one's frames followed its dead primary and were refused neutrally",
+            },
+            null,
+            2,
+          ),
+        );
+      } finally {
+        if (server?.pid !== undefined) {
+          try {
+            process.kill(server.pid, "SIGCONT");
+          } catch {
+            // Already gone.
+          }
+          try {
+            process.kill(server.pid, "SIGTERM");
+          } catch {
+            // Already gone.
+          }
+        }
+        await alternate?.close();
+        await alternateHost?.close();
+      }
+    },
+  );
+
+  if (!livekitAvailable) {
+    test.skip("the policy-seam leg (no local livekit-server binary — the unit battery's REAL-rail policy proof stands; this leg is honestly not run)", () => {
+      // The honest-skip record: the policy's REAL-rail failover is
+      // proven by the unit battery (a dead preferred LiveKit endpoint
+      // re-binding onto the REAL embedded socket.io rail); this leg
+      // adds the REAL livekit-server primary and skips without it.
     });
   }
 });

@@ -107,6 +107,18 @@ import { createPolicyMessagingAdmission } from "./adapters/policy-messaging-admi
 import { createPolicyRealtimeAdmission } from "./adapters/policy-realtime-admission";
 import { createRealtimeExecutionLedgerAdapter } from "./adapters/realtime-execution-ledger";
 import { createRealtimeModalityAdapter } from "./adapters/realtime-modality-adapter";
+// PPR-013: the composition auto-rebind policy binding (PPR-010's
+// explicitly-deferred residual) — additive, nothing vendor-shaped
+// crosses this barrel.
+import {
+  bindEnvironmentRealtimeRailWithRebind,
+  createRealtimeRailRebindComposition,
+  type RealtimeRailRebindBindingKind,
+  type RealtimeRailRebindComposition,
+  type RealtimeRailRebindEnvironmentBinding,
+  type RealtimeRailRebindEvent,
+  type RealtimeRebindRailKind,
+} from "./adapters/realtime-rail-rebind-binding";
 // PPR-010: the socket.io ALTERNATE realtime rail adapter's NEUTRAL
 // surface (all vendor package types stay inside the adapter file;
 // nothing vendor-shaped crosses this barrel).
@@ -853,8 +865,13 @@ export type {
   RealtimeRailDeliveryOutcome,
   RealtimeRailDescriptor,
   RealtimeRailEnvironmentBinding,
+  RealtimeRailRebindBindingKind,
+  RealtimeRailRebindComposition,
+  RealtimeRailRebindEnvironmentBinding,
+  RealtimeRailRebindEvent,
   RealtimeRailSession,
   RealtimeRailSessionRequest,
+  RealtimeRebindRailKind,
   RealtimeRouteClass,
   RealtimeSecretMediation,
   RealtimeSecretMediationOutcome,
@@ -908,6 +925,9 @@ export type {
 // provider SDK types never do).
 export {
   bindEnvironmentRealtimeRail,
+  // PPR-013: the composition auto-rebind policy (PPR-010's deferred
+  // residual) — preference + ONE bounded re-bind behind the same port.
+  bindEnvironmentRealtimeRailWithRebind,
   bindEnvironmentSocketIoRail,
   // PPR-010: the socket.io ALTERNATE realtime rail (the second REAL
   // rail — GAP-003's level-5 substitution evidence) + its gate.
@@ -959,6 +979,7 @@ export {
   createPolicyRealtimeAdmission,
   createRealtimeExecutionLedgerAdapter,
   createRealtimeModalityAdapter,
+  createRealtimeRailRebindComposition,
   createRealtimeSessionService,
   createSocketIoRealtimeRail,
   createSqlEnvironmentResolver,
