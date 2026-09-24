@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-009",
+  "recordKind": "lead-credentialed-external-run (the §15 admin/server-SDK rung — ppr-009.json notRun[0]'s owner, the second credentialed addendum)",
+  "title": "The LiveKit EXTERNAL admin/server-SDK conformance proof — the full C1-C12 contract over the operator's managed plane with the delivered API keypair",
+  "recordedBy": "Lead (the successor program's §15 credentialed run: the admin/server-SDK external rung)",
+  "environment": "EXTERNAL managed LiveKit Cloud — wss://zeck-vuo9lv9v.livekit.cloud (non-loopback, real WSS/TLS transport, real Twirp RoomService admin surface through the published livekit-server-sdk 2.19.1)",
+  "date": "2026-09-24",
+  "baseRevision": "232b7978aabe30aa76c507d42f397e9f2836ae93",
+  "branch": "work/PPR-009-managed-credentialed-run",
+  "doctrine": "The evidence ladder's rule, unchanged: record exactly what the delivered credentials permit, never more. The owner delivered the FULL API keypair (the rotated key ID + its secret) for the managed plane — the exact outstanding credential of ppr-009.json's notRun registry and §15's operator sequence. That keypair authorizes the admin/server-SDK surface (RoomService create/list/delete + access-grant minting); it does NOT by itself deploy the rail onto the hosting plane (that is §13's redeploy chain, a separate credential's concern) and it does NOT mint model-family credentials (GAP-002, operator-owned, unchanged).",
+  "credentialFacts": {
+    "endpoint": "wss://zeck-vuo9lv9v.livekit.cloud (non-secret; the managed project tied to this repository's program)",
+    "keypairDelivered": true,
+    "deliveryShape": "the operator's session message; stored ONLY in the Lead's local credential store (~/.secrets, mode 0600) and exported as the §15 environment contract's ZECK_LIVEKIT_URL / ZECK_LIVEKIT_API_KEY / ZECK_LIVEKIT_API_SECRET for the run — never in this repository, never in an assertion message, never in a port-crossing shape",
+    "keyRotationNote": "the key ID was ROTATED relative to the pre-reset delivery (the participant-join addendum's issuer); both deliveries' planes are the same namespace",
+    "verifiedBeforeUse": "Twirp RoomService ListRooms/CreateRoom/DeleteRoom probes all HTTP 200 with the delivered keypair before any suite run (the pre-flight verification; a join token minted on the plane)"
+  },
+  "harness": {
+    "artifact": "tests/conformance/realtime-rail/livekit-managed-rail.credentialed.test.ts (the reproducible, CI-safe harness)",
+    "envGate": "the composition gate's OWN reader (readLiveKitRailMaterialization over the §15 environment contract's three variables) — the exact production materialization decision; unmaterialized environments honestly skip (CI-safe, zero credentials required)",
+    "binding": "createEnvironmentLiveKitCredentialSource — the same environment-backed credential source the composition binding constructs; the adapter materializes the keypair inside its own scope",
+    "contract": "the SAME defineRealtimeRailConformance C1-C12 suite the simulated rail, the local livekit-server rail, and the socket.io rail pass — one contract, a fourth subject",
+    "managedPlaneHonesty": {
+      "eventualConsistency": "the managed plane's room list propagates on the order of seconds (measured: fresh rooms absent at 0.3s/1s, present by 2.5-6s typical, tails beyond 8s observed in this run's forensics); the corroboration therefore polls BOUNDED (15s) for appearance and close-seam removal, and its count check is a BASELINE-RELATIVE BOUND (never immediate equality)",
+      "noSignalLevelRefusal": "the managed plane cannot be SIGSTOPped; C9/C10 run through the contract's own conditional path (subjects without armRefusal return early) — the refusal-normalization coverage itself stays pinned by the local-rail and simulated-rail subjects of the same contract",
+      "crashModel": "restart() builds a FRESH adapter (fresh in-memory delivery ledger — the adapter process died) against the SAME plane; the re-open under the same key converges server-side by room identity",
+      "cleanup": "delete-by-name from the adapter's own effect log (the deterministic room names; deleteRoom is propagation-independent) + a list-based catch-all + a clean-observation survival window; the plane is left CLEAN (post-run probe: zero rooms)"
+    }
+  },
+  "runs": [
+    {
+      "run": 1,
+      "outcome": "13/13 green in 32.0s; the post-run probe found ONE leftover room — the afterAll's single list+delete pass raced the plane's eventual consistency (the last test's room create had not yet propagated into the room list when cleanup listed it)",
+      "correction": "the cleanup was hardened: a beforeAll baseline+hygiene pass (prior-run artifacts counted and deleted), a baseline-relative count bound, and a propagation-aware afterAll"
+    },
+    {
+      "run": 2,
+      "outcome": "13/13 green in 35.7s; the plane left clean (zero rooms)"
+    },
+    {
+      "run": 3,
+      "outcome": "13/13 green in 33.6s; the post-run probe again found ONE leftover — the create-propagation TAIL outlasted the 8s clean-observation window (a rarer, real tail of the same eventual-consistency clock)",
+      "correction": "the cleanup was made propagation-proof: every room the adapter's effect log names is deleted BY NAME (deleteRoom by name works regardless of list visibility) before the list-based catch-all and survival window run"
+    },
+    {
+      "run": 4,
+      "outcome": "13/13 GREEN in 46.0s ON THE FINAL TREE — the recorded run: C1-C12 through the contract (C9/C10 via the conditional path), idempotency convergence including the crash-model restart, exactly-once upstream effects (the adapter's effect log), the managed-plane corroboration (fresh open → bounded propagation poll → containment + baseline-relative count bound + close-seam removal), and the client-access seam (a real short-lived single-purpose join grant MINTED on the plane with the delivered keypair); the canaries (the REAL key + secret) never crossed the seam (C11)",
+      "postRunProbe": "the plane left CLEAN — zero zeckrt-* rooms (verified 10s after suite exit)"
+    }
+  ],
+  "leadIndependentBattery": {
+    "typecheck": "0 errors (tsc --noEmit, the GOMEMLIMIT=1300MiB GOGC=30 invocation)",
+    "lint": "EXACTLY the base's 3 errors + 68 warnings + 8 infos — ZERO NEW (biome root-scoped to this repository; the harness's two initial organize-imports/format diagnostics were auto-fixed before the recorded run)",
+    "conformanceDirCIForm": "27 passed + 32 honestly skipped + 0 failed (no credentials in the CI environment: the local livekit-server binary absent, the managed credential set unmaterialized — both subjects skip with explicit reasons)",
+    "governance": "OK — 60 work orders / 110 requirements / inFlight=[] / frontier=[]",
+    "deployValidate": "valid=true / 0 problems / 97 variables"
+  },
+  "notRun": [
+    {
+      "id": "the-full-§15-sequence",
+      "what": "the §15 operator sequence's DEPLOYMENT leg: re-materializing the LiveKit credential set on the HOSTING plane (the Vercel project's environment) through §13.3/§13.6 and running the realtime journeys against the deployed plane with the rail composition-bound",
+      "owner": "Lead (the §13 redeploy chain) once the plane redeploy executes — the hosting token was delivered alongside this keypair; the chain is the next governed move",
+      "blocker": "the redeploy quota window (§13.10's rolling-24h per-user quota) and the redeploy chain itself, NOT a LiveKit credential"
+    },
+    {
+      "id": "the-local-livekit-server-binary-suite",
+      "what": "the LOCAL open-source livekit-server subject of the same contract (SIGSTOP refusal injection, immediate-consistency corroboration)",
+      "owner": "any environment that places the binary at ZECK_LIVEKIT_SERVER_BIN",
+      "blocker": "the binary is not present in this run's environment (the managed-plane subject is this run's scope; the local subject remains independently runnable)"
+    }
+  ],
+  "notes": "GAP-001's external rung is now CREDENTIALED ON BOTH RUNGS the delivered keypair permits: the participant-join rung (ppr-009-live-join.json) and the admin/server-SDK rung (this record). The composition binding's fail-closed design is unchanged and verified from the OUTSIDE: the same gate that honestly skipped in CI form materialized the real rail for the credentialed run without a single repository change. The eventual-consistency doctrine is recorded here for every future managed-plane harness: poll bounded for appearance AND removal, bound counts relative to a measured baseline, delete by name when the name is knowable, and let a clean observation SURVIVE a propagation window before declaring the plane clean."
+}
