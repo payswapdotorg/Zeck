@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-009",
+  "recordKind": "lead-credentialed-deployment (the §15 operator sequence's deployment leg + the quota-bound exact-head redeploy at the advanced head)",
+  "title": "The §13.6 redeploy chain at the advanced head + the LiveKit credential set materialized on the hosting plane — §15's deployment leg executed to its honest boundary",
+  "recordedBy": "Lead (the successor program's credentialed run: the redeploy chain + the §15 deployment leg)",
+  "environment": "preview (the public plane https://zeck-preview-main.vercel.app, Vercel project zeck-preview-main, production target) + EXTERNAL managed LiveKit Cloud (wss://zeck-vuo9lv9v.livekit.cloud)",
+  "date": "2026-09-24",
+  "baseRevision": "1685fe936813b51ffba23a46233fc0506f2a45d5",
+  "branch": "work/PPR-009-managed-credentialed-run (merged --no-ff to main as 1685fe9)",
+  "doctrine": "The §4 no-silent-paid-overage rule (the quota window re-queried before any attempt) + the evidence ladder's rule (record exactly what the delivered credentials permit). The operator delivered the hosting token alongside the keypair; the standing plan (the 232b797 turnkey state) was: check the window arithmetic -> deploy the standing artifact -> smoke + journey at the landed revision -> the one-line record — executed here at the head the PPR-009 merge advanced to.",
+  "chain": [
+    {
+      "step": "the window check",
+      "fact": "the rolling-24h window re-queried through the deployments API before any attempt: 63 in-window visible (webflix-api 18, webflix 18, aurum-chat 15, roamlink 9, sporta-realities-lab 2, zeck-preview-main 1) — the LOWEST recorded visible count (the successful wave-F re-attempt ran at 71; the refusals at 80-84); the hidden deleted-in-window mass (~21-29, the wave-F forensics' stable estimate) keeps the honest caveat: the attempt could still refuse; it did not"
+    },
+    {
+      "step": "the head advance (rebuild-if-the-tree-moved)",
+      "fact": "the tree advanced past the staged chain (232b797 -> 1685fe9, the PPR-009 managed credentialed run's merge) — the artifact was REBUILT at the head: deploy:build-vercel-output green (index.func 105 files / 355 specifiers; api/experience.func 178 files / 589 specifiers / 803 data files — the wave-F counts exactly)"
+    },
+    {
+      "step": "the §15 deployment leg's environment materialization",
+      "fact": "the LiveKit credential set CREATED on the plane's environment (both targets, the established encrypted pattern): ZECK_LIVEKIT_URL (y1e9XYZFCkCPTH2I) + ZECK_LIVEKIT_API_KEY (1ilYI9R4yKiHay35) + ZECK_LIVEKIT_API_SECRET (HufOoUXyirYpCCvJ) — the composition gate's own materialization decision now sees the full set on the plane; verified by env pull (the values round-trip as the delivered keypair's)"
+    },
+    {
+      "step": "the revision re-pin",
+      "fact": "ZECK_DEPLOY_GIT_REVISION re-pinned to 1685fe936813b51ffba23a46233fc0506f2a45d5 on BOTH env targets (production zjvUx2ETjlRFE6fp + preview qiBiy1MqpNEqLwyq) BEFORE the deploy — both PATCHes OK"
+    },
+    {
+      "step": "the two-function local artifact proof (the §13.6 documented entrypoints, the exact shipped bytes)",
+      "fact": "index.func node server.js (ZECK_ENVIRONMENT=preview, ZECK_DEPLOY_GIT_REVISION=1685fe936813..., VERCEL_GIT_COMMIT_REF=main, port 8891): boot record gitRevision 1685fe936813, environmentContract satisfied (routes 28), /identity BOUND at 1685fe9 (preview, runtimeIdentityId eea807bea3e0698f...), /health the honest fail-closed 503, POST /executions the honest 422 boundary (CAPABILITY_UNAVAILABLE, the Idempotency-Key contract); api/experience.func node api/experience.js (ZECK_EXPERIENCE_API_URL=<plane>, port 8892): tokenBound false (the honest unbound local rail), /console and / served as 200 HTML (titles 'Zeck — Developer console' / 'Zeck — Home'); both proof servers stopped, ports 8891/8892 freed — no stale squatters"
+    },
+    {
+      "step": "deploy",
+      "fact": "vercel deploy --prebuilt --prod — dpl_7ZGrxrteMesaJY4hA6P1mvbeRJm6 READY, aliased to https://zeck-preview-main.vercel.app; the plane's /identity attests gitRevision 1685fe936813 (preview, bound) — the 25e11f9 -> head revision lag CLOSED (the plane now serves the complete surface INCLUDING the PPR-009 credentialed-run records)"
+    },
+    {
+      "step": "the journey MEASURE re-run (the credentialed live proof)",
+      "fact": "bun tests/journey/run.ts --url <plane> --environment preview --branch main --expected-revision 1685fe936813... — EXIT 0: 12 journeys / 28 steps — 28 PASS / 0 fail / 0 NOT-RUN, findings 0, identity gate verified at 1685fe9, 22/22 workload-family disclosures SERVED, duration 209.6s; the five credentialed steps ran with the transport credential read from the plane's own environment (ZECK_TRANSPORT_TOKEN via env pull — the plane's declared value, not an invented credential); the self-scan clean"
+    },
+    {
+      "step": "the API plane acceptance",
+      "fact": "deploy:public-smoke EXIT 0, problems []: 26 routes probed (18 auth-boundary 401 / 3 capability-unbound 422 / 4 capability-seam ALL materialized-composition 401 / 1 public-artifact 200), transportReachable, identityBound + identityVerified at 1685fe9, healthStatus 200 with the honest degraded health (the F1-closure precedent shape — relational-state READY, the non-authoritative set in its declared degraded modes)"
+    },
+    {
+      "step": "the §15 deployment leg's honest boundary (the realtime rail on the plane)",
+      "fact": "the realtime-voice family journey (the documented rt-dialog example) executed against the deployed plane through the public API: execution COMPLETED via the preview-deterministic-substrate strategy (deterministic-only, 0 model calls, verification PASS) — and a live watcher on the managed plane's room list observed NO zeckrt-* room materialize: the deterministic substrate answers WITHOUT the streaming rail legs, exactly the example's recorded provider-gated boundary ('streaming realtime rail NOT RUN — no authorized WebSocket voice-session API in the provider set; the model families cover the ASR/TTS legs'). The composition gate's binding (real rail when the set materializes) is pinned by unit tests both ways and the credential set IS on the plane — the rail-open on the plane remains honestly NOT-RUN pending the model-family credentials (GAP-002, operator-owned, unchanged). The managed plane left CLEAN (zero rooms) after the probe"
+    }
+  ],
+  "closes": [
+    "the quota-bound exact-head redeploy standing plan (the 232b797 turnkey state: window arithmetic -> deploy -> smoke + journey -> the one-line record)",
+    "§15's deployment leg's ENVIRONMENT portion (the credential set materialized on the hosting plane, both targets, verified by round-trip)",
+    "the 25e11f9 -> head revision lag (the plane now attests 1685fe9)"
+  ],
+  "stillOpen": [
+    "the plane-side rail-open (a governed realtime session driving the composition-bound rail on the deployed plane) — provider-gated by the model families (GAP-002, operator-owned): the streaming/voice legs need an authorized model family; the deterministic substrate honestly answers without them",
+    "GAP-002's model families (operator-owned, unchanged)",
+    "GAP-003's live-plane substitution rung (unchanged)"
+  ],
+  "operatorNotice": "the plane is live/healthy/verified at the exact governed head 1685fe9 with the LiveKit credential set materialized; the journey and smoke are zero-problem; the remaining credential-bound residual is the model families (GAP-002) — the one credential whose delivery would let the realtime rail open live on the plane"
+}
