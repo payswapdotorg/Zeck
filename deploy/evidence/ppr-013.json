@@ -1,72 +1,72 @@
 {
   "schemaVersion": 1,
   "workOrder": "PPR-013",
-  "title": "The composition auto-rebind policy — PPR-010's explicitly-deferred residual (preference + ONE bounded re-bind behind the same port)",
+  "title": "The composition auto-rebind policy \u2014 PPR-010's explicitly-deferred residual (preference + ONE bounded re-bind behind the same port)",
   "recordedBy": "PPR-013 worker (Task ID F-c, wave F)",
   "environment": "local (the repository's own suites; the REAL-rail policy proofs use a dead preferred LiveKit endpoint + the REAL embedded socket.io server; the drill's policy seam uses the LOCAL open-source livekit-server as the REAL preferred rail)",
   "date": "2026-09-23",
   "branch": "work/PPR-013-auto-rebind-policy",
   "baseRevision": "6f17e012df265053b3a58c89cd1bac567c549940",
-  "doctrine": "The policy lives BELOW the frozen seam: the session service still calls ONE RealtimeRail, the port's shapes and the admission ordering (POLICY → CAPABILITY → BUDGET → SECRET MEDIATION → adapter) are untouched, and no failure is ever masked — non-retryable failures never re-bind.",
+  "doctrine": "The policy lives BELOW the frozen seam: the session service still calls ONE RealtimeRail, the port's shapes and the admission ordering (POLICY \u2192 CAPABILITY \u2192 BUDGET \u2192 SECRET MEDIATION \u2192 adapter) are untouched, and no failure is ever masked \u2014 non-retryable failures never re-bind.",
   "designDecisions": [
     {
-      "decision": "the preference order derives from the EXISTING materialization gates (zero new environment variables, zero manifest changes): the LiveKit set materializes ⇒ PREFERRED (PPR-009's primary); the socket.io set ⇒ ALTERNATE (PPR-010's alternate); only-socket.io ⇒ the alternate stands alone as the preferred; NOTHING materializes ⇒ EXACTLY today's simulated terminal fallback (the in-process rail, no policy in effect — rebinds is empty forever, pinned both ways)"
+      "decision": "the preference order derives from the EXISTING materialization gates (zero new environment variables, zero manifest changes): the LiveKit set materializes \u21d2 PREFERRED (PPR-009's primary); the socket.io set \u21d2 ALTERNATE (PPR-010's alternate); only-socket.io \u21d2 the alternate stands alone as the preferred; NOTHING materializes \u21d2 EXACTLY today's simulated terminal fallback (the in-process rail, no policy in effect \u2014 rebinds is empty forever, pinned both ways)"
     },
     {
-      "decision": "the ONE-rebind bound is structural: each openSession invocation starts at the standing preferred and may hop to the alternate AT MOST ONCE (only when a MATERIALIZED alternate exists — the unmaterialized gate's simulated rail is NEVER a failover target, because substituting a fake for a dead real rail would mask the capacity event); when the alternate also fails, its normalized PlatformError surfaces with the preferred's failure retained as the cause (code/message/retryability pass through unchanged)"
+      "decision": "the ONE-rebind bound is structural: each openSession invocation starts at the standing preferred and may hop to the alternate AT MOST ONCE (only when a MATERIALIZED alternate exists \u2014 the unmaterialized gate's simulated rail is NEVER a failover target, because substituting a fake for a dead real rail would mask the capacity event); when the alternate also fails, its normalized PlatformError surfaces with the preferred's failure retained as the cause (code/message/retryability pass through unchanged)"
     },
     {
-      "decision": "the re-bind trigger is the RETRYABLE NORMALIZED failure only (a PlatformError with retryable=true — the neutral failure vocabulary both real rails normalize onto); authentication, not-found, upstream-error and every non-normalized escape NEVER re-bind (an auth failure is not a capacity event); the SAME request object — the same coordinates, the same stable rail-level idempotency key — reaches the alternate (the drilled convergence: exactly-once PER RAIL, never cross-rail dedupe)"
+      "decision": "the re-bind trigger is the RETRYABLE NORMALIZED failure only (a PlatformError with retryable=true \u2014 the neutral failure vocabulary both real rails normalize onto); authentication, not-found, upstream-error and every non-normalized escape NEVER re-bind (an auth failure is not a capacity event); the SAME request object \u2014 the same coordinates, the same stable rail-level idempotency key \u2014 reaches the alternate (the drilled convergence: exactly-once PER RAIL, never cross-rail dedupe)"
     },
     {
-      "decision": "NO MID-SESSION FLAPPING: a session lives on the rail that opened it — deliverTurn/transferCall/closeSession route through a per-session in-memory affinity record (the channelSessionRef the open returned → the rail that produced it); only openSession may re-bind, and every new open starts at the standing preference (per-invocation, never sticky — a recovered preferred is retried); the composed rail's descriptor names the rail that served the most recent successful open (the standing preferred before any open) — the serving rail's own railCapabilityId IS the honest disclosure, zero port-shape changes; per-session truth is observable through the binding-level servedBy()/rebinds() accessors in the same neutral vocabulary"
+      "decision": "NO MID-SESSION FLAPPING: a session lives on the rail that opened it \u2014 deliverTurn/transferCall/closeSession route through a per-session in-memory affinity record (the channelSessionRef the open returned \u2192 the rail that produced it); only openSession may re-bind, and every new open starts at the standing preference (per-invocation, never sticky \u2014 a recovered preferred is retried); the composed rail's descriptor names the rail that served the most recent successful open (the standing preferred before any open) \u2014 the serving rail's own railCapabilityId IS the honest disclosure, zero port-shape changes; per-session truth is observable through the binding-level servedBy()/rebinds() accessors in the same neutral vocabulary"
     },
     {
       "decision": "the honest in-memory-affinity boundary: a frame for a channelSessionRef this process never opened (post-crash recovery of a session a previous process re-bound) routes to the STANDING PREFERRED rail and fails neutrally there if the preferred never saw that ref; the durable cross-rail ledger that would close this boundary is PPR-009's recorded residual, unchanged by this order"
     },
     {
-      "decision": "the composition wiring point, recorded honestly: NO composition consumer binds a realtime rail today (deploy/api.ts wires no RealtimeRail — surveyed for bindEnvironmentRealtimeRail/bindEnvironmentSocketIoRail/RealtimeRail: zero matches); the binding ships through the additive barrel exports (adapters/index.ts + deployments/public.ts, value imports wired) ready for the composition root, mirroring the existing gates' wiring pattern"
+      "decision": "the composition wiring point, recorded honestly: NO composition consumer binds a realtime rail today (deploy/api.ts wires no RealtimeRail \u2014 surveyed for bindEnvironmentRealtimeRail/bindEnvironmentSocketIoRail/RealtimeRail: zero matches); the binding ships through the additive barrel exports (adapters/index.ts + deployments/public.ts, value imports wired) ready for the composition root, mirroring the existing gates' wiring pattern"
     },
     {
-      "decision": "an empirical finding from the drill's development, recorded honestly: a SIGSTOP-frozen-but-listening livekit upstream turns the bounded request timeout into a TimeoutError that normalizes as upstream-error — NON-retryable — and the policy CORRECTLY never re-binds on it; the drill's refusal injection therefore TERMINATES the server (connection refused ⇒ the neutral unreachable class, retryable), which is also the more honest model of a capacity event"
+      "decision": "an empirical finding from the drill's development, recorded honestly: a SIGSTOP-frozen-but-listening livekit upstream turns the bounded request timeout into a TimeoutError that normalizes as upstream-error \u2014 NON-retryable \u2014 and the policy CORRECTLY never re-binds on it; the drill's refusal injection therefore TERMINATES the server (connection refused \u21d2 the neutral unreachable class, retryable), which is also the more honest model of a capacity event"
     }
   ],
   "verifiedLocally": [
     {
-      "proof": "the preference resolution (BOTH gates materialized; ONLY LiveKit; ONLY socket.io; NOTHING) — binding kind, preference order, non-secret URLs, the absent-pieces union, isRealRail, the standing preferred's railCapabilityId, and the secret hygiene (no credential value ever echoed)",
-      "result": "PASS — 5 tests (tests/unit/deployments/realtime-rail-rebind-binding.test.ts, the preference-resolution describe)"
+      "proof": "the preference resolution (BOTH gates materialized; ONLY LiveKit; ONLY socket.io; NOTHING) \u2014 binding kind, preference order, non-secret URLs, the absent-pieces union, isRealRail, the standing preferred's railCapabilityId, and the secret hygiene (no credential value ever echoed)",
+      "result": "PASS \u2014 5 tests (tests/unit/deployments/realtime-rail-rebind-binding.test.ts, the preference-resolution describe)"
     },
     {
-      "proof": "the simulated terminal fallback is EXACTLY today's shape: same neutral descriptor as bindEnvironmentRealtimeRail's empty-environment fallback, the open→deliver→close cycle with stable-key replay convergence, rebinds() empty forever, servedBy() null forever",
-      "result": "PASS — pinned both ways (the existing gates' own pins untouched + this binding's terminal pin)"
+      "proof": "the simulated terminal fallback is EXACTLY today's shape: same neutral descriptor as bindEnvironmentRealtimeRail's empty-environment fallback, the open\u2192deliver\u2192close cycle with stable-key replay convergence, rebinds() empty forever, servedBy() null forever",
+      "result": "PASS \u2014 pinned both ways (the existing gates' own pins untouched + this binding's terminal pin)"
     },
     {
       "proof": "the bounded failover policy over port-level stubs: ONE re-bind under the SAME coordinates + key (the same request object reaches both rails, asserted by identity), the alternate's answer passes through unmodified with its railCapabilityId disclosed (descriptor + servedBy), exactly one neutral-vocabulary rebind event; the same-key re-open converges on the alternate (exactly-once per rail, replayed=true, one first effect); authentication/not-found/raw-escape NEVER re-bind (the preferred's own failure is the composed answer, zero alternate opens); the double-failure surfaces the alternate's normalized PlatformError with the preferred's retained as the cause, one attempt per rail; a retryable failure with NO alternate surfaces the preferred's own failure",
-      "result": "PASS — 7 tests (the bounded-failover describe)"
+      "result": "PASS \u2014 7 tests (the bounded-failover describe)"
     },
     {
       "proof": "no mid-session flapping: after a re-bind, session one's deliver/transfer/close STILL follow the rail that opened it (the stubs' frame records prove the routing), session two's follow the alternate, and a frame for a never-opened ref follows the STANDING preferred (the in-memory-affinity boundary)",
-      "result": "PASS — 2 tests (the no-flapping describe)"
+      "result": "PASS \u2014 2 tests (the no-flapping describe)"
     },
     {
-      "proof": "the policy seam over the REAL rails: a dead preferred LiveKit endpoint (connection refused) re-binds ONCE onto the REAL embedded socket.io server — the session opens, delivers and closes on the alternate with the rebind event disclosing livekit-realtime-rail → socketio-realtime-rail, reason 'realtime rail upstream unreachable'",
-      "result": "PASS — 1 test (the REAL-rails describe, 331ms)"
+      "proof": "the policy seam over the REAL rails: a dead preferred LiveKit endpoint (connection refused) re-binds ONCE onto the REAL embedded socket.io server \u2014 the session opens, delivers and closes on the alternate with the rebind event disclosing livekit-realtime-rail \u2192 socketio-realtime-rail, reason 'realtime rail upstream unreachable'",
+      "result": "PASS \u2014 1 test (the REAL-rails describe, 331ms)"
     },
     {
-      "proof": "THE SUBSTITUTION DRILL EXTENDED THROUGH THE POLICY SEAM (the optional leg, delivered): the REAL local livekit-server as the preferred rail, the REAL embedded socket.io server as the alternate, the refusal injected for real (SIGTERM ⇒ connection refused ⇒ retryable unreachable) — the policy prefers the primary, re-binds ONCE under the new key's own coordinates, and session one's frames follow its DEAD primary and are refused NEUTRALLY there (never flapped to the healthy alternate), session two serves on the alternate (exactly one delivery ever on the fresh host)",
-      "result": "PASS — tests/conformance/realtime-rail/rail-substitution.drill.test.ts (f→h); the whole conformance family 42/42 green (11 simulated + 13 livekit + 15 socketio + 3 drill — the livekit subject booted the REAL local livekit-server, binary present)"
+      "proof": "THE SUBSTITUTION DRILL EXTENDED THROUGH THE POLICY SEAM (the optional leg, delivered): the REAL local livekit-server as the preferred rail, the REAL embedded socket.io server as the alternate, the refusal injected for real (SIGTERM \u21d2 connection refused \u21d2 retryable unreachable) \u2014 the policy prefers the primary, re-binds ONCE under the new key's own coordinates, and session one's frames follow its DEAD primary and are refused NEUTRALLY there (never flapped to the healthy alternate), session two serves on the alternate (exactly one delivery ever on the fresh host)",
+      "result": "PASS \u2014 tests/conformance/realtime-rail/rail-substitution.drill.test.ts (f\u2192h); the whole conformance family 42/42 green (11 simulated + 13 livekit + 15 socketio + 3 drill \u2014 the livekit subject booted the REAL local livekit-server, binary present)"
     },
     {
       "proof": "typecheck",
-      "result": "0 errors (tsc --noEmit; run with a capped compiler heap after two sandbox OOM kills — the resident console owns ~1GB per the ring doctrine, no code involvement)"
+      "result": "0 errors (tsc --noEmit; run with a capped compiler heap after two sandbox OOM kills \u2014 the resident console owns ~1GB per the ring doctrine, no code involvement)"
     },
     {
       "proof": "lint",
-      "result": "HEAD's EXACT 3 errors + 68 warnings + 8 infos — zero new from PPR-013 (biome format applied to the new/edited files)"
+      "result": "HEAD's EXACT 3 errors + 68 warnings + 8 infos \u2014 zero new from PPR-013 (biome format applied to the new/edited files)"
     },
     {
       "proof": "the unit battery",
-      "result": "363 files / 6390 tests / 0 failed (109.11s) — arithmetic exact over the 6f17e01 baseline: 362 files / 6375 tests + this order's 1 file / 15 proofs"
+      "result": "363 files / 6390 tests / 0 failed (109.11s) \u2014 arithmetic exact over the 6f17e01 baseline: 362 files / 6375 tests + this order's 1 file / 15 proofs"
     },
     {
       "proof": "governance + the manifest validator (NO manifest delta by design)",
@@ -76,7 +76,7 @@
   "notRun": [
     {
       "boundary": "the LIVE-PLANE failover (a real preferred rail bound on the deployed plane refusing, the composition re-binding to a real alternate on the plane)",
-      "owner": "the Lead after a real rail binds on the plane (the §13.6 redeploy chain + the credentialed rung)",
+      "owner": "the Lead after a real rail binds on the plane (the \u00a713.6 redeploy chain + the credentialed rung)",
       "note": "the policy's real-rail evidence is LOCAL-real only (the dead-endpoint/dead-server proofs above); no external availability is claimed or implied"
     },
     {
@@ -85,16 +85,17 @@
       "note": "the post-crash affinity boundary is recorded in the design decisions above: unknown refs route to the standing preferred and fail neutrally there"
     },
     {
-      "boundary": "the Lead's independent battery on the merged tree (the binding merge gate) and the composition-root wiring of the rebind binding (no composition consumer binds a realtime rail today — recorded above)",
+      "boundary": "the Lead's independent battery on the merged tree (the binding merge gate) and the composition-root wiring of the rebind binding (no composition consumer binds a realtime rail today \u2014 recorded above)",
       "owner": "the Lead (wave-F review chain)",
       "note": "the worker never merges; the barrel exports are additive and compile-verified"
     }
   ],
   "notes": [
-    "The frozen-seam guarantee held: src/modules/deployments/application/realtime-session-service.ts, src/modules/deployments/ports/realtime-rail.ts and the admission ordering are byte-identical to the base; the diff is the NEW binding + its unit proofs + the drill extension + this evidence + the additive barrel/public exports + the PUBLIC-DEPLOYMENT §17 append.",
+    "The frozen-seam guarantee held: src/modules/deployments/application/realtime-session-service.ts, src/modules/deployments/ports/realtime-rail.ts and the admission ordering are byte-identical to the base; the diff is the NEW binding + its unit proofs + the drill extension + this evidence + the additive barrel/public exports + the PUBLIC-DEPLOYMENT \u00a717 append.",
     "The existing adapters' internals are untouched: the rebind binding COMPOSES bindEnvironmentRealtimeRail + bindEnvironmentSocketIoRail through their public results (isRealRail/liveKitUrl/socketIoUrl/missing/rail).",
-    "The drill extension's observation lesson (recorded for future drills): the embedded server's observation readers are LIVE per protocol-state generation — the lazy rail boot installs a fresh state on first side effect, so before/after DELTA patterns only work across the boot boundary; absolute counts on a fresh host are the honest check.",
-    "the F-c dispatch hit its context deadline after implementation but before commit; the F-c-2 finalizer re-verified the standing tree's battery (typecheck/lint/unit/conformance/governance/deploy:validate — the exact numbers in this record's verification fields are the F-c-2 re-run's) and banked the delivery (commit + push + PR). F-c-2 nuance on the typecheck leg: the plain `bun run typecheck` invocation was OOM-SIGKILLed twice by the sandbox under the standing memory pressure (the resident console's ~1GB, per the ring doctrine — no orphaned test-plane servers found this time, nothing retired); the green 0-errors re-run is the SAME native tsc binary over the SAME tree under a Go-runtime memory limit (GOMEMLIMIT=1400MiB GOGC=30) — no code involvement, 0 errors reproduced.",
-    "the F-c-2 re-run's exact reproductions: lint EXACTLY 3 errors + 68 warnings + 8 infos; tests/unit/deployments 14 files / 346 tests 0 failed (the new rebind file alone 15/15); tests/conformance/realtime-rail 4 files / 42 tests 42/42 (the local livekit-server binary present at /tmp/livekit-server, so the livekit subject ran for real); the full unit battery 363 files / 6390 tests 0 failed (111.53s); governance OK (60 WOs / 110 requirements); deploy:validate valid=true, problems=[], environments=4, variables=97."
+    "The drill extension's observation lesson (recorded for future drills): the embedded server's observation readers are LIVE per protocol-state generation \u2014 the lazy rail boot installs a fresh state on first side effect, so before/after DELTA patterns only work across the boot boundary; absolute counts on a fresh host are the honest check.",
+    "the F-c dispatch hit its context deadline after implementation but before commit; the F-c-2 finalizer re-verified the standing tree's battery (typecheck/lint/unit/conformance/governance/deploy:validate \u2014 the exact numbers in this record's verification fields are the F-c-2 re-run's) and banked the delivery (commit + push + PR). F-c-2 nuance on the typecheck leg: the plain `bun run typecheck` invocation was OOM-SIGKILLed twice by the sandbox under the standing memory pressure (the resident console's ~1GB, per the ring doctrine \u2014 no orphaned test-plane servers found this time, nothing retired); the green 0-errors re-run is the SAME native tsc binary over the SAME tree under a Go-runtime memory limit (GOMEMLIMIT=1400MiB GOGC=30) \u2014 no code involvement, 0 errors reproduced.",
+    "the F-c-2 re-run's exact reproductions: lint EXACTLY 3 errors + 68 warnings + 8 infos; tests/unit/deployments 14 files / 346 tests 0 failed (the new rebind file alone 15/15); tests/conformance/realtime-rail 4 files / 42 tests 42/42 (the local livekit-server binary present at /tmp/livekit-server, so the livekit subject ran for real); the full unit battery 363 files / 6390 tests 0 failed (111.53s); governance OK (60 WOs / 110 requirements); deploy:validate valid=true, problems=[], environments=4, variables=97.",
+    "DELIVERY (the Lead's merge, 2026-09-24): merged --no-ff at 5f0d09c with the frozen seam verified byte-identical through the merge (ports/realtime-rail.ts + realtime-session-service.ts + admission ordering untouched); the Lead's independent battery surfaced TWO reconciliations outside the worker's scoped partition: (1) RT6's sanctioned adapter homes extended with the rebind composition binding (51b6786) \u2014 tests/architecture was not in the worker's battery and the new binding's vendor slug vocabulary (RealtimeRebindRailKind 'livekit'|'socketio' + the two binding imports) tripped the provider-neutrality pin; the sanctioned-home extension follows the PPR-010 precedent, zero assertion weakening; (2) the public-smoke strict-negative made load-deterministic (10c06cc) \u2014 an unrelated pre-existing flake surfaced by the full-suite load (the plane-boot 15s window exceeded under peak parallelism, the observed 25s run): the precondition is now deterministic (ZECK_PG_ADMIN_URL stripped \u2014 the only var the local plane's authority reads) and BOTH honest nonzero outcomes pinned. FINAL BATTERY at 10c06cc: typecheck 0 errors; lint EXACTLY 3+68+8 HEAD-exact zero new; the FULL suite on the PG rail EXIT 0 \u2014 683+1sk files / 9976+26sk tests / 0 failed / 515.63s (arithmetically exact: 9960 + 15 + 1), output captured; governance OK (60 WOs / 110 requirements); deploy:validate valid=true / 0 problems / 97 variables. The notRun entries owned by the Lead's binding gate are CLOSED; the live-plane failover rung stays credential-bound (the operator's LiveKit keypair, outbox record 4) and the durable cross-rail ledger stays PPR-009's recorded residual."
   ]
 }
