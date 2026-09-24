@@ -1511,6 +1511,42 @@ expired; no mint authority was delivered). The operator's next move to
 close the rung: deliver the API keypair through the environment's
 `ZECK_SECRET_LIVEKIT_API_KEY_REF` / `ZECK_SECRET_LIVEKIT_API_SECRET_REF`.
 
+**The second credentialed-run addendum (2026-09-24 — the
+admin/server-SDK rung)**. The owner delivered the FULL API keypair
+(the rotated key ID + its secret — the exact outstanding credential of
+the sequence above; verified before any run: Twirp RoomService
+ListRooms/CreateRoom/DeleteRoom all HTTP 200 against the managed
+plane). The Lead's credentialed harness
+(`tests/conformance/realtime-rail/livekit-managed-rail.credentialed.test.ts`)
+ran the SAME C1-C12 `defineRealtimeRailConformance` contract over the
+managed plane as a FOURTH subject — env-gated by the composition
+gate's OWN reader (unmaterialized environments honestly skip; the CI
+form is 27 passed + 32 skipped + 0 failed), bound through the same
+`createEnvironmentLiveKitCredentialSource` the composition constructs,
+with the REAL key + secret as the C11 canaries. **13/13 green on the
+final tree**: lifecycle, idempotency convergence including the
+crash-model restart (a fresh adapter against the same plane converges
+server-side by room identity), exactly-once upstream effects, C9/C10
+through the contract's conditional path (the managed plane cannot be
+SIGSTOPped — the refusal-normalization coverage stays pinned by the
+local-rail and simulated-rail subjects), the managed-plane
+corroboration, and the client-access seam minting a real short-lived
+single-purpose join grant ON the plane. The post-run probe: the plane
+left CLEAN (zero rooms). The full record — including the
+managed-plane doctrine this run pinned (the room list is EVENTUALLY
+CONSISTENT: propagation 2.5-6s typical with real tails beyond 8s, so
+harnesses must poll bounded for appearance AND removal, bound counts
+relative to a measured baseline, and delete rooms BY NAME from the
+adapter's own effect log rather than trusting list visibility) — is
+`deploy/evidence/ppr-009-managed-conformance.json`; GAP-001's external
+rung is CREDENTIALED on BOTH RUNGS the delivered keypair permits
+(participant-join + admin/server-SDK). **Still honestly NOT RUN**: the
+§15 sequence's DEPLOYMENT leg — re-materializing the credential set on
+the HOSTING plane and running the realtime journeys against the
+deployed plane with the rail composition-bound — which is the §13
+redeploy chain's concern (the hosting token is delivered; the quota
+window governs its timing), not a LiveKit credential's.
+
 ## 16. The alternate realtime rail + the substitution drill (PPR-010 — GAP-003's level-5 rung)
 
 The provider-independence iron law (neutral capability port →
