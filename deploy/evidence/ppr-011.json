@@ -8,16 +8,28 @@
   "branch": "work/PPR-011-landing-audit",
   "baseRevision": "6f17e01",
   "doctrine": "The honest-evidence law: nothing is auto-followed, masked or assumed — every redirect hop is fetched manually (redirect: \"manual\") and recorded with its status + Location; the 307 platform bridge is DISCLOSED in the evidence, never hidden behind an auto-follow; no live-plane claim is made from local fixtures.",
-  "verifiedLocally": [],
+  "verifiedLocally": [
+    "typecheck: 0 errors (tsc --noEmit over the full tree; the native compiler run under the F-c-2-documented memory-limit invocation GOMEMLIMIT=1300MiB GOGC=30 after retiring the two orphaned stale §13.6 artifact-proof servers on 8891/8892 — the Task-76 precedent — the plain invocation was OOM-SIGKILLed twice under the standing sandbox pressure with the operator console resident)",
+    "lint: EXACTLY 3 errors + 68 warnings + 8 infos — HEAD-exact parity with the 6f17e01 base, ZERO NEW (the 3 errors are the pre-existing evidence-JSON format diffs ppr-003-live/ppr-006/ppr-009; every new/touched code file biome-clean)",
+    "unit suite: 362 files / 6375 tests / 0 failed (108.64s) — exact base parity (PPR-011 adds no unit files; the harness-contract pin update lives inside the existing file)",
+    "journey integration on the PG rail (127.0.0.1:55432 via ZECK_PG_TEST_URL only, the established invocation): tests/integration/journey — 2 files / 16 tests / 0 failed — harness-e2e 9/9 (the local-plane run, real deploy/api.ts over real HTTP, the two discover-landing shapes unchanged) + landing-audit 7/7 (the six-scenario fixture matrix + the named-constant hop-budget pin)",
+    "governance:check: OK — 60 Work Orders / 110 requirements / inFlight=[] / frontier=[]",
+    "deploy:validate: valid=true / 0 problems / 4 environments / 97 variables — NO manifest delta (the audit reads no new environment)"
+  ],
   "notRun": [
     {
-      "boundary": "the live-plane re-run",
+      "boundary": "the live-plane re-run (the plane's / -> 307 /console bridge actually followed to the console landing)",
       "reason": "the wave-level redeploy + journey MEASURE re-run is the Lead's",
       "owner": "the Lead's wave-F redeploy + journey re-run"
+    },
+    {
+      "boundary": "the FULL integration battery on the branch",
+      "reason": "the work order's verification section assigns the worker the targeted-file run; the full integration battery is the Lead's binding merge gate per the standing rule",
+      "owner": "the Lead's independent merge battery"
     }
   ],
   "notes": [
-    "STAGE SPLIT (honest): this record is the F-a-4a STAGE-1 SKELETON — the implementation (the chain follower, the landed-surface audit, the landing-chain finding, the fixture matrix) is committed, but verifiedLocally is EMPTY by design: stage 2 owns the verification battery (typecheck, the exact lint baseline, the unit suite, harness-e2e on the PG rail, governance:check, deploy:validate) with the exact numbers, plus this record's finalization and the PUBLIC-DEPLOYMENT.md append.",
+    "STAGE SPLIT (honest, CLOSED): F-a-4a delivered the stage-1 implementation (the chain follower, the landed-surface audit, the landing-chain finding, the fixture matrix) with this record as an EMPTY-by-design skeleton; stage 2 (this finalization, executed directly by the Lead after four dispatch deaths — F-a turn-ceiling, F-a-2 tool-outage, F-a-3 turn-ceiling, then the healthy F-a-4a stage-1) ran the full verification battery with the exact numbers now in verifiedLocally, appended the PUBLIC-DEPLOYMENT.md §13.9 landing-audit addendum, and banked the push + PR per the completion protocol.",
     "DESIGN — the 3-hop budget (MAX_LANDING_REDIRECT_HOPS = 3, the named constant): one fetch per iteration, the start URL itself counted; a chain is followable only if it terminates within 3 same-origin fetches (307->HTML = 2 fetches, 307->307->HTML = 3, one redirect more = budget-exceeded).",
     "DESIGN — same-origin only: each hop's Location is resolved against the current URL and its origin compared with the harness's ctx.targetUrl origin; a cross-origin hop STOPS the chain (kind \"cross-origin\", the honest not-run — cross-origin following is out of audit scope, owner the Lead) and is NEVER fetched.",
     "DESIGN — the landing-chain finding class (severity major, defectClass \"landing-chain\", added to the closed defect-class vocabulary 14 -> 15 with the contract test's count pin moved): a redirect LOOP, an over-budget chain or an unreachable hop means a real browser fails to land too — a FINDING plus a fail step, never a silent not-run.",
