@@ -74,6 +74,30 @@ Commercial terms override the preference for free hosting.
 
 Missing access is NOT RUN. Identify exact provider/capability, request minimum scope, continue independent work, and never expose secret values.
 
+## Mandatory real-user browser loop
+
+For every public-product correction Work Order whose acceptance depends on discoverability, navigation, interaction or visible product behavior, the Tech Lead MUST use `agent-browser` against the actual public plane.
+
+Required loop:
+
+```text
+public URL
+→ clean browser session
+→ snapshot
+→ follow visible affordances
+→ record findings
+→ reproduce locally
+→ implement
+→ local agent-browser verification
+→ deploy exact revision
+→ public agent-browser verification
+→ journey harness + smoke
+```
+
+A raw HTTP route probe cannot substitute for the browser drive. After every browser navigation or dynamic DOM change, take a fresh snapshot before interacting again. Browser findings are evidence and must be bound to the exact tested revision.
+
+PPR-015 is the current mandatory example: the browser must begin at `https://zeck-preview-main.vercel.app/`, use the visible Home/navigation/CTA grammar, and verify the first-time-user path rather than entering internal routes directly.
+
 ## Worker rules
 
 One Work Order = one branch = one PR.
