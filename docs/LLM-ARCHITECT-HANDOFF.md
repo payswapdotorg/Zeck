@@ -118,6 +118,27 @@ The compiler may jointly consider:
 
 The objective is expected successful-resolution cost, subject to hard quality, reliability, safety, policy and verification constraints.
 
+
+### Current architect directive — PPR-015
+
+The next executable Work Order is **PPR-015: Real-user browser audit and public productization correction**.
+
+It is triggered by live user navigation against `https://zeck-preview-main.vercel.app/`. The repository contains the intended discovery-first Home implementation — including the outcome explanation and 22-family discovery — but the public navigation currently lands Home on `/console`, so those product promises are not actually being received by the user.
+
+PPR-015 therefore requires the Tech Lead to use `agent-browser` as a real first-time user, discover and record all material public UX/routing defects, correct every in-scope defect, and re-run the browser flow on both local and deployed exact revisions.
+
+Known acceptance anchors:
+- Home is the actual discovery-first Home experience, not `/console`.
+- The outcome explanation is prominent and immediately visible.
+- Capability discovery is obvious and all 22 workload families are reachable with truthful availability.
+- Every visible navigation/CTA route resolves to the intended experience surface.
+- API-only routes remain on the API plane.
+- Primary journeys work across desktop/mobile and keyboard access.
+- Existing 12-journey / 28-step acceptance and public smoke remain green.
+- No frozen architecture or authority boundary is changed.
+
+The repository frontier must authorize PPR-015 before the Tech Lead dispatches implementation.
+
 ## Current implementation stream
 
 The repository's current active stream is deployment D-07:
