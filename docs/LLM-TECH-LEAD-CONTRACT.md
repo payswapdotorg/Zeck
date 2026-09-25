@@ -53,9 +53,9 @@ before implementation or governance-state changes.
 
 ## Current implementation gate
 
-`WORK-048 / D-07` is the only currently executable deployment Work Order until it is completed and finalized.
+The post-release program is active. **PPR-015 is the current Architect-authorized executable Work Order.** The Tech Lead must fetch live `main`, verify the frontier, read `spec/post-release-work-orders/PPR-015.md`, and perform the mandatory agent-browser user audit before implementation.
 
-E1.1 is architect-approved but its implementation stages are intentionally pending behind WORK-048. Do not create an ad-hoc WORK-049 or change frontier state merely from this document. Use the canonical E1.1 implementation program when issuing the next Work Order after the D-07 gate.
+Do not create undocumented follow-on Work Orders from browser findings. If a finding requires a frozen-architecture change, new authority, weaker assurance, provider semantics in domain logic, or another governed boundary, record the finding and escalate to the Architect for an amendment or successor Work Order.
 
 ## Maximum concurrency
 
