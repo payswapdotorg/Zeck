@@ -1548,7 +1548,7 @@ function hiddenFieldsOf(pageHtml: string): string {
 
 describe("(a) the first-execution journey: Home → review → execute → result/evidence/activity", () => {
   test("Home renders the outcome-first entry with the suggested actions", async () => {
-    const response = await get("/");
+    const response = await get("/home");
     expect(response.status).toBe(200);
     const page = await html(response);
     expect(page).toContain("What would you like Zeck to accomplish?");
@@ -1558,7 +1558,7 @@ describe("(a) the first-execution journey: Home → review → execute → resul
   });
 
   test("Home's form lands on the review step which POSTs to create", async () => {
-    const home = await html(await get("/"));
+    const home = await html(await get("/home"));
     const key = /name="idempotencyKey" value="(dash-[^"]+)"/.exec(home)?.[1] ?? "";
     expect(key.length).toBeGreaterThan(0);
     const review = await html(
@@ -1794,15 +1794,15 @@ describe("(d) the waiting journey: WAITING_USER → decision → cancel → CANC
 
 describe("(e) the agents journey (live reads)", () => {
   test("the inventory lists the agent with its status and active version", async () => {
-    const page = await html(await get("/agents"));
+    const page = await html(await get("/build/agents"));
     expect(page).toContain("Support Triage Agent");
     expect(page).toContain("support-triage");
     expect(page).toContain("1.1.0");
-    expect(page).toContain(`href="/agents/${AGENT_ID}"`);
+    expect(page).toContain(`href="/build/agents/${AGENT_ID}"`);
   });
 
   test("the detail shows the active version and the selection under the advanced disclosure", async () => {
-    const page = await html(await get(`/agents/${AGENT_ID}`));
+    const page = await html(await get(`/build/agents/${AGENT_ID}`));
     expect(page).toContain("Support Triage Agent");
     expect(page).toContain("Handles incoming tickets and escalates billing disputes.");
     expect(page).toContain("1.1.0");
@@ -1823,7 +1823,7 @@ describe("(f) the command/search surface (links only — the authorization path)
   test("a navigation word matches navigation entries", async () => {
     const page = await html(await get("/command?q=agents"));
     expect(page).toContain("Navigation");
-    expect(page).toContain('href="/agents"');
+    expect(page).toContain('href="/build/agents"');
   });
 
   test("a bare execution id proposes opening it directly", async () => {
@@ -1835,7 +1835,7 @@ describe("(f) the command/search surface (links only — the authorization path)
   test("an agent name matches the live agent inventory", async () => {
     const page = await html(await get("/command?q=triage"));
     expect(page).toContain("Support Triage Agent");
-    expect(page).toContain(`href="/agents/${AGENT_ID}"`);
+    expect(page).toContain(`href="/build/agents/${AGENT_ID}"`);
   });
 
   test("a proposed cancel is a LINK into the confirmation flow — no mutation is performed", async () => {
@@ -1959,7 +1959,7 @@ describe("(j) the recents cookie: set → listed live → pruned on 404", () => 
   test("Home lists the recent execution LIVE (title + status from the API, not the cookie)", async () => {
     const jar = new CookieJar();
     await get(`/runs/${RECENTS_ID}`, jar);
-    const home = await html(await get("/", jar));
+    const home = await html(await get("/home", jar));
     expect(home).toContain("Recent");
     expect(home).toContain("Summarize the support queue");
     expect(home).toContain("status-COMPLETED");
@@ -1976,7 +1976,7 @@ describe("(j) the recents cookie: set → listed live → pruned on 404", () => 
       // live one — the cookie itself is only navigation state.
       const jar = new CookieJar();
       jar.set("zeck_recent_executions", `${RECENTS_ID},${COMPLETED_ID}`);
-      const homeResponse = await get("/", jar);
+      const homeResponse = await get("/home", jar);
       expect(homeResponse.status).toBe(200);
       const home = await html(homeResponse);
       // The deleted execution is NOT listed (its live read 404s → pruned)…
@@ -2005,7 +2005,7 @@ describe("(j) the recents cookie: set → listed live → pruned on 404", () => 
 
 describe("(k) every page: one h1, the landmarks, the skip link first", () => {
   const PAGES: readonly string[] = [
-    "/",
+    "/home",
     "/build",
     "/build/execution",
     "/build/agent",
@@ -2229,7 +2229,7 @@ describe("(m) the experience-mode journey (WORK-035: visibility only, never sema
 
 describe("(n) the command-dialog journey (the second front door dispatches through GET /command)", () => {
   test("every page carries the dialog: native dialog, GET /command form, link-only suggestions", async () => {
-    const page = await html(await get("/"));
+    const page = await html(await get("/home"));
     expect(page).toContain('<dialog class="command-dialog" id="command-dialog"');
     expect(page).toContain('method="get" action="/command"');
     // Suggestions are links to real routes — the dispatch path itself.
@@ -2302,7 +2302,7 @@ describe("(o) the attention journey (WORK-035: consequential aggregation, honest
 
 describe("(p) the WORK-036 outcome-composer journey (attachments through the closed create contract)", () => {
   test("Home carries the secondary affordances: attachments live, competences/templates honest", async () => {
-    const page = await html(await get("/"));
+    const page = await html(await get("/home"));
     expect(page).toContain("What would you like Zeck to accomplish?");
     expect(page).toContain("Attachments, competences and templates");
     expect(page).toContain('name="attachments"');
@@ -2726,7 +2726,7 @@ describe("(v) the WORK-037 deployment journeys (the availability/execution disti
     expect(page).toContain("not yet exposed by the public API");
     expect(page).toContain('href="/build/deployment"');
     expect(page).toContain('href="/runs"');
-    expect(page).toContain('href="/agents"');
+    expect(page).toContain('href="/build/agents"');
     // No execution-status badge vocabulary on the deployment surface.
     expect(page).not.toContain('class="badge status-');
   });
@@ -3391,7 +3391,7 @@ describe("(ak) the WORK-039 learning journey (learning never authorizes)", () =>
     expect(page).toContain("Support Triage Agent");
     expect(page).toContain("promoted by the platform's selection rules");
     expect(page).toContain("architect@example.test");
-    expect(page).toContain(`href="/agents/${AGENT_ID}"`);
+    expect(page).toContain(`href="/build/agents/${AGENT_ID}"`);
   });
 
   test("no apply mutation exists on the learning surface (the authority boundary is structural)", async () => {

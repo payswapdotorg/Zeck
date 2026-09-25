@@ -55,6 +55,19 @@ const PROFESSIONAL: readonly ExperienceMode[] = ["professional", "expert"];
 const EXPERT_ONLY: readonly ExperienceMode[] = ["expert"];
 
 /**
+ * PPR-015 — the canonical Home experience path. The bare `/` is a
+ * BRIDGE, never a renderer: the public origin's filesystem phase owns
+ * the framework root (correction #8's platform fact), so the Home
+ * experience lives at `/home` and `/` redirects to it on every rail
+ * (vercel.json's root redirect publicly; the dashboard route table's
+ * own `/` → /home redirect locally). Every Home affordance — the nav
+ * Home control, the brand link, the breadcrumb root — addresses the
+ * canonical route so the visible Home control can never masquerade as
+ * another surface.
+ */
+export const HOME_PATH = "/home";
+
+/**
  * The DEP-010 developer-console destinations (roadmap-governed IA:
  * Quickstart, Applications, Playground, Providers/Capabilities, Docs,
  * Settings). The shared destinations of the developer-platform IA —
@@ -242,7 +255,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       {
         label: "Agents",
-        path: "/agents",
+        path: "/build/agents",
         description: "The governed agent inventory (read-only projection).",
         keywords: ["agent", "inventory", "versions", "build"],
         modes: PROFESSIONAL,
@@ -472,8 +485,8 @@ function matchesPath(prefix: string, path: string): boolean {
  * Derived from the IA model — never a second hierarchy to maintain.
  */
 export function breadcrumbTrail(activePath: string, currentLabel?: string): readonly Crumb[] {
-  const trail: Crumb[] = [{ label: "Home", href: "/" }];
-  if (activePath === "/" || activePath === "") {
+  const trail: Crumb[] = [{ label: "Home", href: HOME_PATH }];
+  if (activePath === HOME_PATH || activePath === "/" || activePath === "") {
     return trail;
   }
   let bestGroup: NavGroup | null = null;
@@ -592,10 +605,10 @@ function renderItemLink(item: NavItem, activePath: string): string {
 function renderNav(activePath: string, mode: ExperienceMode): string {
   const commandHint = `<p class="nav-command-hint">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to search or run a command</p>`;
   if (mode === "simple") {
-    const homeCurrent = activePath === "/" ? ' aria-current="page"' : "";
+    const homeCurrent = activePath === HOME_PATH ? ' aria-current="page"' : "";
     const items = SIMPLE_NAV_ITEMS.map((item) => renderItemLink(item, activePath)).join("\n    ");
     return `<nav class="app-nav" aria-label="Primary">
-  <a class="nav-home" href="/"${homeCurrent}>Home</a>
+  <a class="nav-home" href="${HOME_PATH}"${homeCurrent}>Home</a>
   <ul>
     ${items}
   </ul>
@@ -616,9 +629,9 @@ function renderNav(activePath: string, mode: ExperienceMode): string {
   </details>`;
     })
     .join("\n  ");
-  const homeCurrent = activePath === "/" ? ' aria-current="page"' : "";
+  const homeCurrent = activePath === HOME_PATH ? ' aria-current="page"' : "";
   return `<nav class="app-nav" aria-label="Primary">
-  <a class="nav-home" href="/"${homeCurrent}>Home</a>
+  <a class="nav-home" href="${HOME_PATH}"${homeCurrent}>Home</a>
   ${groups}
   ${commandHint}
 </nav>`;
@@ -784,7 +797,7 @@ export function appShell(input: AppShellInput): string {
   <a class="skip-link" href="#main">Skip to main content</a>
   <div class="app-shell">
     <header class="app-header">
-      <a class="brand" href="/">Zeck</a>
+      <a class="brand" href="${HOME_PATH}">Zeck</a>
       <form class="command-bar" role="search" method="get" action="/command">
         <div>
           <label for="command-input" class="visually-hidden">Search or run a command</label>

@@ -737,13 +737,13 @@ describe("AC3 hostile probes: no reflected markup on any user-influenced render 
     const cookie = `zeck_recent_executions=${encodeURIComponent(
       `${HOSTILE_EXECUTION_ID},${HOSTILE}`,
     )}`;
-    const html = await getHtml("/", cookie);
+    const html = await getHtml("/home", cookie);
     expect(html).not.toContain("<script>");
     expect(html).toContain(ESCAPED_HOSTILE);
     // The pruned cookie re-issued by this read carries ONLY the surviving
     // id, percent-encoded (serializeCookie's own encoding) — the unknown
     // hostile id is dropped, and neither id crosses the wire raw.
-    const response = await get("/", cookie);
+    const response = await get("/home", cookie);
     const setCookie = response.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("zeck_recent_executions=");
     expect(setCookie).toContain(encodeURIComponent(HOSTILE_EXECUTION_ID));
@@ -821,7 +821,10 @@ describe("AC4: the no-script foundation — native links, GET forms, details/sum
 
   test("the lookup journey is a native GET form; the mode/appearance preferences are native GET forms", async () => {
     const explorerHtml = await getHtml("/console/executions");
-    expect(explorerHtml).toContain('<form method="get" action="/executions" class="flow card">');
+    // PPR-015: the visible lookup form targets the EXPERIENCE-plane
+    // /runs seam (GET /runs?id=<id>) — the legacy /executions path is
+    // API-plane on the public origin.
+    expect(explorerHtml).toContain('<form method="get" action="/runs" class="flow card">');
     const settingsHtml = await getHtml("/console/settings");
     expect(settingsHtml).toContain('method="get" action="/mode"');
     expect(settingsHtml).toContain('method="get" action="/appearance"');
@@ -863,11 +866,16 @@ describe("AC4: the no-script foundation — native links, GET forms, details/sum
 // ---------------------------------------------------------------------------
 
 describe("AC7: the route table carries exactly the pinned routes (this order adds none)", () => {
-  test("the dashboard route table is exactly 91 routes — 88 + the three PPR-001 discovery routes", () => {
+  test("the dashboard route table is exactly 94 routes — 91 + the three PPR-015 public-productization routes", () => {
     // PPR-001 added exactly three GET routes: /console/catalog,
     // /console/start and /trust/limits (all read-only discovery
     // surfaces; no new mutation route, no machine-boundary route).
-    expect(routes.length).toBe(91);
+    // PPR-015 added exactly three more GET routes: /build/agents,
+    // /build/agents/:agentId (the agents UI at its public experience
+    // path — /agents is API-owned) and /assets (the Library overview
+    // the breadcrumb promises); the / route became a REDIRECT to
+    // /home (no new route — the count is +3, not +4).
+    expect(routes.length).toBe(94);
     // The console surface set stays pinned (spot-check the DEP-033 scope:
     // no new route patterns landed beside the existing console routes).
     const patterns = routes.map((route) => `${route.method} ${route.pattern}`);
@@ -878,6 +886,9 @@ describe("AC7: the route table carries exactly the pinned routes (this order add
     expect(patterns).toContain("GET /console/executions");
     expect(patterns).toContain("GET /console/compare");
     expect(patterns).toContain("GET /console/settings");
+    expect(patterns).toContain("GET /build/agents");
+    expect(patterns).toContain("GET /assets");
+    expect(patterns).toContain("GET /home");
     expect(patterns.filter((pattern) => pattern.startsWith("GET /console")).length).toBe(42);
     expect(patterns.filter((pattern) => pattern.startsWith("POST /console")).length).toBe(6);
     // The public API's machine contract is untouched by this order

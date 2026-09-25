@@ -66,7 +66,7 @@ async function getHtml(path: string): Promise<string> {
 
 describe("the PPR-001 discovery journey over the REAL public API", () => {
   test("Home answers the four first-screen questions in order, before any identifier", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     // 1. What Zeck does — the hero.
     expect(html.indexOf('id="discovery-hero-title"')).toBeGreaterThan(-1);
     // 2. What workloads exist — the 22-family grid.
@@ -174,7 +174,7 @@ describe("the PPR-001 discovery journey over the REAL public API", () => {
   });
 
   test("the Validation Lab and the consolidated Trust & Limits entry are prominent destinations", async () => {
-    const home = await getHtml("/");
+    const home = await getHtml("/home");
     expect(home).toContain('href="/console/validation"');
     expect(home).toContain('href="/trust/limits"');
     const lab = await getHtml("/console/validation");

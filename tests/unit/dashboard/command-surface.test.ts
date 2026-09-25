@@ -111,7 +111,7 @@ async function getHtml(path: string, cookie?: string): Promise<string> {
 
 describe("the command dialog markup (the second front door)", () => {
   test("every page renders the dialog: a native dialog with a GET /command form and accessible labelling", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('<dialog class="command-dialog" id="command-dialog"');
     expect(html).toContain('aria-labelledby="command-dialog-title"');
     expect(html).toContain('id="command-dialog-title"');
@@ -123,7 +123,7 @@ describe("the command dialog markup (the second front door)", () => {
   });
 
   test("the header keeps the no-JS fallback form (the plain search input)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('action="/command"');
     expect(html).toContain('id="command-input"');
     expect(html).toContain('role="search"');
@@ -131,7 +131,7 @@ describe("the command dialog markup (the second front door)", () => {
   });
 
   test("every suggestion is a LINK with its kind — never a form, never a POST", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     const dialog = html.slice(html.indexOf('id="command-dialog"'), html.indexOf("</dialog>"));
     expect(dialog).toContain("suggestion-kind");
     expect(dialog).toContain(">Navigation</span>");
@@ -144,7 +144,7 @@ describe("the command dialog markup (the second front door)", () => {
   });
 
   test("the suggestion set is mode-aware", async () => {
-    const simple = await getHtml("/", "zeck_mode=simple");
+    const simple = await getHtml("/home", "zeck_mode=simple");
     const dialog = simple.slice(simple.indexOf('id="command-dialog"'), simple.indexOf("</dialog>"));
     expect(dialog).toContain(">Work<span");
     expect(dialog).toContain(">Approvals<span");

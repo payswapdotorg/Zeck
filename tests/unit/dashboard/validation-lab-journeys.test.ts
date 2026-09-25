@@ -252,7 +252,7 @@ describe("the Validation Lab catalog and IA sections (AC1)", () => {
   });
 
   test("the nav carries the Validation Lab entry (Develop group)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('href="/console/validation"');
     expect(html).toContain("Validation Lab");
   });

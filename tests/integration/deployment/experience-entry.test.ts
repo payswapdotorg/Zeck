@@ -155,14 +155,17 @@ interface ServedSurface {
   readonly status: number;
   readonly contentType: string | null;
   readonly body: string;
+  readonly location?: string;
 }
 
 async function get(baseUrl: string, path: string): Promise<ServedSurface> {
   const response = await fetch(`${baseUrl}${path}`, { redirect: "manual" });
+  const location = response.headers.get("location");
   return {
     status: response.status,
     contentType: response.headers.get("content-type"),
     body: await response.text(),
+    ...(location === null ? {} : { location }),
   };
 }
 
@@ -281,14 +284,21 @@ describe.skipIf(!HAS_GIT)(
         Object.keys(JSON.parse(catalog.body) as Record<string, unknown>).length,
       ).toBeGreaterThan(0);
 
-      // The trust surface and the root landing.
+      // The trust surface and the root landing (PPR-015: the bare / is a
+      // BRIDGE on every rail — the canonical Home experience route is
+      // /home; / redirects to it exactly like vercel.json's root
+      // redirect does on the public plane).
       const trust = await get(experience.baseUrl, "/trust/evidence");
       expect(trust.status).toBe(200);
       expect(trust.contentType).toContain("text/html");
-      const landing = await get(experience.baseUrl, "/");
+      const bridge = await get(experience.baseUrl, "/");
+      expect(bridge.status).toBe(303);
+      expect(bridge.location).toBe("/home");
+      const landing = await get(experience.baseUrl, "/home");
       expect(landing.status).toBe(200);
       expect(landing.contentType).toContain("text/html");
       expect(landing.body).toMatch(/<title>Zeck[^<]*<\/title>/i);
+      expect(landing.body).toContain("<title>Zeck — Home</title>");
 
       // The composition's own static asset.
       const asset = await get(experience.baseUrl, "/assets/client.js");

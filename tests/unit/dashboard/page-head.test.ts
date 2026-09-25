@@ -18,30 +18,31 @@ import { describe, expect, test } from "vitest";
 import { breadcrumbTrail, pageHead } from "../../../apps/dashboard/shell";
 
 describe("breadcrumbTrail (derived from the IA model)", () => {
-  test("Home renders the single Home crumb", () => {
-    expect(breadcrumbTrail("/")).toEqual([{ label: "Home", href: "/" }]);
+  test("Home renders the single Home crumb (the canonical /home route)", () => {
+    expect(breadcrumbTrail("/home")).toEqual([{ label: "Home", href: "/home" }]);
+    expect(breadcrumbTrail("/")).toEqual([{ label: "Home", href: "/home" }]);
   });
 
   test("a group-path page renders Home → group", () => {
     expect(breadcrumbTrail("/runs")).toEqual([
-      { label: "Home", href: "/" },
+      { label: "Home", href: "/home" },
       { label: "Work", href: "/runs" },
     ]);
   });
 
   test("an item page renders Home → group → item", () => {
     expect(breadcrumbTrail("/runs/history")).toEqual([
-      { label: "Home", href: "/" },
+      { label: "Home", href: "/home" },
       { label: "Work", href: "/runs" },
       { label: "History", href: "/runs/history" },
     ]);
-    expect(breadcrumbTrail("/agents")).toEqual([
-      { label: "Home", href: "/" },
+    expect(breadcrumbTrail("/build/agents")).toEqual([
+      { label: "Home", href: "/home" },
       { label: "Build", href: "/build" },
-      { label: "Agents", href: "/agents" },
+      { label: "Agents", href: "/build/agents" },
     ]);
     expect(breadcrumbTrail("/trust/lineage")).toEqual([
-      { label: "Home", href: "/" },
+      { label: "Home", href: "/home" },
       { label: "Trust", href: "/trust/evidence" },
       { label: "Lineage", href: "/trust/lineage" },
     ]);
@@ -51,14 +52,14 @@ describe("breadcrumbTrail (derived from the IA model)", () => {
     expect(
       breadcrumbTrail("/runs/00000000-0000-7000-8000-0000000000e1", "Contract risk analysis"),
     ).toEqual([
-      { label: "Home", href: "/" },
+      { label: "Home", href: "/home" },
       { label: "Work", href: "/runs" },
       { label: "Contract risk analysis", href: "/runs/00000000-0000-7000-8000-0000000000e1" },
     ]);
   });
 
   test("unknown paths still carry the Home anchor (never a broken trail)", () => {
-    expect(breadcrumbTrail("/definitely-not-a-route")[0]).toEqual({ label: "Home", href: "/" });
+    expect(breadcrumbTrail("/definitely-not-a-route")[0]).toEqual({ label: "Home", href: "/home" });
   });
 });
 
@@ -66,12 +67,12 @@ describe("pageHead (the contextual title treatment)", () => {
   test("renders the breadcrumb nav, the single h1 and the primary action slot", () => {
     const html = pageHead({
       title: "Agents",
-      path: "/agents",
+      path: "/build/agents",
       primaryActionHtml: '<a class="button-link primary" href="/build/agent">Propose an agent</a>',
     });
     expect(html).toContain('<nav class="breadcrumb" aria-label="Breadcrumb">');
     expect(html).toContain("<ol>");
-    expect(html).toContain('<a href="/">Home</a>');
+    expect(html).toContain('<a href="/home">Home</a>');
     expect(html).toContain('<a href="/build">Build</a>');
     expect((html.match(/<h1[^>]*>/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Agents</h1>");

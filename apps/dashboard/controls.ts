@@ -480,7 +480,7 @@ export function learningDistinctionSection(selections: readonly AgentSelectionFa
       : `<ul>${selections
           .map((selection) => {
             const id = encodeURIComponent(selection.agentId);
-            return `<li><a href="/agents/${id}">${esc(selection.agentName)}</a> — ${esc(
+            return `<li><a href="/build/agents/${id}">${esc(selection.agentName)}</a> — ${esc(
               selection.kind === "promotion" ? "promoted" : "rolled back",
             )} by the platform's selection rules (${esc(selection.selectedBy)}, ${esc(
               selection.selectedAt,

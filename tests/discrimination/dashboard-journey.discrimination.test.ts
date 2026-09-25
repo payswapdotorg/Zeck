@@ -606,7 +606,9 @@ describe("D12 accidental customer-domain mutation (GET journeys issue zero mutat
   test("RUNTIME: driving every read journey issues ZERO POST wire calls", async () => {
     wireCalls.length = 0;
     for (const path of [
-      "/",
+      // PPR-015: the canonical Home experience route is /home (the bare /
+      // is a redirect bridge on every rail — not a read journey itself).
+      "/home",
       "/build",
       `/build/execution?outcome=${encodeURIComponent("x")}&applicationId=${APP_ID}`,
       "/build/agent",

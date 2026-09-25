@@ -4,11 +4,59 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "/console",
+      "destination": "/home",
       "permanent": false
     }
   ],
   "rewrites": [
+    {
+      "source": "/home",
+      "destination": "/api/experience?path=/home"
+    },
+    {
+      "source": "/home/:path*",
+      "destination": "/api/experience?path=/home/:path*"
+    },
+    {
+      "source": "/build",
+      "destination": "/api/experience?path=/build"
+    },
+    {
+      "source": "/build/:path*",
+      "destination": "/api/experience?path=/build/:path*"
+    },
+    {
+      "source": "/deployments",
+      "destination": "/api/experience?path=/deployments"
+    },
+    {
+      "source": "/deployments/:path*",
+      "destination": "/api/experience?path=/deployments/:path*"
+    },
+    {
+      "source": "/runs",
+      "destination": "/api/experience?path=/runs"
+    },
+    {
+      "source": "/runs/:path*",
+      "destination": "/api/experience?path=/runs/:path*"
+    },
+    {
+      "source": "/assets",
+      "destination": "/api/experience?path=/assets"
+    },
+    {
+      "source": "/assets/:path*",
+      "destination": "/api/experience?path=/assets/:path*"
+    },
+    {
+      "source": "/improve",
+      "destination": "/api/experience?path=/improve"
+    },
+    {
+      "source": "/improve/:path*",
+      "destination": "/api/experience?path=/improve/:path*"
+    },
     {
       "source": "/console",
       "destination": "/api/experience?path=/console"
@@ -34,8 +82,20 @@
       "destination": "/api/experience?path=/admin/:path*"
     },
     {
-      "source": "/assets/client.js",
-      "destination": "/api/experience?path=/assets/client.js"
+      "source": "/command",
+      "destination": "/api/experience?path=/command"
+    },
+    {
+      "source": "/attention",
+      "destination": "/api/experience?path=/attention"
+    },
+    {
+      "source": "/mode",
+      "destination": "/api/experience?path=/mode"
+    },
+    {
+      "source": "/appearance",
+      "destination": "/api/experience?path=/appearance"
     }
   ]
 }
