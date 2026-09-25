@@ -89,6 +89,24 @@ PPR-003  Public user-journey acceptance harness               🔵
 
 Dispatch all three after live conflict analysis.
 
+
+## Current executable Work Order
+
+**PPR-015 — Real-user browser audit and public productization correction**
+
+Dispatch from the exact live `main` head recorded by `spec/post-release-state/frontier-state.json`, not from historical documentation.
+
+The first implementation action is a clean `agent-browser` drive of `https://zeck-preview-main.vercel.app/` as a first-time user. Follow visible Home/navigation/CTA affordances, reproduce every material defect, and maintain a findings ledger. The known first defects are:
+
+- Home currently lands on `/console`;
+- the intended discovery-first Home statement (“Describe an outcome … returns it with evidence”) is not visible to the user;
+- capability discovery is not surfaced in the user's Home path;
+- additional dashboard routes may exist in source but fall through to the API plane in the public deployment.
+
+Fix all defects that are within public-productization scope, then repeat the browser drive locally and on the deployed revision. A direct URL list or HTTP smoke alone does not satisfy this order.
+
+**Preferred dispatch:** one worker. The order is intentionally coherent. Use additional workers only when conflict analysis proves a clean boundary.
+
 ## Simulation-derived product changes
 
 ```
