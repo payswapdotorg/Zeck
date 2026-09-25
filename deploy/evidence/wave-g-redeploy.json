@@ -1,0 +1,53 @@
+{
+ "schemaVersion": 1,
+ "record": "wave-g-redeploy",
+ "date": "2026-09-25",
+ "trigger": "the wave-G boundary \u2014 PPR-014 merged at 8594eed + the records commit 6f12d8c (the plane-side activation of the GAP-006 seam bindings)",
+ "chain": [
+  {
+   "step": "quota window check",
+   "result": "82 in-window visible (the hidden-mass caveat held; the deploy attempted anyway per the wave-F precedent)"
+  },
+  {
+   "step": "project re-link",
+   "result": "zeck-preview-main @ ekonplacidegmailcoms-projects (the reset had wiped .vercel/)"
+  },
+  {
+   "step": "artifact rebuild",
+   "result": "deploy:build-vercel-output green at 6f12d8c (the two-function form: index.func + api/experience.func)"
+  },
+  {
+   "step": "revision re-pin",
+   "result": "ZECK_DEPLOY_GIT_REVISION=6f12d8c00021f8cd5012629000f258c58c4479e5 on BOTH targets (preview YVbkqz9Xj3Zv + production KUfwRja7Z8pU; the CLI's prompt-trip worked around via the REST API; the old pins deleted first)"
+  },
+  {
+   "step": "two-function local artifact proof",
+   "result": "index: /identity BOUND at 6f12d8c (environment preview, branch main via VERCEL_GIT_COMMIT_REF), the honest 503 health, the 422 unauth boundary; experience: /console + / both 200 HTML; ports 8891/8892 freed"
+  },
+  {
+   "step": "vercel deploy --prebuilt --prod",
+   "result": "SUCCEEDED first attempt \u2014 zeck-preview-main-os4s4c8cu READY (the quota window permitted)"
+  },
+  {
+   "step": "plane attestation",
+   "result": "/identity: status bound, gitRevision 6f12d8c00021f8cd5012629000f258c58c4479e5, environment preview \u2014 the plane-side activation COMPLETE"
+  }
+ ],
+ "journeyMeasure": {
+  "form": "bun tests/journey/run.ts --url https://zeck-preview-main.vercel.app --environment preview --branch main (the checkout of the exact deployed revision; the transport credential + application id read from the plane's own environment, deleted after use)",
+  "result": "12 journeys / 28 steps \u2014 28 PASS / 0 fail / 0 NOT-RUN, findings 0, 22/22 family disclosures SERVED, identity gate verified, duration 215s"
+ },
+ "publicSmoke": {
+  "form": "bun deploy/public-smoke.ts --url ... --environment preview --branch main",
+  "result": "EXIT 0 \u2014 26 routes, zero problems, the F1-precedent honest-degraded health; THE ACTIVATION: capabilitySeamMaterializedComposition 4 (was 0 at wave F) + capabilitySeamUnboundComposition 0 (was 4) \u2014 the economics + codebase-analysis seams now serve their MATERIALIZED compositions on the plane; capabilityUnboundHonest 3 (the sandbox-governance routes, unchanged); publicArtifactBound 1"
+ },
+ "honestBoundaries": [
+  "the credentialed journey steps exercise the executions/credentials surfaces; the economics/analysis ROUTES' auth boundaries are pinned by the route probes (401/422 unchanged) \u2014 full credentialed journey chains for the NEW capabilities would be journey extensions through a governed work order (the PPR-003 taxonomy's extension rule)",
+  "the simulated payment rail is the only rail the economics family binds (honestly disclosed at every provenance point \u2014 no external payment provider exists on the plane)",
+  "the model families remain GAP-002 (operator-owned, unchanged) \u2014 the realtime rail legs stay provider-gated"
+ ],
+ "recordsCommits": [
+  "8594eed (the merge)",
+  "6f12d8c (the wave-G records)"
+ ]
+}
