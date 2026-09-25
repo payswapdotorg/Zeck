@@ -215,6 +215,23 @@ Run desktop/tablet/mobile and keyboard/accessibility variants.
 
 Map all 22 workload families to a visible location and honest availability state.
 
+
+### PPR-015 — Real-user browser audit and public productization correction
+
+The prior 12-journey acceptance is now treated as necessary but not sufficient for product quality. PPR-015 is the architect-authorized corrective work order triggered by live user navigation.
+
+The Tech Lead MUST use `agent-browser` to start from the public origin as a first-time user, follow visible Home/navigation/CTA affordances, record every material defect, correct every in-scope defect, and repeat the browser journey locally and on the deployed public revision.
+
+Known acceptance anchors:
+- Home must land on the real discovery-first Home experience, not `/console`.
+- The first meaningful Home experience must visibly explain: **Describe an outcome → Zeck plans it → executes it under policy → returns it with evidence.**
+- Capability discovery must be obvious and expose all 22 workload families with truthful availability states.
+- Every visible navigation destination must resolve to its intended experience page; API-only routes must remain API-only.
+- The browser must exercise the complete primary path: Home → capability discovery → safe start → execution → result → “How Zeck did it” → evidence/cost → validation → compare/reproduce → Trust & Limits → agent/developer integration → deployment/work/library paths.
+- Desktop, tablet/mobile and keyboard checks are required for the primary path.
+- Browser findings are recorded with reproduction, impact, root cause, smallest valid correction and exact-revision verification.
+- Frozen architecture, execution authorities, policy/capability/budget/evidence semantics and historical validation records remain untouched.
+
 ## Acceptance gates
 
 - public URL reachable;
