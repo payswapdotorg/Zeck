@@ -1,0 +1,47 @@
+{
+ "schemaVersion": 1,
+ "run": "evo-008",
+ "date": "2026-09-25",
+ "trigger": "operator-directed — the operator's standing 'continue' directives after evo-007's zero-candidate OBSERVE; the eligibility review question: does ANY gap-ledger entry hold a non-credential-bound rung issuable as a governed work order now that the post-release roadmap (PPR-001..013) is closed end-to-end and the plane is healthy at its sanctioned posture?",
+ "loop": "OBSERVE -> DETECT -> RESEARCH -> COMPARE -> MAP -> AUTHORIZE (the full loop to the authorization step — the wave-opening authority the evo-005 precedent established)",
+ "observed": [
+  {
+   "scan": "the gap-ledger ownership inventory at fcafc70",
+   "results": [
+    "GAP-002: operator credential provisioning (the model families) — NOT issuable by the program",
+    "GAP-003: the live-plane substitution rung — model-family-bound (unlocked by GAP-002's delivery, not before)",
+    "GAP-005: staging/production environments + custom domains — operator-owned assets (money + domains; the §4 no-silent-paid-overage rule forbids the program provisioning paid surfaces on its own); its RESEARCH rung (a comparison record for the operator's decision) is issuable later if the operator directs",
+    "GAP-006: economics + codebase-analysis seams unbound — owner 'future governed work orders'; the PPR-008 materialization-gate pattern is the designated binding form; NON-credential-bound (the analyzer is deterministic by construction; the economics bounded authorization is the governed WORK-032 boundary; the payment rail is the in-repo simulated adapter)"
+   ]
+  },
+  {
+   "scan": "the module-surface reconnaissance (the dependency-complete check)",
+   "results": [
+    "economics: the full SQL-backed public surface exists (SqlEconomicStore + SqlEconomicsIdempotency + createEconomicActionService + the REAL policy/capability admission adapters); the canonical wiring reference exists (tests/integration/postgres/economics-world.ts, with its own honest note that its admission fakes are test-scoped); the budgets authority has its own SQL store + world (budgets-world.ts, migration 0003's real ledger); the executions ledger seam is ALREADY BOUND in the preview authorities; the payment-rail port has the in-repo simulated adapter",
+    "codebase-analysis: createOpportunityAnalyzer over SqlOpportunityStore + the node digest — deterministic (pure functions over the selected subgraph: buildExecutionGraph -> buildFindings -> decideEvaluationPrompts; no model, no network); the MANDATORY executionId flows through the already-bound executions authority ('Analysis is an Execution — M2/M26')",
+    "the consumption seams are frozen and already routed (src/api/server.ts deps.economics / deps.codebaseAnalyzer -> registerEconomicActionRoutes / registerCodebaseAnalysisRoutes); binding = supplying real implementations at the composition's two unboundCapability stubs"
+   ]
+  },
+  {
+   "scan": "the conflict-partition check (the MAP step)",
+   "results": [
+    "both families bind into the SAME files (deploy/preview-authorities.ts + deploy/api.ts + the same evidence/docs surfaces) — NOT pairwise disjoint; therefore ONE work order owns the whole composition-extension surface (PPR-014), not two",
+    "zero overlap with any in-flight order (the frontier is empty); zero manifest delta mandated (the PPR-013 precedent: derive from the existing materializations — the zero-new-env law)"
+   ]
+  }
+ ],
+ "detected": [
+  "GAP-006's binding rung is dependency-complete, conflict-safe and non-credential-bound — the one issuable governed advance at this head",
+  "GAP-005's research rung is issuable but deferred to the operator's direction (the environment question is a money/domains decision the record would inform, not make)"
+ ],
+ "authorizedThisRun": [
+  "PPR-014 — the GAP-006 seam bindings: the economics + codebase-analysis authorities over the preview materialization (spec/post-release-work-orders/PPR-014.md; WAVE G; dispatched from inside the replay per the operator's 2026-09-25 dispatch law)"
+ ],
+ "honestBoundaries": [
+  "the plane-side activation of the newly-bound routes is the Lead's §13.6 redeploy chain AFTER the merge (the records commit does not demand a redeploy; the binding lands dormant-until-redeploy on the plane — the same wave-boundary posture as ever)",
+  "the simulated payment rail is the ONLY rail the preview ever binds — no external payment provider, no fabricated charges; the economics family's honest shape is bounded deterministic authorization over the in-repo rail",
+  "the analyzer's determinism is by construction (no model behind it) — the binding does NOT unlock any GAP-002 family; the realtime rail legs stay operator-owned, unchanged",
+  "GAP-005 stays operator-owned (money + domains); its research rung is a future option, not an authorization"
+ ],
+ "nextReview": "PPR-014's harvest + the Lead's independent battery + merge; then the §13.6 redeploy chain (the plane-side activation + the journey MEASURE re-run with the newly-bound routes exercised) at the wave-G boundary; GAP-002 (the model families) remains THE operator-owned credential residual that unlocks the realtime legs"
+}

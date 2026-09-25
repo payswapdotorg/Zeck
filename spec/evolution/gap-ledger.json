@@ -1,79 +1,79 @@
 {
-  "schemaVersion": 1,
-  "program": "zeck-governed-evolution",
-  "description": "The architectural/user-journey gap ledger (the Successor Tech Lead Directive §13): every known gap between the current state and the level-6 maturity target, each with its evidence, owner and status. Gaps are ADDED and TRANSITIONED, never silently deleted — a gap closes only with recorded evidence at the level its claim requires.",
-  "maturityModel": {
-    "levels": {
-      "0": "absent — no contract, no code, no evidence",
-      "1": "architecture contract — the neutral port/seam exists and is pinned, no implementation",
-      "2": "fake-local proof — a simulated/in-process implementation passes the contract; honest labels, no real-external claims",
-      "3": "credentialed real-external proof — a real provider answers over the real transport with the operator's credentials; every boundary honestly NOT RUN otherwise",
-      "4": "repeatable public journey — the capability serves a real user journey end-to-end on a public plane at an exact attested revision",
-      "5": "provider-replaceable + failure-tested — a conformance contract plus at least one alternate solution, with failure drills and governed failover",
-      "6": "production-grade — sustained observation, monitoring, recovery and cost accounting under real load"
-    },
-    "rule": "levels are never collapsed to PASS/FAIL; every level-3+ claim cites its evidence record"
+ "schemaVersion": 1,
+ "program": "zeck-governed-evolution",
+ "description": "The architectural/user-journey gap ledger (the Successor Tech Lead Directive \u00a713): every known gap between the current state and the level-6 maturity target, each with its evidence, owner and status. Gaps are ADDED and TRANSITIONED, never silently deleted \u2014 a gap closes only with recorded evidence at the level its claim requires.",
+ "maturityModel": {
+  "levels": {
+   "0": "absent \u2014 no contract, no code, no evidence",
+   "1": "architecture contract \u2014 the neutral port/seam exists and is pinned, no implementation",
+   "2": "fake-local proof \u2014 a simulated/in-process implementation passes the contract; honest labels, no real-external claims",
+   "3": "credentialed real-external proof \u2014 a real provider answers over the real transport with the operator's credentials; every boundary honestly NOT RUN otherwise",
+   "4": "repeatable public journey \u2014 the capability serves a real user journey end-to-end on a public plane at an exact attested revision",
+   "5": "provider-replaceable + failure-tested \u2014 a conformance contract plus at least one alternate solution, with failure drills and governed failover",
+   "6": "production-grade \u2014 sustained observation, monitoring, recovery and cost accounting under real load"
   },
-  "gaps": [
-    {
-      "id": "GAP-001",
-      "title": "the realtime rail has no real external implementation",
-      "concern": "realtime-transport (the RealtimeRail port, WORK-024/MOD-005)",
-      "currentState": "level 3-on-local-rail — the conformance contract (C1-C12) + the LiveKit adapter green over a REAL local livekit-server 1.9.11 (label local-livekit-server, --dev public keypair; SIGSTOP/SIGCONT refusal injection; the independent server-side room-list corroboration); the simulated rail passes the SAME suite (the semantic reference). 2026-09-23: the EXTERNAL participant-join plane CREDENTIALED and PROVEN — the owner-delivered 900s join grant accepted by the managed plane (wss://zeck-vuo9lv9v.livekit.cloud, server 1.13.7; evidence ppr-009-live-join.json). 2026-09-24: the ADMIN/server-SDK external rung CREDENTIALED and PROVEN — the owner delivered the FULL API keypair (the rotated key ID + secret); the Lead's credentialed harness ran the SAME C1-C12 contract over the managed plane as a fourth subject, 13/13 green (idempotency convergence incl. the crash-model restart, exactly-once effects, the managed-plane corroboration under eventual consistency, a real join grant minted on the plane; the plane left clean; evidence ppr-009-managed-conformance.json). GAP-001's external rung is now CREDENTIALED on BOTH RUNGS the delivered keypair permits (participant-join + admin/server-SDK). Remaining open: the §15 DEPLOYMENT leg (the credential set materialized on the HOSTING plane + the realtime journeys against the deployed, composition-bound rail — the §13 redeploy chain's concern, hosting-token-bound) and the level-5 live-plane substitution rung (GAP-003's residual)",
-      "targetState": "level 3 (a CREDENTIALED external rail via the §15 operator sequence) then level 5 (a drilled alternate real rail)",
-      "evidence": "deploy/evidence/ppr-009.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/{realtime-rail-conformance,simulated-rail.conformance.test,livekit-rail.conformance.test}.ts; merged at 02fc6b4; the external join-plane proof: deploy/evidence/ppr-009-live-join.json + scripts/lead-livekit-join-probe.ts; the external admin/server-SDK proof: deploy/evidence/ppr-009-managed-conformance.json + tests/conformance/realtime-rail/livekit-managed-rail.credentialed.test.ts",
-      "owner": "PPR-009 (DELIVERED — merged 02fc6b4); the external JOIN plane: Lead credentialed run DONE (2026-09-23, ppr-009-live-join.json); the admin/keypair rung: Lead credentialed run DONE (2026-09-24, ppr-009-managed-conformance.json — the operator delivered the keypair, the Lead ran); the §15 DEPLOYMENT leg: the §13 redeploy chain, then the Lead's plane-bound journeys",
-      "status": "external rung CREDENTIALED on BOTH RUNGS the delivered keypair permits (participant-join + admin/server-SDK); the §15 deployment leg open (redeploy-chain-bound, not credential-bound)"
-    },
-    {
-      "id": "GAP-002",
-      "title": "capability families gated on unresolved external rails",
-      "concern": "model rails (voice/image/video/3d families)",
-      "currentState": "level 2-3 mixed — text families live-proven over the openrouter rail; voice's qwen rail and the 3d gate unresolved at the operator boundary; OpenAI region-blocked from this environment; the console projects the gate-of-record line (correction #7)",
-      "targetState": "level 3 for every runnable family or an honest gated disclosure (never a fabricated capability)",
-      "evidence": "docs/VALIDATION-REPORT.md + the capability manifest's per-family availability sentences + the console's gate-of-record projection",
-      "owner": "operator credential provisioning, then the Lead's credentialed re-runs",
-      "status": "open — credential-bound"
-    },
-    {
-      "id": "GAP-003",
-      "title": "no alternate-solution substitution drills on the live plane",
-      "concern": "provider independence (the maturity ladder's level-5 rung)",
-      "currentState": "level 5-on-local-rail — the substitution/failover drill GREEN over BOTH real rails (the local livekit-server primary while the binary is present; the embedded socket.io alternate, ALWAYS real): the same durable coordinates and the SAME stable rail-level idempotency keys replayed across rails after the primary's SIGSTOP refusal, converging exactly-once PER RAIL with identical neutral acknowledgment shapes; the five shared failure kinds pinned to the EXACT same neutral reason strings on both rails (a refusal means the same thing on every rail); the composition auto-rebind policy DELIVERED (PPR-013, 2026-09-24): bounded one-rebind failover behind the same neutral port, the simulated rail never a failover target, no mid-session flapping",
-      "targetState": "level 5 — at least one durable concern served by an alternate solution through the same port, drilled (the LIVE-plane rung once a real rail binds on the plane — credential-bound)",
-      "evidence": "deploy/evidence/ppr-010.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/rail-substitution.drill.test.ts; merged at 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d + the composition auto-rebind policy delivered (PPR-013 merged 5f0d09c + the Lead reconciliations 51b6786/10c06cc): the preference derives from the existing materializations (livekit preferred / socketio alternate / nothing = the simulated fallback) with bounded ONE-rebind failover on RETRYABLE opens under the same coordinates + keys — deploy/evidence/ppr-013.json",
-      "owner": "PPR-010 (DELIVERED — merged 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d); the live-plane rung: a future governed work order after the operator credential provisioning",
-      "status": "advanced-to-level-5-on-local-rail (the live-plane rung open — credential-bound)"
-    },
-    {
-      "id": "GAP-004",
-      "title": "the bare-root landing answers a redirect, not HTML",
-      "concern": "experience-delivery routing (the platform's filesystem-phase fact)",
-      "currentState": "CLOSED AT THE LIVE RUNG (2026-09-24): the platform bridge is the accepted design, and the harness follows it honestly — the live plane's / -> 307 /console bridge FOLLOWED and the landed surface audited at the wave-F redeploy (25e11f9, dpl_4stUVFACDjVgSB6smGdZm6DKcVvn): discover-landing PASS, '307 / -> /console (1 hop); HTML landing served with every audited dimension passing', the first journey record with ZERO not-runs",
-      "targetState": "either accept the platform bridge as the design (documented) or a redirect-following landing audit as its own harness-contract work order",
-      "evidence": "deploy/evidence/ppr-011.json (+ its deliveryNote) + deploy/evidence/wave-f-redeploy.json (the journey MEASURE record) + tests/integration/journey/landing-audit.test.ts + the f1-closure.json notRun[0] history + correction #8 (§13.7) + §13.9's addendum + §13.10's redeploy record",
-      "owner": "closed (the Lead's wave-F redeploy MEASURE executed)",
-      "status": "local rung delivered 2026-09-23 (merged cb94ace); the live re-run executed 2026-09-24 at the wave-F redeploy — the gap is closed end to end (the fixture matrix + the live proof)"
-    },
-    {
-      "id": "GAP-005",
-      "title": "one plane, one environment",
-      "concern": "experience-delivery (the public preview is the only served environment)",
-      "currentState": "level 4 on the preview plane (zeck-preview-main.vercel.app, bound at the exact revision); staging/production environments and custom domains do not exist",
-      "targetState": "level 6 requires the production environment with sustained observation",
-      "evidence": "deploy/evidence/f1-closure.json chain[4] + the frontier state's honest residual",
-      "owner": "future governed work orders (beyond the current roadmap)",
-      "status": "open"
-    },
-    {
-      "id": "GAP-006",
-      "title": "economics and codebase-analysis seams unbound on the preview plane",
-      "concern": "the bootstrap composition's honestly-unbound capabilities",
-      "currentState": "level 1-2 — the seams answer the honest 422 CAPABILITY_UNAVAILABLE with the composition split recorded (PPR-008's boot document)",
-      "targetState": "bound authorities when their work orders are issued (the materialization-gate pattern)",
-      "evidence": "deploy/api.ts's composition facts + the journey route-table's composition split",
-      "owner": "future governed work orders",
-      "status": "open"
-    }
-  ]
+  "rule": "levels are never collapsed to PASS/FAIL; every level-3+ claim cites its evidence record"
+ },
+ "gaps": [
+  {
+   "id": "GAP-001",
+   "title": "the realtime rail has no real external implementation",
+   "concern": "realtime-transport (the RealtimeRail port, WORK-024/MOD-005)",
+   "currentState": "level 3-on-local-rail \u2014 the conformance contract (C1-C12) + the LiveKit adapter green over a REAL local livekit-server 1.9.11 (label local-livekit-server, --dev public keypair; SIGSTOP/SIGCONT refusal injection; the independent server-side room-list corroboration); the simulated rail passes the SAME suite (the semantic reference). 2026-09-23: the EXTERNAL participant-join plane CREDENTIALED and PROVEN \u2014 the owner-delivered 900s join grant accepted by the managed plane (wss://zeck-vuo9lv9v.livekit.cloud, server 1.13.7; evidence ppr-009-live-join.json). 2026-09-24: the ADMIN/server-SDK external rung CREDENTIALED and PROVEN \u2014 the owner delivered the FULL API keypair (the rotated key ID + secret); the Lead's credentialed harness ran the SAME C1-C12 contract over the managed plane as a fourth subject, 13/13 green (idempotency convergence incl. the crash-model restart, exactly-once effects, the managed-plane corroboration under eventual consistency, a real join grant minted on the plane; the plane left clean; evidence ppr-009-managed-conformance.json). GAP-001's external rung is now CREDENTIALED on BOTH RUNGS the delivered keypair permits (participant-join + admin/server-SDK). Remaining open: the \u00a715 DEPLOYMENT leg (the credential set materialized on the HOSTING plane + the realtime journeys against the deployed, composition-bound rail \u2014 the \u00a713 redeploy chain's concern, hosting-token-bound) and the level-5 live-plane substitution rung (GAP-003's residual)",
+   "targetState": "level 3 (a CREDENTIALED external rail via the \u00a715 operator sequence) then level 5 (a drilled alternate real rail)",
+   "evidence": "deploy/evidence/ppr-009.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/{realtime-rail-conformance,simulated-rail.conformance.test,livekit-rail.conformance.test}.ts; merged at 02fc6b4; the external join-plane proof: deploy/evidence/ppr-009-live-join.json + scripts/lead-livekit-join-probe.ts; the external admin/server-SDK proof: deploy/evidence/ppr-009-managed-conformance.json + tests/conformance/realtime-rail/livekit-managed-rail.credentialed.test.ts",
+   "owner": "PPR-009 (DELIVERED \u2014 merged 02fc6b4); the external JOIN plane: Lead credentialed run DONE (2026-09-23, ppr-009-live-join.json); the admin/keypair rung: Lead credentialed run DONE (2026-09-24, ppr-009-managed-conformance.json \u2014 the operator delivered the keypair, the Lead ran); the \u00a715 DEPLOYMENT leg: the \u00a713 redeploy chain, then the Lead's plane-bound journeys",
+   "status": "external rung CREDENTIALED on BOTH RUNGS the delivered keypair permits (participant-join + admin/server-SDK); the \u00a715 deployment leg open (redeploy-chain-bound, not credential-bound)"
+  },
+  {
+   "id": "GAP-002",
+   "title": "capability families gated on unresolved external rails",
+   "concern": "model rails (voice/image/video/3d families)",
+   "currentState": "level 2-3 mixed \u2014 text families live-proven over the openrouter rail; voice's qwen rail and the 3d gate unresolved at the operator boundary; OpenAI region-blocked from this environment; the console projects the gate-of-record line (correction #7)",
+   "targetState": "level 3 for every runnable family or an honest gated disclosure (never a fabricated capability)",
+   "evidence": "docs/VALIDATION-REPORT.md + the capability manifest's per-family availability sentences + the console's gate-of-record projection",
+   "owner": "operator credential provisioning, then the Lead's credentialed re-runs",
+   "status": "open \u2014 credential-bound"
+  },
+  {
+   "id": "GAP-003",
+   "title": "no alternate-solution substitution drills on the live plane",
+   "concern": "provider independence (the maturity ladder's level-5 rung)",
+   "currentState": "level 5-on-local-rail \u2014 the substitution/failover drill GREEN over BOTH real rails (the local livekit-server primary while the binary is present; the embedded socket.io alternate, ALWAYS real): the same durable coordinates and the SAME stable rail-level idempotency keys replayed across rails after the primary's SIGSTOP refusal, converging exactly-once PER RAIL with identical neutral acknowledgment shapes; the five shared failure kinds pinned to the EXACT same neutral reason strings on both rails (a refusal means the same thing on every rail); the composition auto-rebind policy DELIVERED (PPR-013, 2026-09-24): bounded one-rebind failover behind the same neutral port, the simulated rail never a failover target, no mid-session flapping",
+   "targetState": "level 5 \u2014 at least one durable concern served by an alternate solution through the same port, drilled (the LIVE-plane rung once a real rail binds on the plane \u2014 credential-bound)",
+   "evidence": "deploy/evidence/ppr-010.json (verifiedLocally + leadIndependentBattery + the notRun registry); tests/conformance/realtime-rail/rail-substitution.drill.test.ts; merged at 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d + the composition auto-rebind policy delivered (PPR-013 merged 5f0d09c + the Lead reconciliations 51b6786/10c06cc): the preference derives from the existing materializations (livekit preferred / socketio alternate / nothing = the simulated fallback) with bounded ONE-rebind failover on RETRYABLE opens under the same coordinates + keys \u2014 deploy/evidence/ppr-013.json",
+   "owner": "PPR-010 (DELIVERED \u2014 merged 91c33f2cb7b4c0d989a81e05cd2e2d9ad6170e8d); the live-plane rung: a future governed work order after the operator credential provisioning",
+   "status": "advanced-to-level-5-on-local-rail (the live-plane rung open \u2014 credential-bound)"
+  },
+  {
+   "id": "GAP-004",
+   "title": "the bare-root landing answers a redirect, not HTML",
+   "concern": "experience-delivery routing (the platform's filesystem-phase fact)",
+   "currentState": "CLOSED AT THE LIVE RUNG (2026-09-24): the platform bridge is the accepted design, and the harness follows it honestly \u2014 the live plane's / -> 307 /console bridge FOLLOWED and the landed surface audited at the wave-F redeploy (25e11f9, dpl_4stUVFACDjVgSB6smGdZm6DKcVvn): discover-landing PASS, '307 / -> /console (1 hop); HTML landing served with every audited dimension passing', the first journey record with ZERO not-runs",
+   "targetState": "either accept the platform bridge as the design (documented) or a redirect-following landing audit as its own harness-contract work order",
+   "evidence": "deploy/evidence/ppr-011.json (+ its deliveryNote) + deploy/evidence/wave-f-redeploy.json (the journey MEASURE record) + tests/integration/journey/landing-audit.test.ts + the f1-closure.json notRun[0] history + correction #8 (\u00a713.7) + \u00a713.9's addendum + \u00a713.10's redeploy record",
+   "owner": "closed (the Lead's wave-F redeploy MEASURE executed)",
+   "status": "local rung delivered 2026-09-23 (merged cb94ace); the live re-run executed 2026-09-24 at the wave-F redeploy \u2014 the gap is closed end to end (the fixture matrix + the live proof)"
+  },
+  {
+   "id": "GAP-005",
+   "title": "one plane, one environment",
+   "concern": "experience-delivery (the public preview is the only served environment)",
+   "currentState": "level 4 on the preview plane (zeck-preview-main.vercel.app, bound at the exact revision); staging/production environments and custom domains do not exist",
+   "targetState": "level 6 requires the production environment with sustained observation",
+   "evidence": "deploy/evidence/f1-closure.json chain[4] + the frontier state's honest residual",
+   "owner": "future governed work orders (beyond the current roadmap)",
+   "status": "open"
+  },
+  {
+   "id": "GAP-006",
+   "title": "economics and codebase-analysis seams unbound on the preview plane",
+   "concern": "the bootstrap composition's honestly-unbound capabilities",
+   "currentState": "level 1-2 \u2014 the seams answer the honest 422 CAPABILITY_UNAVAILABLE with the composition split recorded (PPR-008's boot document)",
+   "targetState": "bound authorities when their work orders are issued (the materialization-gate pattern)",
+   "evidence": "deploy/api.ts's composition facts + the journey route-table's composition split",
+   "owner": "PPR-014 (AUTHORIZED / WAVE G \u2014 the evo-008 eligibility review; spec/post-release-work-orders/PPR-014.md)",
+   "status": "binding authorized \u2014 PPR-014 / WAVE G (2026-09-25, the evo-008 eligibility review): the economics + codebase-analysis authorities over the preview materialization, zero new env variables, the real module seams; in flight"
+  }
+ ]
 }
