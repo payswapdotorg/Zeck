@@ -1923,3 +1923,108 @@ model families — operator-owned, THE credential residual) and GAP-005
 domains); the credentialed journey chains for the two new capabilities
 remain potential journey extensions through a governed work order (the
 PPR-003 taxonomy's extension rule).
+
+## 19. The public productization correction (PPR-015 — the real-user browser audit)
+
+**The origin.** A live user navigating the public origin reported the
+experience a first-time user actually receives: the visible Home action
+landed on `/console` (the Developer Console masquerading as the product
+Home), the intended discovery-first outcome statement was absent from
+the landing path, capability discovery was not surfaced there, and
+source-defined dashboard routes fell through to the API plane as raw
+JSON. The structural 12-journey/28-step harness — pinned to the ROUTE
+table — could not see this class: every route answered its designed
+shape; the defect lived in what the visible navigation grammar actually
+offers a human. The Architect authorized PPR-015 (the wave-H order):
+a real-user `agent-browser` audit from the public origin, every
+material defect fixed in the public-productization surface, and the
+same journey re-proven locally and on the deployed exact revision.
+
+**Phase A — the audit reproduced all four defect classes live** (the
+classified ledger F01..F11 with the 10-field evidence form lives at
+`deploy/evidence/ppr-015.json`): the Home masquerade; the absent
+outcome statement; capability discovery off the landing path; and 21
+fall-through destinations answering raw API JSON — including the
+first-execution golden path (`/runs/:id` — a first-time user's very
+first run ended in raw JSON) and the lookup form; `/agents` answered
+the machine 422 where a UI page was promised.
+
+**Phase B — the corrections at the truth sources:**
+
+- `vercel.json`: the root bridge retargeted `/` → 307 → `/home`, and
+  the rewrite set expanded to the **derived** experience projection —
+  `/home`, `/build`, `/deployments`, `/runs`, `/assets`, `/improve`,
+  `/command`, `/attention`, `/mode`, `/appearance` (exact + `:path*`
+  forms) alongside the existing `/console`, `/trust`, `/admin` — never
+  the API-owned prefixes.
+- `apps/dashboard`: GET `/home` is the canonical discovery-first Home
+  (the outcome hero, the 22-family grid, the guided safe start, the
+  discovery entries); `HOME_PATH` exported and addressed by every Home
+  affordance (nav control, brand, breadcrumb root, mobile bar); the
+  agents UI moved to `/build/agents` (the machine `/agents` stays the
+  API inventory — the frozen-architecture boundary respected, the
+  machine routes never shadowed); the lookup form targets `/runs`
+  (GET `/runs?id=` → 303 → `/runs/:id`); GET `/assets` the honest
+  Library overview.
+- **The regression surface** (the class, not the URL):
+  `deploy/experience-routing.ts` — `deriveRoutingProjection` over
+  `createDashboardRoutes` (the experience authority) and
+  `buildBootstrapApp(...).server.routes` (the machine-contract
+  authority); a mixed prefix is a projection FAILURE, so the rewrite
+  set cannot drift from the route tables again. Pinned by
+  `tests/unit/deployment/experience-routing.test.ts` (RED with 4
+  failures on the uncorrected base → GREEN 10/10),
+  `deploy/local-experience-gateway.ts` +
+  `tests/integration/deployment/experience-gateway.test.ts` (8 →
+  13/13 — the two-function composition over real HTTP), and
+  `tests/browser/public-experience-browser-smoke.ts` (the
+  agent-browser 16-step journey: Home → discovery → safe start →
+  boundary → responsive → keyboard), plus the updated navigation pins.
+
+**The wave-H redeploy chain at the merge head `e14989c`** (PR #156;
+the worker delivery `ca61719` harvested from the pod, the Lead
+independent battery green — typecheck 0, lint EXACT baseline, unit
+1068/1068, integration on the real PG rail 178f/1320t/0-failed,
+arch+disc+conf+journeys 143f/2267t/0-failed, the routing regression
+27/27, the gateway battery 14/14, the browser smoke 16/16,
+`deploy:validate` 97 variables zero-delta, governance OK):
+
+- `ZECK_DEPLOY_GIT_REVISION` re-pinned to
+  `e14989cd5990db586f3eb32fa7f861701d9d2b78` on **both** env targets
+  (the old pins deleted first, the REST v10 plain-type form);
+- the two-function local artifact proof PASSED at `e14989c`
+  (index.func `/identity` BOUND at the exact head, the honest 503
+  health, the 422 Idempotency-Key boundary; experience.func
+  honest-unbound serving `/home` 200 HTML with the outcome statement
+  and the 303 root bridge);
+- `vercel deploy --prebuilt --prod` SUCCEEDED first attempt —
+  `dpl_52gK8VdERR` READY, the plane attesting the exact governed head
+  (`/identity`: status bound, gitRevision `e14989cd5990…`);
+- **the credentialed journey MEASURE: 12 journeys / 28 steps — 28
+  PASS / 0 FAIL / 0 NOT-RUN** (the perfect form, the wave-G precedent
+  matched; the plane's transport credential + application id read
+  from the deployment environment, deleted after use), findings 0,
+  22/22 family disclosures, identity gate verified;
+- `deploy:public-smoke` EXIT 0 — 26 routes, zero problems, the
+  activation metrics held (materialized 4 / unbound 0);
+- **the public agent-browser audit PASSED on the live origin** (clean
+  session, visible-affordance drive): the bare `/` lands on `/home`;
+  the outcome statement visible without searching; the 22-family
+  catalog in its four honest states; the visible-route sweep 37/37
+  destinations serving HTML (zero API fall-through — the defect class
+  is dead); the API boundary negative check (`/agents` 422 JSON,
+  `/health` + `/identity` 200 JSON); the mobile viewport 390px with
+  no horizontal scroll and the Home link in the bottom bar; the
+  keyboard skip link the first focusable. Evidence:
+  `deploy/evidence/ppr-015-public-home-desktop.png` +
+  `ppr-015-public-home-mobile.png`.
+
+**The honest correction on record**: the Lead's first credentialed
+journey re-run sent the v10 API's encrypted wrapper as the Bearer (a
+401 AUTHENTICATION_FAILED extraction error, never a plane defect);
+corrected via `vercel env pull` — the true `sk-preview-` token, the
+28/28 record above. `deploy/evidence/ppr-015.json`'s `deliveryNote`
+closes every notRun item. What stays honestly open: GAP-002 (the
+model families — operator-owned, THE credential residual) + GAP-005
+(operator-owned assets); the next governed move is the evo-009
+post-wave-H OBSERVE scan, then the operator's.
