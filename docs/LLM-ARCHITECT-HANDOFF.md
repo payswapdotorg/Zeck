@@ -18,8 +18,8 @@
 - E1.1 implementation WORK-048 through WORK-056: **complete**.
 - Validation program VAL-001 through VAL-052: **complete**.
 - Developer Platform DEP-001 through DEP-044: **complete**, including the 8/8 DEP-044 release-gate verdict.
-- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`.
-- Current post-release frontier is `PPR-001/PPR-002/PPR-003`, with a maximum of three concurrent workers.
+- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`. The current executable frontier is PPR-015.
+- Current post-release frontier is `PPR-015`, with a maximum of three concurrent workers.
 - The exact `main` SHA must always be fetched at recovery time.
 
 Historical sections below remain useful evidence but do not override the current post-release state.
@@ -139,9 +139,9 @@ Known acceptance anchors:
 
 The repository frontier must authorize PPR-015 before the Tech Lead dispatches implementation.
 
-## Current implementation stream
+## Historical implementation stream
 
-The repository's current active stream is deployment D-07:
+The repository's former implementation stream was deployment D-07:
 
 `spec/work-orders/WORK-048.md`
 
