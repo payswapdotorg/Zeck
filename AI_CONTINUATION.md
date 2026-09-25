@@ -59,6 +59,20 @@ the sections are preserved, not current.
   recorded precedent on this page, first applied during the validation
   program, applied again for DEP-012).
 
+
+## Current post-release continuation
+
+As of 2026-09-25, the Architect has issued **PPR-015 — Real-user browser audit and public productization correction** after live user navigation exposed productization regressions that the existing route/HTTP acceptance did not catch.
+
+The Tech Lead must use `agent-browser` as a first-time user starting at `https://zeck-preview-main.vercel.app/`, follow visible navigation rather than guessing URLs, record every material issue, fix all in-scope defects, and repeat the same flow locally and on the deployed exact revision.
+
+Known triggers:
+- Home → `/console`;
+- discovery-first Home copy and capability discovery are not appearing on the user's actual Home path;
+- source-defined dashboard routes can still be unreachable on the public experience plane.
+
+PPR-015 is the sole eligible implementation order for this corrective wave once the frontier state records the authorization. Do not treat the old 12-journey PASS record as proof that this live user navigation problem is resolved.
+
 ## Current continuation pointer (historical program record)
 
 - Core Architecture v1.0: frozen after approval.
