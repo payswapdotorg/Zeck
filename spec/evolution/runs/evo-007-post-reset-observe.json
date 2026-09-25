@@ -1,0 +1,73 @@
+{
+ "schemaVersion": 1,
+ "run": "evo-007",
+ "date": "2026-09-25",
+ "trigger": "event-triggered — the post-reset-epoch deliveries (PPR-009's managed-plane credentialed merge 1685fe9 + the §13.6 redeploy chain closed with the plane attesting 1685fe9 + the records commit eef386e); dispatched as the epoch's OBSERVE scan from INSIDE THE REPLAY (worker session evo007, chat 9a4ea036-f723-4a77-ba7b-b079d012f9a0, agents tab, GLM-5.3, Full-Stack — the operator's binding dispatch law, 2026-09-25)",
+ "loop": "OBSERVE -> DETECT (recorded; no AUTHORIZE this run)",
+ "observed": [
+  {
+   "scan": "base reconciliation",
+   "results": [
+    "the worker's clone verified origin/main HEAD at eef386e420e27ea30fd59c5c90a36a717c7704b9 (clean tree) — the packet's quoted full SHA (eef386e420e6d3ee...) was UNREACHABLE (a Lead packet-authoring defect: the correct 10-char prefix eef386e420 was known, the tail was not); the worker applied the fallback rule exactly (base on origin/main HEAD, record the exact SHA, the Lead reconciles)",
+    "the Lead's independent reconciliation: local clone AND upstream (via the PAT) both resolve main to eef386e420e27ea30fd59c5c90a36a717c7704b9 — the worker's base is the governed head; the scan is VALID"
+   ]
+  },
+  {
+   "scan": "dependency drift (npm registry vs the lockfile, the deployment-critical focus set)",
+   "results": [
+    "fastify installed 5.12.5 = 5.12.5 latest — CURRENT (range ^5.12.1 unchanged; no in-range advance exists)",
+    "pg installed 8.23.0 = 8.23.0 latest — CURRENT (exact pin)",
+    "livekit-server-sdk installed 2.19.1 = 2.19.1 latest — CURRENT (exact pin)",
+    "socket.io installed 4.8.3 = 4.8.3 latest + socket.io-client installed 4.8.3 = 4.8.3 latest — CURRENT",
+    "bun.lock concurs with node_modules on all five; latest values from npm view (the registry's own truth); ALL FIVE deployment-critical dependencies CURRENT"
+   ]
+  },
+  {
+   "scan": "manifest validity (the env contract + secret references)",
+   "results": [
+    "deploy:validate exit 0 — valid=true, environments=4, variables=97, problems=0 — IDENTICAL to evo-006's record"
+   ]
+  },
+  {
+   "scan": "route drift (the journey harness's pinned public surface)",
+   "results": [
+    "no-drift: ROUTE_PROBES = 26 routes (tests/journey/route-probes.ts, public-smoke parity) — 18 auth-boundary, 4 capability-or-auth-boundary, 3 capability-unbound, 1 public-artifact — the same set evo-006 recorded",
+    "corroboration: 6297071 IS an ancestor of HEAD and the diff over tests/journey/ + deploy/api.ts + deploy/smoke.ts + deploy/public-smoke.ts + vercel.json + the OpenAPI doc is EMPTY; the plane's redeploy smoke of record (at 1685fe9) verified the same 26 routes with zero problems"
+   ]
+  },
+  {
+   "scan": "governance counts",
+   "results": [
+    "governance-check exit 0 — 60 Work Orders, 110 requirements, inFlight=[], frontier=[] — IDENTICAL to the record"
+   ]
+  },
+  {
+   "scan": "the public plane's live state (read-only HTTP)",
+   "results": [
+    "/identity → status bound, environment preview, gitRevision 1685fe936813b51ffba23a46233fc0506f2a45d5 — the expected attestation (the plane stands at the governed merge head; main is exactly one records commit ahead — the sanctioned wave-boundary posture)",
+    "GET / → 307 (the documented / -> /console platform bridge — GAP-004's accepted design, the MEASURE-of-record PASS shape)",
+    "/health → controlPlane ready; relational-state READY (authoritative, postgres connect + select 1); the six non-authoritative dimensions each in its provider-DECLARED degraded mode — EXACTLY the sanctioned F1-precedent honest-degraded set (deploy/PUBLIC-DEPLOYMENT.md §2); NOT regressions"
+   ]
+  },
+  {
+   "scan": "conformance suite shape (CI-form, honest-skip counting)",
+   "results": [
+    "vitest CI-form (the repo's own runner): 27 passed | 32 skipped | 0 failed (59 tests, exit 0) — exactly the battery-of-record form; the credentialed subject (14 tests) and the local-livekit-server subject (14 tests) honestly skipped without env, the drill's primary-rail legs honestly skipped",
+    "bun-test form (bun's own runner): 27 pass / 20 skip / 1 fail / 1 error — the 1 fail + 1 error is IDENTIFIED as the credentialed subject's file-level vi.setConfig call (a vitest API absent from bun's shim) erroring at load BEFORE its env-gate could record the honest skip; no subject's conformance actually failed"
+   ]
+  }
+ ],
+ "detected": [
+  "no candidates this run: no observed delta maps to a gap-ledger entry — the dependency set is fully current, the manifest is valid with zero problems, the route table is unchanged, governance is unchanged, the plane is healthy at its sanctioned posture, the conformance suite is green in its own runner with honest env-gated skips",
+  "no journey-coverage regression: the journey MEASURE of record at 1685fe9 is 12 journeys / 28 steps — 28 PASS / 0 fail / 0 NOT-RUN (this OBSERVE re-ran no journeys and contradicts nothing)",
+  "the open gap-ledger residuals are all operator-owned and unchanged: GAP-002 model-family credentials (the one delivery that unlocks the realtime rail legs), GAP-003's live-plane substitution rung (model-family-bound), GAP-001's remaining realtime-journey rung (likewise provider-gated by GAP-002), GAP-005/GAP-006 unchanged (future governed work orders)"
+ ],
+ "authorizedThisRun": [],
+ "honestBoundaries": [
+  "the OBSERVE tooling fact (recorded for future scans, NOT a DETECT candidate): bun's own test runner cannot load the credentialed subject's file-level vi.setConfig({testTimeout, hookTimeout}) call — bun's vitest shim lacks it; the suite's honest CI-form lives under vitest where it is green; future OBSERVE packets should prescribe the vitest form (bun run test) or expect the identified 1 fail + 1 error without conformance meaning",
+  "the packet-authoring defect this run exposed: the Lead's packet quoted an unreachable full SHA (correct 7/10-char prefix, fabricated tail); the worker's fallback rule (base on origin/main HEAD, record the exact SHA, the Lead reconciles) contained it — the rule stays mandatory in every future packet",
+  "the dispatch law of this epoch (operator directive 2026-09-25): workers dispatch ONLY from inside the replay (agents tab, GLM-5.3, Full-Stack, hard-verified at every step); the Lead orchestrates, monitors, harvests, verifies and records — never implements",
+  "the nightly cadence is POLICY (spec/evolution/evolution-policy.json) — this sandbox has no durable scheduler; scans run when a governed session is active (the trigger authority is the loop, never the clock)"
+ ],
+ "nextReview": "the credential-bound rungs stay operator-owned (GAP-002's model families — the single delivery that unlocks the realtime rail legs on the plane + GAP-003's live-plane substitution rung); no eligible non-credential work orders exist at this head; the next OBSERVE runs at the next governed event (a delivery, a credential delivery, or a detected regression)"
+}
