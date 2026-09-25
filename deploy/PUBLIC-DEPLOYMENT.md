@@ -1816,3 +1816,46 @@ alternatives in `deploy/evidence/ppr-014.json`'s designDecisions.
 What stays honestly open after this layer: GAP-002 (the model families —
 operator-owned, THE credential residual) and GAP-002's realtime rail legs;
 nothing in the preview bootstrap's capability set remains unbound.
+
+### 18.6 The wave-G redeploy record (2026-09-25 — the activation, first attempt)
+
+The wave-G §13.6 redeploy chain executed at the wave boundary (~16:20 UTC)
+and SUCCEEDED on the first attempt — the quota window, at 82 in-window
+visible (the hidden-mass caveat held), permitted the deploy:
+
+- **Rebuild at `6f12d8c`** (both function graphs; the project re-linked
+  after the sandbox reset had wiped `.vercel/`);
+  `ZECK_DEPLOY_GIT_REVISION` re-pinned to
+  `6f12d8c00021f8cd5012629000f258c58c4479e5` on **both** env targets
+  before the deploy (the CLI's interactive-prompt trip worked around
+  through the REST API's v10 plain-type form; the old pins deleted
+  first).
+- **The two-function local artifact proof PASSED** at `6f12d8c`:
+  `/identity` bound (preview, branch `main` via
+  `VERCEL_GIT_COMMIT_REF`), the honest fail-closed 503 health, the 422
+  Idempotency-Key boundary; the experience function serving the console
+  HTML.
+- **`vercel deploy --prebuilt --prod` SUCCEEDED** — the plane READY and
+  attesting the exact governed head (`/identity`: status bound,
+  gitRevision `6f12d8c…`, environment preview).
+- **The journey MEASURE re-run**: 12 journeys / 28 steps — 28 PASS /
+  0 fail / 0 NOT-RUN (the perfect form), findings 0, 22/22 family
+  disclosures, identity gate verified (the invocation form
+  `--environment preview --branch main` — the per-branch preview
+  resource set).
+- **`deploy:public-smoke` EXIT 0** (26 routes, zero problems, the
+  F1-precedent honest-degraded health) — with **the activation on
+  record**: `capabilitySeamMaterializedComposition` 4 (was 0 at wave
+  F) + `capabilitySeamUnboundComposition` 0 (was 4): the economics +
+  codebase-analysis seams now serve their materialized compositions on
+  the public plane. `capabilityUnboundHonest` 3 (the
+  sandbox-governance routes, unchanged); `publicArtifactBound` 1.
+
+The master record is `deploy/evidence/wave-g-redeploy.json`;
+`deploy/evidence/ppr-014.json`'s `deliveryNote` closes the plane-side
+notRuns. What stays honestly open after the activation: GAP-002 (the
+model families — operator-owned, THE credential residual) and GAP-005
+(operator-owned assets: staging/production environments, custom
+domains); the credentialed journey chains for the two new capabilities
+remain potential journey extensions through a governed work order (the
+PPR-003 taxonomy's extension rule).
