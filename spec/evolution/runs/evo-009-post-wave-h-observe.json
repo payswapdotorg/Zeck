@@ -1,0 +1,70 @@
+{
+ "schemaVersion": 1,
+ "run": "evo-009",
+ "date": "2026-09-25",
+ "trigger": "event-triggered \u2014 the wave-H closure (PPR-015's merge e14989c + the \u00a713.6 redeploy chain closed with the plane attesting e14989cd5990 + the credentialed journey MEASURE 28/28 + the public agent-browser audit green + the records commit 06ac6ee); dispatched as the epoch's OBSERVE scan from INSIDE THE REPLAY (worker session evo009, chat cd9e1a53-c119-4ed6-bf50-e64839..., agents tab, GLM-5.3, Full-Stack \u2014 the operator's binding dispatch law)",
+ "loop": "OBSERVE -> DETECT (recorded; no AUTHORIZE this run \u2014 zero candidates)",
+ "observed": [
+  {
+   "scan": "base reconciliation",
+   "results": [
+    "the worker's clone verified origin/main HEAD at 06ac6eec770aa6a91389d8340c90a8f108ea7bdf (clean tree, git rev-parse ^{commit} reachable) \u2014 the packet's expected base, NO fallback needed",
+    "the Lead's independent reconciliation: the records commit was authored and pushed by this session \u2014 the base is the governed head by construction; the scan is VALID"
+   ]
+  },
+  {
+   "scan": "dependency drift (npm registry vs the lockfile, the deployment-critical focus set)",
+   "results": [
+    "fastify installed 5.12.5 = 5.12.5 latest \u2014 CURRENT (range ^5.12.1; no in-range advance exists)",
+    "pg installed 8.23.0 = 8.23.0 latest \u2014 CURRENT (exact pin)",
+    "livekit-server-sdk installed 2.19.1 = 2.19.1 latest \u2014 CURRENT (exact pin)",
+    "socket.io installed 4.8.3 vs 4.8.4 latest \u2014 BEHIND (range ^4.8.3 admits the in-range advance; bun.lock concurs)",
+    "socket.io-client installed 4.8.3 vs 4.8.4 latest \u2014 BEHIND (range ^4.8.3 admits the in-range advance; bun.lock concurs)",
+    "Lead-verified independently: node_modules 4.8.3 + npm view 4.8.4 \u2014 the drift CONFIRMED"
+   ]
+  },
+  {
+   "scan": "manifest validity (the env contract)",
+   "results": [
+    "exit 0, valid=true, environments=4, variables=97, problems=0 \u2014 IDENTICAL to evo-007's record"
+   ]
+  },
+  {
+   "scan": "route drift (the public surface)",
+   "results": [
+    "no-drift \u2014 ROUTE_PROBES = 26 routes (18 auth-boundary / 4 capability-or-auth-boundary / 3 capability-unbound / 1 public-artifact), the same set evo-006/evo-007 recorded; git diff eef386e..HEAD over tests/journey/ is EMPTY; deploy/public-smoke.ts + openapi.json unchanged",
+    "the changed public-surface files since the last scan are GOVERNED DELIVERIES, not drift: vercel.json (PPR-015/wave H \u2014 the root bridge / \u2192 307 \u2192 /home + the derived experience rewrite set) and deploy/api.ts (PPR-014/wave G authority bindings behind the EXISTING routes)"
+   ]
+  },
+  {
+   "scan": "governance counts",
+   "results": [
+    "60 Work Orders, 110 requirements, inFlight=[], frontier=[] \u2014 IDENTICAL (exit 0)"
+   ]
+  },
+  {
+   "scan": "the public plane's live state",
+   "results": [
+    "/identity: status bound, environment preview, gitRevision e14989cd5990db586f3eb32fa7f861701d9d2b78 \u2014 the wave-H merge head (main exactly one records commit ahead: the sanctioned wave-boundary posture)",
+    "GET /: 307 \u2192 /home \u2014 PPR-015's delivered corrected root bridge, live",
+    "/health: controlPlane ready; relational-state READY (authoritative); the six non-authoritative dimensions each in its provider-DECLARED degraded mode \u2014 EXACTLY the sanctioned F1-precedent honest-degraded set; NOT regressions"
+   ]
+  },
+  {
+   "scan": "conformance suite shape",
+   "results": [
+    "bun-test form (the prescribed command): 27 pass / 20 skip / 1 fail / 1 error \u2014 IDENTICAL to evo-007's bun-test form; the 1 fail + 1 error = the credentialed subject's file-level vi.setConfig TypeError (a vitest API absent from bun's shim, erroring at load BEFORE its env-gate could record the honest skip); no subject's conformance actually failed",
+    "corroborated CI-form (vitest): 27 passed | 32 skipped | 0 failed, exit 0 \u2014 IDENTICAL to evo-007; no credential env vars set"
+   ]
+  }
+ ],
+ "detect": {
+  "rule": "an OBSERVE fact maps to a candidate only through an open gap-ledger entry or a journey-coverage regression",
+  "candidates": [],
+  "recordedFacts": [
+   "socket.io + socket.io-client 4.8.3 \u2192 4.8.4 (in-range, semver-compatible patch advance): maps to NO open gap-ledger entry (GAP-001's open rungs + GAP-003's live-plane rung are credential/model-family-bound, not version-bound; GAP-002 operator-owned credentials; GAP-005 operator-owned assets; GAP-004/GAP-006 closed) and to NO journey-coverage regression (the MEASURE of record at e14989c: 12 journeys / 28 steps \u2014 28 PASS / 0 FAIL / 0 NOT-RUN) \u2014 per the DETECT rule it is recorded, not promoted",
+   "the pre-authorized level-4 class (semver-compatible dependency pins) sits above the program's currentAutonomyLevel=2 \u2014 the drift is a fact for the Lead's next eligibility review; the PPR-012 governed-advance precedent is the available path if the review chooses to advance"
+  ]
+ },
+ "eligibility": "zero candidates \u2014 no new wave authorized; the program's remaining state is operator-owned (GAP-002 the model families \u2014 THE credential residual; GAP-005 the operator-owned assets). The discretionary socket.io 4.8.4 governed advance remains available to the Lead's next eligibility review per the PPR-012 precedent."
+}
