@@ -1695,3 +1695,124 @@ real rail binds on the deployed plane, per the §13.6/§15/§16 operator
 sequences. No composition consumer binds a realtime rail today; the
 binding ships ready for the composition root through the additive
 barrel exports.
+
+## 18. The GAP-006 seam bindings — the economics + codebase-analysis authorities (PPR-014)
+
+§14's materialization gate now binds the TWO REMAINING domain seams when —
+and only when — the SAME environment contract materializes the preview
+authority set. ZERO new environment variables: the economics and
+codebase-analysis authorities derive from exactly the variables §14.1
+already contracts (the relational URL + `ZECK_TRANSPORT_TOKEN` +
+`ZECK_PREVIEW_APPLICATION_ID`; `deploy:validate`'s 97 does not move —
+machine-checked). Any missing piece still leaves exactly §13/§14's honest
+unbound bootstrap for BOTH seams (the `unboundCapability` shapes are pinned
+by `tests/unit/deployment/preview-gap006-seams.test.ts`); unauthenticated
+probes still answer the honest 401 — the binding changes the AUTHORIZED
+shape, never the boundary. The evidence record of this layer is
+`deploy/evidence/ppr-014.json`.
+
+### 18.1 What binds on the materialized preview
+
+Over the same relational `DatabasePort`, with every dependency REAL:
+
+- **the ECONOMICS authority** — the real economic-action service
+  (`createSqlEconomicsModule`, migration 0014; idempotency arbitration on
+  `platform.idempotency_records`): policy admission through
+  `createPolicyEconomicAdmission` wrapping the SAME policy authority the
+  executions authorize seam uses (the baseline unrestricted set is
+  republished at every cold start); capability admission through
+  `createCapabilityEconomicAdmission` wrapping the REAL capabilities
+  registry (the module's code-resident seed catalog, arbitrated through
+  the registry's identical publish path); the budgets authority
+  (`SqlBudgetStore` + `SqlBudgetsIdempotency` + `createBudgetService` —
+  the budgets-world wiring); the executions ledger seam (the already-bound
+  execution service's `recordStepEvent` — the single write path economic
+  evidence rides); and the payment rail below. NO MODEL is behind this
+  authority: the bounded authorization is the governed WORK-032 boundary
+  (ADR-0018: intent ≠ authorization ≠ transaction ≠ settlement ≠
+  verification). The routes serve the real wire shapes:
+  `POST /economic-actions` (a credentialed create, idempotent), the reads,
+  the events journal, and the outcome bundle (settlement + delivery as
+  SEPARATE axes — payment success is never delivered-as-verified).
+- **the CODEBASE-ANALYSIS authority** — `createOpportunityAnalyzer` over
+  `SqlOpportunityStore` (migration 0016) + the learning module's node
+  digest + the shared id generator + the clock: DETERMINISTIC by
+  construction, no model behind it. The route's mandatory executionId
+  flows through the ALREADY-BOUND executions authority (the route
+  composes the authorities — no second admission path, M2/M26), and the
+  advisory analysis (findings + value-of-information-gated prompts) is
+  durable in the 0016 tables.
+
+### 18.2 The payment rail — the simulated rail, honestly disclosed
+
+The preview's payment rail is the IN-REPO `createSimulatedPaymentRail`
+under the rail id `preview-simulated-rail`. No network, no real payment
+system, no payment credentials — and none were requested. The disclosure
+is carried by the module contract itself everywhere it matters: every
+settlement observation carries `evidence.simulated: true` by the rail
+adapter's OWN contract; every rail-transaction reference names the rail
+(`sim:preview-simulated-rail:<n>`); the boot document's composition fact
+discloses "simulated payment rail — honestly disclosed, no external
+payment provider"; §18.4's operator sequence and the evidence record
+disclose it again. The "money" is seeded credits the plane's economic
+actions reserve against (§18.3), never real funds.
+
+### 18.3 The funded developer wallet (runtime-idempotent seeding)
+
+Every cold start converges the preview application's funded developer
+wallet through the REAL budgets authority — `configureFundingMode(developer)`
++ `grantCredits` under DETERMINISTIC idempotency keys (pure functions of
+the application id: `preview-wallet-funding:<id>` /
+`preview-wallet-grant:<id>`). Run-twice converges on the same rows with NO
+double credit (pinned on the real rail by
+`tests/integration/postgres/preview-gap006-seams.test.ts`: two isolates
+cold-starting over the same database converge on ONE wallet, one
+funding-settings row, and a ledger carrying EXACTLY ONE credit-grant
+entry). The grant amount is `PREVIEW_WALLET_GRANT_MICRO_USD` = 10000000
+($10) — an honest, recorded amount. The capability catalog is the module's
+own code-resident seed catalog rebuilt at composition (converges by
+construction). Both seedings run inside the SAME cold-start ready gate as
+§14's durable seed: a failure fails closed exactly the same way, and the
+retry law applies.
+
+### 18.4 The two-runtimes executions seam (the composition's honest dispatch)
+
+The analysis binding surfaced a real composition collision, resolved and
+recorded: the deterministic substrate's inline drive (§14.3 — the plane's
+only runtime for ORDINARY sandbox tasks) and the analysis route's own
+lifecycle composition would BOTH drive the same execution. The preview now
+binds a two-runtimes executions seam (`createAnalysisAwareExecutions`):
+ordinary sandbox tasks keep the substrate's inline drive (PPR-008's pinned
+behavior, UNCHANGED); `codebase-analysis` tasks (the frozen route's own
+pinned task vocabulary) are created WITHOUT the inline drive — their
+runtime is the analysis route's own lifecycle over the SAME real single
+write path. The honest consequence, pinned by tests: a `codebase-analysis`
+task posted DIRECTLY to `POST /executions` stays CREATED — never a
+fabricated terminal receipt. The economics chain's governing execution is
+composed the same honest way (through the executions authority, non-terminal
+— the "agent runtime / composition wiring" the economics route's own frozen
+docstring names; the canonical ledger accepts no step events on a terminal
+execution). Both material trade-offs are documented with their rejected
+alternatives in `deploy/evidence/ppr-014.json`'s designDecisions.
+
+### 18.5 The operator sequence (the Lead's, after merge)
+
+1. merge the branch (the Lead's integration battery on the real rail is
+   the binding merge gate — the full economics + analyzer chains are
+   proven on the pod's REAL local PostgreSQL 16.4 rail by
+   `tests/integration/postgres/preview-gap006-seams.test.ts`, and re-run
+   credentialed by the Lead);
+2. the §13.6 redeploy chain at the wave-G boundary — the plane-side
+   activation: rebuild the artifact, re-pin the revision, deploy, then the
+   smoke + journey at the landed revision (the journey harness's
+   economics/analysis steps probe the now-AUTHORIZED shapes — its
+   expectations, if any still pin unbound-422 shapes, are the journey
+   harness owner's to update; the route-level behavior is pinned by this
+   order's tests);
+3. no new environment variables, no new secrets: the SAME §14.1 contract
+   materializes both new seams — a plane already running the materialized
+   §14 composition activates them on the redeploy alone.
+
+What stays honestly open after this layer: GAP-002 (the model families —
+operator-owned, THE credential residual) and GAP-002's realtime rail legs;
+nothing in the preview bootstrap's capability set remains unbound.

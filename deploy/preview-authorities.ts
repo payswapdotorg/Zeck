@@ -45,6 +45,53 @@
  *     directly — this module mirrors that reference exactly (src/ is never
  *     modified).
  *
+ * PPR-014 — THE GAP-006 SEAM BINDINGS (the SAME materialization gate, zero
+ * new environment variables): when the authority set materializes, the
+ * composition additionally binds the two remaining domain seams over the
+ * SAME relational DatabasePort —
+ *   - the ECONOMICS authority: `createEconomicActionService` over
+ *     `createSqlEconomicsModule` (migration 0014; idempotency arbitration on
+ *     `platform.idempotency_records`) with EVERY dependency REAL — policy
+ *     admission through `createPolicyEconomicAdmission` wrapping the SAME
+ *     policy authority the executions authorize seam uses; capability
+ *     admission through `createCapabilityEconomicAdmission` wrapping the
+ *     REAL capabilities registry (the module's code-resident seed catalog,
+ *     arbitrated through the registry's identical publish path — the
+ *     registry constructor is async, so the admission port awaits its
+ *     construction; every call still flows through the REAL adapter); the
+ *     budgets authority (`SqlBudgetStore` + `SqlBudgetsIdempotency` +
+ *     `createBudgetService` — the budgets-world wiring; the budgets barrel
+ *     does not export the SQL adapters either, mirroring the recorded
+ *     constraint above); the executions ledger seam (the already-bound
+ *     execution service's `recordStepEvent`); and the payment rail = the
+ *     in-repo `createSimulatedPaymentRail` (rail id
+ *     `preview-simulated-rail`; honestly disclosed — the settlement
+ *     observations it produces carry `evidence.simulated: true` by the
+ *     rail's own contract; the preview NEVER touches an external payment
+ *     provider). NO MODEL is behind this authority: the bounded
+ *     authorization is the governed WORK-032 boundary (ADR-0018: intent
+ *     != authorization != transaction != settlement != verification).
+ *   - the CODEBASE-ANALYSIS authority: `createOpportunityAnalyzer` over
+ *     `SqlOpportunityStore` (migration 0016) + the learning module's node
+ *     digest + the shared uuidv7 generator + the clock — DETERMINISTIC by
+ *     construction, no model behind it. The analyzer is the ADVISORY
+ *     analysis service (learning non-authority); the route's mandatory
+ *     executionId flows through the ALREADY-BOUND executions authority (the
+ *     route composes the authorities — no second admission path, M2/M26).
+ *   - THE WALLET SEEDING (runtime-idempotent, the same law as the durable
+ *     seed): the preview application's funded developer wallet is
+ *     create-if-absent on every cold start through the REAL budgets
+ *     authority — `configureFundingMode(developer)` + `grantCredits` under
+ *     DETERMINISTIC idempotency keys (pure functions of the application
+ *     id), so run-twice converges on the same rows with NO double credit
+ *     and concurrent isolates arbitrate through the idempotency ledger. The
+ *     grant amount is `PREVIEW_WALLET_GRANT_MICRO_USD` (recorded honestly in
+ *     deploy/evidence/ppr-014.json). The capability catalog is the module's
+ *     own code-resident seed catalog rebuilt at composition (its designed
+ *     storage surface — the arbitrated catalog converges by construction).
+ *     Both seedings run inside the SAME cold-start ready gate (a failure
+ *     fails closed exactly like the durable seed; the retry law applies).
+ *
  * IDEMPOTENT PREVIEW SEEDING (Requirement 1): create-if-absent on EVERY cold
  * start, never duplicate, safe under concurrent isolates — every insert is
  * guarded (`ON CONFLICT DO NOTHING` over the schema's unique constraints:
@@ -70,6 +117,7 @@
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { type Authenticate, createBearerTokenAuthenticator } from "../src/api";
+import { createSimulatedPaymentRail } from "../src/integrations/payment-rails/public";
 import type { AgentRegistry } from "../src/modules/agents/public";
 import { createAgentRegistry, SqlAgentStore } from "../src/modules/agents/public";
 import { createSqlAuthModule } from "../src/modules/auth/adapters/sql-identity-store";
@@ -84,11 +132,36 @@ import {
   type ScopeResolver,
 } from "../src/modules/auth/public";
 import {
+  SqlBudgetStore,
+  SqlBudgetsIdempotency,
+} from "../src/modules/budgets/adapters/sql-budget-store";
+import { createBudgetService } from "../src/modules/budgets/public";
+import {
+  createCapabilityRegistry,
+  createInMemoryCatalogStore,
+  SEED_CAPABILITY_FACTS,
+} from "../src/modules/capabilities/public";
+import {
+  createCapabilityEconomicAdmission,
+  createEconomicActionService,
+  createPolicyEconomicAdmission,
+  createSqlEconomicsModule,
+  type EconomicActionService,
+  type EconomicCapabilityAdmissionInput,
+  type EconomicCapabilityAdmissionPort,
+} from "../src/modules/economics/public";
+import {
   SqlExecutionStore,
   SqlExecutionsIdempotency,
 } from "../src/modules/executions/adapters/sql-execution-store";
 import type { ExecutionService } from "../src/modules/executions/public";
 import { createExecutionService } from "../src/modules/executions/public";
+import {
+  createNodeDigest,
+  createOpportunityAnalyzer,
+  type OpportunityAnalyzer,
+  SqlOpportunityStore,
+} from "../src/modules/learning/public";
 import {
   createExecutionAuthorization,
   createPolicyAuthority,
@@ -118,6 +191,132 @@ export function previewTransportTokenReference(environment: string): string {
 /** The relational URL variable of an environment (mirrors /health's probe). */
 export function relationalUrlVariableOf(environment: EnvironmentId): string {
   return environment === "local" ? "ZECK_PG_ADMIN_URL" : "ZECK_DATABASE_URL";
+}
+
+// ---------------------------------------------------------------------------
+// PPR-014 — the GAP-006 seam constants (the economics + analyzer bindings)
+// ---------------------------------------------------------------------------
+
+/**
+ * The honest rail id of the preview's payment rail: the IN-REPO simulated
+ * rail (`createSimulatedPaymentRail`) — no network, no real payment system,
+ * no credentials. The settlement observations it produces carry
+ * `evidence.simulated: true` by the rail adapter's own contract, and this id
+ * names it on every rail-transaction reference (`sim:<id>:<n>`).
+ */
+export const PREVIEW_PAYMENT_RAIL_ID = "preview-simulated-rail";
+
+/**
+ * The preview developer wallet's cold-start grant, in micro-USD ($10). An
+ * honest, recorded amount — the wallets ledger is the REAL budgets ledger
+ * (migration 0003); the "money" is seeded credits the plane's economic
+ * actions reserve against, never real funds (the rail is simulated and no
+ * external payment provider is ever touched).
+ */
+export const PREVIEW_WALLET_GRANT_MICRO_USD = "10000000";
+
+/**
+ * The deterministic funding-mode idempotency key (a pure function of the
+ * preview application id — every cold start replays, never re-configures).
+ */
+export function previewWalletFundingKey(applicationId: string): string {
+  return `preview-wallet-funding:${applicationId}`;
+}
+
+/**
+ * The deterministic wallet-grant idempotency key (a pure function of the
+ * preview application id — every cold start replays, NEVER re-credits).
+ */
+export function previewWalletGrantKey(applicationId: string): string {
+  return `preview-wallet-grant:${applicationId}`;
+}
+
+// ---------------------------------------------------------------------------
+// PPR-014 — the analysis-aware executions seam (the two-runtimes dispatch)
+// ---------------------------------------------------------------------------
+
+/**
+ * The task kind of an analysis execution — the FROZEN route's own pinned
+ * vocabulary (`src/api/routes/codebase-analysis.ts` creates every analysis
+ * execution with `task: { kind: "codebase-analysis", repository, revision }`).
+ * The seam's dispatch follows the route's frozen vocabulary by necessity:
+ * it is the only composition-visible signal of "the analysis route composes
+ * THIS execution's runtime".
+ */
+export const ANALYSIS_TASK_KIND = "codebase-analysis";
+
+export interface AnalysisAwareExecutionsDeps {
+  /**
+   * The substrate-driven seam (PPR-008's binding): sandbox executions are
+   * driven to an honest terminal receipt inline by the deterministic
+   * substrate — the plane's ONLY runtime for ordinary sandbox tasks.
+   */
+  readonly sandbox: ExecutionService;
+  /**
+   * The REAL execution service (unwrapped): the write path the analysis
+   * route composes its OWN lifecycle over (create -> authorize [POLICY
+   * ADMISSION through the executions authority] -> plan -> queue -> start
+   * -> the deterministic analysis -> verify -> pass).
+   */
+  readonly analysis: ExecutionService;
+}
+
+/**
+ * The executions seam the preview API composition binds — TWO RUNTIMES,
+ * one seam, dispatched without overlap (the composition-level resolution of
+ * the substrate-drive/route-lifecycle collision this order discovered on
+ * the materialized plane, documented with its trade-offs in
+ * deploy/evidence/ppr-014.json):
+ *
+ *  - ordinary sandbox tasks → the substrate-wrapped service (PPR-008's
+ *    pinned behavior UNCHANGED: a credentialed create is driven to an
+ *    honest terminal receipt inline; the create response IS the receipt);
+ *  - `codebase-analysis` tasks → the REAL service with NO inline drive:
+ *    "Analysis is an Execution" whose RUNTIME is the analysis route's own
+ *    composition (M2/M26 — the policy admission happens through the
+ *    executions authority's authorize transition BEFORE the analyzer runs,
+ *    and the completion rule binds the analysis digest as the durable
+ *    verification evidence).
+ *
+ * Every other method delegates to the substrate-wrapped service, which
+ * itself delegates unchanged to the REAL service — the single write path
+ * (the state machine, the idempotency arbitration, the append-only ledger)
+ * is shared by both runtimes and bypassed by NEITHER.
+ *
+ * HONEST CONSEQUENCE (recorded): a `codebase-analysis` task posted
+ * DIRECTLY to POST /executions (not through the analysis route) is created
+ * WITHOUT the substrate's drive and stays CREATED — the substrate never
+ * masquerades as an analysis runtime it did not run, and no other runtime
+ * exists for it on this plane. Never a fabricated terminal receipt.
+ */
+export function createAnalysisAwareExecutions(deps: AnalysisAwareExecutionsDeps): ExecutionService {
+  const { sandbox, analysis } = deps;
+  return {
+    async createExecution(input, idempotencyKey, actor) {
+      if (input.task.kind === ANALYSIS_TASK_KIND) {
+        return analysis.createExecution(input, idempotencyKey, actor);
+      }
+      return sandbox.createExecution(input, idempotencyKey, actor);
+    },
+    async transition(command, idempotencyKey) {
+      return sandbox.transition(command, idempotencyKey);
+    },
+    async recordPlanningDecision(input, idempotencyKey) {
+      return sandbox.recordPlanningDecision(input, idempotencyKey);
+    },
+    async recordStepEvent(input, idempotencyKey) {
+      return sandbox.recordStepEvent(input, idempotencyKey);
+    },
+    async getExecution(applicationId, executionId) {
+      return sandbox.getExecution(applicationId, executionId);
+    },
+    async listEvents(applicationId, executionId) {
+      return sandbox.listEvents(applicationId, executionId);
+    },
+    async listVerificationResults(applicationId, executionId) {
+      return sandbox.listVerificationResults(applicationId, executionId);
+    },
+  };
 }
 
 /** What the environment materialized for the preview authority set. */
@@ -356,6 +555,41 @@ export async function seedPreviewAuthorities(
 }
 
 // ---------------------------------------------------------------------------
+// PPR-014 — the economic-authority seeding (runtime-idempotent)
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed the preview application's funded developer wallet through the REAL
+ * budgets authority: `configureFundingMode(developer)` + `grantCredits`
+ * under DETERMINISTIC idempotency keys (pure functions of the application
+ * id). Create-if-absent on every cold start: a re-run REPLAYS the same
+ * durable outcome (the idempotency ledger arbitrates — no second credit, no
+ * second funding-settings row), and concurrent isolates cold-starting
+ * simultaneously converge on ONE wallet through the same arbitration (the
+ * budgets-concurrency discipline). The substrate worker principal is the
+ * seeding actor (the composition's own provenance actor — the same actor
+ * that drives the deterministic substrate's ledger envelopes).
+ */
+export async function seedPreviewEconomicAuthorities(
+  budget: Pick<ReturnType<typeof createBudgetService>, "configureFundingMode" | "grantCredits">,
+  plan: PreviewSeedPlan,
+): Promise<void> {
+  const scope = {
+    actorId: plan.substrateActorId,
+    applicationId: plan.applicationId,
+    tenantId: plan.tenantId,
+  };
+  await budget.configureFundingMode(
+    { ...scope, fundingMode: "developer" },
+    previewWalletFundingKey(plan.applicationId),
+  );
+  await budget.grantCredits(
+    { ...scope, ownerKind: "developer", amountMicroUsd: PREVIEW_WALLET_GRANT_MICRO_USD },
+    previewWalletGrantKey(plan.applicationId),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The bound authority set
 // ---------------------------------------------------------------------------
 
@@ -379,6 +613,26 @@ export interface PreviewAuthorities {
   readonly listAgentIdsOfApplication: (applicationId: string) => Promise<readonly string[]>;
   /** The credential lifecycle authority (issuance gate honestly closed). */
   readonly credentials: CredentialService;
+  /**
+   * PPR-014: the REAL economic-action service over the SQL fabric
+   * (migration 0014) — every dependency REAL (the policy/capability
+   * admission adapters, the budgets authority, the executions ledger seam).
+   */
+  readonly economics: EconomicActionService;
+  /**
+   * PPR-014: the composition's payment rail — the IN-REPO simulated rail,
+   * honestly disclosed (`railId` names it; every settlement observation
+   * carries `evidence.simulated: true`). The preview NEVER touches an
+   * external payment provider. The `charges` surface is the rail adapter's
+   * own read-only observation of what it was asked to charge.
+   */
+  readonly paymentRail: ReturnType<typeof createSimulatedPaymentRail>;
+  /**
+   * PPR-014: the DETERMINISTIC codebase-analysis authority (the advisory
+   * opportunity analyzer over `SqlOpportunityStore`; no model behind it —
+   * the route composes it WITH the already-bound executions authority).
+   */
+  readonly codebaseAnalyzer: OpportunityAnalyzer;
   readonly scopeResolver: ScopeResolver;
   readonly authenticate: Authenticate;
   /** The substrate worker principal (the deterministic drive's provenance actor). */
@@ -493,6 +747,69 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
     return found.rows.map((row) => row.id);
   };
 
+  // PPR-014 — THE ECONOMICS AUTHORITY: every dependency REAL over the same
+  // relational DatabasePort. The budgets seam is the REAL budgets SQL
+  // authority (SqlBudgetStore + SqlBudgetsIdempotency + createBudgetService —
+  // the budgets-world wiring; the budgets barrel does not export the SQL
+  // adapters, mirroring the recorded wiring constraint). The economics store
+  // + idempotency ride migration 0014 over `platform.idempotency_records`.
+  const budgets = createBudgetService({
+    store: new SqlBudgetStore(db),
+    idempotency: new SqlBudgetsIdempotency(db, (tx) => new SqlBudgetStore(tx), generateId),
+    generateId,
+    now,
+  });
+  const economicModule = createSqlEconomicsModule(db, generateId);
+  // Policy admission: the REAL adapter wrapping the SAME policy authority
+  // the executions authorize seam uses (the baseline unrestricted set is
+  // republished at every cold start below — an economic action's admission
+  // evaluates against the published set, exactly like an execution's).
+  const economicPolicyAdmission = createPolicyEconomicAdmission(policyAuthority);
+  // Capability admission: the REAL adapter wrapping the REAL capabilities
+  // registry. The registry constructor is ASYNC (its seed arbitration runs
+  // the code-resident catalog through the identical publish path), so the
+  // port awaits the adapter's construction — every call then flows through
+  // the REAL adapter unchanged. The construction is awaited inside the
+  // cold-start ready gate too (a rejected seed fact would fail the gate —
+  // fail closed, never a silently empty catalog).
+  const capabilityAdmission = createCapabilityRegistry({
+    store: createInMemoryCatalogStore(),
+    seed: SEED_CAPABILITY_FACTS,
+  }).then((registry) => createCapabilityEconomicAdmission(registry));
+  const economicCapabilityAdmission: EconomicCapabilityAdmissionPort = {
+    async resolve(input: EconomicCapabilityAdmissionInput) {
+      return (await capabilityAdmission).resolve(input);
+    },
+  };
+  const economics = createEconomicActionService({
+    store: economicModule.store,
+    idempotency: economicModule.idempotency,
+    policy: economicPolicyAdmission,
+    capabilities: economicCapabilityAdmission,
+    budget: budgets,
+    // The executions ledger seam: the already-bound execution service's
+    // recordStepEvent (the single write path economic evidence rides).
+    executions,
+    generateId,
+    now,
+  });
+  // The composition's payment rail: the IN-REPO simulated rail, honestly
+  // disclosed (railId + evidence.simulated on every settlement observation).
+  // The preview NEVER touches an external payment provider.
+  const paymentRail = createSimulatedPaymentRail({ railId: PREVIEW_PAYMENT_RAIL_ID });
+
+  // PPR-014 — THE CODEBASE-ANALYSIS AUTHORITY: the deterministic advisory
+  // opportunity analyzer over the SQL opportunity store (migration 0016) +
+  // the learning module's node digest + the shared id generator + the clock.
+  // No model behind it; the route composes it with the executions authority
+  // (the mandatory executionId admission flows through THAT authority).
+  const codebaseAnalyzer = createOpportunityAnalyzer({
+    store: new SqlOpportunityStore(db),
+    digest: createNodeDigest(),
+    generateId,
+    now,
+  });
+
   // The cold-start seeding gate: the durable seed + the baseline policy set.
   // RETRY-ON-FAILURE (the live plane's §13.6 finding, 2026-09-23): a
   // TRANSIENT relational failure at cold start — the free-tier endpoint's
@@ -519,6 +836,12 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
           version: 1,
           documents: [{ scope: "platform", selector: {}, restrictions: {} }],
         });
+        // PPR-014: the capability registry's seed arbitration (fail-closed —
+        // a rejected seed fact fails the gate) + the funded developer wallet
+        // (runtime-idempotent through the deterministic idempotency keys —
+        // a retry converges on the SAME rows or fails closed honestly).
+        await capabilityAdmission;
+        await seedPreviewEconomicAuthorities(budgets, plan);
         return { ok: true, failure: null };
       } catch (error) {
         // Credential-shaped values never enter the recorded failure.
@@ -575,6 +898,9 @@ export function buildPreviewAuthorities(inputs: PreviewAuthorityInputs): Preview
     agents,
     listAgentIdsOfApplication,
     credentials,
+    economics,
+    paymentRail,
+    codebaseAnalyzer,
     scopeResolver: resolver,
     authenticate,
     substrateActor: { actorId: plan.substrateActorId, tenantId: plan.tenantId },

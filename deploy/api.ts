@@ -42,11 +42,29 @@
  * composition binds the REAL domain seams over the relational DatabasePort
  * (bearer authentication, SQL scope resolution, the credential lifecycle
  * service, the execution service with the deterministic sandbox substrate,
- * the agents inventory) — economics and codebase analysis stay honestly
- * unbound (their routes keep today's 422s). ANY missing piece leaves
- * EXACTLY today's unbound shape below (local/dev behavior unchanged; both
- * shapes are pinned by tests). The boot document reports the truthful
- * authorityMaterialization composition fact (derived, never hardcoded).
+ * the agents inventory). ANY missing piece leaves EXACTLY today's unbound
+ * shape below (local/dev behavior unchanged; both shapes are pinned by
+ * tests). The boot document reports the truthful authorityMaterialization
+ * composition fact (derived, never hardcoded).
+ *
+ * PPR-014 — THE GAP-006 SEAM BINDINGS (the SAME materialization gate, zero
+ * new environment variables): when the authority set materializes, the
+ * composition additionally binds the two remaining domain seams over the
+ * SAME relational DatabasePort — the ECONOMICS authority (the real
+ * economic-action service: SQL store + idempotency, the REAL policy and
+ * capability admission adapters, the REAL budgets authority with the
+ * seeded funded developer wallet, the executions ledger seam, and the
+ * in-repo simulated payment rail — honestly disclosed, never an external
+ * payment provider, no model behind the bounded authorization) and the
+ * CODEBASE-ANALYSIS authority (the deterministic advisory opportunity
+ * analyzer over the SQL opportunity store — no model behind it; the route
+ * composes it with the already-bound executions authority, whose admission
+ * the mandatory executionId flows through). Their routes serve the real
+ * wire shapes instead of the honest 422s; unauthenticated probes still
+ * answer the honest 401 (the boundary never moves — only the AUTHORIZED
+ * shape changes). Unmaterialized, BOTH seams keep EXACTLY today's
+ * `unboundCapability` shapes (both pinned by tests). The boot document's
+ * composition facts are derived truthfully (see below).
  *
  * Usage:
  *   bun run deploy:api -- --environment local [--host 127.0.0.1] [--port 8787]
@@ -93,6 +111,7 @@ import {
 } from "./lib";
 import {
   buildPreviewAuthorities,
+  createAnalysisAwareExecutions,
   type PreviewAuthorities,
   type PreviewAuthorityMaterialization,
   readPreviewAuthorityMaterialization,
@@ -369,17 +388,28 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
   };
 
   const server = createApiServer({
+    // PPR-014: the analysis-aware executions seam — TWO RUNTIMES, one seam.
+    // Ordinary sandbox tasks are driven to terminal inline by the
+    // deterministic substrate (PPR-008's pinned behavior, unchanged);
+    // codebase-analysis tasks are created WITHOUT the inline drive because
+    // their runtime is the analysis route's own lifecycle composition over
+    // the SAME real single write path (the collision the substrate's
+    // inline drive and the route's drive would otherwise produce on this
+    // plane is documented in deploy/evidence/ppr-014.json).
     executions:
       authorities === undefined
         ? unboundCapability("executions")
-        : createDeterministicSubstrateExecutions({
-            inner: authorities.executions,
-            actor: authorities.substrateActor,
-            generateId: authorities.generateId,
-            now: authorities.now,
+        : createAnalysisAwareExecutions({
+            sandbox: createDeterministicSubstrateExecutions({
+              inner: authorities.executions,
+              actor: authorities.substrateActor,
+              generateId: authorities.generateId,
+              now: authorities.now,
+            }),
+            analysis: authorities.executions,
           }),
     agents: authorities === undefined ? unboundCapability("agents") : authorities.agents,
-    economics: unboundCapability("economics"),
+    economics: authorities === undefined ? unboundCapability("economics") : authorities.economics,
     ...(authorities === undefined ? {} : { credentials: authorities.credentials }),
     scopeResolver:
       authorities === undefined ? unboundCapability("scopeResolver") : authorities.scopeResolver,
@@ -394,7 +424,10 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
             });
           }
         : authorities.listAgentIdsOfApplication,
-    codebaseAnalyzer: unboundCapability("codebaseAnalyzer"),
+    codebaseAnalyzer:
+      authorities === undefined
+        ? unboundCapability("codebaseAnalyzer")
+        : authorities.codebaseAnalyzer,
     dependencyReadiness: async () => {
       const probes = await bootstrapDependencyProbes(manifest, environment);
       const report = evaluateReadiness(manifest, {
@@ -433,9 +466,9 @@ export function buildBootstrapApp(options: BootstrapAppOptions): BootstrapApp {
     domainCapabilities:
       authorities === undefined
         ? "unbound (honest CAPABILITY_UNAVAILABLE / AUTHENTICATION_FAILED)"
-        : "materialized (the preview authority set over the relational DatabasePort: bearer authentication, SQL scope resolution, the credential lifecycle, the execution service with the deterministic sandbox substrate, the agents inventory; economics and codebase analysis honestly unbound)",
+        : "materialized (the preview authority set over the relational DatabasePort: bearer authentication, SQL scope resolution, the credential lifecycle, the execution service with the deterministic sandbox substrate, the agents inventory, the economic-action service with the real policy/capability admissions over the seeded budgets authority and the in-repo simulated payment rail, and the deterministic codebase-analysis opportunity analyzer)",
     authorityMaterialization: materialization.materialized
-      ? `materialized (${relationalUrlVariableOf(environment)} + ZECK_TRANSPORT_TOKEN + ZECK_PREVIEW_APPLICATION_ID present; the durable preview seed converges idempotently at cold start; the deterministic sandbox substrate drives created executions to honest terminal receipts)`
+      ? `materialized (${relationalUrlVariableOf(environment)} + ZECK_TRANSPORT_TOKEN + ZECK_PREVIEW_APPLICATION_ID present; the durable preview seed converges idempotently at cold start; the deterministic sandbox substrate drives the plane's sandbox executions to honest terminal receipts inline while codebase-analysis executions are driven by the analysis route's own lifecycle composition over the same single write path; the funded developer wallet converges create-if-absent on the real budgets ledger and the economic-action chain binds the real admissions with the in-repo simulated payment rail — honestly disclosed, no external payment provider; the codebase-analysis authority serves deterministic advisory analysis over the relational opportunity store — no model behind either)`
       : `unmaterialized (${materialization.missing.join(", ")} absent — exactly the honest unbound bootstrap shape; local/dev behavior unchanged)`,
   };
 
