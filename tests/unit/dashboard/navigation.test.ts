@@ -156,9 +156,14 @@ async function getHtmlWithMode(path: string, mode: string): Promise<string> {
 
 describe("the v2 route map: every route renders", () => {
   const ROUTES: readonly [string, number][] = [
-    ["/", 200],
-    ["/home", 303],
+    // PPR-015: the canonical Home experience route is /home; the bare /
+    // is a bridge that redirects to it (public-rail parity).
+    ["/", 303],
+    ["/home", 200],
     ["/build", 200],
+    ["/build/agents", 200],
+    ["/build/agents/00000000-0000-7000-8000-0000000000b1", 200],
+    ["/assets", 200],
     ["/build/execution", 200],
     ["/build/agent", 200],
     ["/build/workload", 200],
@@ -229,6 +234,12 @@ describe("the v2 route map: every route renders", () => {
     }
   });
 
+  test("the root bridge redirects to the canonical Home route (PPR-015)", async () => {
+    const response = await get("/");
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/home");
+  });
+
   test("the legacy routes are preserved (AC10)", async () => {
     const execution = await get(`/executions/${EXECUTION_ID}`);
     expect(execution.status).toBe(303);
@@ -277,7 +288,7 @@ describe("the v2 route map: every route renders", () => {
 
 describe("every page: the a11y frame (lang, title, one h1, landmarks, skip link)", () => {
   const PAGES: readonly string[] = [
-    "/",
+    "/home",
     "/build",
     "/build/execution",
     "/build/agent",
@@ -463,7 +474,7 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP
   });
 
   test("nav groups are native details/summary (collapsed, CSS-driven, same DOM everywhere)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('<details class="nav-group"');
     expect(html).toContain("<summary>Work</summary>");
     // Home carries no active group: every group stays collapsed.
@@ -477,12 +488,12 @@ describe("the nav hierarchy matches UX-EXPERIENCE-ARCHITECTURE-V2 §5 (+ the DEP
   });
 
   test("the active nav item carries aria-current (marking per route)", async () => {
-    const agents = await getHtml("/agents");
-    expect(agents).toContain('href="/agents" aria-current="page"');
+    const agents = await getHtml("/build/agents");
+    expect(agents).toContain('href="/build/agents" aria-current="page"');
     const history = await getHtml("/runs/history");
     expect(history).toContain('href="/runs/history" aria-current="page"');
-    const home = await getHtml("/");
-    expect(home).toContain('href="/" aria-current="page"');
+    const home = await getHtml("/home");
+    expect(home).toContain('href="/home" aria-current="page"');
     const lineage = await getHtmlWithMode("/trust/lineage", "expert");
     expect(lineage).toContain('href="/trust/lineage" aria-current="page"');
   });
@@ -587,7 +598,7 @@ describe("responsive and appearance evidence in the stylesheet", () => {
   });
 
   test("an explicit dark preference renders the data-theme attribute", async () => {
-    const response = await fetch(`${base}/`, {
+    const response = await fetch(`${base}/home`, {
       headers: { cookie: "zeck_appearance=dark" },
       redirect: "manual",
     });
@@ -596,13 +607,13 @@ describe("responsive and appearance evidence in the stylesheet", () => {
   });
 
   test("no explicit preference renders without data-theme (system follows the OS)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('<html lang="en">');
   });
 });
 
 describe("the PPR-001 mobile bottom navigation (DOM evidence, every viewport class)", () => {
-  const PAGES: readonly string[] = ["/", "/console/catalog", "/console/start", "/trust/limits"];
+  const PAGES: readonly string[] = ["/home", "/console/catalog", "/console/start", "/trust/limits"];
 
   test("every page carries the bottom bar DOM with the five primary destinations", async () => {
     for (const page of PAGES) {
@@ -627,12 +638,12 @@ describe("the PPR-001 mobile bottom navigation (DOM evidence, every viewport cla
     expect(start).toContain('href="/console/start" aria-current="page"');
     const trust = await getHtml("/trust/limits");
     expect(trust).toContain('href="/trust/limits" aria-current="page"');
-    const home = await getHtml("/");
-    expect(home).toContain('href="/" aria-current="page"');
+    const home = await getHtml("/home");
+    expect(home).toContain('href="/home" aria-current="page"');
   });
 
   test("the bottom bar appears once per page and after the app shell (quiet, persistent, non-modal)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect((html.match(/<nav class="mobile-nav"/g) ?? []).length).toBe(1);
     expect(html.indexOf('<nav class="mobile-nav"')).toBeGreaterThan(html.indexOf("</footer>"));
   });

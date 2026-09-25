@@ -11,14 +11,22 @@
  * entry the framework detection allows) is NOT touched: the API plane
  * serves every non-experience path exactly as before, and vercel.json's
  * `rewrites` (the platform's sanctioned same-application routing
- * layer — https://vercel.com/docs/routing/rewrites) dispatch
- * /console/*, /trust/*, /admin/* and the composition's own static
- * asset /assets/client.js to THIS function, carrying the ORIGINAL
- * experience path in the `path` query parameter (the documented
- * capture-to-query conversion); the ROOT / lands here through the
- * `redirects` entry (→ /console — the framework's root function is a
- * filesystem match for "/" and shadows any root rewrite; the live
- * plane's finding, correction #8).
+ * layer — https://vercel.com/docs/routing/rewrites) dispatch every
+ * user-visible EXPERIENCE route (PPR-015's corrected public shape:
+ * /home — the canonical Home — plus /console/*, /trust/*, /admin/*,
+ * /runs/*, /build/*, /deployments/*, /assets/*, /improve/*, /command,
+ * /attention, /mode and /appearance) to THIS function, carrying the
+ * ORIGINAL experience path in the `path` query parameter (the
+ * documented capture-to-query conversion); the ROOT / lands on the
+ * Home experience through the `redirects` entry (→ /home — the
+ * framework's root function is a filesystem match for "/" and shadows
+ * any root rewrite; the live plane's finding, correction #8; PPR-015
+ * retargeted the bridge from /console to /home — the Home-masquerade
+ * defect). The architecture-pinned machine routes (/agents,
+ * /executions, /credentials, /sandbox/*, /health, /identity, ...) stay
+ * on the API function — the rewrites never shadow the frozen public
+ * API contract (the dashboard's agents UI lives at /build/agents; the
+ * derived projection is deploy/experience-routing.ts).
  *
  * THE COMPOSITION (once per isolate — cold start builds, warm requests
  * reuse): deploy/experience.ts's getExperienceHandler() builds PPR-001's

@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-015",
+  "title": "The real-user browser audit and public productization correction (wave H)",
+  "recordedBy": "the one implementation worker (browser audit + implementation + browser regression surface as one coherent delivery)",
+  "environment": "worker sandbox: live public browser audit (agent-browser 0.38.1 against https://zeck-preview-main.vercel.app) + local two-function composition (deploy/local-experience-gateway.ts)",
+  "date": "2026-09-25",
+  "branch": "work/PPR-015-public-productization",
+  "baseRevision": "e0f4a26f33ae9430a612d913c66c448391f6feca",
+  "browserTool": "agent-browser 0.38.1 (the audits) — served locally by deploy/local-experience-gateway.ts (the bootstrap API plane + deploy/experience.ts's buildExperienceHandler behind vercel.json's routing grammar, in-process)",
+  "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment could not produce is a notRun entry with an owner. No capability is manufactured; the honest NOT RUN / provider-gated / requires-access states stay exactly as the machine manifest records them.",
+  "phaseA": {
+    "target": "https://zeck-preview-main.vercel.app (clean browser session, visible affordances only)",
+    "findings": [
+      {
+        "id": "PPR-015-F01",
+        "classification": "routing/hosting",
+        "routeOrInteraction": "GET https://zeck-preview-main.vercel.app/ (clean session)",
+        "reproduction": "open the bare origin; observe the landed URL + title",
+        "observed": "307 → /console; landed title 'Zeck — Developer console'; first h1 'Developer console'",
+        "expected": "the discovery-first Home experience (title 'Zeck — Home', the outcome statement, the families grid)",
+        "userImpact": "a first-time user lands on an internal developer surface; the product story never meets them",
+        "rootCause": "vercel.json's root redirect (correction #8's bridge) targeted /console — the PPR-001 discovery-first Home (route '/' in the dashboard table) was unreachable publicly: the platform's filesystem phase owns the bare '/' for the framework root function, so no rewrite can serve it",
+        "owningSurfaces": ["vercel.json", "apps/dashboard/pages.ts"],
+        "smallestViableFix": "retarget the redirect bridge to a canonical Home experience route (/home) served by the dashboard route table; make '/' a redirect on BOTH rails (public parity)",
+        "alternatives": "serving '/' directly from the experience function is impossible on the platform (the filesystem phase fact — the dead root rewrite, correction #8); redirecting to /console/catalog would surface capability but not the Home story",
+        "verification": "Phase C browser: open <gateway>/ → lands /home 'Zeck — Home' with the outcome statement"
+      },
+      {
+        "id": "PPR-015-F02",
+        "classification": "navigation/information-architecture",
+        "routeOrInteraction": "click the visible 'Home' control (nav) on /console",
+        "reproduction": "snapshot -i; click the Home link ref",
+        "observed": "stays on https://zeck-preview-main.vercel.app/console ('Zeck — Developer console') — Home ≡ Developer Console",
+        "expected": "the Home control resolves consistently to the Home experience",
+        "userImpact": "the primary navigation control is a masquerade; 'Home' is unreachable as a concept",
+        "rootCause": "shell.ts renders nav-home/brand/breadcrumb/mobile-bar Home affordances at href='/' and the public '/' bridges to /console",
+        "owningSurfaces": ["apps/dashboard/shell.ts", "apps/dashboard/discovery.ts", "vercel.json"],
+        "smallestViableFix": "a canonical HOME_PATH ('/home') every Home affordance addresses (nav control, brand, breadcrumb root, mobile bar) + the retargeted root bridge",
+        "alternatives": "leaving href='/' (it would redirect) keeps the masquerade one hop away and makes aria-current unsound",
+        "verification": "Phase C browser: clicking Home stays on /home; aria-current='page' on the Home control; the mobile bar's Home links /home"
+      },
+      {
+        "id": "PPR-015-F03",
+        "classification": "discoverability/copy",
+        "routeOrInteraction": "the landing path (after '/' → /console)",
+        "reproduction": "eval document.body.innerText on the landed console page",
+        "observed": "'Describe an outcome. Zeck plans it, executes it under policy, and returns it with evidence.' NOT FOUND on the landing; the h1 is 'Developer console'",
+        "expected": "the outcome explanation is visibly and prominently on the Home experience (never buried below developer controls)",
+        "userImpact": "the first-time user is never told what the product does",
+        "rootCause": "the outcome statement lives in discoveryHero() on the dashboard Home route — the surface the landing never reached",
+        "owningSurfaces": [
+          "apps/dashboard/pages.ts (homePage)",
+          "apps/dashboard/discovery.ts (discoveryHero)"
+        ],
+        "smallestViableFix": "F01+F02 (the landing correction) — the Home hero IS the statement, rendered first on /home",
+        "alternatives": "duplicating the statement onto the console would create a second copy to maintain and bury it under developer controls",
+        "verification": "Phase C browser + tests: the gateway battery asserts the exact statement string on /home; the browser smoke asserts it visible on the landing"
+      },
+      {
+        "id": "PPR-015-F04",
+        "classification": "capability-state-disclosure",
+        "routeOrInteraction": "capability discovery from the landing",
+        "reproduction": "follow the visible 'Capability catalog' affordance; count families + states",
+        "observed": "the catalog (/console/catalog) serves all 22 families with truthful four-state chips (11 available / 6 requires-access / 2 provider-gated / 3 NOT RUN at audit time) — but discovery is NOT on the user's landing path and the families grid is not surfaced on it",
+        "expected": "capability discovery visible or one click away from Home",
+        "userImpact": "a first-time user cannot discover what workloads exist without learning the console's internal layout",
+        "rootCause": "the discovery grid (discoveryCatalogGrid) lives on the Home route the landing never reached",
+        "owningSurfaces": ["apps/dashboard/pages.ts (homePage)", "apps/dashboard/discovery.ts"],
+        "smallestViableFix": "F01+F02 — the Home grid + the catalog link are on the landing; the catalog keeps the existing machine-manifest projection (no manufactured capability)",
+        "alternatives": "none needed — the discovery surfaces exist and are truthful; only the landing path was wrong",
+        "verification": "Phase C browser: /home carries the 22-family grid (availability-grid links ≥ 22) + the catalog link; the catalog serves 22 rows with all four states"
+      },
+      {
+        "id": "PPR-015-F05",
+        "classification": "routing/hosting",
+        "routeOrInteraction": "the first-execution golden path: guided start → review → 'Run sandbox execution' → the run detail redirect",
+        "reproduction": "drive the guided sandbox flow (the permitted synthetic summarization task) and observe where the browser lands",
+        "observed": "the run executes (real id 01a0da48-efae-7000-a00f-879ef23a30f8) but the redirect to /runs/<id> falls through to the API plane: raw Fastify JSON 404 '{\"message\":\"Route GET:/runs/... not found\"}' (content-type application/json) — the user's FIRST RUN ends in a raw error",
+        "expected": "the result surface (result, verification, activity, route, costs — 'How Zeck did it') opens on the experience plane",
+        "userImpact": "the single most important moment of the first-run journey is a dead end (the worst finding of the audit)",
+        "rootCause": "vercel.json exposed only /console/*, /trust/*, /admin/* and /assets/client.js to the experience function; every other visible route fell through to the API function",
+        "owningSurfaces": ["vercel.json"],
+        "smallestViableFix": "the derived experience rewrite set covers /runs/* (and every other visible prefix)",
+        "alternatives": "redirecting the playground to the console explorer instead would leave the whole work surface broken",
+        "verification": "Phase C browser: /runs, /runs/history, /runs/<id> all serve HTML (the run detail renders the designed 403/404 HTML states on the unbound local rail; the credentialed live run renders the full result)"
+      },
+      {
+        "id": "PPR-015-F06",
+        "classification": "interaction/form",
+        "routeOrInteraction": "the visible 'Look up an execution by id' form (console executions page)",
+        "reproduction": "fill the id; submit",
+        "observed": "GET /executions?id=<id> falls through to the API plane: raw JSON 404",
+        "expected": "the lookup lands on the run detail",
+        "userImpact": "the only id-based discovery affordance is broken publicly",
+        "rootCause": "the form targeted the dashboard's legacy GET /executions path — API-plane on the public origin (POST /executions is the frozen create contract; rewrites are method-agnostic, so the path can never be experience-served)",
+        "owningSurfaces": ["apps/dashboard/pages.ts (lookupForm, route table)"],
+        "smallestViableFix": "the form targets /runs (GET /runs?id= → 303 → /runs/<id>); the legacy /executions GET routes stay local-rail-only",
+        "alternatives": "a method-scoped rewrite of /executions cannot work (the platform's rewrites are method-agnostic and POST /executions must keep reaching the API)",
+        "verification": "gateway battery: GET /runs?id=<id> → 303 → /runs/<id>; the form's action is /runs; the browser smoke's visible-route sweep"
+      },
+      {
+        "id": "PPR-015-F07",
+        "classification": "routing/hosting",
+        "routeOrInteraction": "nav 'Build → Agents' (/agents)",
+        "reproduction": "open /agents",
+        "observed": "raw JSON 422 CAPABILITY_UNAVAILABLE (the API plane's machine boundary) where the nav promises a UI page",
+        "expected": "the agents inventory UI on the experience plane",
+        "userImpact": "a visible nav destination is a dead end of machine JSON",
+        "rootCause": "GET /agents is an architecture-pinned public API route (the machine inventory); the dashboard's agents PAGE at the same path+method can never be publicly served there",
+        "owningSurfaces": [
+          "apps/dashboard/shell.ts (NAV_GROUPS)",
+          "apps/dashboard/pages.ts",
+          "apps/dashboard/controls.ts"
+        ],
+        "smallestViableFix": "the agents UI moves to /build/agents (+ /build/agents/:id); every internal link updated; the legacy local-rail routes kept (AC10); /agents stays API-plane",
+        "alternatives": "rewriting /agents to the experience function would break the SDK's GET /agents (the frozen public contract) — not admissible",
+        "verification": "Phase C browser: /build/agents serves HTML (the designed honest permission state on the unbound local rail); /agents stays JSON (the browser smoke's api-boundary step)"
+      },
+      {
+        "id": "PPR-015-F08",
+        "classification": "routing/hosting",
+        "routeOrInteraction": "every remaining visible nav/CTA destination: /build, /build/execution, /build/workload, /deployments, /runs, /runs/active, /runs/history, /runs/scheduled, /assets/competences, /assets/artifacts, /assets/connections, /improve/evaluations, /improve/insights, /improve/learning, /command, /attention, /mode, /appearance",
+        "reproduction": "browser-probed each destination on the live plane",
+        "observed": "every one answered the API plane's raw JSON 404 ('Route GET:<path> not found') — 19 fall-through destinations beside F05/F07",
+        "expected": "every visible destination reaches the experience plane",
+        "userImpact": "the entire non-console information architecture is publicly unreachable",
+        "rootCause": "the vercel.json rewrite set covered only the console/trust/admin prefixes",
+        "owningSurfaces": ["vercel.json"],
+        "smallestViableFix": "the derived rewrite set (deploy/experience-routing.ts): every dashboard-route prefix that does not collide with the API route table is rewritten to the experience function",
+        "alternatives": "a catch-all rewrite would shadow the machine routes (the API/experience boundary) — the derived per-prefix split preserves it",
+        "verification": "Phase C browser: all 30 traversed destinations serve HTML; the gateway battery derives the nav grammar's destinations from NAV_GROUPS/SIMPLE_NAV_ITEMS/MOBILE_NAV_ITEMS and asserts HTML for every one"
+      },
+      {
+        "id": "PPR-015-F09",
+        "classification": "navigation/information-architecture",
+        "routeOrInteraction": "the 'Library' group parent (/assets) — a visible breadcrumb link on every /assets/* page",
+        "reproduction": "open /assets/artifacts; click the 'Library' breadcrumb crumb",
+        "observed": "no route exists at /assets in the dashboard table: publicly the raw JSON 404 (locally the dashboard 404 page)",
+        "expected": "the group parent the nav grammar links is a real surface",
+        "userImpact": "a broken breadcrumb link on three library surfaces",
+        "owningSurfaces": ["apps/dashboard/pages.ts"],
+        "smallestViableFix": "GET /assets — a small honest Library overview (the three surfaces with their live/not-exposed states)",
+        "alternatives": "redirecting /assets → /assets/artifacts would pick a winner among siblings; the overview keeps the IA honest",
+        "verification": "Phase C browser: /assets serves 'Library' (HTML); the gateway battery's breadcrumb-parents assertion"
+      },
+      {
+        "id": "PPR-015-F10",
+        "classification": "responsive/accessibility",
+        "routeOrInteraction": "desktop (1280) / tablet (834) / mobile (390) viewports + keyboard Tab pass over the landing",
+        "reproduction": "set viewport per class; drive Home → capability discovery → safe start; Tab from the top",
+        "observed": "PASSING baseline observations: skip link is the first focusable with :focus-visible; no horizontal scroll at any class; the mobile bottom bar renders (Home/Start/Catalog/Validation/Trust, targets ≥ 40px); reduced-motion + touch-target rules in the served CSS; no browser console errors. The single defect inherited: the mobile bar's Home and the landing itself were the masqueraded console (F01/F02)",
+        "expected": "the responsive/a11y baseline holds on the CORRECTED landing",
+        "userImpact": "none beyond F01/F02 (the frame itself is sound)",
+        "rootCause": "n/a (passing observations recorded; the defect was the landing target)",
+        "owningSurfaces": ["apps/dashboard/shell.ts", "apps/dashboard/tokens.ts"],
+        "smallestViableFix": "none beyond F01/F02",
+        "alternatives": "n/a",
+        "verification": "Phase C browser: mobile 390 (no h-scroll, bar visible, Home → /home, targets ≥ 40px), tablet 834 (sidebar, no h-scroll), keyboard (skip link first, focus-visible throughout)"
+      },
+      {
+        "id": "PPR-015-F11",
+        "classification": "provider/credential-boundary",
+        "routeOrInteraction": "the honest unavailable/provider-gated boundaries (browser-use, realtime-voice family pages; the credentials surface; the unauthenticated reading pages)",
+        "reproduction": "open the family pages across states; open /console/applications/keys",
+        "observed": "PASSING observations: provider-gated and NOT RUN families disclose their boundaries honestly (no fabricated capability); the credentials surface renders its designed state; no blank screens or misleading success states",
+        "expected": "the boundaries stay honest after the correction",
+        "userImpact": "none (the correction must not weaken these)",
+        "rootCause": "n/a (passing observations pinned so the correction cannot regress them)",
+        "owningSurfaces": ["apps/dashboard/discovery.ts", "apps/dashboard/console.ts"],
+        "smallestViableFix": "none — the four-state vocabulary and the manifest projection are untouched",
+        "alternatives": "n/a",
+        "verification": "the gateway battery's four-state catalog assertion + the representative-family states; the browser smoke's capability-catalog step"
+      }
+    ]
+  },
+  "fixes": [
+    "F01+F02+F03+F04 → vercel.json redirects / → /home; the dashboard route table serves GET /home (homePage — the discovery-first Home: outcome hero, 22-family grid, safe start, discovery entries) and turns GET / into the same /home redirect (both rails behave identically); shell.ts exports the canonical HOME_PATH and every Home affordance (nav control, brand, breadcrumb root, mobile bar) addresses it; discovery.ts's mobile bar follows",
+    "F05+F08 → vercel.json's rewrite set is the derived experience projection: /home, /build, /deployments, /runs, /assets, /improve, /command, /attention, /mode, /appearance (exact + :path* forms) alongside the existing /console, /trust, /admin — never the API-owned prefixes",
+    "F06 → lookupForm targets /runs; GET /runs carries the id-query redirect seam (303 → /runs/:id); the legacy /executions GET routes stay local-rail-only with the boundary documented in the route table",
+    "F07 → the agents UI lives at /build/agents (+ /build/agents/:agentId): NAV_GROUPS, the Build overview tile, the agent-detail links, the command suggestions and the learning record links all updated; the legacy local-rail /agents routes preserved (AC10); /agents stays the machine inventory",
+    "F09 → GET /assets — the honest Library overview",
+    "the regression surface (all seven required coverages) → deploy/experience-routing.ts (the derived projection over the two real route tables), tests/unit/deployment/experience-routing.test.ts (RED on the uncorrected base, GREEN on the fix), deploy/local-experience-gateway.ts + tests/integration/deployment/experience-gateway.test.ts (the two-function composition battery), tests/browser/public-experience-browser-smoke.ts (the agent-browser journey: Home → discovery → safe start → boundary → responsive → keyboard)",
+    "documentation → deploy/experience.ts + api/experience.ts routing-split contracts updated; deploy/PUBLIC-DEPLOYMENT.md §13.11 records the correction"
+  ],
+  "regressionSurface": {
+    "1-derived-projection": "deploy/experience-routing.ts — deriveRoutingProjection over createDashboardRoutes (the experience authority) and buildBootstrapApp(...).server.routes (the machine-contract authority); mixed prefixes are a projection failure",
+    "2-experience-mapped": "tests/unit/deployment/experience-routing.test.ts — vercel.json's rewrite prefixes must EQUAL the derived experience prefixes; every concrete experience route resolves to the experience function",
+    "3-api-negative": "tests/unit/deployment/experience-routing.test.ts (the FULL API route table falls through) + tests/unit/deployment/experience-adapter.test.ts (the API-owned dashboard paths /agents+/executions stay unrewritten) + the gateway battery's same-origin machine-boundary assertions",
+    "4-browser-smoke": "tests/browser/public-experience-browser-smoke.ts — agent-browser drives the REAL two-function local composition: landing → Home, outcome statement, 22-family grid, catalog four states, safe-start envelope, the fall-through spot sweep, the API boundary, mobile responsive, keyboard skip-link (16 steps)",
+    "5-outcome-discovery-assertions": "tests/integration/deployment/experience-gateway.test.ts (the exact outcome string + the catalog affordance + the families grid on /home) + the browser smoke's outcome-explanation + home-families-grid + capability-catalog steps",
+    "6-broken-destination-assertions": "the gateway battery derives EVERY nav destination from NAV_GROUPS + SIMPLE_NAV_ITEMS + MOBILE_NAV_ITEMS and asserts HTML (or the designed 303/HTML state) for each — plus the lookup seam and the agents surface; the browser smoke sweeps the previously-broken classes in a real browser",
+    "7-responsive-keyboard": "the browser smoke's responsive-mobile (no h-scroll, bottom bar, canonical Home link, ≥40px targets) and keyboard-skip-link (first focusable, :focus-visible) steps; the structural responsive/motion/touch-target plan stays pinned by the navigation stylesheet tests",
+    "red-green": "the derived-projection test: 4 failures on the uncorrected base (the drift equality, /home unmapped, the carry contract, the root bridge expected '/console' got '/home') → 10/10 on the fix; the gateway battery: 8 failures on the uncorrected base → 13/13 on the fix; the browser smoke: 16/16 on the fix (the base serves no Home to drive)"
+  },
+  "verifiedLocally": [
+    "typecheck: 0 errors (tsc --noEmit over the full tree)",
+    "lint (biome): EXACTLY the base baseline — 4 errors + 68 warnings + 8 infos, ZERO NEW (verified by a stash/pop line-by-line diagnostics diff; the one diagnostic in a touched file, apps/dashboard/pages.ts:218 noUnusedImports, is the pre-existing base entry, untouched)",
+    "unit suite: 365 files / 6412 tests / 0 failed (base: 364/6401 — the delta is this order's new battery)",
+    "integration suite: 31 files / 334 tests passed / 205 skipped (base: 30/321/205 — the delta is the new gateway battery; the skips are the honest PG-rail/browser/tool boundaries, unchanged)",
+    "architecture + discrimination suites: 139 files / 2230 tests / 0 failed (one D12 read-journey list updated: '/' → '/home', the redirect is not a read journey)",
+    "full vitest run: 538 files passed / 151 skipped; 9003 tests passed / 241 skipped / 0 failed",
+    "journey harness local-plane: exit 0 — 12 journeys / 28 steps (11 pass / 0 fail / 17 honest not-run with owners), findings 0, identity gate verified",
+    "governance:check: OK — 60 Work Orders / 110 requirements / inFlight=[] / frontier=[]",
+    "deploy:validate: valid=true / problems=0 / environments=4 / variables=97 — ZERO manifest delta",
+    "browser smoke (agent-browser over the local two-function composition): 16/16 steps pass, exit 0",
+    "Phase C browser audit (the repeated 10-step journey + responsive/keyboard): every Phase-A finding resolved or honestly governed — / lands on /home 'Zeck — Home' with the outcome statement + the 22-family grid; the Home control stays Home; the catalog serves 22 families in four states; the safe start shows the envelope with no provider/model selection; the synthetic run renders its honest refusal state on the unbound local rail (the designed degradation, with the composed task + constraints displayed); all 30 traversed visible destinations serve HTML; /agents + /health stay machine JSON; mobile/tablet/keyboard pass; no browser console errors"
+  ],
+  "notRun": [
+    {
+      "boundary": "deploy:build-vercel-output (the platform's vercel build --prod + the module-loading correction)",
+      "reason": "requires VERCEL_TOKEN — the worker pod holds no Vercel credentials (the tool's own documented boundary); the correction core stays proven by the synthetic-fixture suite tests/unit/deployment/vercel-output.test.ts (green) and the two-function composition is proven in-process by the gateway battery",
+      "owner": "Lead real-rail build run"
+    },
+    {
+      "boundary": "the credentialed public redeploy of the corrected tree (vercel deploy --prebuilt --prod) and the revision re-pin",
+      "reason": "Vercel credentials — the Lead owns the credentialed runs",
+      "owner": "Lead credentialed deployment run"
+    },
+    {
+      "boundary": "the public agent-browser audit of the DEPLOYED corrected plane (the §13.6 chain's public verification: / → /home on the live origin, the 22 families, the visible-route sweep, responsive/keyboard on the public URL)",
+      "reason": "requires the redeployed plane (the Lead's run) — the browser tool itself is proven in this pod (the Phase A live audit + the Phase C local audit)",
+      "owner": "Lead post-deploy public browser audit"
+    },
+    {
+      "boundary": "the public journey harness + public smoke at the exact corrected revision (12 journeys / 28 steps + deploy:public-smoke --url <public>)",
+      "reason": "credentialed live-plane runs (the journey token + the deployed plane)",
+      "owner": "Lead post-deploy acceptance"
+    },
+    {
+      "boundary": "the PG-rail integration suites (tests/integration/postgres — ZECK_PG_TEST_URL)",
+      "reason": "the worker sandbox provisions no PostgreSQL; the suites' designed skip registry fired (205 integration skips unchanged from base)",
+      "owner": "Lead real-rail re-run"
+    },
+    {
+      "boundary": "a credentialed execution run through the corrected public golden path (the live first-run → /runs/:id result surface with real data)",
+      "reason": "the live plane's transport credential is the Lead's; the Phase A audit exercised the live run (the fall-through defect evidence) and the Phase C audit drove the same flow to its honest local boundary",
+      "owner": "Lead post-deploy golden-path verification"
+    }
+  ],
+  "constraints": [
+    "FROZEN-ARCHITECTURE BOUNDARY (recorded, not patched): GET /agents and the /executions paths are architecture-pinned public API routes — the dashboard's agents UI and lookup form therefore MOVED to experience-plane paths (/build/agents, /runs?id=) instead of any routing change that would shadow the machine contract. No frozen surface was modified; src/** is untouched (the composition imports only public exports: createDashboardHandler/buildExperienceHandler/buildBootstrapApp/createDashboardRoutes/NAV_GROUPS/MOBILE_NAV_ITEMS).",
+    "PLATFORM FACT (kept): the bare '/' can never be rewrite-served on the public origin (the framework root function is the filesystem match — correction #8); the root stays a redirect bridge. The correction changes the bridge TARGET, not the mechanism.",
+    "The deterministic sandbox substrate, the preview authority materialization and the economics/codebase-analysis seams are untouched — their honest unbound/NOT RUN states render exactly as before."
+  ],
+  "evidenceArtifacts": [
+    "deploy/evidence/ppr-015-local-home.png (the corrected local landing, full page)",
+    "deploy/evidence/ppr-015-local-catalog.png (the 22-family catalog, four honest states)"
+  ]
+}

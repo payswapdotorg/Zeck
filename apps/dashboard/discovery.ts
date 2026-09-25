@@ -356,7 +356,9 @@ export interface MobileNavItem {
 
 /** The five primary destinations of the mobile bottom bar (real routes). */
 export const MOBILE_NAV_ITEMS: readonly MobileNavItem[] = [
-  { label: "Home", path: "/" },
+  // PPR-015: Home addresses the canonical /home experience route (the
+  // bare / is a bridge on every rail — never the masqueraded console).
+  { label: "Home", path: "/home" },
   { label: "Start", path: "/console/start" },
   { label: "Catalog", path: "/console/catalog" },
   { label: "Validation", path: "/console/validation" },

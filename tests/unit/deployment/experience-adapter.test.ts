@@ -19,12 +19,20 @@
  *    once per isolate and returns the same listener; a structurally
  *    misconfigured environment refuses it;
  *  - THE ROUTING SPLIT'S TRUTH TABLE (structural, over vercel.json):
- *    every experience path (/, /console/*, /trust/*, /admin/* and the
- *    composition's own /assets/client.js asset) routes to the
- *    experience function; EVERY public API route of the architecture
- *    table falls through to the existing API function (unchanged), and
- *    the dashboard's non-experience paths honestly fall through too
- *    (the work order's explicit split).
+ *    every public EXPERIENCE path — the dashboard's user-visible
+ *    routes (PPR-015: /home, /build/*, /deployments/*, /runs/*,
+ *    /assets/*, /improve/*, /command, /attention, /mode, /appearance
+ *    alongside the original /console/*, /trust/*, /admin/*) — routes
+ *    to the experience function; EVERY public API route of the
+ *    architecture table falls through to the existing API function
+ *    (unchanged), and the dashboard's API-OWNED legacy paths
+ *    (/agents, /executions — the frozen machine contract owns those
+ *    paths on the public origin) fall through too.
+ *
+ * PPR-015: the DERIVED projection over the two real route tables
+ * (dashboard + bootstrap API) lives in
+ * tests/unit/deployment/experience-routing.test.ts — this file keeps
+ * the structural spot checks over the static artifact.
  */
 
 import { readFileSync } from "node:fs";
@@ -274,6 +282,31 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
 
   test("every experience path routes to the experience function with its original path carried", () => {
     const experiencePaths = [
+      "/home",
+      "/build",
+      "/build/execution",
+      "/build/agents",
+      `/build/agents/${ID}`,
+      "/build/workload",
+      "/deployments",
+      `/deployments/${ID}`,
+      "/runs",
+      "/runs/active",
+      "/runs/history",
+      "/runs/scheduled",
+      `/runs/${ID}`,
+      `/runs/${ID}/cancel`,
+      "/assets",
+      "/assets/artifacts",
+      "/assets/competences",
+      "/assets/connections",
+      "/improve/evaluations",
+      "/improve/insights",
+      "/improve/learning",
+      "/command",
+      "/attention",
+      "/mode",
+      "/appearance",
       "/console",
       "/console/playground",
       "/console/playground/text",
@@ -303,6 +336,7 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
       "/console/validation/evidence/deep-work",
       "/console/providers",
       "/console/docs",
+      "/console/docs/AGENT-GUIDE.md",
       "/console/settings",
       "/trust/evidence",
       "/trust/limits",
@@ -324,6 +358,9 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
     }
     // The exact-path rewrites carry the original path bit-for-bit (the
     // reconstruction the adapter reverses):
+    expect(matchingRewrite("/home")?.destination).toBe(
+      `/api/experience?${EXPERIENCE_PATH_QUERY}=/home`,
+    );
     expect(matchingRewrite("/console")?.destination).toBe(
       `/api/experience?${EXPERIENCE_PATH_QUERY}=/console`,
     );
@@ -333,28 +370,32 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
     expect(matchingRewrite("/admin")?.destination).toBe(
       `/api/experience?${EXPERIENCE_PATH_QUERY}=/admin`,
     );
-    expect(matchingRewrite("/assets/client.js")?.destination).toBe(
-      `/api/experience?${EXPERIENCE_PATH_QUERY}=/assets/client.js`,
+    expect(matchingRewrite("/assets")?.destination).toBe(
+      `/api/experience?${EXPERIENCE_PATH_QUERY}=/assets`,
     );
     // The wildcard rewrites carry the source prefix + the captured tail:
     expect(matchingRewrite("/console/playground/text")?.destination).toBe(
       `/api/experience?${EXPERIENCE_PATH_QUERY}=/console/:path*`,
     );
+    expect(matchingRewrite("/runs/active")?.destination).toBe(
+      `/api/experience?${EXPERIENCE_PATH_QUERY}=/runs/:path*`,
+    );
   });
 
-  test("the root lands on the experience surface through the platform redirect (the live plane's finding: the framework's root function shadows any root rewrite)", () => {
+  test("the root lands on the Home experience through the platform redirect (the live plane's finding: the framework's root function shadows any root rewrite)", () => {
     // THE FINDING (the §13.6 credentialed run, 2026-09-23): the root
     // `index.func` of the framework build is a FILESYSTEM match for "/",
     // and vercel.json rewrites run AFTER the filesystem phase — the
     // original `"source": "/"` rewrite was DEAD on the platform ("/"
     // answered the API plane's Fastify 404 JSON while /console served
     // the experience composition). Redirects run BEFORE the filesystem
-    // phase, so the root now lands on /console — whose rewrite carries
-    // the composition the landing was always meant to serve.
+    // phase. PPR-015 retargets the bridge from /console (the Developer
+    // Console — the Home masquerade defect) to /home — the CANONICAL
+    // Home experience route the dashboard route table now serves.
     expect(VERCEL_JSON.redirects).toHaveLength(1);
     const rootRedirect = VERCEL_JSON.redirects[0];
     expect(rootRedirect?.source).toBe("/");
-    expect(rootRedirect?.destination).toBe("/console");
+    expect(rootRedirect?.destination).toBe("/home");
     expect(rootRedirect?.permanent).toBe(false);
     // No dead rewrite remains: every rewrite destination is the experience
     // function, and none of them sources the root.
@@ -373,22 +414,24 @@ describe("PPR-007: the routing split's truth table (vercel.json rewrites)", () =
     }
   });
 
-  test("the dashboard's non-experience paths honestly fall through to the API function (the work order's split)", () => {
+  test("the dashboard's API-OWNED legacy paths fall through to the API function (the frozen machine contract owns them)", () => {
+    // PPR-015: /agents and /executions are architecture-pinned public
+    // API routes (GET /agents, POST /executions, GET /executions/:id,
+    // ...) — the platform's rewrites are method-agnostic, so those
+    // PATHS are API-owned and must never be rewritten (a rewrite would
+    // shadow the frozen public API contract). The dashboard's agents UI
+    // lives at /build/agents; the visible lookup form targets /runs.
     for (const path of [
-      "/runs",
-      "/runs/active",
-      "/build",
-      "/build/execution",
       "/agents",
+      `/agents/${ID}`,
+      `/agents/${ID}/status`,
+      `/agents/${ID}/versions`,
+      "/executions",
       `/executions/${ID}`,
-      "/deployments",
-      "/improve/evaluations",
-      "/assets/artifacts",
-      "/home",
-      "/mode",
-      "/appearance",
-      "/command",
-      "/attention",
+      `/executions/${ID}/cancel`,
+      `/executions/${ID}/events`,
+      `/executions/${ID}/results`,
+      `/executions/${ID}/verification`,
     ]) {
       expect(routesToExperience(path), path).toBe(false);
     }

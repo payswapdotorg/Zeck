@@ -1415,6 +1415,70 @@ the churn pauses (rebuild if the tree moved). The pins point at
 deployments (the running deployment keeps its own snapshot; no
 runtime inconsistency).
 
+### 13.11 The public productization correction (PPR-015 — the real-user browser audit's corrections, 2026-09-25)
+
+A live user's browser drive of the deployed plane (the structural
+harness could not see it: the 12-journey/28-step record was green at
+`25e11f9` while the visible experience was wrong) reproduced four
+defect classes, all corrected at their truth sources on
+`work/PPR-015-public-productization` (base `e0f4a26`):
+
+1. **THE HOME MASQUERADE.** The bare `/` and the visible Home control
+   landed on `/console` (the Developer Console), so the intended
+   discovery-first Home — the outcome statement, the 22-family grid,
+   the safe-start CTA — never met the user. The correction keeps
+   correction #8's platform fact (redirects before the filesystem
+   phase; the root rewrite stays dead) and retargets the bridge:
+   `/` → `307` → **`/home`** — the CANONICAL Home experience route the
+   dashboard route table now serves (`GET /home` renders the
+   discovery-first Home; `GET /` is itself a redirect on the local
+   rail, so both rails behave identically). `/console` remains the
+   Developer Console — its own surface, never the product Home. Every
+   Home affordance (the nav control, the brand, the breadcrumb root,
+   the mobile bar) addresses `/home`.
+2. **THE VISIBLE-ROUTE FALL-THROUGH.** Every non-console visible
+   destination answered the API plane's raw JSON (the first-execution
+   redirect to `/runs/:id` — the golden path — included). The rewrite
+   set is now DERIVED from the dashboard route table against the
+   bootstrap API route table (`deploy/experience-routing.ts`: every
+   dashboard route whose path does not collide with an API route is a
+   public experience route; the collision set is API-OWNED and never
+   rewritten) — pinned by
+   `tests/unit/deployment/experience-routing.test.ts` (RED on the
+   uncorrected base, GREEN on the fix) and the two-function local
+   composition battery
+   (`deploy/local-experience-gateway.ts` +
+   `tests/integration/deployment/experience-gateway.test.ts` +
+   the agent-browser smoke `tests/browser/public-experience-browser-smoke.ts`).
+   The API-plane boundary is unchanged and negatively pinned: `/agents`,
+   `/executions`, `/credentials`, `/sandbox/*`, `/economic-actions/*`,
+   `/codebase-analysis/*`, `/health`, `/identity` stay machine routes —
+   which is why the dashboard's agents UI moved to `/build/agents` and
+   the visible lookup form targets `/runs?id=` (the frozen create
+   contract owns `POST /executions`; `GET /agents` is the
+   architecture-pinned inventory).
+3. **THE PROMISED-BUT-MISSING ROUTE.** The Library group's `/assets`
+   breadcrumb was a promise with no route; `GET /assets` now serves a
+   small honest Library overview.
+4. **THE REGRESSION SURFACE.** The class (not the URLs) is now pinned:
+   the derived projection fails on ANY new dashboard route left
+   unexposed, on ANY API route colliding with an experience prefix
+   (the mixed-prefix refusal), and on any root-bridge regression; the
+   gateway battery fails on ANY visible destination answering
+   non-HTML; the browser smoke drives the real-browser journey (Home
+   → discovery → safe start → boundary → responsive → keyboard).
+
+The worker battery at the corrected tree: typecheck 0 / lint at the
+exact 4+68+8 baseline (zero new) / unit 365f-6412t / integration
+31f-334t-205-skip / architecture+discrimination 139f-2230t / journey
+harness local-plane exit 0 / governance OK / `deploy:validate`
+valid=true, environments=4, variables=97, problems=0. The evidence
+record is `deploy/evidence/ppr-015.json`. The credentialed tail —
+`deploy:build-vercel-output` (needs VERCEL_TOKEN), the public
+redeploy, the public browser audit and the public journey/smoke at the
+exact revision — is the Lead's run (the notRun registry in the
+evidence record).
+
 ## 15. The LiveKit realtime rail (PPR-009 — the first REAL external RealtimeRail)
 
 The provider-neutral `RealtimeRail` port (WORK-024/MOD-005) now has a

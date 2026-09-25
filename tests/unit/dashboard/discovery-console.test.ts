@@ -235,7 +235,7 @@ describe("the 22-family capability catalog (completeness + honest states)", () =
 
 describe("the discovery-first home (first-screen comprehension before identifiers)", () => {
   test("the hero answers what Zeck does with the ONE dominant action", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('id="discovery-hero-title"');
     expect(html).toContain("Describe an outcome. Zeck plans it, executes it under policy");
     // The ONE dominant primary action is the guided sandbox start.
@@ -245,7 +245,7 @@ describe("the discovery-first home (first-screen comprehension before identifier
   });
 
   test("the home grid carries all 22 families with their state chips (what exists / what is available)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('class="availability-grid"');
     expect((html.match(/<li>\n {6}<a href="\/console\/playground\//g) ?? []).length).toBe(22);
     for (const family of consoleFamilies()) {
@@ -259,7 +259,7 @@ describe("the discovery-first home (first-screen comprehension before identifier
   });
 
   test("the try-safely section surfaces the sandbox envelope summary", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('id="discovery-safe-title"');
     expect(html).toContain("$2.00");
     expect(html).toContain("two-minute latency ceiling");
@@ -267,7 +267,7 @@ describe("the discovery-first home (first-screen comprehension before identifier
   });
 
   test("no application/environment identifier appears before the discovery answers", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     const hero = html.indexOf('id="discovery-hero-title"');
     const catalog = html.indexOf('class="availability-grid"');
     const safe = html.indexOf('id="discovery-safe-title"');
@@ -285,7 +285,7 @@ describe("the discovery-first home (first-screen comprehension before identifier
   });
 
   test("the home carries the Validation Lab, Trust & Limits and For agents entries", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('href="/console/validation"');
     expect(html).toContain('href="/trust/limits"');
     expect(html).toContain('href="/console/docs/AGENT-GUIDE.md"');
@@ -294,7 +294,7 @@ describe("the discovery-first home (first-screen comprehension before identifier
   });
 
   test("the work surface is preserved under discovery (composer, attention, results, lookup)", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain("What would you like Zeck to accomplish?");
     expect(html).toContain("Needs your attention");
     expect(html).toContain("Happening now");
@@ -369,7 +369,7 @@ describe("the consolidated Trust & Limits entry", () => {
 
 describe("the first-class agent entrypoint", () => {
   test("the nav carries the For agents entry pointing at the agent integration guide", async () => {
-    const html = await getHtml("/");
+    const html = await getHtml("/home");
     expect(html).toContain('href="/console/docs/AGENT-GUIDE.md"');
     // The guide page itself renders (the verbatim docs projection).
     const guide = await getHtml("/console/docs/AGENT-GUIDE.md");

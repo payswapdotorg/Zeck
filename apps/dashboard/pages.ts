@@ -360,7 +360,12 @@ async function readRecentExecutions(
 }
 
 function lookupForm(): string {
-  return `<form method="get" action="/executions" class="flow card">
+  // PPR-015: the form targets the EXPERIENCE-plane /runs lookup seam
+  // (/runs?id=<id> → the run detail). The legacy /executions path is
+  // API-plane on the public origin (POST /executions is the frozen
+  // create contract; a rewrite there would shadow it) — a visible form
+  // must never submit into the API plane.
+  return `<form method="get" action="/runs" class="flow card">
   <div class="form-field">
     <label for="lookup-id">Look up an execution by id</label>
     <input id="lookup-id" name="id" required placeholder="execution id">
@@ -464,7 +469,7 @@ async function homePage(client: ZeckClient, ctx: HttpContext): Promise<HandlerRe
   const terminal = recents.executions.filter((execution) => isTerminal(execution.status));
   const content = `${pageHead({
     title: "Home",
-    path: "/",
+    path: ctx.path,
     primaryActionHtml:
       '<a class="button-link primary" href="/console/start">Start the guided sandbox</a>',
   })}
@@ -510,9 +515,13 @@ ${runsList(terminal, "")}`
 }
 <h2>Find an execution</h2>
 ${lookupForm()}`;
-  return page({ title: "Zeck — Home", activePath: "/", mainContent: content, attention }, ctx, {
-    setCookies,
-  });
+  return page(
+    { title: "Zeck — Home", activePath: ctx.path, mainContent: content, attention },
+    ctx,
+    {
+      setCookies,
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +552,11 @@ async function buildOverviewPage(client: ZeckClient, ctx: HttpContext): Promise<
     <h3><a href="/build/workload">Workload / Training / Batch</a></h3>
     <p>Training and batch compute as governed executions with budget and checkpoints.</p>
     <p class="muted">Live today — outcome-first creation through the governed execution authority; the workload/training authorities' own states are not public.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/build/agents">Agents</a></h3>
+    <p>The governed agent inventory — a read-only projection over the public agents authority.</p>
+    <p class="muted">Live per application scope.</p>
   </section>
   <section class="tile">
     <h3><a href="/build/deployment">Deployment</a></h3>
@@ -1041,7 +1055,7 @@ async function buildAgentPage(client: ZeckClient, ctx: HttpContext): Promise<Han
   const content = `${pageHead({
     title: "Build an agent",
     path: "/build/agent",
-    primaryActionHtml: '<a class="button-link" href="/agents">View the agent inventory</a>',
+    primaryActionHtml: '<a class="button-link" href="/build/agents">View the agent inventory</a>',
   })}
 <p>Agents are reusable execution systems. Start from the purpose; the design comes back as a readable proposal you review before any detailed configuration.</p>
 ${agentProposalForm(values)}
@@ -1059,7 +1073,7 @@ ${
         `<p class="muted">Detailed configuration is a disclosure, never a prerequisite. The read-side facts the public agents projection DOES carry today: versioned definitions with a definition digest, a validation state per version (${["pending", "validated", "invalid"].join(" / ")}), and a recorded selection history (promotion or rollback of a version, with who selected it and when). When agent authoring ships as a public authority, these are the facts your accepted proposal will produce — versions, validation, and governed selections.</p>`,
       )
 }
-<p><a href="/agents">View the agent inventory (read-only)</a> · <a href="/build">Back to Build</a></p>`;
+<p><a href="/build/agents">View the agent inventory (read-only)</a> · <a href="/build">Back to Build</a></p>`;
   return page(
     { title: "Zeck — Build an agent", activePath: "/build/agent", mainContent: content },
     ctx,
@@ -1424,7 +1438,7 @@ ${unavailableState(
   "No public deployment authority exists — creating a deployment, and the operational controls (pause, rollback, version change), have no governed routes on the public contract. This dashboard renders NO action buttons for them: each control will route through its governed API with a consequence preview before commitment when the authority ships. Meanwhile, availability is never represented as an execution status, and executions remain the live governed work you can follow.",
   "a public deployment authority (create, commands and projections)",
 )}
-<p><a href="/deployments">View the deployments surface</a> · <a href="/agents">Agent inventory (live, read-only)</a> · <a href="/runs">Executions (live)</a></p>`;
+<p><a href="/deployments">View the deployments surface</a> · <a href="/build/agents">Agent inventory (live, read-only)</a> · <a href="/runs">Executions (live)</a></p>`;
   return page(
     { title: "Zeck — Build a deployment", activePath: "/build/deployment", mainContent: content },
     ctx,
@@ -1495,7 +1509,7 @@ ${unavailableState(
 )}
 ${deploymentSessionExecutionSection({ sessionRuns })}
 <h2>The live governed work today</h2>
-<p>Executions are live: <a href="/runs">open the runs surface</a> or look one up by id. Agents are live and read-only: <a href="/agents">open the agent inventory</a>.</p>
+<p>Executions are live: <a href="/runs">open the runs surface</a> or look one up by id. Agents are live and read-only: <a href="/build/agents">open the agent inventory</a>.</p>
 ${lookupForm()}`;
   return page(
     { title: "Zeck — Deployments", activePath: "/deployments", mainContent: content },
@@ -1975,7 +1989,7 @@ async function agentsPage(client: ZeckClient, ctx: HttpContext): Promise<Handler
   const rows = agents
     .map(
       (agent) => `<tr>
-    <td><a href="/agents/${encodeURIComponent(agent.id)}">${esc(agent.name)}</a></td>
+    <td><a href="/build/agents/${encodeURIComponent(agent.id)}">${esc(agent.name)}</a></td>
     <td class="mono">${esc(agent.slug)}</td>
     <td>${agentStatusBadge(agent.status)}</td>
     <td class="mono">${agent.activeVersion === null ? "—" : esc(agent.activeVersion)}</td>
@@ -1985,7 +1999,7 @@ async function agentsPage(client: ZeckClient, ctx: HttpContext): Promise<Handler
     .join("");
   const content = `${pageHead({
     title: "Agents",
-    path: "/agents",
+    path: ctx.path,
     primaryActionHtml: '<a class="button-link" href="/build/agent">Propose an agent</a>',
   })}
 <p class="muted">A read-only projection over the governed agents authority.</p>
@@ -2000,7 +2014,7 @@ ${
   <tbody>${rows}</tbody>
 </table>`
 }`;
-  return page({ title: "Zeck — Agents", activePath: "/agents", mainContent: content }, ctx);
+  return page({ title: "Zeck — Agents", activePath: ctx.path, mainContent: content }, ctx);
 }
 
 async function agentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
@@ -2036,7 +2050,7 @@ async function agentDetailPage(client: ZeckClient, ctx: HttpContext): Promise<Ha
    */
   const content = `${pageHead({
     title: status.agent.name,
-    path: `/agents/${agentId}`,
+    path: `/build/agents/${agentId}`,
     currentLabel: status.agent.name,
     primaryActionHtml: `<a class="button-link" href="/build/agent">Propose an agent</a>`,
   })}
@@ -2070,7 +2084,7 @@ ${selection}
   return page(
     {
       title: `Zeck — ${status.agent.name}`,
-      activePath: `/agents/${agentId}`,
+      activePath: `/build/agents/${agentId}`,
       mainContent: content,
     },
     ctx,
@@ -2080,6 +2094,44 @@ ${selection}
 // ---------------------------------------------------------------------------
 // Assets (AC5) — honest states + per-execution artifact anchors
 // ---------------------------------------------------------------------------
+
+/**
+ * PPR-015 — the Library group's overview surface (`/assets`). The nav
+ * grammar and every /assets/* breadcrumb link the "Library" group parent
+ * at this path; before this surface it was a promise with no route (the
+ * breadcrumb landed on the 404 page locally and the API plane's raw JSON
+ * publicly). A small honest overview: the three library surfaces with
+ * their live/not-exposed states — never a fabricated inventory.
+ */
+function libraryOverviewPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
+  void client;
+  const content = `${pageHead({
+    title: "Library",
+    path: "/assets",
+    primaryActionHtml: '<a class="button-link primary" href="/assets/artifacts">Open artifacts</a>',
+  })}
+<p>Everything produced by, or referenced from, the work you open in this browser — each surface is a per-execution projection, never a fabricated inventory.</p>
+<div class="tiles">
+  <section class="tile">
+    <h3><a href="/assets/artifacts">Artifacts</a></h3>
+    <p>Output artifacts of executions you open, with their digests and provenance facts.</p>
+    <p class="muted">Live per run.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/assets/competences">Competences</a></h3>
+    <p>Reusable, evidence-backed ways of describing work.</p>
+    <p class="muted">Not exposed by the public API yet — the honest state, never a picker.</p>
+  </section>
+  <section class="tile">
+    <h3><a href="/assets/connections">Connections</a></h3>
+    <p>Routing facts from real runs; secret-mediated BYOK, with no inventory API yet.</p>
+    <p class="muted">Honest per-run facts only.</p>
+  </section>
+</div>`;
+  return Promise.resolve(
+    page({ title: "Zeck — Library", activePath: "/assets", mainContent: content }, ctx),
+  );
+}
 
 async function artifactsPage(client: ZeckClient, ctx: HttpContext): Promise<HandlerResult> {
   const ids = parseRecents(ctx.cookies[RECENTS_COOKIE]);
@@ -3124,7 +3176,7 @@ function proposedActionMatches(query: string, agents: readonly AgentSummary[]): 
         matches.push({
           kind: "Agent",
           label: `Agent: ${agent.name}`,
-          href: `/agents/${encodeURIComponent(agent.id)}`,
+          href: `/build/agents/${encodeURIComponent(agent.id)}`,
         });
       }
     }
@@ -6774,9 +6826,22 @@ export function createDashboardRoutes(
     handler: (ctx: HttpContext) => Promise<HandlerResult> | HandlerResult,
   ): RouteDefinition => ({ method, pattern, handler });
   return [
-    wrap("GET", "/", (ctx) => homePage(client, ctx)),
-    wrap("GET", "/home", () => Promise.resolve(redirectResult("/"))),
+    // PPR-015 — the canonical Home experience lives at /home. The bare /
+    // path can NEVER serve the experience composition on the public
+    // origin (the platform's filesystem phase owns the framework root —
+    // the correction #8 platform fact), so / is a BRIDGE on every rail:
+    // the local composition redirects here exactly like vercel.json's
+    // root redirect does publicly. /console remains the Developer
+    // Console — it no longer masquerades as the product Home.
+    wrap("GET", "/", () => Promise.resolve(redirectResult("/home"))),
+    wrap("GET", "/home", (ctx) => homePage(client, ctx)),
     wrap("GET", "/build", (ctx) => buildOverviewPage(client, ctx)),
+    // PPR-015 — the agents UI surface lives at /build/agents: the public
+    // /agents path is API-plane (GET /agents is the architecture-pinned
+    // machine inventory; a rewrite there would shadow the frozen public
+    // API contract). The legacy local-rail routes keep working (AC10).
+    wrap("GET", "/build/agents", (ctx) => agentsPage(client, ctx)),
+    wrap("GET", "/build/agents/:agentId", (ctx) => agentDetailPage(client, ctx)),
     wrap("GET", "/build/execution", (ctx) => buildExecutionPage(client, ctx)),
     wrap("POST", "/build/execution", (ctx) => createExecutionHandler(client, ctx)),
     wrap("GET", "/build/agent", (ctx) => buildAgentPage(client, ctx)),
@@ -6785,7 +6850,17 @@ export function createDashboardRoutes(
     wrap("GET", "/build/deployment", (ctx) => buildDeploymentPage(client, ctx)),
     wrap("GET", "/deployments", (ctx) => deploymentsOverviewPage(client, ctx)),
     wrap("GET", "/deployments/:deploymentId", (ctx) => deploymentDetailPage(client, ctx)),
-    wrap("GET", "/runs", (ctx) => runsOverviewPage(client, ctx)),
+    wrap("GET", "/runs", (ctx) => {
+      // PPR-015 — the visible lookup form's seam: GET /runs?id=<id>
+      // redirects to the run detail (the legacy GET /executions path is
+      // API-plane on the public origin — POST /executions is the frozen
+      // create contract; a visible form must never submit there).
+      const id = ctx.query.get("id");
+      if (id !== null && id.length > 0) {
+        return Promise.resolve(redirectResult(`/runs/${encodeURIComponent(id)}`));
+      }
+      return runsOverviewPage(client, ctx);
+    }),
     wrap("GET", "/runs/active", (ctx) => runsActivePage(client, ctx)),
     wrap("GET", "/runs/history", (ctx) => runsHistoryPage(client, ctx)),
     wrap("GET", "/runs/scheduled", (ctx) => runsScheduledPage(client, ctx)),
@@ -6793,6 +6868,7 @@ export function createDashboardRoutes(
     wrap("POST", "/runs/:executionId/cancel", (ctx) => cancelExecutionHandler(client, ctx)),
     wrap("GET", "/agents", (ctx) => agentsPage(client, ctx)),
     wrap("GET", "/agents/:agentId", (ctx) => agentDetailPage(client, ctx)),
+    wrap("GET", "/assets", (ctx) => libraryOverviewPage(client, ctx)),
     wrap("GET", "/assets/artifacts", (ctx) => artifactsPage(client, ctx)),
     wrap("GET", "/assets/artifacts/:artifactId", (ctx) => artifactDetailPage(client, ctx)),
     wrap("GET", "/assets/competences", (ctx) => competencesPage(client, ctx)),
@@ -6934,6 +7010,9 @@ export function createDashboardRoutes(
       return Promise.resolve(assetResult(CLIENT_SCRIPT, "application/javascript"));
     }),
     // Legacy routes (AC10): every existing dashboard path keeps working.
+    // On the public origin these /executions paths are deliberately
+    // API-plane (the machine contract owns them there); the local
+    // composition serves them as before.
     wrap("POST", "/executions/:executionId/cancel", (ctx) => cancelExecutionHandler(client, ctx)),
     wrap("GET", "/executions/:executionId", (ctx) =>
       Promise.resolve(redirectResult(`/runs/${encodeURIComponent(ctx.params.executionId ?? "")}`)),
