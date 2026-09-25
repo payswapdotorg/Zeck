@@ -16,7 +16,7 @@ For dispatch/review/orchestration behavior also read:
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
 - `docs/E1.1-RESEARCH-BASELINE.md`
 
-## Current authoritative status (2026-09-20)
+## Current authoritative status (2026-09-25)
 
 The core, validation and Developer Platform programs are COMPLETE. The active program is now **Post-Release Public Productization**.
 
@@ -32,7 +32,7 @@ Successor Tech Lead contract:
 Successor handoff:
 `docs/LLM-TECH-LEAD-HANDOFF.md`
 
-The first authorized wave is PPR-001/PPR-002/PPR-003, with a maximum of three concurrent workers.
+The current authorized corrective wave is PPR-015, with a maximum of three concurrent workers.
 
 The previous Developer Platform narrative beginning at the next heading is retained as historical delivery record and must not be treated as current authority.
 
