@@ -58,8 +58,10 @@ Worker claims and PR bodies never override repository state.
 - Validation VAL-001 through VAL-052 is complete.
 - Developer Platform DEP-001 through DEP-044 is complete.
 - The active program is now `zeck-post-release-public-productization`.
-- Read `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`, `docs/POST-RELEASE-USER-JOURNEY-SIMULATION.md`, `docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md`, `docs/LLM-TECH-LEAD-HANDOFF.md` and `spec/post-release-state/frontier-state.json`.
-- The first authorized wave is PPR-001/PPR-002/PPR-003, subject to live conflict analysis.
+- The latest delivered post-release order is PPR-014.
+- **PPR-015 is the current Architect-authorized executable Work Order.**
+- Read `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`, `docs/POST-RELEASE-USER-JOURNEY-SIMULATION.md`, `docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md`, `docs/LLM-TECH-LEAD-HANDOFF.md`, the PPR-015 Work Order, and `spec/post-release-state/frontier-state.json`.
+- PPR-015 requires a clean `agent-browser` drive from the public origin as a first-time user before implementation assumptions are made.
 - Never infer the current SHA from this bootstrap; fetch live `main` at recovery.
 
 ## 4. E1.1 architectural rule
