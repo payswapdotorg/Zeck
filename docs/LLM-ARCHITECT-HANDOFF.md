@@ -18,8 +18,8 @@
 - E1.1 implementation WORK-048 through WORK-056: **complete**.
 - Validation program VAL-001 through VAL-052: **complete**.
 - Developer Platform DEP-001 through DEP-044: **complete**, including the 8/8 DEP-044 release-gate verdict.
-- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`. The current executable frontier is PPR-015.
-- Current post-release frontier is `PPR-015`, with a maximum of three concurrent workers.
+- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`. The current executable frontier is PPR-016.
+- Current post-release frontier is `PPR-016`, with a maximum of three concurrent workers.
 - The exact `main` SHA must always be fetched at recovery time.
 
 Historical sections below remain useful evidence but do not override the current post-release state.
@@ -138,6 +138,13 @@ Known acceptance anchors:
 - No frozen architecture or authority boundary is changed.
 
 The repository frontier must authorize PPR-015 before the Tech Lead dispatches implementation.
+
+
+### Current architect directive — PPR-016
+
+PPR-015 is closed. The next executable Work Order is **PPR-016 — GAP-002 Capability-Rail Completion and Credentialed Validation**.
+
+The Tech Lead should use one worker by default. The order advances only provider rails already present in the repository and already supported by existing credential materialization. It must produce real external evidence where credentials permit, while keeping realtime voice, 3D, browser-use and computer-use explicitly blocked or research-only where their real rails are absent.
 
 ## Historical implementation stream
 
