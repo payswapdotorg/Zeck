@@ -514,6 +514,7 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
       "/console/applications/keys/:credentialId/rotate",
       "/console/applications/keys/issue",
       "/console/compare/baseline",
+      "/console/demos/:demoId/run",
       "/console/playground/:family",
       "/console/validation/:workOrder/run",
       "/executions/:executionId/cancel",
@@ -525,7 +526,12 @@ describe("D11 unsafe command paths (the only POSTs are the governed commands)", 
     // server-side state). The DEP-031 baseline launcher POST is the same
     // governed class: it submits the frozen create contract through the
     // SDK client with the form's mandatory idempotency key (a governed
-    // create, never a direct mutation).
+    // create, never a direct mutation). The PPR-017 Demo Mirror run POST
+    // is the safest member of the class: a pure PRG refusal for
+    // uncertified demos — it performs NO mutation, calls no authority,
+    // and only redirects with the derived not-runnable reason (a
+    // certified run path binds later, through the same governed create
+    // contract every other run uses).
     // The mutant: an ungoverned direct mutation route.
     const mutantRoutes = [...postRoutes, "/command"];
     expect(mutantRoutes.length).not.toBe(postRoutes.length);

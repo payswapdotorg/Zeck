@@ -99,6 +99,14 @@ import {
   credentialTransportFromEnvironment,
   validateCredentialIssueForm,
 } from "./credentials";
+import {
+  demoMirrorDetailBody,
+  demoMirrorDetailFactsJson,
+  demoMirrorIndexBody,
+  demoMirrorIndexFactsJson,
+  demoMirrorRunHandler,
+  demoMirrorRunNotice,
+} from "./demo-mirror";
 import { advancedDisclosure } from "./disclosure";
 import {
   catalogSection,
@@ -3339,6 +3347,48 @@ function applicationsTabNav(active: string): string {
   ${tab("environments", "Environments", "/console/applications/environments")}
   ${tab("usage", "Usage", "/console/applications/usage")}
 </nav>`;
+}
+
+// ---------------------------------------------------------------------------
+// PPR-017 — the Demo Mirror pages (ACR-006 §5). Every fact renders from
+// the compatibility integration's public barrel; the status is DERIVED
+// from the bound evidence record on every render (the console never
+// asserts or upgrades one). Fixture demos are honestly labeled
+// UNASSESSED/PARTIAL and visually distinct from certified demos.
+// ---------------------------------------------------------------------------
+
+/** The Demo Mirror index: the registry with the honest status column. */
+function demoMirrorIndexPage(ctx: HttpContext): HandlerResult {
+  const content = `${pageHead({
+    title: "Demo Mirror",
+    path: "/console/demos",
+  })}
+${demoMirrorIndexBody()}
+<h2>Where these facts come from</h2>
+<p>Every demo binds a compatibility evidence record from the PPR-017 foundation (the ACR-006 layer): the application execution graph, the pinned revisions, every material edge's disposition, the egress observation, the runtime corpus evidence and the Zeck trace correlation. The status column is the strict five-rule admission evaluation over that record — the same evaluation the machine twins carry, so the page and the JSON can never drift. The execution-surface taxonomy the graphs use is additive to the 22-family capability manifest and asserts nothing about platform availability.</p>
+<p class="muted">Continue: <a href="/console/catalog">the capability catalog</a> · <a href="/console/validation">the Validation Lab</a> · <a href="/console/docs/AGENT-GUIDE.md">the agent integration guide</a>.</p>`;
+  return page(
+    { title: "Zeck — Demo Mirror", activePath: "/console/demos", mainContent: content },
+    ctx,
+  );
+}
+
+/** One demo's shell: pinned revision → task → run → progress → result → timeline → facts → evidence → warnings → comparison → reproducibility. */
+function demoMirrorDetailPage(ctx: HttpContext): HandlerResult {
+  const demoId = ctx.params.demoId ?? "";
+  const { title, body } = demoMirrorDetailBody(demoId);
+  const runParam = ctx.query.get("run");
+  const content = `${pageHead({
+    title,
+    path: `/console/demos/${demoId}`,
+    primaryActionHtml: '<a class="button-link" href="/console/demos">All demos</a>',
+  })}
+${demoMirrorRunNotice(runParam)}
+${body}`;
+  return page(
+    { title: `Zeck — ${title}`, activePath: "/console/demos", mainContent: content },
+    ctx,
+  );
 }
 
 async function consoleHomePage(scope: string, ctx: HttpContext): Promise<HandlerResult> {
@@ -6960,6 +7010,26 @@ export function createDashboardRoutes(
     wrap("GET", "/console/compare", (ctx) => compareConsolePage(client, ctx)),
     wrap("GET", "/console/compare/facts.json", (ctx) => compareFactsRoute(client, ctx)),
     wrap("POST", "/console/compare/baseline", (ctx) => compareBaselineLaunchHandler(client, ctx)),
+    // PPR-017 — the Demo Mirror (ACR-006 §5): the public demo surface
+    // under the already-experience-rewritten /console prefix (no
+    // vercel.json change, no API-plane collision). Every status is
+    // DERIVED from the bound compatibility evidence record through the
+    // strict admission evaluation — this console never asserts or
+    // upgrades one. Static routes precede the parameterized :demoId
+    // (facts.json must win over the demo slug).
+    wrap("GET", "/console/demos", (ctx) => demoMirrorIndexPage(ctx)),
+    wrap("GET", "/console/demos/facts.json", () =>
+      Promise.resolve(jsonResult(demoMirrorIndexFactsJson())),
+    ),
+    wrap("POST", "/console/demos/:demoId/run", (ctx) =>
+      Promise.resolve(
+        demoMirrorRunHandler(ctx.params.demoId ?? "", (location) => redirectResult(location)),
+      ),
+    ),
+    wrap("GET", "/console/demos/:demoId", (ctx) => demoMirrorDetailPage(ctx)),
+    wrap("GET", "/console/demos/:demoId/facts.json", (ctx) =>
+      Promise.resolve(jsonResult(demoMirrorDetailFactsJson(ctx.params.demoId ?? ""))),
+    ),
     // Usage, economics and optimization (DEP-030): the first-class
     // application-scoped usage projection + its machine twin (the SAME
     // composition — no UI-only state). The budgets transport derives

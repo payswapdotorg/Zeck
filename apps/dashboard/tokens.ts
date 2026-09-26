@@ -940,6 +940,26 @@ a.button-link.hero-cta .muted {
 .chip.state-provider-gated { color: var(--status-warn); border-color: var(--status-warn); background: var(--warning-bg); }
 .chip.state-not-run { color: var(--text-secondary); border-color: var(--border-strong); background: var(--surface-sunken); }
 
+/* --- PPR-017: the compatibility status chips (Demo Mirror) — five
+ * VISUALLY DISTINCT treatments so a PARTIAL/BLOCKED/BYPASS demo can
+ * never be mistaken for an AI_EXECUTION_COMPLETE one. Symbol + text in
+ * the markup; color is the secondary signal, never the only one
+ * (hollow grey / amber filled / dashed hollow / red filled / green
+ * filled). */
+.chip.compat-UNASSESSED { color: var(--text-secondary); border-color: var(--border-strong); background: var(--surface-sunken); }
+.chip.compat-PARTIAL { color: var(--status-warn); border-color: var(--status-warn); background: var(--warning-bg); }
+.chip.compat-BLOCKED { color: var(--status-error); border-color: var(--status-error); border-style: dashed; background: var(--surface-sunken); }
+.chip.compat-BYPASS_DETECTED { color: var(--status-error); border-color: var(--status-error); background: var(--error-bg); }
+.chip.compat-AI_EXECUTION_COMPLETE { color: var(--status-ok); border-color: var(--status-ok); background: var(--success-bg); }
+.compat-banner { border: 1px solid var(--border-subtle); border-left-width: 4px; border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); background: var(--surface-raised); }
+.compat-banner p { margin: 0 0 var(--space-1); }
+.compat-banner p:last-child { margin-bottom: 0; }
+.compat-banner.compat-UNASSESSED { border-left-color: var(--border-strong); }
+.compat-banner.compat-PARTIAL { border-left-color: var(--status-warn); }
+.compat-banner.compat-BLOCKED { border-left-color: var(--status-error); }
+.compat-banner.compat-BYPASS_DETECTED { border-left-color: var(--status-error); background: var(--error-bg); }
+.compat-banner.compat-AI_EXECUTION_COMPLETE { border-left-color: var(--status-ok); background: var(--success-bg); }
+
 /* --- The mobile bottom navigation bar (the mobile nav variant). Hidden
  * on the tablet/desktop classes; the fixed bar renders only for the
  * mobile width, with touch-safe padding and the same active-item
