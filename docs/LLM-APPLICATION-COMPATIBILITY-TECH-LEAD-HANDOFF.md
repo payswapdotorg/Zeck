@@ -27,6 +27,7 @@ The Architect remains the authority for:
 - `spec/application-compatibility/program-state.json`
 - `spec/post-release-state/frontier-state.json`
 - `spec/post-release-work-orders/PPR-017.md` through `PPR-027.md`
+- `docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md`
 
 ## North star
 
