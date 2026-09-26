@@ -1,96 +1,95 @@
 {
-  "schemaVersion": 1,
-  "program": "zeck-application-compatibility-proof",
-  "status": "wave-j-open",
-  "architecture": "ACR-006",
-  "currentWave": [
-    "PPR-017",
-    "PPR-018",
-    "PPR-019"
-  ],
-  "maxConcurrentWorkers": 3,
-  "advancementAuthority": "pre-authorized-tech-lead",
-  "rule": "The Architect pre-authorizes the complete successor sequence in this file. The Tech Lead may promote a dependency-complete successor Work Order into the executable frontier after completing the predecessor gates, without returning to the Architect for routine authorization. The Architect remains the authority for architecture changes, merges and exceptional escalation.",
-  "sequence": [
-    {
-      "id": "PPR-017",
-      "depends": []
-    },
-    {
-      "id": "PPR-018",
-      "depends": []
-    },
-    {
-      "id": "PPR-019",
-      "depends": []
-    },
-    {
-      "id": "PPR-020",
-      "depends": [
-        "PPR-018"
-      ],
-      "target": "OpenHands"
-    },
-    {
-      "id": "PPR-021",
-      "depends": [
-        "PPR-020"
-      ],
-      "target": "Continue"
-    },
-    {
-      "id": "PPR-022",
-      "depends": [
-        "PPR-020"
-      ],
-      "target": "Hermes-Agent"
-    },
-    {
-      "id": "PPR-023",
-      "depends": [
-        "PPR-022"
-      ],
-      "target": "OpenClaw"
-    },
-    {
-      "id": "PPR-024",
-      "depends": [
-        "PPR-023"
-      ],
-      "target": "Browser Use"
-    },
-    {
-      "id": "PPR-025",
-      "depends": [
-        "PPR-024"
-      ],
-      "target": "Open WebUI"
-    },
-    {
-      "id": "PPR-026",
-      "depends": [
-        "PPR-025"
-      ],
-      "target": "AnythingLLM"
-    },
-    {
-      "id": "PPR-027",
-      "depends": [
-        "PPR-020",
-        "PPR-021",
-        "PPR-022",
-        "PPR-023",
-        "PPR-024",
-        "PPR-025",
-        "PPR-026"
-      ],
-      "target": "Cross-application longitudinal economics and developer adoption evidence"
-    }
-  ],
-  "gatePolicy": {
-    "perApplication": "AI_EXECUTION_COMPLETE only when every declared material AI execution edge is delegated through Zeck, direct provider egress is absent or provably blocked, the representative corpus remains functional, and every delegated edge correlates to Zeck evidence.",
-    "noDemoUpgrade": "Demo status can never upgrade evidence or completeness.",
-    "failureRouting": "provider/credential/region/quota/DNS/infrastructure issue -> BLOCKED/NOT-RUN; public-contract issue -> implementation gap; representational/invariant issue -> Architect escalation."
+ "schemaVersion": 1,
+ "program": "zeck-application-compatibility-proof",
+ "status": "wave-j-foundation-merged",
+ "architecture": "ACR-006",
+ "currentWave": [
+  "PPR-018",
+  "PPR-019"
+ ],
+ "maxConcurrentWorkers": 3,
+ "advancementAuthority": "pre-authorized-tech-lead",
+ "rule": "The Architect pre-authorizes the complete successor sequence in this file. The Tech Lead may promote a dependency-complete successor Work Order into the executable frontier after completing the predecessor gates, without returning to the Architect for routine authorization. The Architect remains the authority for architecture changes, merges and exceptional escalation.",
+ "sequence": [
+  {
+   "id": "PPR-017",
+   "depends": []
   },
-  "parallelismPolicy": "PPR-017, PPR-018 and PPR-019 may be developed concurrently. PPR-018 and PPR-019 must consume only the approved ACR-006 public contract while PPR-017 is in progress; their final certification and Demo Mirror activation are gated on the merged PPR-017 foundation. The Tech Lead reconciles the three exact revisions before certification. No duplicate foundation or authority may be created."
+  {
+   "id": "PPR-018",
+   "depends": []
+  },
+  {
+   "id": "PPR-019",
+   "depends": []
+  },
+  {
+   "id": "PPR-020",
+   "depends": [
+    "PPR-018"
+   ],
+   "target": "OpenHands"
+  },
+  {
+   "id": "PPR-021",
+   "depends": [
+    "PPR-020"
+   ],
+   "target": "Continue"
+  },
+  {
+   "id": "PPR-022",
+   "depends": [
+    "PPR-020"
+   ],
+   "target": "Hermes-Agent"
+  },
+  {
+   "id": "PPR-023",
+   "depends": [
+    "PPR-022"
+   ],
+   "target": "OpenClaw"
+  },
+  {
+   "id": "PPR-024",
+   "depends": [
+    "PPR-023"
+   ],
+   "target": "Browser Use"
+  },
+  {
+   "id": "PPR-025",
+   "depends": [
+    "PPR-024"
+   ],
+   "target": "Open WebUI"
+  },
+  {
+   "id": "PPR-026",
+   "depends": [
+    "PPR-025"
+   ],
+   "target": "AnythingLLM"
+  },
+  {
+   "id": "PPR-027",
+   "depends": [
+    "PPR-020",
+    "PPR-021",
+    "PPR-022",
+    "PPR-023",
+    "PPR-024",
+    "PPR-025",
+    "PPR-026"
+   ],
+   "target": "Cross-application longitudinal economics and developer adoption evidence"
+  }
+ ],
+ "gatePolicy": {
+  "perApplication": "AI_EXECUTION_COMPLETE only when every declared material AI execution edge is delegated through Zeck, direct provider egress is absent or provably blocked, the representative corpus remains functional, and every delegated edge correlates to Zeck evidence.",
+  "noDemoUpgrade": "Demo status can never upgrade evidence or completeness.",
+  "failureRouting": "provider/credential/region/quota/DNS/infrastructure issue -> BLOCKED/NOT-RUN; public-contract issue -> implementation gap; representational/invariant issue -> Architect escalation."
+ },
+ "parallelismPolicy": "PPR-017, PPR-018 and PPR-019 may be developed concurrently. PPR-018 and PPR-019 must consume only the approved ACR-006 public contract while PPR-017 is in progress; their final certification and Demo Mirror activation are gated on the merged PPR-017 foundation. The Tech Lead reconciles the three exact revisions before certification. No duplicate foundation or authority may be created."
 }
