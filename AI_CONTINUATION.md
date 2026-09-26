@@ -213,3 +213,8 @@ Required branches: none — the program is complete. All charter branches (work/
 ## Fresh-session invariant
 
 A fresh LLM Tech Lead must recover the current architecture, frontier, Work Order authority, three-worker concurrency ceiling, E1.1 implementation sequence, provider boundary, evidence rules and merge/finalization protocol entirely from repository artifacts and live GitHub state.
+
+
+Append current final handoff pointer:
+
+The final zero-context execution guide is docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md. The complete PPR-017 through PPR-027 successor sequence is pre-authorized; the TL may advance dependency-complete successors without routine Architect re-authorization. Target starting research is docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md.
