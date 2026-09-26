@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
   "status": "wave-j-open",
-  "currentBase": "93a854edb1fa3fc4a9a7a16983137c684dcc7462",
+  "currentBase": "0c0b4957668303ce4e16f4d8ee9293973e049c03",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -31,7 +31,7 @@
   ],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-017..PPR-027 are pre-authorized in spec/application-compatibility/program-state.json; the Tech Lead may activate dependency-complete successors without routine Architect re-authorization.",
-  "context": "WAVE J OPEN (2026-09-26): ACR-006 Application Execution Compatibility is approved. PPR-017/018/019 are current executable Work Orders; PPR-020..027 are pre-authorized dependency-gated successors. The final Tech Lead handoff explicitly permits automatic advancement through the complete sequence without returning to the Architect for routine authorization. PPR-016 remains operator-bound on GAP-002/GAP-005 and optional socket.io 4.8.4.",
+  "context": "WAVE J OPEN (2026-09-26): ACR-006 Application Execution Compatibility is approved. PPR-017/018/019 are the current executable Work Orders. They may be developed concurrently against the approved contract; PPR-018/019 final certification and Demo Mirror activation are gated on the merged PPR-017 foundation. PPR-020..027 are pre-authorized dependency-gated successors. The final Tech Lead handoff explicitly permits automatic advancement through the complete sequence without routine Architect re-authorization. PPR-016 remains operator-bound on GAP-002/GAP-005 and optional socket.io 4.8.4.",
   "authorizedQueue": [
     "PPR-017",
     "PPR-018",
