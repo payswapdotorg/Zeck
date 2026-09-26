@@ -866,7 +866,7 @@ describe("AC4: the no-script foundation — native links, GET forms, details/sum
 // ---------------------------------------------------------------------------
 
 describe("AC7: the route table carries exactly the pinned routes (this order adds none)", () => {
-  test("the dashboard route table is exactly 94 routes — 91 + the three PPR-015 public-productization routes", () => {
+  test("the dashboard route table is exactly 99 routes — 91 + PPR-015's three + PPR-017's five Demo Mirror routes", () => {
     // PPR-001 added exactly three GET routes: /console/catalog,
     // /console/start and /trust/limits (all read-only discovery
     // surfaces; no new mutation route, no machine-boundary route).
@@ -875,7 +875,16 @@ describe("AC7: the route table carries exactly the pinned routes (this order add
     // path — /agents is API-owned) and /assets (the Library overview
     // the breadcrumb promises); the / route became a REDIRECT to
     // /home (no new route — the count is +3, not +4).
-    expect(routes.length).toBe(94);
+    // PPR-017 added exactly five Demo Mirror routes (ACR-006 §5):
+    // GET /console/demos, GET /console/demos/facts.json,
+    // GET /console/demos/:demoId, GET /console/demos/:demoId/facts.json
+    // (all read-only projections under the already-exposed /console
+    // experience prefix — no vercel.json change, no API-plane
+    // collision) and POST /console/demos/:demoId/run (the run
+    // initiation — an honest PRG refusal for uncertified demos, no new
+    // execution path; pinned by name in
+    // tests/unit/compatibility/demo-mirror-routes.test.ts).
+    expect(routes.length).toBe(99);
     // The console surface set stays pinned (spot-check the DEP-033 scope:
     // no new route patterns landed beside the existing console routes).
     const patterns = routes.map((route) => `${route.method} ${route.pattern}`);
@@ -889,8 +898,8 @@ describe("AC7: the route table carries exactly the pinned routes (this order add
     expect(patterns).toContain("GET /build/agents");
     expect(patterns).toContain("GET /assets");
     expect(patterns).toContain("GET /home");
-    expect(patterns.filter((pattern) => pattern.startsWith("GET /console")).length).toBe(42);
-    expect(patterns.filter((pattern) => pattern.startsWith("POST /console")).length).toBe(6);
+    expect(patterns.filter((pattern) => pattern.startsWith("GET /console")).length).toBe(46);
+    expect(patterns.filter((pattern) => pattern.startsWith("POST /console")).length).toBe(7);
     // The public API's machine contract is untouched by this order
     // (AC7's zero-new-routes rule covers the openapi boundary too —
     // verified against the base blob in the delivery evidence).
