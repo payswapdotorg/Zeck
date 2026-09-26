@@ -18,9 +18,24 @@
 - E1.1 implementation WORK-048 through WORK-056: **complete**.
 - Validation program VAL-001 through VAL-052: **complete**.
 - Developer Platform DEP-001 through DEP-044: **complete**, including the 8/8 DEP-044 release-gate verdict.
-- The active successor program is **Post-Release Public Productization**, governed by `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`. The current executable frontier is PPR-016.
+- The active successor program is the **Application Compatibility Proof Program**, governed by docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md and ACR-006. PPR-016 remains an operator-bound prerequisite and is currently blocked only where required provider credentials are absent. The current executable demonstration wave is PPR-017/PPR-018/PPR-019.
 - Current post-release frontier is `PPR-016`, with a maximum of three concurrent workers.
 - The exact `main` SHA must always be fetched at recovery time.
+
+### Current architect directive — ACR-006 / Application Compatibility Proof Program
+
+The application-compatibility program is now the primary post-release productization stage. The architecture extension is approved in docs/architecture-changes/ACR-006-application-execution-compatibility.md.
+
+The strict status AI_EXECUTION_COMPLETE is an edge-coverage property: every declared material AI execution edge must be delegated through Zeck; direct AI-provider egress must be absent or provably blocked in the proof; functional application behavior must remain intact; and Zeck evidence must correlate every delegated edge. Do not weaken this definition to make a demo pass.
+
+Current authorized Work Orders:
+- PPR-017 — Application Execution Graph, Compatibility Proof Harness, and Demo Mirror Foundation
+- PPR-018 — Aider Zeck-Complete Application Proof
+- PPR-019 — Cline Zeck-Complete Application Proof
+
+PPR-016 remains the operator-bound capability rail order; absent credentials, region blocks, quota exhaustion and absent provider rails remain explicit NOT RUN/BLOCKED states.
+
+The next planned application progression is OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM, in that order only as successor Work Orders are explicitly authorized in frontier state.
 
 Historical sections below remain useful evidence but do not override the current post-release state.
 
@@ -137,14 +152,6 @@ Known acceptance anchors:
 - Existing 12-journey / 28-step acceptance and public smoke remain green.
 - No frozen architecture or authority boundary is changed.
 
-The repository frontier must authorize PPR-015 before the Tech Lead dispatches implementation.
-
-
-### Current architect directive — PPR-016
-
-PPR-015 is closed. The next executable Work Order is **PPR-016 — GAP-002 Capability-Rail Completion and Credentialed Validation**.
-
-The Tech Lead should use one worker by default. The order advances only provider rails already present in the repository and already supported by existing credential materialization. It must produce real external evidence where credentials permit, while keeping realtime voice, 3D, browser-use and computer-use explicitly blocked or research-only where their real rails are absent.
 
 ## Historical implementation stream
 
