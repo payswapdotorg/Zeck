@@ -1,6 +1,6 @@
 # Zeck — Post-Release Public Productization & Deployment Plan
 
-**Status:** ARCHITECT-AUTHORIZED FOLLOW-ON PROGRAM  
+**Status:** ARCHITECT-AUTHORIZED FOLLOW-ON PROGRAM; current successor stage governed by ACR-006  
 **Program:** `zeck-post-release-public-productization`  
 **Baseline main:** `faa024247546e61d6e52465b1929188230f0feb6`  
 **Max concurrent workers:** 3
@@ -259,3 +259,18 @@ Workers implement exact Work Orders, never merge themselves, never rewrite histo
 
 Material issues must record reproduction, impact, root cause, viable solutions, recommended solution/trade-offs, and verification.
 
+
+
+## Current successor stage — Application Compatibility Proof Program
+
+PPR-001 through PPR-015 are delivered. PPR-016 remains the operator-bound capability-rail order. The current executable productization wave is PPR-017/PPR-018/PPR-019 under the new Application Compatibility Proof Program.
+
+Read:
+- docs/architecture-changes/ACR-006-application-execution-compatibility.md
+- docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
+- docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
+- docs/LLM-TECH-LEAD-HANDOFF.md
+
+The new north star is empirical application delegation: real independent applications must be able to remove their direct AI-provider execution infrastructure and remain functional with Zeck as the AI execution authority. Completeness is strict edge coverage and is never redefined for a demo.
+
+The website Demo Mirror is part of the proof and must run the real pinned integration/runtime, expose the corresponding Zeck evidence, and preserve honest PARTIAL/BLOCKED/NOT-RUN states.
