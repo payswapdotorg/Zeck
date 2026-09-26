@@ -16,12 +16,18 @@ For dispatch/review/orchestration behavior also read:
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
 - `docs/E1.1-RESEARCH-BASELINE.md`
 
-## Current authoritative status (2026-09-25)
+## Current authoritative status (2026-09-26)
 
-The core, validation and Developer Platform programs are COMPLETE. The active program is now **Post-Release Public Productization**.
+The core, validation and Developer Platform programs are COMPLETE. PPR-001 through PPR-015 are delivered. The active stage is the Application Compatibility Proof Program.
 
 Authoritative program:
-`docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`
+docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
+
+Architecture extension:
+docs/architecture-changes/ACR-006-application-execution-compatibility.md
+
+Adoption simulation:
+docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
 
 Live state:
 `spec/post-release-state/frontier-state.json`
@@ -32,7 +38,7 @@ Successor Tech Lead contract:
 Successor handoff:
 `docs/LLM-TECH-LEAD-HANDOFF.md`
 
-The current authorized corrective wave is PPR-016, with a maximum of three concurrent workers.
+The current executable wave is PPR-017/PPR-018/PPR-019, with a maximum of three concurrent workers. PPR-016 remains operator-bound and is blocked only where external capability credentials or other operator assets are missing.
 
 The previous Developer Platform narrative beginning at the next heading is retained as historical delivery record and must not be treated as current authority.
 
@@ -62,21 +68,18 @@ the sections are preserved, not current.
 
 ## Current post-release continuation
 
-As of 2026-09-25, the Architect has issued **PPR-015 — Real-user browser audit and public productization correction** after live user navigation exposed productization regressions that the existing route/HTTP acceptance did not catch.
+PPR-015 is closed. ACR-006 is now the governing forward architecture extension for the Application Compatibility Proof Program.
 
-The Tech Lead must use `agent-browser` as a first-time user starting at `https://zeck-preview-main.vercel.app/`, follow visible navigation rather than guessing URLs, record every material issue, fix all in-scope defects, and repeat the same flow locally and on the deployed exact revision.
+The Tech Lead must use the real pinned upstream application code for every certification. The program progresses from clean provider seams to fragmented multi-surface applications:
+Aider → Cline → OpenHands → Continue → Hermes-Agent → OpenClaw → Browser Use → Open WebUI → AnythingLLM.
 
-Known triggers:
-- Home → `/console`;
-- discovery-first Home copy and capability discovery are not appearing on the user's actual Home path;
-- source-defined dashboard routes can still be unreachable on the public experience plane.
+AI_EXECUTION_COMPLETE is an edge-coverage property. Every material AI execution edge must be delegated through Zeck; direct AI-provider egress must be absent or provably blocked; application functionality must remain intact; and Zeck evidence must correlate every delegated edge.
 
-PPR-015 is closed. PPR-016 is now the sole eligible implementation order: GAP-002 capability-rail completion and credentialed validation.
-
+The website Demo Mirror is part of the proof: it must execute the certified integration/runtime and expose its real result and Zeck evidence. It may never upgrade PARTIAL, BLOCKED or NOT-RUN evidence into COMPLETE.
 
 ## Current continuation pointer
 
-PPR-015 closed wave H. PPR-016 is the current executable frontier for GAP-002 capability-rail completion and credentialed validation. Realtime voice, 3D, browser-use and computer-use remain separately gated where real external rails are absent.
+PPR-017, PPR-018 and PPR-019 are the current executable frontier. PPR-016 is operator-bound for GAP-002 capability credentials; GAP-005 remains the staging/production/custom-domain operator frontier; socket.io 4.8.4 remains an optional governed dependency advance.
 
 ## Current continuation pointer (historical program record)
 
@@ -168,7 +171,7 @@ Stop and request Architect amendment whenever implementation would require:
 
 E2B, Daytona, Modal and future compute vendors are neutral substrate adapters. Provider snapshots, warm pools, directory snapshots, readiness probes, scheduling and provider-local state remain mechanisms rather than Zeck authorities.
 
-## Current validation program authority (2026-09-11)
+## Historical validation program authority (closed)
 
 The deployment roadmap (D-00..D-08) and the E1.1 implementation program are COMPLETE (e00745f). The ACTIVE program is the **Zeck Validation Roadmap** (`docs/VALIDATION-ROADMAP.md`, VAL-000..VAL-052):
 
@@ -184,7 +187,7 @@ The deployment roadmap (D-00..D-08) and the E1.1 implementation program are COMP
 - Frontier: eligible=[], inFlight=[] — the app portfolio (VAL-010..019), reliability (VAL-020..026), learning (VAL-030..036), economics (VAL-040..049) and closure (VAL-050..052) stages all AWAIT ARCHITECT-ISSUED SPECS. The next delegation decision: issue the VAL-010+ specs (the app portfolio is the roadmap's core customer-value stage).
 - Operating mode: chat.z.ai worker dispatch is unavailable (account server-side blocked until 2026-09-18 18:37 UTC); the Tech Lead implements work orders directly at the integration station with the full contract rigor (branch per WO, full sequential battery, PR, CI 5/5 green, merge, state finalization). Worker dispatch resumes when the channel returns.
 
-## Current deployment authority
+## Historical deployment authority
 
 D-07 and the FULL E1.1 implementation program are complete: 048 PR #14, 049 PR #16, 050 PR #18, 051 PR #24, 052 PR #22, 053 PR #26, 054 PR #27, 055 PR #29, 056 PR #31. All ten planes merged (tool-surface, context-economics, model-economics, substrate-economics, failure-recovery, competence-economics over the execution-ir/compiler/decision-record foundation). Post-WORK-055 C9 stale-pin reconciled by the Architect (84b96af, drift-immune dynamic merge-base). Nothing is in flight; the next stage of work requires new Architect-issued Work Orders per the charter.
 
