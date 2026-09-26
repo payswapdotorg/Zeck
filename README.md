@@ -56,21 +56,17 @@ The Tech Lead may dispatch **at most three concurrent implementation workers**, 
 
 ## Current delivery program
 
-The core implementation, validation program and Developer Platform delivery program are complete. The current active work is the **Post-Release Public Productization Program**:
-`docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`.
+The core implementation, validation program and Developer Platform delivery program are complete. The active post-release work is now the Application Compatibility Proof Program, with operator-bound capability work tracked separately.
 
-Its purpose is to activate a real public preview, refine first-time capability discoverability using the completed user-journey simulation, and verify the deployed product through public browser/API journeys.
+Authoritative program:
+ docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
 
-Current Work Orders:
-- `PPR-001` — discovery-first console + ShareNet-inspired visual refinement
-- `PPR-002` — live free-tier-first public preview deployment
-- `PPR-003` — public user-journey simulation / acceptance harness
+Current executable Work Orders are recorded in:
+ spec/post-release-state/frontier-state.json
 
-The first wave may use up to three conflict-safe workers. Live state is:
-`spec/post-release-state/frontier-state.json`.
+The north star is a set of real Zeck-powered demonstrations across representative open-source AI application categories. Certification is strict: every material AI execution edge must be delegated through Zeck; completeness is never redefined to make a demo pass.
 
-The completed Developer Platform state remains closed at:
-`spec/platform-delivery-state/frontier-state.json`.
+The website Demo Mirror is a proof surface into the same pinned application integrations, with real execution traces, evidence, cost/latency facts, limitations and reproduction paths.
 
 ## Provider strategy
 
