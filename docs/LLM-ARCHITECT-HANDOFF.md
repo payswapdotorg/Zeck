@@ -272,3 +272,8 @@ A green PR is not completion until repository state records the actual merge.
 ## Fresh-session invariant
 
 A new LLM Tech Lead must be able to recover the current architecture, implementation frontier, Work Order authority, safe concurrency limit, E1.1 sequence, provider integration boundary and review/merge protocol from repository artifacts alone.
+
+
+Append an explicit final handoff pointer:
+
+The definitive execution handoff for the complete application-compatibility program is docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md. The GitHub-derived target starting map is docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md. The full PPR-017 through PPR-027 sequence is pre-authorized in spec/application-compatibility/program-state.json; routine successor authorization does not return to the Architect.
