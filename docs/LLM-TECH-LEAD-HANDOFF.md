@@ -92,7 +92,7 @@ Dispatch all three after live conflict analysis.
 
 ## Current executable Work Order
 
-**PPR-015 — Real-user browser audit and public productization correction**
+**PPR-016 — GAP-002 Capability-Rail Completion and Credentialed Validation**
 
 Dispatch from the exact live `main` head recorded by `spec/post-release-state/frontier-state.json`, not from historical documentation.
 
