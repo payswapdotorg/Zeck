@@ -32,7 +32,7 @@ Successor Tech Lead contract:
 Successor handoff:
 `docs/LLM-TECH-LEAD-HANDOFF.md`
 
-The current authorized corrective wave is PPR-015, with a maximum of three concurrent workers.
+The current authorized corrective wave is PPR-016, with a maximum of three concurrent workers.
 
 The previous Developer Platform narrative beginning at the next heading is retained as historical delivery record and must not be treated as current authority.
 
@@ -71,7 +71,12 @@ Known triggers:
 - discovery-first Home copy and capability discovery are not appearing on the user's actual Home path;
 - source-defined dashboard routes can still be unreachable on the public experience plane.
 
-PPR-015 is the sole eligible implementation order for this corrective wave once the frontier state records the authorization. Do not treat the old 12-journey PASS record as proof that this live user navigation problem is resolved.
+PPR-015 is closed. PPR-016 is now the sole eligible implementation order: GAP-002 capability-rail completion and credentialed validation.
+
+
+## Current continuation pointer
+
+PPR-015 closed wave H. PPR-016 is the current executable frontier for GAP-002 capability-rail completion and credentialed validation. Realtime voice, 3D, browser-use and computer-use remain separately gated where real external rails are absent.
 
 ## Current continuation pointer (historical program record)
 
