@@ -1,11 +1,10 @@
 # Zeck — Successor LLM Tech Lead Handoff
 
-**Repository:** `payswapdotorg/Zeck`  
-**Canonical remote:** `payswapdotorg/Zeck`  
-**Current main at handoff:** fetch live `main` at recovery; this handoff was reviewed against the 2026-09-20 post-release baseline.  
-**Handoff date:** 2026-09-20  
-**Role:** Successor LLM Tech Lead / Orchestrator / Reviewer / Deployment Verifier  
-**Max workers:** 3
+Repository: payswapdotorg/Zeck
+Canonical remote: payswapdotorg/Zeck
+Handoff date: 2026-09-26
+Role: Successor LLM Tech Lead / Orchestrator / Reviewer / Deployment Verifier
+Maximum concurrent workers: 3
 
 ## Current truth
 
@@ -16,223 +15,172 @@ Completed and closed:
 - E1.1;
 - D-00 through D-08;
 - VAL-001 through VAL-052;
-- DEP-001 through DEP-044.
+- DEP-001 through DEP-044;
+- PPR-001 through PPR-015.
 
-The Developer Platform frontier is closed: no eligible, in-flight or blocked work remains.
+Current public preview evidence was completed through PPR-015 at exact revision e14989cd5990db586f3eb32fa7f861701d9d2b78, with the public browser/productization battery green.
 
-The repository's latest release-gate commit records DEP-044 complete with the completion gate at 8/8 PASS.
+PPR-016 is the remaining operator-bound capability-rail order. It is not the application-compatibility demonstration wave because its unresolved parts depend on provider/operator access.
 
-## Critical deployment truth
-
-Zeck is **not yet verified as a live public cloud service**.
-
-The repository's deployment runbook is reproducible, but live provider provisioning was previously recorded as NOT RUN because the worker environment lacked cloud credentials.
-
-The connected Vercel team was inspected and no project named Zeck was present.
-
-Do not publish a Zeck URL as live until the Tech Lead has actually provisioned it and verified:
-- public reachability;
-- /health;
-- /identity;
-- public smoke;
-- console/sandbox first run.
+The new architectural/product north star is governed by:
+- docs/architecture-changes/ACR-006-application-execution-compatibility.md
+- docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
+- docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
 
 ## Authority chain
 
-```
 Tenant / Application Identity
-        ↓
-Policy
-        ↓
-Capabilities
-        ↓
-Budget / Economics
-        ↓
-Planning
-        ↓
-Execution
-        ↓
-Sandbox / Substrate
-        ↓
-Verification
-        ↓
-Evidence
-        ↓
-Learning
-```
-
-One optimization authority: **Execution Compiler**.
-
-## Active program
-
-`docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`
-
-Supporting artifacts:
-
-```
-docs/POST-RELEASE-PRODUCTIZATION-PLAN.md
-docs/POST-RELEASE-USER-JOURNEY-SIMULATION.md
-docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md
-spec/post-release-state/frontier-state.json
-spec/post-release-work-orders/PPR-001.md
-spec/post-release-work-orders/PPR-002.md
-spec/post-release-work-orders/PPR-003.md
-```
-
-## First wave
-
-```
-PPR-001  Discovery-first console + ShareNet-inspired UX      🔵
-PPR-002  Live free-tier-first public preview deployment       🔵
-PPR-003  Public user-journey acceptance harness               🔵
-```
-
-Dispatch all three after live conflict analysis.
-
-
-## Current executable Work Order
-
-**PPR-016 — GAP-002 Capability-Rail Completion and Credentialed Validation**
-
-Dispatch from the exact live `main` head recorded by `spec/post-release-state/frontier-state.json`, not from historical documentation.
-
-The first implementation action is a clean `agent-browser` drive of `https://zeck-preview-main.vercel.app/` as a first-time user. Follow visible Home/navigation/CTA affordances, reproduce every material defect, and maintain a findings ledger. The known first defects are:
-
-- Home currently lands on `/console`;
-- the intended discovery-first Home statement (“Describe an outcome … returns it with evidence”) is not visible to the user;
-- capability discovery is not surfaced in the user's Home path;
-- additional dashboard routes may exist in source but fall through to the API plane in the public deployment.
-
-Fix all defects that are within public-productization scope, then repeat the browser drive locally and on the deployed revision. A direct URL list or HTTP smoke alone does not satisfy this order.
-
-**Preferred dispatch:** one worker. The order is intentionally coherent. Use additional workers only when conflict analysis proves a clean boundary.
-
-## Simulation-derived product changes
-
-```
-Understand
-→ Capability
-→ Safe sandbox
+→ Policy
+→ Capabilities
+→ Budget / Economics
+→ Planning
+→ Execution Compiler
 → Execution
-→ How Zeck did it
-→ Validation
-→ Compare / Reproduce
-→ Trust & Limits
-→ Agent integration
-→ Deployment
-```
+→ Sandbox / Substrate
+→ Verification
+→ Evidence
+→ Learning
 
-The first screen should not require users to understand the authority chain.
+There is one optimization authority: Execution Compiler.
 
-All 22 workload families must have obvious discovery locations and truthful availability states.
+## Application compatibility definition
 
-## ShareNet design reference
+The Application Execution Graph records every material AI-execution edge of a pinned application.
 
-Adopt:
-- generous whitespace;
-- calm neutral visual system;
-- clear status;
-- one dominant action;
-- quiet persistent navigation;
-- desktop sidebar;
-- mobile bottom navigation;
-- active-item treatment;
-- progressive disclosure;
-- reduced-motion support.
+AI_EXECUTION_COMPLETE requires:
+1. every declared material AI execution edge terminates in Zeck execution;
+2. direct AI-provider egress is absent or provably blocked during the proof;
+3. the application remains functionally usable for the declared corpus;
+4. Zeck execution/evidence correlates every delegated edge;
+5. mocks, fixtures and simulations never upgrade the status.
 
-Do not copy ShareNet assets/branding/domain semantics.
+Do not reinterpret completeness to make a demonstration pass.
 
-## Free-tier deployment plan
+Applications retain their own domain state, UX, business rules, Git/editor operations and non-AI integrations unless those operations themselves contain material AI execution.
 
-Preview:
+## Current executable wave — three workers
 
-```
-Vercel Hobby
-Neon Free
-Cloudflare R2 Free
-Cloudflare Queues Free allowance
-Cloudflare Workflows Free allowance
-Upstash Redis Free
-self-hosted/governed runner
-self-hosted or usage-based OTLP
-```
+The current frontier authorizes exactly these three Work Orders:
 
-Current official documentation indicates these are viable starting points for low-cost preview/sandbox use, with Vercel Hobby remaining non-commercial. citeturn606528search9turn638571search2turn606528search1turn606528search2turn606528search4turn606528search5turn606528search3
+### Worker 1 — PPR-017
+Application Execution Graph, Compatibility Proof Harness, and Demo Mirror Foundation.
 
-The repository provider-tier ledger must be reconciled against current provider facts before live provisioning.
+Implement the ACR-006 proof/evidence layer, strict status machine, static/runtime no-bypass checks, exact application/integration pinning, and reusable Demo Mirror shell.
 
-Commercial production requires commercially permitted plans or an alternate host.
+The compatibility layer is observational/projection infrastructure. It must not become a second execution, capability, policy, budget, verification, evidence or optimization authority.
 
-## Validation mandate
+### Worker 2 — PPR-018
+Aider Zeck-Complete Application Proof.
 
-The historical validation program remains immutable.
+Pin Aider, use its existing model/LiteLLM seam, remove direct AI-provider execution, prove every material AI edge is delegated to Zeck, run the full compatibility battery, and register the real integration in the Demo Mirror.
 
-The console must expose executed validations and safe rerun paths where current provider/access/environment conditions permit.
+### Worker 3 — PPR-019
+Cline Zeck-Complete Application Proof.
 
-Historical PASS/FAIL/TIE/NOT RUN states remain truthful.
+Pin Cline, use its existing LLM provider abstraction, remove direct AI-provider execution, cover all material model/vision/auxiliary AI paths exercised by the corpus, run the compatibility battery, and register the real integration in the Demo Mirror.
 
-Every rerun gets a new immutable run identity.
+These three orders are conflict-safe because they have disjoint implementation surfaces and all use the same already-approved ACR-006 contract. A max-three ceiling is a limit, not a requirement; reduce concurrency if live conflict analysis finds semantic reconciliation.
 
-## Governance loop
+## Application progression after this wave
 
-```
-fetch live main
+Successor Work Orders are planned but not executable until the Architect records them in frontier state:
+
+PPR-020 OpenHands
+PPR-021 Continue
+PPR-022 Hermes-Agent
+PPR-023 OpenClaw
+PPR-024 Browser Use
+PPR-025 Open WebUI
+PPR-026 AnythingLLM
+PPR-027 cross-application longitudinal economics and developer-adoption evidence
+
+The ordering progresses from clean provider seams toward fragmented multi-surface execution graphs. It is not a quality ranking.
+
+## Demo Mirror doctrine
+
+A website demonstration is a proof surface into the real integration.
+
+It must:
+- run the pinned application integration or exact application runtime;
+- expose the real task result;
+- expose the correlated Zeck execution trace;
+- expose route/model/provider/substrate facts when available;
+- expose cost, usage, latency, verification and evidence when available;
+- expose honest limitations and NOT-RUN states;
+- provide reproduction metadata.
+
+A polished UI is never evidence of completeness.
+
+## Required compatibility battery
+
+For every application:
+- exact upstream revision and integration revision;
+- complete AI edge inventory;
+- credential isolation;
+- provider egress kill;
+- representative functional replay;
+- trace/evidence correlation;
+- duplicate/retry/provider failure replay;
+- direct and optimized non-Zeck economic comparison;
+- customization test;
+- determinism/reuse opportunity measurement;
+- telemetry inspection;
+- static/runtime no-bypass inspection;
+- website reproducibility.
+
+The primary economic metric remains cost per successfully resolved outcome at comparable quality, reliability, latency and safety.
+
+## PPR-016 operator frontier
+
+PPR-016 remains blocked only where external access is missing:
+- GAP-002: model-family credentials / provider rails;
+- GAP-005: staging/production environments and custom domains;
+- optional socket.io/socket.io-client 4.8.4 governed advance.
+
+Do not mark unavailable providers as PASS and do not create speculative provider adapters.
+
+## Governance and dispatch loop
+
+fetch exact live main
 → governance check
-→ inspect PPR frontier
-→ dispatch up to 3 workers
-→ review exact PR heads
-→ merge
-→ verify live deployment
-→ run journey acceptance
-→ record findings
-→ issue smallest-valid corrections
-→ reconcile state
-→ continue
-```
+→ read ACR-006 and current frontier
+→ prove dependency/surface conflict analysis
+→ dispatch at most 3 workers
+→ review exact PR bases and evidence
+→ merge only through Architect authority
+→ verify merged main
+→ verify public exact revision when applicable
+→ finalize Work Order/frontier state
+→ run governance
+→ continue to next eligible wave
 
-## Issue protocol
+Workers never merge themselves and do not edit frontier authority during implementation.
 
-Every material problem gets:
-- reproduction;
-- impact;
-- root cause;
-- defect classification;
-- viable solutions;
-- recommended solution/trade-offs;
-- verification.
+## No drift
 
-## Handoff reconciliation requirements
+Stop and escalate rather than changing architecture when implementation would require:
+- a second authority;
+- a second durable execution state source;
+- a second optimizer;
+- weaker verification/evidence;
+- direct provider semantics in Zeck domain modules;
+- a frozen-invariant change;
+- a new material AI capability hidden outside the execution-surface taxonomy;
+- redefining AI_EXECUTION_COMPLETE around the test.
 
-Before first dispatch:
-1. ensure the post-release frontier currentBase equals live main;
-2. update older handoff/continuation documents that still describe D-07/WORK-048 or pre-release platform work as current;
-3. ensure the closed Developer Platform state currentBase equals the actual main head;
-4. confirm no stale eligible/in-flight state survives.
+## Fresh recovery
 
-## Completion target
+Read:
+1. AGENTS.md
+2. AI_CONTINUATION.md
+3. docs/LLM-ARCHITECT-HANDOFF.md
+4. this file
+5. docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md
+6. docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
+7. docs/architecture-changes/ACR-006-application-execution-compatibility.md
+8. spec/post-release-state/frontier-state.json
+9. the current Work Orders
+10. live GitHub state
+11. python3 scripts/governance-check.py
 
-Do not reopen the completed roadmap.
-
-Make Zeck actually usable:
-
-```
-completed implementation
-+
-reachable public preview
-+
-clear capability discovery
-+
-safe first execution
-+
-evidence/cost explanation
-+
-validation reruns
-+
-compare/reproduce
-+
-agent onboarding
-+
-production path
-```
-
-Only call Zeck deployed after the public instance has been live-verified.
+Conversation history is not authoritative.
