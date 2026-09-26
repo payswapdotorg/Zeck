@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
   "status": "wave-j-open",
-  "currentBase": "94bf7d3ccd0188c4f058245fc3b3f7eade700744",
+  "currentBase": "4a02e8209b56845bd156d2cdb92cae717fe654af",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -31,5 +31,19 @@
   ],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means Architect-authorized, dependency-complete, conflict-safe and dispatched from the current governed main head",
-  "context": "WAVE J OPEN (2026-09-26): ACR-006 is the approved forward architecture extension for Application Execution Compatibility. The program now tests a strict AI_EXECUTION_COMPLETE property across real independent applications. PPR-017 builds the Application Execution Graph, compatibility/evidence harness and website Demo Mirror foundation; PPR-018 certifies Aider; PPR-019 certifies Cline. These three are conflict-safe under the max-three-worker rule and use the same pre-approved compatibility contract. PPR-016 remains operator-bound on GAP-002 capability credentials/access and is blocked rather than silently treated as runnable. Planned successor applications are OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM. Completeness is never redefined to make demos pass."
+  "context": "WAVE J OPEN (2026-09-26): ACR-006 Application Execution Compatibility is approved. PPR-017/018/019 are current executable Work Orders; PPR-020..027 are pre-authorized dependency-gated successors. The final Tech Lead handoff explicitly permits automatic advancement through the complete sequence without returning to the Architect for routine authorization. PPR-016 remains operator-bound on GAP-002/GAP-005 and optional socket.io 4.8.4.",
+  "authorizedQueue": [
+    "PPR-017",
+    "PPR-018",
+    "PPR-019",
+    "PPR-020",
+    "PPR-021",
+    "PPR-022",
+    "PPR-023",
+    "PPR-024",
+    "PPR-025",
+    "PPR-026",
+    "PPR-027"
+  ],
+  "advancementRule": "The Architect has pre-authorized the full PPR-017..PPR-027 sequence. The Tech Lead may advance any dependency-complete order from authorizedQueue into eligible after exact-merge/evidence/governance finalization, without routine Architect re-authorization. Architect authority remains required for architecture changes, new authorities, frozen-invariant changes, breaking public-contract changes, and merge acceptance."
 }
