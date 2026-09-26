@@ -10,9 +10,9 @@ Move Zeck from a completed repository implementation to an actually reachable an
 
 ## Required recovery
 
-1. Fetch current `main`.
+1. Fetch current main.
 2. Run governance.
-3. Read this contract, the post-release plan, simulation report, frontier state and PPR Work Orders.
+3. Read this contract, ACR-006, the application compatibility program, adoption simulation, frontier state and current Work Orders.
 4. Verify no existing PR/in-flight work conflicts with the proposed wave.
 5. Dispatch up to three exact-base workers.
 
@@ -36,20 +36,23 @@ recover
 
 ## Architecture
 
-```
+ACR-006 is the current approved forward extension: a non-authoritative Application Execution Graph / Compatibility Evidence layer and Demo Mirror over the existing execution chain.
+
 Tenant/Application Identity
 → Policy
 → Capabilities
 → Budget/Economics
 → Planning
+→ Execution Compiler
 → Execution
 → Sandbox/Substrate
 → Verification
 → Evidence
 → Learning
-```
 
-One optimization authority: **Execution Compiler**.
+One optimization authority: Execution Compiler.
+
+AI_EXECUTION_COMPLETE is strict edge coverage. Never relax it to make a target application or website demo pass.
 
 ## UX requirements
 
@@ -98,6 +101,14 @@ A raw HTTP route probe cannot substitute for the browser drive. After every brow
 
 PPR-015 is the current mandatory example: the browser must begin at `https://zeck-preview-main.vercel.app/`, use the visible Home/navigation/CTA grammar, and verify the first-time-user path rather than entering internal routes directly.
 
+## Application compatibility program
+
+The current three-worker wave is PPR-017, PPR-018 and PPR-019. PPR-017 builds the proof/Demo Mirror foundation; PPR-018 certifies Aider; PPR-019 certifies Cline. They may run concurrently because their change surfaces are designed to be disjoint and all use ACR-006 as the same pre-approved contract.
+
+Future target applications are OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM. Each successor must inventory every material AI edge, remove direct provider credentials, perform provider-egress kill testing, preserve application functionality, correlate every delegated call to Zeck evidence, and expose the result through the Demo Mirror.
+
+The complete program is in docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md.
+
 ## Worker rules
 
 One Work Order = one branch = one PR.
@@ -110,11 +121,13 @@ Inspect exact base/head, diff, Work Order scope, architecture, public-contract i
 
 ## Escalation
 
-Escalate only when required for:
-- frozen architecture changes;
-- new authority;
-- breaking public-contract changes;
-- provider semantics entering domain logic;
-- weaker safety/isolation;
-- dishonest evidence.
+Escalate for:
+- a required frozen architecture change;
+- a new authority or durable state source;
+- a breaking public contract;
+- provider semantics entering Zeck domain logic;
+- weaker safety/isolation/verification/evidence;
+- a required execution surface that cannot be represented by the current architecture;
+- evidence that would require redefining AI_EXECUTION_COMPLETE;
+- dishonest substitution for unavailable provider or infrastructure access.
 
