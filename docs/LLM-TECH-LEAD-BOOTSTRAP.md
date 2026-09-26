@@ -57,11 +57,12 @@ Worker claims and PR bodies never override repository state.
 - E1.1 WORK-048 through WORK-056 are complete.
 - Validation VAL-001 through VAL-052 is complete.
 - Developer Platform DEP-001 through DEP-044 is complete.
-- The active program is now `zeck-post-release-public-productization`.
-- The latest delivered post-release order is PPR-014.
-- **PPR-015 is the current Architect-authorized executable Work Order.**
-- Read `docs/POST-RELEASE-PRODUCTIZATION-PLAN.md`, `docs/POST-RELEASE-USER-JOURNEY-SIMULATION.md`, `docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md`, `docs/LLM-TECH-LEAD-HANDOFF.md`, the PPR-015 Work Order, and `spec/post-release-state/frontier-state.json`.
-- PPR-015 requires a clean `agent-browser` drive from the public origin as a first-time user before implementation assumptions are made.
+- The active program is now the Application Compatibility Proof Program.
+- PPR-001 through PPR-015 are delivered; PPR-016 remains operator-bound on capability access.
+- **PPR-017, PPR-018 and PPR-019 are the current executable Work Orders.**
+- The complete successor sequence PPR-017 through PPR-027 is already Architect-pre-authorized in `spec/application-compatibility/program-state.json` and `docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md`.
+- The Tech Lead may advance dependency-complete successors without returning to the Architect for routine Work Order authorization.
+- Read ACR-006, the application compatibility program, adoption simulation, final compatibility handoff, all currently executable Work Orders, and `spec/post-release-state/frontier-state.json`.
 - Never infer the current SHA from this bootstrap; fetch live `main` at recovery.
 
 ## 4. E1.1 architectural rule
@@ -223,7 +224,13 @@ No provider success may be claimed when credentials or live infrastructure were 
 
 Lower tokens/calls/latency do not prove a better execution unless required quality/reliability/verification constraints are preserved.
 
-## 13. Fresh-session outcome
+## 13. Final compatibility-program recovery
+
+Read `docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md` as the single operational handoff for the full compatibility sequence. It contains the strict completeness definition, automatic successor advancement rule, Demo Mirror requirements, application order, operator access playbook and architecture-gap escalation conditions.
+
+Do not return to the Architect for routine PPR-017 through PPR-027 authorization. Return only for an actual architecture-gap, frozen-invariant change, new authority, breaking public contract, or other explicit escalation condition.
+
+## 14. Fresh-session outcome
 
 A new Tech Lead must be able to reconstruct the entire implementation program and dispatch/review protocol from:
 
