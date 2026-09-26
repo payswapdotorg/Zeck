@@ -406,3 +406,16 @@ A customer application consumes these outputs through its own domain boundary. F
 # 21. Architecture evolution
 
 This architecture is frozen once approved. Any change to a frozen rule requires an Architecture Change Request and a new immutable architecture version. Forward-evolution sections may add capabilities without rewriting historical architecture.
+
+
+# 22. ACR-006 — Application execution compatibility
+
+ACR-006 adds a non-authoritative compatibility/evidence layer for proving whether an independent application can delegate its material AI execution to Zeck. It introduces an Application Execution Graph, Execution Delegation Contract, Compatibility Evidence Record and strict AI_EXECUTION_COMPLETE status.
+
+This is an observation/proof layer over the existing authorities. It does not create a second execution, policy, capability, budget, verification, evidence or optimization authority. The existing 22-family capability manifest remains authoritative for workload-family availability; the compatibility execution-surface taxonomy is additive and must not be used to lower or rewrite capability truth.
+
+AI_EXECUTION_COMPLETE is an edge-coverage property: every declared material AI execution edge must terminate in Zeck execution, direct AI-provider egress must be absent or provably blocked for the proof, the application must remain functionally usable for the declared corpus, and Zeck evidence must correlate every delegated edge. A demo, fixture or mock cannot upgrade this status.
+
+The public Demo Mirror may expose certified application journeys from the same pinned integration/runtime and show result, Zeck execution trace, route/cost/latency, verification/evidence, limitations and reproduction controls. Application domain state and UX remain outside Zeck.
+
+See docs/architecture-changes/ACR-006-application-execution-compatibility.md and docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md for the normative extension and implementation program.
