@@ -64,8 +64,8 @@ A retained operation becomes a Zeck-completeness issue only when it contains or 
 The full pre-authorized sequence is:
 
 PPR-017 → compatibility foundation
-PPR-018 → Aider
-PPR-019 → Cline
+PPR-018 ↘ Aider integration prep / certification after PPR-017 foundation
+PPR-019 ↗ Cline integration prep / certification after PPR-017 foundation
 PPR-020 → OpenHands
 PPR-021 → Continue
 PPR-022 → Hermes-Agent
