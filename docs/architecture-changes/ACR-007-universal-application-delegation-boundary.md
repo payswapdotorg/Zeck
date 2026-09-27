@@ -142,6 +142,70 @@ application result + Zeck execution + plan/route + usage/cost/latency + verifica
 
 The mirror is not a simulator and is not a substitute for certification.
 
+## 10. Application-owned agent organizations and execution realization
+
+ACR-007 governs the **execution realization** of a delegated application edge. It does not require Zeck to replace an application's domain-level organization, agent-body model, possession model, or Agent OS.
+
+For applications such as TradRL:
+
+```
+Application-owned organization / Agent Body / domain orchestration
+                    ↓
+           material AI execution edge
+                    ↓
+          ACR-007 Zeck delegation
+                    ↓
+      Zeck execution representation selection
+```
+
+The distinction is normative:
+
+- The application remains the authority for its domain organization and logical agent composition.
+- Zeck is the authority for how a delegated AI execution is realized, including provider/model/tool/agent execution strategy, subject to policy, capability, budget, quality, reliability, latency, verification and other hard constraints.
+- A Zeck execution decision must not silently mutate or replace the application's domain organization.
+- An application's logical role such as "Mathematical Researcher" is not itself a Zeck provider/model route.
+- A concrete model chosen by Zeck is execution evidence for that delegated edge, not an application-owned provider-selection requirement.
+
+### Cognitive-substrate terminology boundary
+
+Applications may use "cognitive substrate" or an equivalent concept to describe the model-side realization of an application-owned agent. Zeck's **ComputationalSubstrate** is a separate execution-runtime concept. The two must not be treated as the same authority or schema.
+
+An application may therefore maintain:
+
+```
+logical role / BodyVersion
+        ↓
+capability requirements
+        ↓
+delegated Zeck execution
+        ↓
+selected model + computational substrate
+```
+
+without requiring the application's model registry to become Zeck's routing authority.
+
+### Capability discovery and publication boundary
+
+Zeck's capability registry remains the capability authority. External applications and learning systems may discover or empirically characterize capabilities, but they must not create a second capability authority.
+
+A future external capability-evidence adapter MAY translate application-owned evaluation results into provider-neutral capability facts for submission to the existing Zeck capability registry. Such a path is an ingestion seam, not a new registry or routing service.
+
+Until such an adapter is explicitly implemented and governed, an application may pass task requirements through the existing execution boundary without assuming that its private capability catalog is automatically present in Zeck.
+
+### TradRL interoperability consequence
+
+For the planned TradRL proof, TradRL may own:
+
+- Organization Compiler decisions;
+- Agent Body / BodyVersion creation and learning;
+- logical Possession and Agent OS semantics;
+- Market World, research and trading-domain state;
+- risk/execution domain decisions outside the delegated AI edge.
+
+The certified live AI path must still satisfy the strict ACR-006/ACR-007 completeness contract. In particular, TradRL must not retain a direct material AI-provider execution path, provider-owned fallback, or application-side model router for a certified delegated edge.
+
+TradRL interoperability is a future compatibility target and is **not** a current PPR authorization merely by being named here.
+
 ## Consequence
 
 ACR-007 makes the Stripe-of-AI-execution thesis more falsifiable:
