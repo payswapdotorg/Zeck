@@ -1,6 +1,6 @@
 # Zeck — Post-Release Public Productization & Deployment Plan
 
-**Status:** ARCHITECT-AUTHORIZED FOLLOW-ON PROGRAM; current successor stage governed by ACR-006  
+**Status:** ARCHITECT-AUTHORIZED FOLLOW-ON PROGRAM; current successor stage governed by ACR-006 + ACR-007  
 **Program:** `zeck-post-release-public-productization`  
 **Baseline main:** `faa024247546e61d6e52465b1929188230f0feb6`  
 **Max concurrent workers:** 3
