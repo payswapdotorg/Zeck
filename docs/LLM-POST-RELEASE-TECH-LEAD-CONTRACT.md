@@ -36,7 +36,7 @@ recover
 
 ## Architecture
 
-ACR-006 is the current approved forward extension: a non-authoritative Application Execution Graph / Compatibility Evidence layer and Demo Mirror over the existing execution chain.
+ACR-006 + ACR-007 are the current approved forward extensions: a non-authoritative Application Execution Graph / Compatibility Evidence layer and a stable external Application Delegation Boundary plus Demo Mirror over the existing execution chain.
 
 Tenant/Application Identity
 → Policy
