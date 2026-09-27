@@ -119,6 +119,15 @@ The program is successful only if it produces measurements for:
 - developer preference after sustained exposure;
 - migration effort and time-to-certification.
 
+## Future candidate — TradRL
+
+TradRL is intentionally reserved as a future compatibility proof target after the current PPR-018A through PPR-027 sequence. It is not a pre-authorized Work Order by this declaration.
+
+TradRL is useful as a stress case because the application itself owns an adaptive Organization Compiler, Agent Bodies/BodyVersions, logical Possessions, autonomous capability discovery and a specialized trading domain. The intended proof must preserve those application authorities while erasing direct material AI-provider execution in favor of the ACR-007 Zeck delegation boundary.
+
+The authoritative interoperability profile is:
+docs/TRADRL-ZECK-INTEGRATION-BOUNDARY.md
+
 ## Architecture-gap trigger
 
 Escalate to the Architect when evidence shows:
