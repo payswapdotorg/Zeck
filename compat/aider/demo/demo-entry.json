@@ -1,0 +1,22 @@
+{
+  "demoId": "aider-coding-assistant",
+  "evidenceRecordId": "ppr-018-aider-live-proof",
+  "representativeTask": {
+    "title": "Implement a function spec with pinned Aider through Zeck",
+    "description": "Run the pinned Aider coding assistant (upstream 5dc9490bb35f9729ef2c95d00a19ccd30c26339c) on a representative corpus task (implement-function). Aider operates with Zeck as its sole AI execution authority: every model call (main completion, weak-model commit messages, chat summarization) becomes a real Zeck execution through the public API; the task result (the implemented function, verified by the corpus check script) and the full Zeck execution trace (lifecycle, route, verification, usage) are exposed."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/aider (bun run compat/aider/harness/run-battery.ts composes the pinned Aider runtime, the Zeck adapter, the egress-deny proof environment and the in-process Zeck execution plane)"
+  },
+  "reproducibility": {
+    "instructions": "From the Zeck repository root: (1) install pinned Aider verbatim: python3 -m venv /home/z/my-project/.venv-aider && /home/z/my-project/.venv-aider/bin/pip install -e /path/to/aider@5dc9490bb35f9729ef2c95d00a19ccd30c26339c; (2) run the battery: bun run compat/aider/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter on a loopback port, runs pinned Aider over the 5-task corpus under the scrubbed environment and the default-deny egress proxy, and writes deploy/evidence/ppr-018.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config).",
+    "pinnedUpstreamRevision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+    "integrationRevision": "work/PPR-018-aider-proof HEAD (see deploy/evidence/ppr-018.json evidenceRecord.pinnedApplication.pin.integrationRevision)"
+  },
+  "warnings": [
+    "This demo entry is DATA ONLY — NOT ACTIVATED. Binding it into the Demo Mirror registry requires wiring the evidence-record source (apps/dashboard/demo-mirror.ts currently resolves the PPR-017 fixture records; the sibling-consumer extension point is recorded in the PPR-017 delivery). The Lead binds this entry at merge time; a worker never activates their own demo.",
+    "The demo may only be offered as runnable when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the registry enforces this; the entry can never assert a status).",
+    "The proof's model supply is the sandbox's authorized GLM endpoint — not an external commercial provider (disclosed in the record's limitations)."
+  ]
+}

@@ -1,0 +1,1048 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-018",
+  "title": "Aider Zeck-complete application proof (compat/aider)",
+  "recordedBy": "the one PPR-018 implementation worker (this session)",
+  "date": "2026-09-27T18:10:09.943Z",
+  "environment": "sandboxed worker pod; anonymous public clones of https://github.com/Aider-AI/aider (pinned 5dc9490bb35f9729ef2c95d00a19ccd30c26339c, installed verbatim in /home/z/my-project/.venv-aider) and payswapdotorg/Zeck (branch work/PPR-018-aider-proof). Model supply: the sandbox's authorized GLM endpoint (internal-api.z.ai), materialized platform-side from /etc/.z-ai-config — never present in the Aider runtime. No PostgreSQL rail in this pod.",
+  "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment could not produce is a notRun/limitation entry with an owner. The application-level status is DERIVED by the strict ACR-006 admission evaluation over this record — never asserted.",
+  "evidenceRecord": {
+    "recordId": "ppr-018-aider-live-proof",
+    "recordBasis": "live-proof",
+    "pinnedApplication": {
+      "identity": {
+        "name": "Aider",
+        "repository": "https://github.com/Aider-AI/aider",
+        "applicationId": "00000000-0000-7000-8000-00000000b001"
+      },
+      "pin": {
+        "upstreamRevision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+        "integrationRevision": "ac2002b129e85476363ba23ee253b76ec880a016"
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "edgeId": "aider.main-completion",
+          "component": "aider/coders/base_coder.py:send (main coding loop)",
+          "surface": "text-generation",
+          "transport": "litellm.completion via Model.send_completion (aider/models.py:1036) over the openai/ LiteLLM provider pointed at the Zeck adapter",
+          "externalExecution": "Zeck execution (coding-assistant completion) through the adapter's public API client",
+          "materiality": "The primary coding edge: every user turn produces a chat completion that decides the code edits Aider applies. Undelegated, Aider would invoke a direct external AI provider here."
+        },
+        {
+          "edgeId": "aider.commit-message",
+          "component": "aider/repo.py:get_commit_message (weak model)",
+          "surface": "text-generation",
+          "transport": "Model.simple_send_with_retries → Model.send_completion (aider/models.py:1036) over the same openai/ LiteLLM provider",
+          "externalExecution": "Zeck execution (coding-assistant completion, weak role) through the adapter's public API client",
+          "materiality": "Auxiliary weak-model edge: with auto-commits enabled (the declared corpus configuration) Aider generates every automatic commit message with this model call. An auxiliary model path bypassing Zeck would break edge coverage exactly as ACR-006's completeness rule describes."
+        },
+        {
+          "edgeId": "aider.summarizer",
+          "component": "aider/history.py:summarize_all (chat-history summarization)",
+          "surface": "text-generation",
+          "transport": "Model.simple_send_with_retries → Model.send_completion (aider/models.py:1036) over the same openai/ LiteLLM provider",
+          "externalExecution": "Zeck execution (coding-assistant completion, summarizer role) through the adapter's public API client",
+          "materiality": "Auxiliary summarization edge: when accumulated chat history exceeds max_chat_history_tokens (1024 for the declared models — aider/models.py:339), Aider compresses history with this model call. The multi-turn corpus task drives it; it is an actually-active AI path under the declared corpus."
+        }
+      ]
+    },
+    "dispositions": [
+      {
+        "edgeId": "aider.main-completion",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000001",
+          "00000000-0000-7000-8000-000000000027",
+          "00000000-0000-7000-8000-000000000040",
+          "00000000-0000-7000-8000-000000000066",
+          "00000000-0000-7000-8000-000000000092",
+          "00000000-0000-7000-8000-000000000118",
+          "00000000-0000-7000-8000-000000000144",
+          "00000000-0000-7000-8000-000000000170",
+          "00000000-0000-7000-8000-000000000209"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000014",
+          "00000000-0000-7000-8000-000000000053",
+          "00000000-0000-7000-8000-000000000079",
+          "00000000-0000-7000-8000-000000000105",
+          "00000000-0000-7000-8000-000000000131",
+          "00000000-0000-7000-8000-000000000157",
+          "00000000-0000-7000-8000-000000000183",
+          "00000000-0000-7000-8000-000000000222"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "aider.summarizer",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000196",
+          "00000000-0000-7000-8000-000000000235",
+          "00000000-0000-7000-8000-000000000248"
+        ],
+        "evidenceBasis": "live"
+      }
+    ],
+    "egressObservation": {
+      "mode": "deny",
+      "status": "provably-blocked",
+      "violations": [
+        {
+          "host": "api.anthropic.com",
+          "url": "https://api.anthropic.com/",
+          "rule": "direct Anthropic provider endpoint (AI-provider egress class)",
+          "at": "2026-09-27T18:01:20.869Z",
+          "blocked": true
+        },
+        {
+          "host": "openrouter.ai",
+          "url": "https://openrouter.ai/",
+          "rule": "OpenRouter aggregation rail endpoint",
+          "at": "2026-09-27T18:01:20.921Z",
+          "blocked": true
+        },
+        {
+          "host": "api.openai.com",
+          "url": "https://api.openai.com/",
+          "rule": "direct OpenAI provider endpoint (AI-provider egress class)",
+          "at": "2026-09-27T18:01:20.931Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:01:23.130Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:01:28.259Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:01:48.902Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:01:51.925Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:09.862Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:12.210Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:30.429Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:33.319Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:49.925Z",
+          "blocked": true
+        },
+        {
+          "host": "raw.githubusercontent.com",
+          "url": "https://raw.githubusercontent.com/",
+          "rule": "proof-environment default-deny: every non-loopback host is denied for the Aider runtime (only the local Zeck adapter is reachable)",
+          "at": "2026-09-27T18:02:52.693Z",
+          "blocked": true
+        }
+      ]
+    },
+    "providerCredentials": [
+      {
+        "envVarName": "OPENAI_API_KEY",
+        "present": true
+      },
+      {
+        "envVarName": "ANTHROPIC_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OPENROUTER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GEMINI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GOOGLE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GROQ_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MISTRAL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPSEEK_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "TOGETHER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "COHERE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_COPILOT_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "HF_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "REPLICATE_API_TOKEN",
+        "present": false
+      }
+    ],
+    "runtimeEvidence": {
+      "corpusDeclared": true,
+      "corpusUsability": "verified",
+      "observations": [
+        "corpus task implement-function: RESOLVED (mechanical check exit; aider exit 0; 2 commits; 17069ms)",
+        "corpus task fix-bug: RESOLVED (mechanical check exit; aider exit 0; 2 commits; 20452ms)",
+        "corpus task add-feature: RESOLVED (mechanical check exit; aider exit 0; 2 commits; 12065ms)",
+        "corpus task refactor-extract: RESOLVED (mechanical check exit; aider exit 0; 2 commits; 15824ms)",
+        "corpus task multi-turn: RESOLVED (mechanical check exit; aider exit 0; 5 commits; 58468ms)",
+        "resolved 5 of 5 corpus tasks with pinned Aider operating exclusively through the Zeck adapter",
+        "failure validation: fault-injected rail (transport-level, disclosed; live supply recovery): 2 execution(s) FAILED on the provider axis (injected transient 500s), real Aider's own retry loop re-issued the request, the adapter's retry policy (a fresh logical request after a failed outcome) created the recovering execution, and the task resolved=true (a real completion through the live supply)"
+      ]
+    },
+    "comparison": [
+      {
+        "baseline": "same-supply-direct-arm",
+        "basis": "measured",
+        "statement": "Same-supply direct (non-Zeck) arm — the same pinned Aider calling the same GLM supply endpoint directly with no Zeck mediation (the application holds the endpoint credential, by definition of a direct baseline): 2/5 corpus tasks resolved, 172.5s mean per resolved outcome vs the Zeck arm's 24.8s; the direct arm's latency includes supply-side rate-limit retry backoff observed during the run (disclosed — not a clean mediation-overhead comparison). Aider-reported tokens per arm are recorded in the battery section."
+      },
+      {
+        "baseline": "direct-baseline",
+        "basis": "not-measured",
+        "statement": "The direct non-Zeck EXTERNAL-provider baseline (Aider → OpenRouter/Anthropic/…) is NOT RUN in this sandbox (no external provider credentials; owner: Lead). The same-supply direct arm above is the measured substitute available in this environment."
+      },
+      {
+        "baseline": "optimized-baseline",
+        "basis": "not-measured",
+        "statement": "The strong manually-optimized non-Zeck baseline is NOT RUN in this sandbox (owner: Lead)."
+      }
+    ],
+    "zeckTraces": [
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000001",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000014",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000027",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000040",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000053",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000066",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000079",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000092",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000105",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000118",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000131",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000144",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000157",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000170",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000183",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.summarizer",
+        "executionId": "00000000-0000-7000-8000-000000000196",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.main-completion",
+        "executionId": "00000000-0000-7000-8000-000000000209",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "executionId": "00000000-0000-7000-8000-000000000222",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.summarizer",
+        "executionId": "00000000-0000-7000-8000-000000000235",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "aider.summarizer",
+        "executionId": "00000000-0000-7000-8000-000000000248",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      }
+    ],
+    "limitations": [
+      {
+        "area": "model supply",
+        "statement": "The model supply for every delegated edge is the sandbox's authorized GLM endpoint (internal-api.z.ai), dispatched platform-side through the real model gateway (custom rail). No external AI provider (OpenAI/Anthropic/OpenRouter/…) was reachable or used; external-provider rails are an operator boundary, not evidence about the delegation boundary this proof tests.",
+        "owner": "operator"
+      },
+      {
+        "area": "runtime composition",
+        "statement": "The Zeck execution plane is composed in-process (the platform's own in-memory API composition — real Fastify public API, real executions authority, real model gateway) with harness-provided in-memory connections/journal adapters (the sandbox has no PostgreSQL; the SQL adapters are the production equivalents). The rail worker drives executions through the authority's public transition commands — the same pattern as the platform's own VAL-010 suite.",
+        "owner": "Lead"
+      },
+      {
+        "area": "credential placeholder",
+        "statement": "The Aider runtime's OPENAI_API_KEY carries the literal placeholder 'zeck-local-adapter': LiteLLM's client refuses to build an openai/-prefixed request without a non-empty key. The value authenticates nothing (the adapter ignores the inbound Authorization header; no provider host is reachable from the runtime — the egress observation proves the deny).",
+        "owner": "Lead"
+      },
+      {
+        "area": "dormant AI edges",
+        "statement": "Aider at the pinned revision contains further AI edges that the declared corpus configuration leaves unreachable (cache warming via --cache-keepalive, voice transcription via /voice, image chat, /editor editor-model, /web scraping). They are disclosed in dormantEdgeDisclosures — never counted as covered; the delegation seam covering them is identical to the three covered edges (the same LiteLLM transport).",
+        "owner": "Lead"
+      },
+      {
+        "area": "egress violations classification",
+        "statement": "The recorded egress violations are non-AI metadata/telemetry fetches (litellm's model-price catalog from raw.githubusercontent.com; Aider falls back to its bundled metadata and functioned normally) plus the battery's direct-provider canary probes. Zero AI-completion egress was attempted or passed.",
+        "owner": "Lead"
+      }
+    ],
+    "notRunCauses": [
+      {
+        "area": "direct external-provider baseline",
+        "cause": "no external AI provider credentials exist in this sandbox (the recorded openrouter/anthropic/openai baselines of the platform's own validation program were environment-gated the same way)",
+        "owner": "Lead"
+      },
+      {
+        "area": "USD cost accounting",
+        "cause": "the sandbox's GLM supply endpoint does not report USD prices; token usage is measured and recorded, micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)",
+        "owner": "operator"
+      },
+      {
+        "area": "cache-warming / voice / image / editor / web edges",
+        "cause": "not reachable under the declared corpus configuration (opt-in flags and interactive commands the corpus never issues)",
+        "owner": "Lead"
+      }
+    ],
+    "recordedAt": "2026-09-27T18:10:09.943Z"
+  },
+  "derivedAssessment": {
+    "status": "AI_EXECUTION_COMPLETE",
+    "ruleResults": [
+      {
+        "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+        "satisfied": true,
+        "detail": "All 3 declared edges are delegated through Zeck (or explicitly reclassified non-AI with recorded justification)."
+      },
+      {
+        "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+        "satisfied": true,
+        "detail": "Direct AI-provider egress is provably blocked (deny harness active, every violation blocked) during the proof."
+      },
+      {
+        "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+        "satisfied": true,
+        "detail": "The application remained functionally usable for the declared corpus during the proof."
+      },
+      {
+        "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+        "satisfied": true,
+        "detail": "All 3 delegated edge(s) correlate to Zeck execution records with durable evidence."
+      },
+      {
+        "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+        "satisfied": true,
+        "detail": "Every delegated edge carries live Zeck evidence from a live proof record."
+      }
+    ],
+    "findings": [],
+    "staticFindings": []
+  },
+  "battery": {
+    "batterySteps": [
+      {
+        "step": "credential-removal",
+        "result": "15 provider credential names checked against the Aider runtime env: OPENAI_API_KEY present (the LiteLLM client-side placeholder only), 14 absent"
+      },
+      {
+        "step": "egress-block",
+        "result": "default-deny proxy active; 3/3 direct-provider canary probes blocked: control proven"
+      },
+      {
+        "step": "corpus",
+        "result": "5/5 tasks resolved by pinned Aider 5dc9490bb35f through Zeck (123878ms total)"
+      },
+      {
+        "step": "duplicate-retry-failure",
+        "result": "duplicate create replayed=true (same execution 00000000-0000-7000-8000-000000000261); failure path validated below via the fault-injected rail"
+      },
+      {
+        "step": "duplicate-retry-failure",
+        "result": "fault rail: 2 FAILED execution(s), Aider retry resolved=true"
+      },
+      {
+        "step": "cost-per-resolved-outcome",
+        "result": "Zeck arm: 5/5 resolved, 24.8s mean/resolved, 24763 aider-reported tokens, 35128 rail-reported units; direct arm (same supply, no Zeck): 2/5 resolved, 172.5s mean/resolved, 14944 aider-reported tokens (supply-side rate-limit retries observed in the direct arm — disclosed in the comparison fact; not a clean mediation-overhead measurement)"
+      },
+      {
+        "step": "trace-correlation",
+        "result": "20/20 delegated executions correlated through the SDK wire reads (found, ledger events, verification results)"
+      },
+      {
+        "step": "customization",
+        "result": "Aider's own model-settings surface honored: the weak-model binding (openai/zeck-weak, set only via .aider.model.settings.yml) routed every commit-message edge through Zeck — no Aider code modified"
+      },
+      {
+        "step": "determinism-reuse",
+        "result": "0/20 requests replayed durable outcomes (content-addressed idempotency — measured reuse); duplicate probe replayed=true"
+      },
+      {
+        "step": "telemetry",
+        "result": "20 executions inspected: 20 COMPLETED, 0 FAILED; route facts projected for every execution (provider custom, model glm-4-plus, strategy model-rail)"
+      },
+      {
+        "step": "no-bypass-audit",
+        "result": "static reconciliation: 0 finding(s), 0 hard coverage defect(s); runtime egress: provably-blocked (13 violation(s), all blocked)"
+      }
+    ],
+    "corpus": [
+      {
+        "taskId": "implement-function",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 2100,
+          "received": 370
+        },
+        "checkOutput": "T1 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "    \"\"\"Score a word for a word game.\n\n    The score is the sum of letter values: vowels (a, e, i, o, u) are\n    worth 1 point each; every other lowercase letter is worth 3 points.\n    Non-lowercase characters (uppercase, digits, punctuation, spaces)\n    are worth 0 points.\n\n    Examples:\n      word_score(\"abc\") == 7   # a=1, b=3, c=3\n      word_score(\"aeiou\") == 5\n      word_score(\"Zz!\") == 3   # Z=0, z=3, !=0\n    \"\"\"\n    score = 0\n    vowels = \"aeiou\"\n    for char in word:\n        if char in vowels:\n            score += 1\n        elif char.islower():\n            score += 3\n    return score\n>>>>>>> REPLACE\n```\n\nTokens: 2.1k sent, 370 received.\nApplied edit to game.py\nCommit c2e0544 feat: implement word_score function in game.py\nYou can use /undo to undo and discard each aider commit.\n\ngame.py\n> ",
+        "commitCount": 2,
+        "durationMs": 17069,
+        "workdir": "/tmp/ppr-018-battery/corpus/implement-function"
+      },
+      {
+        "taskId": "fix-bug",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 4600,
+          "received": 315
+        },
+        "checkOutput": "T2 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "\n^^^ Bad/missing filename. The filename must be alone on the line before the \nopening fence ```\n\nI'll fix the `apply_discount` function in `cart.py` to correctly round half-up \nand ensure the result is never negative.\n\n```python\ncart.py\n<<<<<<< SEARCH\n    import math\n    # BUG: banker's rounding (round) is used instead of half-up,\n    # and the floor can produce negative results.\n    return max(0, round(price_cents * (100 - percent) / 100))\n=======\n    # Calculate discounted price and round half-up\n    discounted = price_cents * (100 - percent) / 100\n    rounded = int(discounted + (0.5 if discounted >= 0 else -0.5))\n    # Ensure result is never negative\n    return max(0, rounded)\n>>>>>>> REPLACE\n```\n\nTokens: 2.4k sent, 159 received.\nApplied edit to cart.py\nCommit 6b0f4dd fix: correct apply_discount rounding and negative price handling\nYou can use /undo to undo and discard each aider commit.\n\ncart.py\n> ",
+        "commitCount": 2,
+        "durationMs": 20452,
+        "workdir": "/tmp/ppr-018-battery/corpus/fix-bug"
+      },
+      {
+        "taskId": "add-feature",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 2100,
+          "received": 131
+        },
+        "checkOutput": "T3 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "\nstrutil.py\n```python\n<<<<<<< SEARCH\ndef title_case(text):\n    \"\"\"Capitalize the first letter of every word.\"\"\"\n    return \" \".join(word.capitalize() for word in text.split())\n=======\ndef title_case(text):\n    \"\"\"Capitalize the first letter of every word.\"\"\"\n    return \" \".join(word.capitalize() for word in text.split())\n\n\ndef slugify(text):\n    \"\"\"Create a URL-friendly slug from text.\"\"\"\n    import re\n    text = text.lower()\n    text = re.sub(r'[^a-z0-9]+', '-', text)\n    text = text.strip('-')\n    return text\n>>>>>>> REPLACE\n```\n\nTokens: 2.1k sent, 131 received.\nApplied edit to strutil.py\nCommit 6a8e5cf feat: add slugify function to strutil.py\nYou can use /undo to undo and discard each aider commit.\n\nstrutil.py\n> ",
+        "commitCount": 2,
+        "durationMs": 12065,
+        "workdir": "/tmp/ppr-018-battery/corpus/add-feature"
+      },
+      {
+        "taskId": "refactor-extract",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 2200,
+          "received": 332
+        },
+        "checkOutput": "T4 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "    text = str(value)\n    return f\"{label:<{width}}: {text}\"\n\n\ndef render_summary(rows):\n    \"\"\"Render (label, value) rows as aligned 'label: value' lines.\"\"\"\n    lines = []\n    for label, value in rows:\n        lines.append(format_line(label, value, 12))\n    return \"\\n\".join(lines)\n\n\ndef render_details(rows):\n    \"\"\"Render (label, value) rows as aligned 'label: value' lines with a \nbullet.\"\"\"\n    lines = []\n    for label, value in rows:\n        lines.append(f\"- {format_line(label, value, 12)}\")\n    return \"\\n\".join(lines)\n>>>>>>> REPLACE\n```\n\nTokens: 2.2k sent, 332 received.\nApplied edit to report.py\nCommit b66fb1c refactor: extract format_line helper function to reduce code \nduplication\nYou can use /undo to undo and discard each aider commit.\n\nreport.py\n> ",
+        "commitCount": 2,
+        "durationMs": 15824,
+        "workdir": "/tmp/ppr-018-battery/corpus/refactor-extract"
+      },
+      {
+        "taskId": "multi-turn",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 11500,
+          "received": 1115
+        },
+        "checkOutput": "T5 ok",
+        "turns": 4,
+        "aiderExitCode": 0,
+        "aiderTail": "\ndef parse_ranges(text):\n>>>>>>> REPLACE\n```\n\npipeline.py\n```python\n<<<<<<< SEARCH\n    if not numbers:\n        return \"\"\n=======\n    if not numbers:\n        return \"\"\n>>>>>>> REPLACE\n```\n\nThe second block doesn't actually change anything since the function already \nreturns an empty string for an empty list. I'm including it to confirm this \nbehavior is already correct.\n\nTokens: 3.7k sent, 180 received.\nApplied edit to pipeline.py\nCommit cdff2d2 docs: Add module docstring to pipeline.py\nYou can use /undo to undo and discard each aider commit.\n\npipeline.py\n> Summarization failed for model openai/zeck-weak: cannot schedule new futures after shutdown\nSummarization failed for model openai/zeck-coder: cannot schedule new futures after shutdown\nsummarizer unexpectedly failed for all models\n",
+        "commitCount": 5,
+        "durationMs": 58468,
+        "workdir": "/tmp/ppr-018-battery/corpus/multi-turn"
+      }
+    ],
+    "canaryProbes": [
+      {
+        "url": "https://api.openai.com/v1/models",
+        "blocked": {}
+      },
+      {
+        "url": "https://api.anthropic.com/v1/messages",
+        "blocked": {}
+      },
+      {
+        "url": "https://openrouter.ai/api/v1/models",
+        "blocked": {}
+      }
+    ],
+    "duplicateProbe": {
+      "executionId": "00000000-0000-7000-8000-000000000261",
+      "replayed": true,
+      "ledgerEventCount": 10
+    },
+    "failureValidation": {
+      "failedExecutions": 2,
+      "retriedAndResolved": true,
+      "detail": "fault-injected rail (transport-level, disclosed; live supply recovery): 2 execution(s) FAILED on the provider axis (injected transient 500s), real Aider's own retry loop re-issued the request, the adapter's retry policy (a fresh logical request after a failed outcome) created the recovering execution, and the task resolved=true (a real completion through the live supply)"
+    },
+    "directBaseline": [
+      {
+        "taskId": "implement-function",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 2100,
+          "received": 370
+        },
+        "checkOutput": "T1 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "    \"\"\"Score a word for a word game.\n\n    The score is the sum of letter values: vowels (a, e, i, o, u) are\n    worth 1 point each; every other lowercase letter is worth 3 points.\n    Non-lowercase characters (uppercase, digits, punctuation, spaces)\n    are worth 0 points.\n\n    Examples:\n      word_score(\"abc\") == 7   # a=1, b=3, c=3\n      word_score(\"aeiou\") == 5\n      word_score(\"Zz!\") == 3   # Z=0, z=3, !=0\n    \"\"\"\n    score = 0\n    vowels = \"aeiou\"\n    for char in word:\n        if char in vowels:\n            score += 1\n        elif char.islower():\n            score += 3\n    return score\n>>>>>>> REPLACE\n```\n\nTokens: 2.1k sent, 370 received.\nApplied edit to game.py\nCommit 0f4fe6e feat: implement word_score function in game.py\nYou can use /undo to undo and discard each aider commit.\n\ngame.py\n> ",
+        "commitCount": 2,
+        "durationMs": 21698,
+        "workdir": "/tmp/ppr-018-battery/baseline/implement-function"
+      },
+      {
+        "taskId": "fix-bug",
+        "resolved": false,
+        "aiderReportedTokens": {
+          "sent": 4600,
+          "received": 303
+        },
+        "checkOutput": "Traceback (most recent call last):\n  File \"/tmp/ppr-018-battery/baseline/fix-bug/check.py\", line 3, in <module>\n    assert apply_discount(1000, 10) == 900, apply_discount(1000, 10)\n           ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/ppr-018-battery/baseline/fix-bug/cart.py\", line 15, in apply_discount\n    rounded = math.floor(discounted + 0.5)\n              ^^^^\nNameError: name 'math' is not defined. Did you forget to import 'math'?",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "\n^^^ Bad/missing filename. The filename must be alone on the line before the \nopening fence ```\n\nI'll fix the `apply_discount` function in `cart.py` to correctly round half-up \nand ensure the result is never negative.\n\n```python\ncart.py\n<<<<<<< SEARCH\n    import math\n    # BUG: banker's rounding (round) is used instead of half-up,\n    # and the floor can produce negative results.\n    return max(0, round(price_cents * (100 - percent) / 100))\n=======\n    # Calculate discounted price and round half-up using math.floor\n    discounted = price_cents * (100 - percent) / 100\n    rounded = math.floor(discounted + 0.5)\n    # Ensure result is never negative\n    return max(0, rounded)\n>>>>>>> REPLACE\n```\n\nTokens: 2.4k sent, 153 received.\nApplied edit to cart.py\nCommit d93f663 fix: correct rounding and negative price in apply_discount\nYou can use /undo to undo and discard each aider commit.\n\ncart.py\n> ",
+        "commitCount": 2,
+        "durationMs": 16511,
+        "workdir": "/tmp/ppr-018-battery/baseline/fix-bug"
+      },
+      {
+        "taskId": "add-feature",
+        "resolved": true,
+        "aiderReportedTokens": {
+          "sent": 2100,
+          "received": 176
+        },
+        "checkOutput": "T3 ok",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "\n```python\nstrutil.py\n<<<<<<< SEARCH\ndef title_case(text):\n    \"\"\"Capitalize the first letter of every word.\"\"\"\n    return \" \".join(word.capitalize() for word in text.split())\n=======\ndef title_case(text):\n    \"\"\"Capitalize the first letter of every word.\"\"\"\n    return \" \".join(word.capitalize() for word in text.split())\n\n\ndef slugify(text):\n    \"\"\"Create a URL-friendly slug from text.\"\"\"\n    import re\n    text = text.lower()\n    text = re.sub(r'[^a-z0-9]+', '-', text)\n    text = text.strip('-')\n    return text\n>>>>>>> REPLACE\n```\n\nTokens: 2.1k sent, 176 received.\nApplied edit to strutil.py\nCommit 8a4d957 feat: add slugify function to strutil.py\nYou can use /undo to undo and discard each aider commit.\n\nstrutil.py\n> ",
+        "commitCount": 2,
+        "durationMs": 11903,
+        "workdir": "/tmp/ppr-018-battery/baseline/add-feature"
+      },
+      {
+        "taskId": "refactor-extract",
+        "resolved": false,
+        "aiderReportedTokens": {
+          "sent": 0,
+          "received": 0
+        },
+        "checkOutput": "Traceback (most recent call last):\n  File \"/tmp/ppr-018-battery/baseline/refactor-extract/check.py\", line 13, in <module>\n    assert helper is not None, \"no shared helper found\"\n           ^^^^^^^^^^^^^^^^^^\nAssertionError: no shared helper found",
+        "turns": 1,
+        "aiderExitCode": 0,
+        "aiderTail": "{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 1.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 2.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 4.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 8.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 16.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\nRetrying in 32.0 seconds...\nlitellm.RateLimitError: RateLimitError: OpenAIException - Error code: 429 - \n{'error': 'Too many requests, please try again later'}\nThe API provider has rate limited you. Try again later or check your quotas.\n\n\nreport.py\n> ",
+        "commitCount": 1,
+        "durationMs": 85360,
+        "workdir": "/tmp/ppr-018-battery/baseline/refactor-extract"
+      },
+      {
+        "taskId": "multi-turn",
+        "resolved": false,
+        "aiderReportedTokens": {
+          "sent": 4900,
+          "received": 395
+        },
+        "checkOutput": "Traceback (most recent call last):\n  File \"/tmp/ppr-018-battery/baseline/multi-turn/check.py\", line 1, in <module>\n    from pipeline import parse_ranges, summarize_ranges\nImportError: cannot import name 'parse_ranges' from 'pipeline' (/tmp/ppr-018-battery/baseline/multi-turn/pipeline.py)",
+        "turns": 4,
+        "aiderExitCode": 0,
+        "aiderTail": "I'll add a module-level docstring to pipeline.py and ensure summarize_ranges \nreturns an empty string for an empty list.\n\n```python\npipeline.py\n<<<<<<< SEARCH\n# Range utilities for the data pipeline (grows over several turns).\n\ndef summarize_ranges(numbers):\n=======\n\"\"\"Range utilities for the data pipeline.\n\nThis module provides functions to work with integer ranges:\n- parse_ranges: Parses a string of ranges and integers into a list\n- summarize_ranges: Converts a sorted list of integers into a compact range \nstring\n\"\"\"\n\ndef summarize_ranges(numbers):\n>>>>>>> REPLACE\n```\n\nTokens: 2.7k sent, 114 received.\nApplied edit to pipeline.py\nCommit 64613e5 docs: Add module docstring and fix summarize_ranges empty list \nhandling\nYou can use /undo to undo and discard each aider commit.\n\npipeline.py\n> ",
+        "commitCount": 3,
+        "durationMs": 209512,
+        "workdir": "/tmp/ppr-018-battery/baseline/multi-turn"
+      }
+    ],
+    "telemetry": {
+      "executions": 20,
+      "completed": 20,
+      "failed": 0,
+      "replayedRequests": 0,
+      "perEdge": [
+        {
+          "edgeId": "aider.main-completion",
+          "executions": 9,
+          "completed": 9,
+          "totalInputUnits": 22471,
+          "totalOutputUnits": 2263,
+          "meanLatencyMs": 3458
+        },
+        {
+          "edgeId": "aider.commit-message",
+          "executions": 8,
+          "completed": 8,
+          "totalInputUnits": 5851,
+          "totalOutputUnits": 91,
+          "meanLatencyMs": 422
+        },
+        {
+          "edgeId": "aider.summarizer",
+          "executions": 3,
+          "completed": 3,
+          "totalInputUnits": 3843,
+          "totalOutputUnits": 609,
+          "meanLatencyMs": 3699
+        }
+      ]
+    },
+    "reuse": {
+      "totalRequests": 20,
+      "replayedRequests": 0,
+      "statement": "0 of 20 adapter requests replayed a durable outcome through the content-addressed idempotency key (identical requests deduplicated at the Zeck boundary)"
+    }
+  },
+  "dormantEdgeDisclosures": [
+    {
+      "edgeId": "aider.cache-warming",
+      "component": "aider/coders/base_coder.py:1373 (warm_cache worker)",
+      "surface": "text-generation",
+      "gate": "requires --cache-keepalive (num_cache_warming_pings > 0) and cache-header models; the declared corpus configuration does not enable it"
+    },
+    {
+      "edgeId": "aider.voice-transcription",
+      "component": "aider/voice.py (litellm.transcription)",
+      "surface": "speech-recognition",
+      "gate": "the interactive /voice command; the declared corpus is non-interactive batch coding runs"
+    },
+    {
+      "edgeId": "aider.image-chat",
+      "component": "aider/coders/base_coder.py send with image parts",
+      "surface": "vision-image-understanding",
+      "gate": "requires images added to chat (/add of image files); the declared corpus is text-only coding tasks"
+    },
+    {
+      "edgeId": "aider.editor-model",
+      "component": "aider/models.py editor_model via the /editor command",
+      "surface": "text-generation",
+      "gate": "the interactive /editor command; not issued by the declared corpus"
+    },
+    {
+      "edgeId": "aider.web-scrape",
+      "component": "aider/scrape.py via the /web command",
+      "surface": "extraction-document-intelligence",
+      "gate": "the interactive /web command; not issued by the declared corpus"
+    }
+  ],
+  "nonAiOperations": [
+    "repo map construction (aider/repomap.py — local tree-sitter parsing, no AI service)",
+    "token counting (aider/models.py token_count — local tokenizer computation)",
+    "cost table lookups (litellm.completion_cost / litellm.model_cost — local cost maps, no network)",
+    "git operations, file edits, lint/test subprocesses (application domain operations)",
+    "analytics and version-check telemetry (disabled in the declared corpus; any residual attempt is blocked by the proof egress environment and recorded)"
+  ],
+  "durations": {
+    "totalMs": 529363
+  }
+}
