@@ -357,6 +357,18 @@ Tests generation, retrieval, embeddings, transcription and local-vs-remote model
 
 The repository target matrix remains the starting map; every target must be re-inventoried against its pinned revision.
 
+## 13. Future interoperability candidate — TradRL
+
+TradRL is a future compatibility candidate for a later proof stage. It is intentionally outside the current pre-authorized PPR-018A through PPR-027 sequence.
+
+See docs/TRADRL-ZECK-INTEGRATION-BOUNDARY.md for the approved authority split. In particular:
+
+- TradRL remains the authority for Organization Compiler decisions, Agent Bodies/BodyVersions, logical Possessions, Agent OS semantics, Market World and trading-domain state.
+- Zeck remains the authority for material AI execution realization after delegation, including capability resolution, execution optimization, provider/model/tool/agent execution-strategy selection, computational-substrate selection, retry/escalation, verification and evidence.
+- TradRL's CognitiveSubstrate and Zeck's ComputationalSubstrate are separate concepts and must not be conflated.
+- Capability evidence discovered by TradRL may eventually be ingested through a governed adapter into Zeck's existing capability registry; this does not authorize a second capability authority.
+- Naming TradRL here does not authorize a new PPR work order.
+
 ## 13. Future successor rules
 
 The Tech Lead may advance any dependency-complete pre-authorized PPR-018A/PPR-018/PPR-019/PPR-020…PPR-027 successor after exact merge/evidence/governance finalization.
