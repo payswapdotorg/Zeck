@@ -73,3 +73,15 @@ schemas, and commands intended for other modules. Internal files are not public 
 The same `(applicationId, operationName, idempotencyKey, requestFingerprint)` returns the same
 logical durable outcome. Same key + different fingerprint fails. Concurrent identical requests
 converge to one durable identity using PostgreSQL uniqueness/transactional arbitration.
+
+
+## Application Delegation Boundary (ACR-007)
+
+The supported external delegation shape is outcome/task + application/environment identity + application-owned context/artifact references + constraints + idempotency + correlation metadata. Provider/model selection is not part of the application contract.
+
+A customer-facing SDK or HTTP adapter MAY expose convenience types, but it MUST compile to the same public execution contract and MUST NOT replicate policy, capability resolution, budget authorization, routing, retry policy, execution lifecycle, verification, evidence or optimization.
+
+Short work may use a receipt-oriented request. Durable work may use asynchronous status retrieval and webhooks/events. Large inputs/outputs use artifact references. Persistent bidirectional realtime work uses the existing RealtimeRail rather than creating a parallel execution lifecycle.
+
+For compatibility certification, the declared application execution graph, observed runtime egress, and Zeck execution/evidence correlation are three independent proof sources. A mismatch is a certification finding. A reverse proxy is not sufficient evidence of Zeck execution authority when the application still owns provider credentials, provider choice, provider fallback or provider-specific semantics.
+
