@@ -1,7 +1,7 @@
 # Application Compatibility Target Matrix
 
-Date: 2026-09-26
-Purpose: starting map for the pre-authorized PPR-017..PPR-027 sequence.
+Date: 2026-09-27
+Purpose: starting map for the pre-authorized PPR-018A..PPR-027 sequence under ACR-006 + ACR-007.
 Important: this is a research/starting map, not a certification result. Each target must be re-inventoried against its pinned revision.
 
 | Application | Category | Observed starting seam | Likely material AI edges to audit | Primary challenge |
@@ -45,6 +45,13 @@ Browser automation proves whether Zeck can govern not only the intelligence that
 ### Open WebUI and AnythingLLM
 
 These applications test multi-modal and RAG/embedding execution surfaces plus local-vs-remote provider portability. Customer-local inference should be representable as a Zeck rail when the application delegates it; it is not a reason to create a permanent bypass category.
+
+## ACR-007 public-delegation test
+
+For every target, the application-side adapter must reduce to:
+application task/context → ACR-007 Zeck delegation boundary → Zeck execution/result/evidence → application result.
+
+The adapter must not own provider credentials, provider selection, provider fallback, retry authority, budget accounting, verification authority, evidence authority or optimization logic.
 
 ## Mandatory reinterpretation test
 
