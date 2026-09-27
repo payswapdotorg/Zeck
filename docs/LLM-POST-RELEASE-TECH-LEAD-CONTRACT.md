@@ -103,21 +103,13 @@ PPR-015 is the current mandatory example: the browser must begin at `https://zec
 
 ## Application compatibility program
 
-The current three-worker wave is PPR-017, PPR-018 and PPR-019. PPR-017 builds the proof/Demo Mirror foundation; PPR-018 certifies Aider; PPR-019 certifies Cline. They may run concurrently because their change surfaces are designed to be disjoint and all use ACR-006 as the same pre-approved contract.
+The current three-worker wave is PPR-018A, PPR-018 and PPR-019 under ACR-006 + ACR-007. PPR-018A builds the cross-application proof runner/baseline/Demo Mirror foundation; PPR-018 certifies Aider; PPR-019 certifies Cline.
 
-Future target applications are OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM. Each successor must inventory every material AI edge, remove direct provider credentials, perform provider-egress kill testing, preserve application functionality, correlate every delegated call to Zeck evidence, and expose the result through the Demo Mirror.
+They may run concurrently because their declared primary surfaces are partitioned. Final Aider/Cline certification and runnable Demo Mirror activation require the merged PPR-018A foundation.
 
-The complete program is in docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md.
+Future target applications are OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM. Each successor must inventory every material AI edge, remove direct provider credentials, perform provider-egress kill testing, preserve application functionality, correlate every delegated call to Zeck evidence, and expose the certified result through the Demo Mirror.
 
-## Worker rules
-
-One Work Order = one branch = one PR.
-
-Workers do not merge themselves, modify authoritative state during implementation, rewrite validation history, or widen frozen contracts.
-
-## Review
-
-Inspect exact base/head, diff, Work Order scope, architecture, public-contract impact, security/isolation, provider boundaries, tests, evidence and state consequences.
+The stable integration boundary is defined by `docs/architecture-changes/ACR-007-universal-application-delegation-boundary.md`. The complete program is in `docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md`.
 
 ## Escalation
 
