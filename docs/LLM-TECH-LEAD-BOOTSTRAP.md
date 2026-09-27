@@ -59,7 +59,7 @@ Worker claims and PR bodies never override repository state.
 - Developer Platform DEP-001 through DEP-044 is complete.
 - The active program is now the Application Compatibility Proof Program.
 - PPR-001 through PPR-015 are delivered; PPR-016 remains operator-bound on capability access.
-- **PPR-017, PPR-018 and PPR-019 are the current executable Work Orders.**
+- **PPR-018A, PPR-018 and PPR-019 are the current executable Work Orders.** PPR-018A is the shared real-runner/baseline/Demo Mirror foundation; PPR-018 is Aider; PPR-019 is Cline.
 - The complete successor sequence PPR-017 through PPR-027 is already Architect-pre-authorized in `spec/application-compatibility/program-state.json` and `docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md`.
 - The Tech Lead may advance dependency-complete successors without returning to the Architect for routine Work Order authorization.
 - Read ACR-006, the application compatibility program, adoption simulation, final compatibility handoff, all currently executable Work Orders, and `spec/post-release-state/frontier-state.json`.
