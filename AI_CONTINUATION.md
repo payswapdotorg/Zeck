@@ -16,31 +16,45 @@ For dispatch/review/orchestration behavior also read:
 - `docs/E1.1-IMPLEMENTATION-PROGRAM.md`
 - `docs/E1.1-RESEARCH-BASELINE.md`
 
-## Current authoritative status (2026-09-26)
+## Current authoritative status (2026-09-27)
 
-The core, validation and Developer Platform programs are COMPLETE. PPR-001 through PPR-015 are delivered. The active stage is the Application Compatibility Proof Program.
+The core, validation and original Developer Platform programs are COMPLETE. PPR-001 through PPR-017 are delivered. The active stage is the **Zeck Application Compatibility Proof Program**, governed by ACR-006 + ACR-007.
 
 Authoritative program:
 docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
 
-Architecture extension:
+Architecture extensions:
 docs/architecture-changes/ACR-006-application-execution-compatibility.md
+docs/architecture-changes/ACR-007-universal-application-delegation-boundary.md
 
-Adoption simulation:
+Adoption scenario:
 docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
 
 Live state:
-`spec/post-release-state/frontier-state.json`
+spec/post-release-state/frontier-state.json
 
-Successor Tech Lead contract:
-`docs/LLM-POST-RELEASE-TECH-LEAD-CONTRACT.md`
+Application program state:
+spec/application-compatibility/program-state.json
 
-Successor handoff:
-`docs/LLM-TECH-LEAD-HANDOFF.md`
+Final Tech Lead handoff:
+docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md
 
-The current executable wave is PPR-017/PPR-018/PPR-019, with a maximum of three concurrent workers. PPR-016 remains operator-bound and is blocked only where external capability credentials or other operator assets are missing.
+Current executable wave:
+PPR-018A + PPR-018 + PPR-019
 
-The previous Developer Platform narrative beginning at the next heading is retained as historical delivery record and must not be treated as current authority.
+The three-worker wave is intentionally split:
+- PPR-018A: reusable proof runner, baseline measurement and Demo Mirror activation
+- PPR-018: Aider integration
+- PPR-019: Cline integration
+
+Aider/Cline final certification and live Demo Mirror execution are gated on the reusable PPR-018A runner. PPR-020 onward is dependency-gated and pre-authorized.
+
+Strict AI_EXECUTION_COMPLETE remains unchanged: every material AI edge must delegate through Zeck; direct provider egress must be absent or provably blocked; the pinned application must remain functional; every delegated edge must correlate to Zeck evidence; fixtures/mocks/simulations cannot pass.
+
+PPR-016 remains operator-bound:
+- GAP-002: model-family credentials/provider access
+- GAP-005: staging/production environments and custom domains
+- optional socket.io 4.8.4 governed dependency advance
 
 ## Historical program: Developer Platform Deployment (closed; retained as delivery record)
 
