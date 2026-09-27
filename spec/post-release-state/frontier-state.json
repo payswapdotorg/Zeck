@@ -2,7 +2,7 @@
  "schemaVersion": 1,
  "program": "zeck-post-release-public-productization",
  "status": "wave-k-open",
- "currentBase": "59f87ececa7339f9db2cdc2853f138bd1f31f879",
+ "currentBase": "54be42209ffcbdec916e6d06e4bdc1f85cbed8b5",
  "delivered": [
   "PPR-001",
   "PPR-002",
