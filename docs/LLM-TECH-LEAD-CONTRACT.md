@@ -53,28 +53,15 @@ before implementation or governance-state changes.
 
 ## Current implementation gate
 
-The post-release program is active. **PPR-015 is the current Architect-authorized executable Work Order.** The Tech Lead must fetch live `main`, verify the frontier, read `spec/post-release-work-orders/PPR-015.md`, and perform the mandatory agent-browser user audit before implementation.
+The post-release program is active. The current executable wave is **PPR-018A, PPR-018 and PPR-019** under ACR-006 + ACR-007.
 
-Do not create undocumented follow-on Work Orders from browser findings. If a finding requires a frozen-architecture change, new authority, weaker assurance, provider semantics in domain logic, or another governed boundary, record the finding and escalate to the Architect for an amendment or successor Work Order.
+The Tech Lead must fetch live `main`, verify `spec/post-release-state/frontier-state.json`, read the final application-compatibility handoff, and perform live source/dependency conflict analysis before dispatch.
 
-## Maximum concurrency
+PPR-018A owns reusable proof infrastructure. PPR-018 owns Aider. PPR-019 owns Cline. They may run concurrently only while their declared source surfaces remain conflict-safe. Aider/Cline final certification and runnable Demo Mirror activation require the merged PPR-018A harness.
 
-Maximum concurrent implementation workers: **3**.
+PPR-020..PPR-027 are pre-authorized, dependency-gated successors in `spec/application-compatibility/program-state.json`.
 
-The limit applies to implementation Work Orders, not to independent read-only review tasks.
-
-A Tech Lead may dispatch 0–3 workers only after proving:
-
-- dependencies are complete or explicitly represented;
-- each Work Order is independently eligible;
-- module/source surfaces do not conflict;
-- migrations are uniquely owned;
-- development-state files have one owner: the Architect;
-- public contracts do not require simultaneous incompatible edits;
-- tests/fixtures do not have semantic collision;
-- any reconciliation can be performed mechanically without inventing architecture.
-
-If these conditions are not satisfied, run fewer workers.
+Do not create undocumented follow-on Work Orders. Escalate only a genuine architecture-gap, new authority, frozen-invariant change, breaking public-contract change, or other explicit escalation defined by the handoff.
 
 ## Current-base invariant
 
