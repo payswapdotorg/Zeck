@@ -26,6 +26,7 @@
     "examples/**/*",
     "api/**/*",
     "tests/**/*",
+    "compat/**/*",
     "server.ts",
     "vitest.config.ts"
   ],
