@@ -40,6 +40,7 @@ Current canonical documents:
 - docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
 - docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md
 - docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md
+- docs/TRADRL-ZECK-INTEGRATION-BOUNDARY.md — approved future TradRL interoperability profile; not a current PPR authorization.
 
 Current executable Work Orders:
 - PPR-018A — reusable real runner/baseline/Demo Mirror activation harness
