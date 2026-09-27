@@ -5,7 +5,6 @@
  "architecture": "ACR-006 + ACR-007",
  "currentWave": [
   "PPR-018A",
-  "PPR-018",
   "PPR-019"
  ],
  "maxConcurrentWorkers": 3,
