@@ -66,3 +66,24 @@ Zeck execution evidence
 Any mismatch becomes a named finding.
 
 Do not infer completeness from configuration shape, provider abstraction quality, source inspection alone, or a passing front-end journey.
+
+
+## Future compatibility candidate — TradRL
+
+TradRL is recorded as a future, deliberately difficult compatibility candidate because its architecture contains adaptive Organizations, Agent Bodies, Possessions, autonomous capability discovery and domain-specific learning.
+
+This candidate is **not** part of the current pre-authorized PPR-018A through PPR-027 execution sequence.
+
+The intended authority split is documented in:
+docs/TRADRL-ZECK-INTEGRATION-BOUNDARY.md
+
+The proof should test the boundary between:
+
+TradRL-owned Organization Compiler / BodyVersion / logical Possession / Agent OS
+→ material AI execution edge
+→ ACR-007 Zeck delegation
+→ Zeck execution representation selection
+→ execution + verification + evidence
+→ TradRL outcome/evaluation.
+
+The proof must also distinguish TradRL's CognitiveSubstrate (model-side possession concept) from Zeck's ComputationalSubstrate (execution-runtime concept).
