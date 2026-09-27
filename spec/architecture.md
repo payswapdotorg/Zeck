@@ -419,3 +419,16 @@ AI_EXECUTION_COMPLETE is an edge-coverage property: every declared material AI e
 The public Demo Mirror may expose certified application journeys from the same pinned integration/runtime and show result, Zeck execution trace, route/cost/latency, verification/evidence, limitations and reproduction controls. Application domain state and UX remain outside Zeck.
 
 See docs/architecture-changes/ACR-006-application-execution-compatibility.md and docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md for the normative extension and implementation program.
+
+
+# 23. ACR-007 — Universal application delegation boundary
+
+ACR-007 refines the compatibility extension with an explicit stable external Application Delegation Boundary. An independent application may delegate a material AI execution edge by supplying application/environment identity, task/outcome, bounded application-owned context or artifact references, constraints, idempotency and correlation metadata. The application adapter must not select providers or reproduce policy, capability, budget, execution, verification, evidence or optimization authority.
+
+The boundary supports request/receipt, asynchronous polling/webhooks, progressive execution events and artifact references as transport profiles over the same Execution authority. The existing RealtimeRail is the transport profile for genuinely persistent bidirectional realtime work; it is not a second execution lifecycle.
+
+Compatibility proofs compare three things: the declared application execution graph, observed runtime/direct-provider egress, and Zeck execution evidence. A mismatch is a named finding. A proxy does not count as Zeck-complete if the application still owns provider credentials, provider selection, provider fallback or provider-specific execution semantics.
+
+ACR-006's AI_EXECUTION_COMPLETE definition is unchanged. The compatibility surface taxonomy remains observational and additive to the 22-family capability manifest; it may expose a missing capability or public-contract gap, but it cannot lower or rewrite capability truth.
+
+See docs/architecture-changes/ACR-007-universal-application-delegation-boundary.md.
