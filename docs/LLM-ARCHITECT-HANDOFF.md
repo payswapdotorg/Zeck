@@ -17,27 +17,40 @@
 - Deployment roadmap D-00 through D-08: **complete**.
 - E1.1 implementation WORK-048 through WORK-056: **complete**.
 - Validation program VAL-001 through VAL-052: **complete**.
-- Developer Platform DEP-001 through DEP-044: **complete**, including the 8/8 DEP-044 release-gate verdict.
-- The active successor program is the **Application Compatibility Proof Program**, governed by docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md and ACR-006. PPR-016 remains an operator-bound prerequisite and is currently blocked only where required provider credentials are absent. The current executable demonstration wave is PPR-017/PPR-018/PPR-019.
-- Current post-release frontier is `PPR-016`, with a maximum of three concurrent workers.
-- The exact `main` SHA must always be fetched at recovery time.
+- Developer Platform DEP-001 through DEP-044: **complete**.
+- PPR-001 through PPR-017: **delivered**.
+- ACR-006 and ACR-007: **approved forward architecture extensions**.
+- The active successor program is the **Zeck Application Compatibility Proof Program**.
+- Current executable wave: **PPR-018A + PPR-018 + PPR-019**, three conflict-partitioned workers.
+- PPR-016 remains a separate operator-bound capability/environment program.
+- Exact current main SHA must always be fetched at recovery time.
 
-### Current architect directive — ACR-006 / Application Compatibility Proof Program
+### Current architect directive — Application Compatibility
 
-The application-compatibility program is now the primary post-release productization stage. The architecture extension is approved in docs/architecture-changes/ACR-006-application-execution-compatibility.md.
+The architecture now has an explicit external **Application Delegation Boundary**. An independent application can delegate a material AI execution edge by supplying application/environment identity, task/outcome, bounded application-owned context or artifact references, constraints, idempotency and correlation metadata. Zeck owns the delegated execution lifecycle, policy, capabilities, budget/economics, planning, Execution Compiler, provider/model/tool/agent/substrate selection, retry/escalation, verification, evidence and execution telemetry.
 
-The strict status AI_EXECUTION_COMPLETE is an edge-coverage property: every declared material AI execution edge must be delegated through Zeck; direct AI-provider egress must be absent or provably blocked in the proof; functional application behavior must remain intact; and Zeck evidence must correlate every delegated edge. Do not weaken this definition to make a demo pass.
+The application-side integration is a thin translation adapter. It must not reproduce Zeck internals or create a shadow provider registry, router, retry authority, ledger, execution lifecycle, verification authority, evidence authority or optimizer.
 
-Current authorized Work Orders:
-- PPR-017 — Application Execution Graph, Compatibility Proof Harness, and Demo Mirror Foundation
-- PPR-018 — Aider Zeck-Complete Application Proof
-- PPR-019 — Cline Zeck-Complete Application Proof
+ACR-006's strict AI_EXECUTION_COMPLETE definition is unchanged.
 
-PPR-016 remains the operator-bound capability rail order; absent credentials, region blocks, quota exhaustion and absent provider rails remain explicit NOT RUN/BLOCKED states.
+Current canonical documents:
+- docs/architecture-changes/ACR-006-application-execution-compatibility.md
+- docs/architecture-changes/ACR-007-universal-application-delegation-boundary.md
+- docs/APPLICATION-COMPATIBILITY-PROOF-PROGRAM.md
+- docs/APPLICATION-COMPATIBILITY-ADOPTION-SIMULATION.md
+- docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md
+- docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md
 
-The next planned application progression is OpenHands, Continue, Hermes-Agent, OpenClaw, Browser Use, Open WebUI and AnythingLLM, in that order only as successor Work Orders are explicitly authorized in frontier state.
+Current executable Work Orders:
+- PPR-018A — reusable real runner/baseline/Demo Mirror activation harness
+- PPR-018 — Aider
+- PPR-019 — Cline
 
-Historical sections below remain useful evidence but do not override the current post-release state.
+The north star is a portfolio of real, runnable application demonstrations. A demo is evidence only when the real pinned application runtime is AI_EXECUTION_COMPLETE. A proxy, model-only path, fixture, mock or partial graph cannot pass.
+
+## Historical state note
+
+Historical PPR-015 and earlier productization directives remain below as delivery record only. They do not override the current frontier or ACR-006/ACR-007.
 
 ## Mission
 
