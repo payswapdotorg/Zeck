@@ -38,13 +38,16 @@
 import {
   type CompatibilityEvidenceRecord,
   type CompatibilityStatus,
+  createFileDemoRecordSource,
   type DemoMirrorEntry,
   type DemoMirrorResolution,
+  type DemoRunExecutor,
+  type DemoRunResult,
   defaultDemoEntries,
-  defaultDemoRegistry,
   EXAMPLE_CODING_ASSISTANT_RECORD,
   EXAMPLE_RAG_KNOWLEDGE_APP_RECORD,
   FIXTURE_EVIDENCE_RECORDS,
+  type FileDemoRecordSource,
   fixtureRecordOf,
   resolveDemoMirrorEntry,
   validateDemoRegistry,
@@ -93,16 +96,92 @@ function compatibilityStatusBanner(status: CompatibilityStatus, recordBasis: str
 // ---------------------------------------------------------------------------
 
 /**
- * The record source for the demo projection: the PPR-017 fixture
- * records (the honest foundation demos). When the sibling application
- * proofs land, their file-based evidence records extend this source
- * through the same resolution path — one definition, no drift.
+ * The record source for the demo projection (PPR-018A): the PPR-017
+ * fixture records PLUS the file-based evidence records real proofs
+ * record (the sibling-consumer extension point the PPR-017 delivery
+ * recorded — one resolution path, no drift). The file source scans
+ * deploy/evidence for record-shaped documents (a top-level
+ * `recordBasis`, or the work-order wrapper's `evidenceRecord`) and
+ * compat/<application>/demo/demo-entry.json for demo entries; when
+ * the directories are absent (a deployment surface without the repo
+ * tree) the honest fixture-only projection renders — never a crash,
+ * never a fallback status.
  */
-function recordOf(recordId: string): CompatibilityEvidenceRecord | null {
-  return fixtureRecordOf(recordId);
+let fileSource: FileDemoRecordSource | null = null;
+
+function fileDemoRecordSource(): FileDemoRecordSource {
+  if (fileSource === null) {
+    fileSource = createFileDemoRecordSource();
+  }
+  return fileSource;
 }
 
-/** Resolve every default registry entry (the index projection). */
+/** The record + its discovered inventory (the reconciliation input certification requires). */
+function recordBundleOf(recordId: string): {
+  readonly record: CompatibilityEvidenceRecord;
+  readonly discoveredInventory:
+    | import("../../src/integrations/compatibility/public").DiscoveredEdgeInventory
+    | null;
+} | null {
+  const fixture = fixtureRecordOf(recordId);
+  if (fixture !== null) {
+    // The PPR-017 fixture records ship no discovered inventory — they
+    // stay honestly unreconciled (INVENTORY_MISSING), never certified.
+    return { record: fixture, discoveredInventory: null };
+  }
+  const sourced = fileDemoRecordSource()
+    .listRecords()
+    .find((candidate) => candidate.record.recordId === recordId);
+  return sourced === undefined
+    ? null
+    : { record: sourced.record, discoveredInventory: sourced.discoveredInventory };
+}
+
+/** The file a record was sourced from (evidence transparency; null for fixtures). */
+function recordSourceFileOf(recordId: string): string | null {
+  return (
+    fileDemoRecordSource()
+      .listRecords()
+      .find((sourced) => sourced.record.recordId === recordId)?.file ?? null
+  );
+}
+
+/**
+ * The composed entry set: the PPR-017 fixture entries PLUS every
+ * valid file-based demo entry (compat/<application>/demo/
+ * demo-entry.json — the PPR-018 sibling pattern). A file entry whose
+ * demo id collides with a fixture is skipped and the collision is a
+ * named defect (rendered on the index + the machine twin — never a
+ * silent shadow).
+ */
+export function demoMirrorEntries(): readonly DemoMirrorEntry[] {
+  const fixtures = defaultDemoEntries();
+  const fixtureIds = new Set(fixtures.map((entry) => entry.demoId));
+  const fileEntries = fileDemoRecordSource()
+    .listEntries()
+    .filter((sourced) => !fixtureIds.has(sourced.entry.demoId))
+    .map((sourced) => sourced.entry);
+  return [...fixtures, ...fileEntries];
+}
+
+/** Every named source defect (fixture/file id collisions + file-source issues). */
+export function demoMirrorSourceDefects(): readonly string[] {
+  const defects: string[] = [];
+  const fixtureIds = new Set(defaultDemoEntries().map((entry) => entry.demoId));
+  for (const sourced of fileDemoRecordSource().listEntries()) {
+    if (fixtureIds.has(sourced.entry.demoId)) {
+      defects.push(
+        `demo id collision: the file entry ${sourced.file} reuses the fixture demo id "${sourced.entry.demoId}" — the fixture renders; rename the file entry`,
+      );
+    }
+  }
+  for (const issue of fileDemoRecordSource().issues()) {
+    defects.push(`${issue.file}: ${issue.issue}`);
+  }
+  return defects;
+}
+
+/** Resolve every registry entry (the index projection). */
 export function demoMirrorIndexRows(): readonly {
   readonly demoId: string;
   readonly applicationName: string;
@@ -110,9 +189,15 @@ export function demoMirrorIndexRows(): readonly {
   readonly pin: { upstreamRevision: string; integrationRevision: string };
   readonly runAvailable: boolean;
   readonly recordBasis: string;
+  readonly evidenceFile: string | null;
 }[] {
-  return defaultDemoEntries().flatMap((entry) => {
-    const resolution = resolveDemoMirrorEntry(entry, recordOf(entry.evidenceRecordId));
+  return demoMirrorEntries().flatMap((entry) => {
+    const bundle = recordBundleOf(entry.evidenceRecordId);
+    const resolution = resolveDemoMirrorEntry(
+      entry,
+      bundle?.record ?? null,
+      bundle?.discoveredInventory ?? null,
+    );
     if (resolution.kind !== "available") {
       return [];
     }
@@ -125,6 +210,7 @@ export function demoMirrorIndexRows(): readonly {
         pin: projection.pin,
         runAvailable: projection.runAvailability.available,
         recordBasis: projection.recordBasis,
+        evidenceFile: recordSourceFileOf(entry.evidenceRecordId),
       },
     ];
   });
@@ -180,6 +266,122 @@ function representativeTaskSection(entry: DemoMirrorEntry): string {
   <h2 id="demo-task-title">Representative task</h2>
   <p><strong>${esc(entry.representativeTask.title)}</strong></p>
   <p>${esc(entry.representativeTask.description)}</p>
+</section>`;
+}
+
+// ---------------------------------------------------------------------------
+// PPR-018A — the evidence links + the certified run outcome projections
+// ---------------------------------------------------------------------------
+
+/** The evidence + bindings section (run controls' evidence links; minimal honest additions). */
+function evidenceLinksSection(entry: DemoMirrorEntry, record: CompatibilityEvidenceRecord): string {
+  const evidenceFile = recordSourceFileOf(record.recordId);
+  const runtimeBinding =
+    entry.runBinding.kind === "pinned-runtime"
+      ? `pinned runtime "${entry.runBinding.runtime}"`
+      : "none (no pinned runtime is bound to this entry)";
+  return `<section class="card" aria-labelledby="demo-evidence-links-title">
+  <h2 id="demo-evidence-links-title">Evidence &amp; bindings</h2>
+  ${keyValueTable([
+    ["Evidence record", `${record.recordId} (${record.recordBasis})`],
+    [
+      "Evidence source",
+      evidenceFile === null
+        ? "code-resident fixture (the PPR-017 foundation's own demo data)"
+        : evidenceFile,
+    ],
+    ["Run binding", runtimeBinding],
+    [
+      "Machine twin",
+      `<a href="/console/demos/${esc(entry.demoId)}/facts.json">/console/demos/${esc(entry.demoId)}/facts.json</a>`,
+    ],
+  ])}
+  <p class="muted">The status never lives on this page or its entry — it is derived from the bound evidence record on every render. A certified run executes the entry's bound pinned runtime (the same integration the proof certified); a synthetic response is never substituted.</p>
+</section>`;
+}
+
+/** The in-memory last-run store (per server instance; the durable evidence stays the record). */
+const lastRuns = new Map<string, DemoRunResult>();
+
+/** Record one executed demo run's result (the run handler's write). */
+export function recordDemoRunResult(demoId: string, result: DemoRunResult): void {
+  lastRuns.set(demoId, result);
+}
+
+/** The last executed certified run on this server instance (null when none). */
+export function lastDemoRunResult(demoId: string): DemoRunResult | null {
+  return lastRuns.get(demoId) ?? null;
+}
+
+/** The certified run outcome section (renders only when a run executed on this server instance). */
+export function demoRunOutcomeSection(demoId: string): string {
+  const last = lastRuns.get(demoId);
+  if (last === undefined || last.outcome === undefined) {
+    return "";
+  }
+  const { taskRun, traces, egressObservation, credentialErasure, runtime, measuredAt } =
+    last.outcome;
+  const edgeRows = taskRun.edgeExecutions
+    .map(
+      (edge) => `<tr>
+      <td class="mono">${esc(edge.edgeId)}</td>
+      <td class="mono">${esc(edge.executionId)}</td>
+      <td>${esc(edge.outcome)}</td>
+      <td>${edge.latencyMs === null ? "—" : `${edge.latencyMs} ms`}</td>
+    </tr>`,
+    )
+    .join("\n      ");
+  const traceRows = traces
+    .map(
+      (trace) => `<tr>
+      <td class="mono">${esc(trace.edgeId)}</td>
+      <td class="mono">${esc(trace.executionId)}</td>
+      <td>${esc(trace.status ?? "not found")}${trace.terminal ? " (terminal)" : ""}</td>
+      <td>${trace.verificationCount} (${trace.passingVerificationCount} PASS)</td>
+      <td>${trace.correlated ? "Yes" : '<span class="muted">No durable evidence</span>'}</td>
+    </tr>`,
+    )
+    .join("\n      ");
+  const success =
+    taskRun.succeeded === null ? "not executed" : taskRun.succeeded ? "resolved" : "NOT resolved";
+  return `<section class="card demo-run-outcome" aria-labelledby="demo-run-outcome-title">
+  <h2 id="demo-run-outcome-title">Certified run result</h2>
+  ${keyValueTable([
+    ["Task outcome", `${success} — ${taskRun.detail}`],
+    ["Task duration", `${taskRun.durationMs} ms`],
+    ["Failures / retries", `${taskRun.failureCount} / ${taskRun.retryCount}`],
+    [
+      "Runtime",
+      `${runtime.runtimeId} (upstream ${runtime.pin.upstreamRevision.slice(0, 12)}, integration ${runtime.pin.integrationRevision.slice(0, 12)})`,
+    ],
+    ["Measured at", measuredAt],
+    [
+      "Provider-credential erasure",
+      credentialErasure.erased
+        ? "verified absent (the certified runtime carries no provider credentials)"
+        : `FAILED — present: ${credentialErasure.facts
+            .filter((fact) => fact.present)
+            .map((fact) => fact.envVarName)
+            .join(", ")}`,
+    ],
+    [
+      "Egress observation",
+      egressObservation === null
+        ? "not carried by this run"
+        : `${egressObservation.status} (mode ${egressObservation.mode}, ${egressObservation.violations.length} recorded violation(s))`,
+    ],
+  ])}
+  <h3>Edge executions</h3>
+  <table class="data">
+    <thead><tr><th scope="col">Edge</th><th scope="col">Zeck execution</th><th scope="col">Outcome</th><th scope="col">Latency</th></tr></thead>
+    <tbody>${edgeRows}</tbody>
+  </table>
+  <h3>Zeck trace correlation</h3>
+  <table class="data">
+    <thead><tr><th scope="col">Edge</th><th scope="col">Zeck execution</th><th scope="col">Status</th><th scope="col">Verification</th><th scope="col">Correlated</th></tr></thead>
+    <tbody>${traceRows}</tbody>
+  </table>
+  <p class="muted">The most recent certified run executed on this server instance (in-memory presentation; the durable evidence is the bound record — this section never upgrades or replaces it).</p>
 </section>`;
 }
 
@@ -388,8 +590,9 @@ function reproducibilitySection(entry: DemoMirrorEntry): string {
 
 /** The Demo Mirror index body (the registry + the honest status column). */
 export function demoMirrorIndexBody(): string {
-  const registry = defaultDemoRegistry();
+  const registry = { entries: demoMirrorEntries() };
   const issues = validateDemoRegistry(registry);
+  const defects = demoMirrorSourceDefects();
   const registryError =
     issues.length > 0
       ? errorState(
@@ -402,10 +605,18 @@ export function demoMirrorIndexBody(): string {
             .join("; "),
         )
       : "";
-  return `${registryError}
+  const defectNotice =
+    defects.length > 0
+      ? errorState(
+          "The demo record source has named defects",
+          "A record/entry source defect is rendered, never silently skipped.",
+          defects.join("; "),
+        )
+      : "";
+  return `${registryError}${defectNotice}
 <p>The Demo Mirror shows real applications running with Zeck as their AI execution authority — every demo bound to a compatibility evidence record, every status derived from that record by the strict ACR-006 admission evaluation. PARTIAL, BLOCKED, BYPASS_DETECTED and UNASSESSED demos are visually distinct from AI EXECUTION_COMPLETE, and the mirror never upgrades a status for presentation.</p>
 ${demoMirrorIndexTable()}
-<p class="muted">The current entries are honest FIXTURE demos of the PPR-017 foundation itself (no application proof exists yet — the first application proofs are the sibling orders in flight). When an application's proof lands, its entry binds to the live evidence record and — only when every declared material AI edge is delegated, egress is absent or provably blocked, the corpus stays usable, Zeck evidence correlates every edge, and no fixture is counted as an external PASS — the certified run activates.</p>`;
+<p class="muted">The current entries are the honest FIXTURE demos of the PPR-017 foundation itself plus every file-based evidence record and demo entry the application proofs recorded (deploy/evidence records; compat/&lt;application&gt;/demo entries). When an application's proof lands, its entry binds to the live evidence record and — only when every declared material AI edge is delegated, egress is absent or provably blocked, the corpus stays usable, Zeck evidence correlates every edge, and no fixture is counted as an external PASS — the certified run activates.</p>`;
 }
 
 /** One demo's full shell body (the ACR-006 §5 flow, in order). */
@@ -413,7 +624,7 @@ export function demoMirrorDetailBody(demoId: string): {
   readonly title: string;
   readonly body: string;
 } {
-  const entry = defaultDemoEntries().find((candidate) => candidate.demoId === demoId) ?? null;
+  const entry = demoMirrorEntries().find((candidate) => candidate.demoId === demoId) ?? null;
   if (entry === null) {
     return {
       title: "Demo not found",
@@ -423,8 +634,9 @@ export function demoMirrorDetailBody(demoId: string): {
       ),
     };
   }
-  const record = recordOf(entry.evidenceRecordId);
-  const resolution = resolveDemoMirrorEntry(entry, record);
+  const bundle = recordBundleOf(entry.evidenceRecordId);
+  const record = bundle?.record ?? null;
+  const resolution = resolveDemoMirrorEntry(entry, record, bundle?.discoveredInventory ?? null);
   if (resolution.kind === "record-missing") {
     return {
       title: entry.representativeTask.title,
@@ -459,7 +671,9 @@ export function demoMirrorDetailBody(demoId: string): {
   const body = `${compatibilityStatusBanner(projection.status, projection.recordBasis)}
 ${pinnedRevisionSection(record as CompatibilityEvidenceRecord)}
 ${representativeTaskSection(entry)}
+${evidenceLinksSection(entry, record as CompatibilityEvidenceRecord)}
 ${runInitiationSection(entry, resolution)}
+${demoRunOutcomeSection(demoId)}
 ${liveProgressSection(record as CompatibilityEvidenceRecord)}
 ${executionTimelineSection(record as CompatibilityEvidenceRecord)}
 ${executionFactsSection(record as CompatibilityEvidenceRecord)}
@@ -476,6 +690,7 @@ export function demoMirrorIndexFactsJson(): string {
     {
       surface: "demo-mirror",
       note: "The machine twin of the Demo Mirror index: every status derived from the bound evidence record through the strict admission evaluation — never asserted.",
+      sourceDefects: demoMirrorSourceDefects(),
       demos: demoMirrorIndexRows(),
     },
     null,
@@ -485,22 +700,38 @@ export function demoMirrorIndexFactsJson(): string {
 
 /** The detail machine twin (the same projection, JSON). */
 export function demoMirrorDetailFactsJson(demoId: string): string {
-  const entry = defaultDemoEntries().find((candidate) => candidate.demoId === demoId) ?? null;
+  const entry = demoMirrorEntries().find((candidate) => candidate.demoId === demoId) ?? null;
   if (entry === null) {
     return JSON.stringify({ surface: "demo-mirror", demoId, error: "unknown-demo" }, null, 2);
   }
-  const resolution = resolveDemoMirrorEntry(entry, recordOf(entry.evidenceRecordId));
+  const bundle = recordBundleOf(entry.evidenceRecordId);
+  const resolution = resolveDemoMirrorEntry(
+    entry,
+    bundle?.record ?? null,
+    bundle?.discoveredInventory ?? null,
+  );
   if (resolution.kind !== "available") {
     return JSON.stringify({ surface: "demo-mirror", demoId, resolution }, null, 2);
   }
-  const record = recordOf(entry.evidenceRecordId);
+  const record = bundle?.record ?? null;
+  const last = lastRuns.get(demoId) ?? null;
   return JSON.stringify(
     {
       surface: "demo-mirror",
       demoId,
       projection: resolution.projection,
+      runBinding: entry.runBinding,
+      evidenceSourceFile: recordSourceFileOf(entry.evidenceRecordId),
       edgeDispositions: record?.dispositions ?? [],
       zeckTraces: record?.zeckTraces ?? [],
+      lastRun:
+        last === null
+          ? null
+          : {
+              ran: last.ran,
+              reason: last.reason,
+              outcome: last.outcome ?? null,
+            },
     },
     null,
     2,
@@ -509,28 +740,54 @@ export function demoMirrorDetailFactsJson(demoId: string): string {
 
 /**
  * The run initiation handler (POST): the ONLY mutation-shaped route of
- * the demo surface, and it is an HONEST REFUSAL for anything not
- * certified — the certified-runner path activates only when the bound
- * record derives AI_EXECUTION_COMPLETE (the projection's derived run
- * availability), and no PPR-017 fixture can ever satisfy that (a
- * fixture record can never certify, by construction). PRG back to the
- * detail page with the honest reason.
+ * the demo surface. PPR-018A: when the bound record DERIVES
+ * AI_EXECUTION_COMPLETE and the deployment composition bound a
+ * demo-run executor, the handler EXECUTES the certified pinned runtime
+ * (never a synthetic response) and records the honest outcome for the
+ * detail page. Without an executor — or for anything not certified —
+ * it is an HONEST REFUSAL (PRG back to the detail page with the
+ * reason). Fixtures can never reach the certified branch (a fixture
+ * record can never derive AI_EXECUTION_COMPLETE, by construction).
  */
-export function demoMirrorRunHandler(
+export async function demoMirrorRunHandler(
   demoId: string,
   redirect: (location: string) => HandlerResultLike,
-): HandlerResultLike {
-  const entry = defaultDemoEntries().find((candidate) => candidate.demoId === demoId) ?? null;
+  executor?: DemoRunExecutor,
+): Promise<HandlerResultLike> {
+  const entry = demoMirrorEntries().find((candidate) => candidate.demoId === demoId) ?? null;
   if (entry === null) {
     return redirect(`/console/demos?error=unknown-demo`);
   }
-  const resolution = resolveDemoMirrorEntry(entry, recordOf(entry.evidenceRecordId));
-  const reason =
-    resolution.kind === "available"
-      ? resolution.projection.runAvailability.available
-        ? "certified"
-        : resolution.projection.runAvailability.reason
-      : "The bound evidence record could not be resolved — no run is possible.";
+  const bundle = recordBundleOf(entry.evidenceRecordId);
+  const record = bundle?.record ?? null;
+  const resolution = resolveDemoMirrorEntry(entry, record, bundle?.discoveredInventory ?? null);
+  if (
+    resolution.kind === "available" &&
+    resolution.projection.runAvailability.available &&
+    executor !== undefined &&
+    record !== null
+  ) {
+    // The certified branch: execute the EXACT pinned integration
+    // through the bound executor (the demo-run service — which
+    // re-derives the status, verifies the pins and audits the
+    // credential erasure itself before executing anything).
+    const result = await executor.run(entry, record, bundle?.discoveredInventory ?? null);
+    if (result.ran) {
+      lastRuns.set(demoId, result);
+      return redirect(`/console/demos/${encodeURIComponent(demoId)}?run=ok`);
+    }
+    const refused = encodeURIComponent(result.reason.slice(0, 300));
+    return redirect(`/console/demos/${encodeURIComponent(demoId)}?run=${refused}`);
+  }
+  let reason: string;
+  if (resolution.kind !== "available") {
+    reason = "The bound evidence record could not be resolved — no run is possible.";
+  } else if (resolution.projection.runAvailability.available) {
+    reason =
+      "The bound record is certified, but no demo-run executor is bound in this deployment surface — the certified pinned runtime is not executable here, and a synthetic response is never substituted. The deployment composition binds the application runtimes through the PPR-018A harness seam (createRuntimeRegistry + createDemoRunService).";
+  } else {
+    reason = resolution.projection.runAvailability.reason;
+  }
   const encoded = encodeURIComponent(reason.slice(0, 300));
   return redirect(`/console/demos/${encodeURIComponent(demoId)}?run=${encoded}`);
 }
@@ -547,9 +804,8 @@ export function demoMirrorRunNotice(runParam: string | null): string {
   if (runParam === null || runParam.length === 0) {
     return "";
   }
-  const certified = runParam === "certified";
-  if (certified) {
-    return `<div class="state state-empty"><p class="state-title">Run initiated</p><p class="state-body">The certified run started — its live progress renders below when the run's events begin flowing.</p></div>`;
+  if (runParam === "ok") {
+    return `<div class="state state-run"><p class="state-title">Certified run executed</p><p class="state-body">The pinned application integration ran through the bound certified path — its result and the Zeck execution correlation render below. The durable evidence remains the bound compatibility record.</p></div>`;
   }
   return `<div class="state state-error"><p class="state-title">Run refused — no certified integration path</p><p class="state-body">${esc(runParam)}</p></div>`;
 }

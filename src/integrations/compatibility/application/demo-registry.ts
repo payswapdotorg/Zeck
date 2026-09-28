@@ -23,6 +23,7 @@
  */
 
 import type { CompatibilityEvidenceRecord } from "../domain/evidence";
+import type { DiscoveredEdgeInventory } from "../domain/execution-graph";
 import type { RevisionPin } from "../domain/revisions";
 import { revisionPinsEqual } from "../domain/revisions";
 import type { CompatibilityStatus } from "../domain/status";
@@ -159,10 +160,17 @@ export type DemoMirrorResolution =
  * presentation data only. A revision mismatch between the entry's
  * reproducibility pins and the record's pin is a named defect (the
  * entry describes a different revision than the evidence proves).
+ *
+ * PPR-018A: the optional `inventory` is the record's discovered edge
+ * inventory — the reconciliation input certification requires (a null
+ * inventory stays the INVENTORY_MISSING hard coverage defect, so a
+ * proof without its discovery can never present as certified — the
+ * PPR-017 assessment discipline, unchanged).
  */
 export function resolveDemoMirrorEntry(
   entry: DemoMirrorEntry,
   record: CompatibilityEvidenceRecord | null,
+  inventory: DiscoveredEdgeInventory | null = null,
 ): DemoMirrorResolution {
   if (record === null) {
     return {
@@ -182,7 +190,7 @@ export function resolveDemoMirrorEntry(
       detail: `The demo entry's reproducibility pins (upstream ${entryPin.upstreamRevision}, integration ${entryPin.integrationRevision}) do not match the bound evidence record's pins (upstream ${record.pinnedApplication.pin.upstreamRevision}, integration ${record.pinnedApplication.pin.integrationRevision}) — the entry describes a different revision than the evidence proves. Resolve by re-binding the entry to the record of the exact pinned revision.`,
     };
   }
-  const assessment = evaluateCompatibility(record);
+  const assessment = evaluateCompatibility(record, inventory);
   const warnings = [
     ...entry.warnings,
     ...(record.recordBasis === "fixture"

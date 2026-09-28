@@ -7021,10 +7021,13 @@ export function createDashboardRoutes(
     wrap("GET", "/console/demos/facts.json", () =>
       Promise.resolve(jsonResult(demoMirrorIndexFactsJson())),
     ),
+    // PPR-018A: the run initiation is now async — the certified branch
+    // executes the bound pinned runtime through the demo-run executor
+    // seam (undefined in the base composition: the honest no-executor
+    // refusal renders; the deployment composition binds the application
+    // runtimes through the harness registry + demo-run service).
     wrap("POST", "/console/demos/:demoId/run", (ctx) =>
-      Promise.resolve(
-        demoMirrorRunHandler(ctx.params.demoId ?? "", (location) => redirectResult(location)),
-      ),
+      demoMirrorRunHandler(ctx.params.demoId ?? "", (location) => redirectResult(location)),
     ),
     wrap("GET", "/console/demos/:demoId", (ctx) => demoMirrorDetailPage(ctx)),
     wrap("GET", "/console/demos/:demoId/facts.json", (ctx) =>
