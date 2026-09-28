@@ -642,7 +642,13 @@ async function runDirectBaseline(): Promise<BatteryFacts["directBaseline"]> {
     headers["x-token"] = xToken;
   }
   const apiKey = /^Bearer (.+)$/.exec(supply.authHeaders.authorization ?? "")?.[1] ?? "";
-  const directBaseUrl = `${supply.baseUrl.replace(/\/+$/, "")}/v1`;
+  // Idempotent /v1 join (Lead repair RECO-019-B): a supply baseUrl that
+  // already ends in /v1 (a legitimate provider-config shape — e.g. this
+  // sandbox's /etc/.z-ai-config) must NOT be double-prefixed to
+  // /v1/v1/chat/completions. Reuse the suffix when present, append only
+  // when absent — behavior-identical for a baseUrl not ending in /v1.
+  const supplyBase = supply.baseUrl.replace(/\/+$/, "");
+  const directBaseUrl = supplyBase.endsWith("/v1") ? supplyBase : `${supplyBase}/v1`;
 
   // The direct arm's egress control allows ONLY the supply endpoint in
   // addition to loopback (the direct arm must reach its provider — that
