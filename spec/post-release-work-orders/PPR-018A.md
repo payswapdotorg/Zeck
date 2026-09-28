@@ -1,6 +1,6 @@
 # PPR-018A — Cross-Application Real Runner, Baseline, and Demo Mirror Activation Harness
 
-Status: AUTHORIZED / READY FOR TECH-LEAD DISPATCH
+Status: DELIVERED (PR #160, merge 0bddee1 — Lead differential battery all-green; harvest from worker session c7d84c84)
 Program: zeck-application-compatibility-proof
 Authorization date: 2026-09-27
 Preferred concurrency: 1 worker

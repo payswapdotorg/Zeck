@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
   "status": "wave-k-open",
-  "currentBase": "665ce69c152ee3a54de9ca52b31ec8ce000f2e08",
+  "currentBase": "0bddee18858663a3367b3c231109ec12d5a2cbed",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -20,10 +20,10 @@
     "PPR-014",
     "PPR-015",
     "PPR-017",
-    "PPR-018"
+    "PPR-018",
+    "PPR-018A"
   ],
   "eligible": [
-    "PPR-018A",
     "PPR-019"
   ],
   "inFlight": [],
