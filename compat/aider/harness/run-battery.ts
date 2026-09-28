@@ -177,7 +177,11 @@ async function main(): Promise<void> {
   ];
   const canaryProbes: { url: string; blocked: boolean }[] = [];
   for (const url of canaryUrls) {
-    const blocked = canaryProbe(url, proxy.url);
+    // 2026-09-28 Lead integration repair: canaryProbe is async — the
+    // missing await pushed a Promise (always truthy) as `blocked`, so
+    // canaryAllBlocked reported "control proven" regardless of the
+    // actual probe outcomes (TS2322 exposed the latent PPR-018 bug).
+    const blocked = await canaryProbe(url, proxy.url);
     canaryProbes.push({ url, blocked });
   }
   const canaryAllBlocked = canaryProbes.every((probe) => probe.blocked);
@@ -424,6 +428,26 @@ function repoRoot(): string {
 function fail(): never {
   throw new Error("corpus empty");
 }
+
+/** Scoped surface for the Bun runtime global used by the canary probe.
+ *  The root tsconfig's lib set (ES2023, no DOM/bun globals) has no Bun
+ *  types, and a global "types" change would alter the whole repo's
+ *  compile environment — a local structural declaration keeps the fix
+ *  scoped to this file (2026-09-28 Lead integration repair, TS2868). */
+declare const Bun: {
+  spawn: (
+    command: readonly string[],
+    options: {
+      env: Record<string, string>;
+      stdout?: "pipe" | "inherit" | "ignore";
+      stderr?: "pipe" | "inherit" | "ignore";
+      cwd?: string;
+    },
+  ) => {
+    stdout: ReadableStream<Uint8Array>;
+    exited: Promise<number>;
+  };
+};
 
 /** A canary probe: a direct provider URL through the proxy (expect block). */
 async function canaryProbe(url: string, proxyUrl: string): Promise<boolean> {
