@@ -5,9 +5,13 @@
  * domain-runtime-import rule).
  */
 
+export * from "./baselines";
+export * from "./credential-erasure";
 export * from "./evidence";
 export * from "./execution-graph";
 export * from "./execution-surfaces";
+export * from "./measurements";
 export * from "./no-bypass";
 export * from "./revisions";
+export * from "./runtime";
 export * from "./status";

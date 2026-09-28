@@ -60,6 +60,21 @@ export {
   fixtureRecordOf,
 } from "./adapters/demo-fixtures";
 export type {
+  DemoRecordSourceIssue,
+  FileDemoRecordSource,
+  FileDemoRecordSourceOptions,
+  SourcedEvidenceRecord,
+} from "./adapters/demo-record-source";
+export { createFileDemoRecordSource } from "./adapters/demo-record-source";
+export type {
+  EgressAllowlistHarnessOptions,
+  EgressAllowRule,
+} from "./adapters/egress-allowlist-harness";
+export {
+  createEgressAllowlistHarness,
+  EGRESS_DEFAULT_DENY_NOTE,
+} from "./adapters/egress-allowlist-harness";
+export type {
   EgressDenyHarnessOptions,
   OutboundTransport,
 } from "./adapters/egress-deny-harness";
@@ -96,6 +111,41 @@ export {
   resolveDemoMirrorEntry,
   validateDemoRegistry,
 } from "./application/demo-registry";
+export type {
+  DemoRunEntry,
+  DemoRunService,
+  DemoRunServiceOptions,
+} from "./application/demo-run-service";
+export { createDemoRunService } from "./application/demo-run-service";
+export type {
+  PinnedRuntimeRegistry,
+  PinnedRuntimeRegistryOptions,
+  RegisteredRuntimeDescriptor,
+} from "./application/runtime-registry";
+export { createRuntimeRegistry } from "./application/runtime-registry";
+export type {
+  BaselineIssue,
+  BaselineKind,
+  BaselineRunRecord,
+  BaselineTaskRun,
+} from "./domain/baselines";
+// Domain: baseline capture + labeling (baselines are never Zeck evidence).
+export {
+  assertNotZeckEvidence,
+  BASELINE_KINDS,
+  baselineComparisonFact,
+  isBaselineKind,
+  validateBaselineRun,
+} from "./domain/baselines";
+export type {
+  CredentialErasureResult,
+  CredentialPresenceSource,
+} from "./domain/credential-erasure";
+// Domain: provider-credential erasure (ACR-007 §5).
+export {
+  checkProviderCredentialErasure,
+  scrubbedEnvironmentOf,
+} from "./domain/credential-erasure";
 export type {
   ComparisonFact,
   CompatibilityEvidenceRecord,
@@ -148,6 +198,39 @@ export {
   isExecutionSurface,
 } from "./domain/execution-surfaces";
 export type {
+  CapabilityDiscoveryMeasurement,
+  CustomizationCoverageMeasurement,
+  DeterminismReuseMeasurement,
+  DiagnosisRecoveryMeasurement,
+  EngineeringSurfaceMeasurement,
+  FailureRetryMeasurement,
+  LatencyTailMeasurement,
+  MeasurementBasis,
+  MeasurementDimension,
+  MeasurementEntry,
+  MeasurementIssue,
+  MeasurementSet,
+  OutcomeSuccessMeasurement,
+  ProviderPortabilityMeasurement,
+  QualityVerificationMeasurement,
+  ReproducibilityMeasurement,
+  TelemetryExplainabilityMeasurement,
+  UsageCostMeasurement,
+} from "./domain/measurements";
+// Domain: the reusable thirteen-dimension measurement schema.
+export {
+  isMeasurementBasis,
+  isMeasurementDimension,
+  latencyTailOf,
+  MEASUREMENT_BASES,
+  MEASUREMENT_DIMENSIONS,
+  medianOf,
+  notMeasuredDimensions,
+  percentileOf,
+  validateMeasurementEntry,
+  validateMeasurementSet,
+} from "./domain/measurements";
+export type {
   StaticFindingKind,
   StaticNoBypassFinding,
 } from "./domain/no-bypass";
@@ -171,6 +254,26 @@ export {
   validateRevisionPin,
 } from "./domain/revisions";
 export type {
+  EdgeExecutionObservation,
+  RunNotRunCause,
+  RunOutcome,
+  RuntimeBinding,
+  RuntimeBindingIssue,
+  RuntimeSessionDescriptor,
+  TaskRunOutcome,
+} from "./domain/runtime";
+// Domain: the pinned-application runtime contract + run-level outcomes.
+export {
+  deriveRunOutcome,
+  isRunOutcome,
+  RUN_OUTCOMES,
+  runtimeBindingIssues,
+  runtimeBindingMatches,
+  runtimeBindingOf,
+  validateRuntimeBinding,
+  validateTaskRunOutcome,
+} from "./domain/runtime";
+export type {
   AdmissionFinding,
   AdmissionRuleId,
   AdmissionRuleResult,
@@ -183,9 +286,21 @@ export {
   COMPATIBILITY_STATUSES,
   evaluateCompatibility,
 } from "./domain/status";
+export type {
+  DemoRunExecutor,
+  DemoRunResult,
+} from "./ports/demo-run";
 export type { EgressDenyHarness, EgressDenyRule } from "./ports/egress-harness";
 export { EgressBlockedError } from "./ports/egress-harness";
 export type { CompatibilityEvidenceStore } from "./ports/evidence-store";
+export type {
+  CorrelatedRunReport,
+  PinnedRuntimeDriver,
+  PinnedRuntimeSession,
+  PinnedRuntimeTask,
+  RuntimeRegistryIssue,
+  RuntimeStartContext,
+} from "./ports/runtime";
 export type {
   TraceEventView,
   TraceExecutionView,

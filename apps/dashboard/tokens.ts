@@ -543,6 +543,15 @@ details.why-panel > summary::after, details.advanced > summary::after, details.d
 .state .state-title { font-weight: 600; margin: 0 0 var(--space-1); color: var(--text-primary); }
 .state .state-body { margin: 0; }
 .state .state-source { margin: var(--space-1) 0 0; color: var(--text-muted); font-size: 0.875rem; }
+/* PPR-018A: the certified-run executed notice — a SOLID green-edged
+ * treatment, visually distinct from the dashed empty state and from
+ * the red error state (color is the secondary signal; the title text
+ * carries the meaning). */
+.state.state-run { border-style: solid; border-color: var(--status-ok); background: var(--success-bg); }
+/* PPR-018A: the certified run outcome section — the same card
+ * treatment with the success edge so a run result reads as run
+ * evidence, distinct from the record's own evidence sections. */
+section.card.demo-run-outcome { border-left: 4px solid var(--status-ok); }
 
 .command-results { list-style: none; margin: var(--space-3) 0; padding: 0; }
 .command-results li { border-bottom: 1px solid var(--border-subtle); }
