@@ -1,0 +1,22 @@
+{
+  "demoId": "cline-ide-agent",
+  "evidenceRecordId": "ppr-019-cline-live-proof",
+  "representativeTask": {
+    "title": "Run a representative IDE task with pinned Cline through Zeck",
+    "description": "Run the pinned Cline CLI agent (upstream 252082b9e93b4f91253876391e35b4c13326f5e6) on a representative corpus task (act-mode-edit). Cline operates with Zeck as its sole AI execution authority: every agent-turn model call — act and plan modes, vision attachments, reasoning-effort-controlled turns, and the agentic context-compaction summarizer — becomes a real Zeck execution through the public API; the task result (the implemented function, verified by the corpus check script) and the full Zeck execution trace (lifecycle, route, verification, usage) are exposed."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/cline"
+  },
+  "reproducibility": {
+    "instructions": "From the Zeck repository root: (1) clone and build pinned Cline: git clone https://github.com/cline/cline.git /home/z/my-project/cline-upstream && cd /home/z/my-project/cline-upstream && git checkout 252082b9e93b4f91253876391e35b4c13326f5e6 && bun install && bun -F @cline/shared build && bun -F @cline/llms build && bun -F @cline/agents build && bun -F @cline/core build && bun -F @cline/sdk build; (2) run the battery: bun run compat/cline/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter on a loopback port, runs pinned Cline over the 5-task corpus under the scrubbed environment and the default-deny egress control, and writes deploy/evidence/ppr-019.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config). The website's certified demo run executes the same pinned composition through the PPR-018A harness (the cline pinned-runtime driver registered at the deployment seam — compat/cline/runtime/cline-pinned-driver.ts).",
+    "pinnedUpstreamRevision": "252082b9e93b4f91253876391e35b4c13326f5e6",
+    "integrationRevision": "51fdd3d56fb2091bead0e3ba094ae9008d221422"
+  },
+  "warnings": [
+    "PPR-019 Lead binding (provenance-disclosed): this entry is BOUND at merge time by the Tech Lead — the runBinding names the registry id of the Cline pinned-runtime driver (compat/cline/runtime/cline-pinned-driver.ts) registered through the merged PPR-018A harness (createRuntimeRegistry + createDemoRunService at the Demo Mirror run route). The worker shipped this entry as data only and never activated their own demo; the binding is the Lead's merge-time act.",
+    "The demo runs only when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the harness re-derives the status from the bound record on every run — the entry can never assert one) and the registered driver's pins exactly match the record's pins. The final certification is resolved through the merged PPR-018A harness (see deploy/evidence/ppr-019.json finalCertification).",
+    "The proof's model supply is the sandbox's authorized GLM endpoint — not an external commercial provider (disclosed in the record's limitations)."
+  ]
+}
