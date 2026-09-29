@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "wave-k-open",
-  "currentBase": "0bddee18858663a3367b3c231109ec12d5a2cbed",
+  "status": "wave-k-closed",
+  "currentBase": "cf4bb49daf38d6aa9884283a55885c96af24efda",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -21,10 +21,11 @@
     "PPR-015",
     "PPR-017",
     "PPR-018",
-    "PPR-018A"
+    "PPR-018A",
+    "PPR-019"
   ],
   "eligible": [
-    "PPR-019"
+    "PPR-020"
   ],
   "inFlight": [],
   "blocked": [
@@ -32,7 +33,7 @@
   ],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
-  "context": "WAVE K OPEN (2026-09-27): ACR-006 + ACR-007 govern the Application Compatibility Proof Program. PPR-017 foundation is delivered. The first three executable workers are PPR-018A (cross-application real runner/baseline/Demo Mirror activation), PPR-018 (Aider) and PPR-019 (Cline). Aider/Cline may integrate concurrently against PPR-017 + ACR-007; their final certification and runnable Demo Mirror activation require the merged PPR-018A harness. The final zero-context Tech Lead handoff is docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md. PPR-020..PPR-027 are pre-authorized dependency-gated successors. PPR-016 remains operator-bound on GAP-002/GAP-005 and the optional socket.io 4.8.4 advance. | 2026-09-28 02:00: Lead integration repair merged (PR #159, 665ce69): two latent typecheck errors in the merged PPR-018 surface (missing await on async canaryProbe \u2014 also a control-logic fix; untyped Bun global \u2014 scoped declaration) exposed by PPR-018A's compat include during its clean-room review; verified typecheck 0 / lint baseline-exact / unit baseline-exact. currentBase advanced to the repair head; no work-order status changes.",
+  "context": "WAVE K OPEN (2026-09-27): ACR-006 + ACR-007 govern the Application Compatibility Proof Program. PPR-017 foundation is delivered. The first three executable workers are PPR-018A (cross-application real runner/baseline/Demo Mirror activation), PPR-018 (Aider) and PPR-019 (Cline). Aider/Cline may integrate concurrently against PPR-017 + ACR-007; their final certification and runnable Demo Mirror activation require the merged PPR-018A harness. The final zero-context Tech Lead handoff is docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md. PPR-020..PPR-027 are pre-authorized dependency-gated successors. PPR-016 remains operator-bound on GAP-002/GAP-005 and the optional socket.io 4.8.4 advance. | 2026-09-28 02:00: Lead integration repair merged (PR #159, 665ce69): two latent typecheck errors in the merged PPR-018 surface (missing await on async canaryProbe \u2014 also a control-logic fix; untyped Bun global \u2014 scoped declaration) exposed by PPR-018A's compat include during its clean-room review; verified typecheck 0 / lint baseline-exact / unit baseline-exact. currentBase advanced to the repair head; no work-order status changes. | 2026-09-29 01:20: PPR-019 DELIVERED (PR #161, merge cf4bb49 \u2014 Lead reconstruction from the harvested worker session 36b5bff8 per the PPR-018 precedent: byte-exact surface assembly 60a44e9 + provenance-disclosed Lead repair a395b5c + PPR-018A harness binding b84f142; certified battery re-run AI_EXECUTION_COMPLETE, 5/5 corpus, direct arm 4/4, five rules PASS). WAVE K COMPLETE (018 + 018A + 019 all delivered). PPR-020 (OpenHands) dependency gate now open \u2014 promoted to eligible by pre-authorized Tech Lead succession (program-state sequence).",
   "authorizedQueue": [
     "PPR-017",
     "PPR-018A",
