@@ -194,6 +194,10 @@ describe("the demo surface on the live server", () => {
     // derive AI_EXECUTION_COMPLETE, by construction).
     expect(html).toContain('data-compat-status="AI_EXECUTION_COMPLETE"');
     expect(html).toContain("cline-ide-agent");
+    // PPR-020 Lead binding: the REAL certified OpenHands demo (the
+    // file-sourced record + entry, bound through the same harness seam)
+    // carries the COMPLETE chip too — and its own demo id renders.
+    expect(html).toContain("openhands-software-agent");
     // The fixture disclosure is visible on the index.
     expect(html).toContain("FIXTURE");
   });
@@ -240,10 +244,12 @@ describe("the demo surface on the live server", () => {
     const index = (await (await get("/console/demos/facts.json")).json()) as {
       demos: { status: string }[];
     };
-    // PPR-019 Lead binding: the index now carries the REAL certified
-    // Cline demo beside the two fixtures — all three derived from their
-    // bound records through the same admission evaluation.
+    // PPR-019 + PPR-020 Lead bindings: the index now carries the REAL
+    // certified Cline AND OpenHands demos beside the two fixtures — all
+    // four derived from their bound records through the same admission
+    // evaluation.
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "PARTIAL",
       "UNASSESSED",
