@@ -3,7 +3,7 @@
   "workOrder": "PPR-019",
   "title": "Cline Zeck-complete application proof (compat/cline)",
   "recordedBy": "the one PPR-019 implementation worker (this session)",
-  "date": "2026-09-27T23:14:39.818Z",
+  "date": "2026-09-29T00:18:08.385Z",
   "environment": "sandboxed worker pod; anonymous public clone of https://github.com/cline/cline (pinned 252082b9e93b4f91253876391e35b4c13326f5e6); Zeck integration branch work/PPR-019-cline-proof based on governed base b35d7e857a5a1f84bbf94ae3277a66d59a069c76; model supply = the sandbox's authorized GLM endpoint (/etc/.z-ai-config, platform-side BYOK material, never present in the Cline runtime)",
   "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment cannot produce is recorded as NOT RUN with its owner. No fixture, mock or simulated provider path is counted as an external PASS.",
   "evidenceRecord": {
@@ -17,7 +17,7 @@
       },
       "pin": {
         "upstreamRevision": "252082b9e93b4f91253876391e35b4c13326f5e6",
-        "integrationRevision": "b35d7e857a5a1f84bbf94ae3277a66d59a069c76"
+        "integrationRevision": "51fdd3d56fb2091bead0e3ba094ae9008d221422"
       }
     },
     "graph": {
@@ -74,11 +74,38 @@
           "00000000-0000-7000-8000-000000000027",
           "00000000-0000-7000-8000-000000000040",
           "00000000-0000-7000-8000-000000000053",
+          "00000000-0000-7000-8000-000000000131",
           "00000000-0000-7000-8000-000000000157",
           "00000000-0000-7000-8000-000000000183",
           "00000000-0000-7000-8000-000000000209",
           "00000000-0000-7000-8000-000000000235",
-          "00000000-0000-7000-8000-000000000248"
+          "00000000-0000-7000-8000-000000000261",
+          "00000000-0000-7000-8000-000000000287",
+          "00000000-0000-7000-8000-000000000300",
+          "00000000-0000-7000-8000-000000000313",
+          "00000000-0000-7000-8000-000000000326",
+          "00000000-0000-7000-8000-000000000339",
+          "00000000-0000-7000-8000-000000000352",
+          "00000000-0000-7000-8000-000000000365",
+          "00000000-0000-7000-8000-000000000378",
+          "00000000-0000-7000-8000-000000000391",
+          "00000000-0000-7000-8000-000000000403",
+          "00000000-0000-7000-8000-000000000415",
+          "00000000-0000-7000-8000-000000000427",
+          "00000000-0000-7000-8000-000000000439",
+          "00000000-0000-7000-8000-000000000451",
+          "00000000-0000-7000-8000-000000000463",
+          "00000000-0000-7000-8000-000000000475",
+          "00000000-0000-7000-8000-000000000487",
+          "00000000-0000-7000-8000-000000000499",
+          "00000000-0000-7000-8000-000000000511",
+          "00000000-0000-7000-8000-000000000523",
+          "00000000-0000-7000-8000-000000000535",
+          "00000000-0000-7000-8000-000000000547",
+          "00000000-0000-7000-8000-000000000559",
+          "00000000-0000-7000-8000-000000000571",
+          "00000000-0000-7000-8000-000000000583",
+          "00000000-0000-7000-8000-000000000595"
         ],
         "evidenceBasis": "live"
       },
@@ -88,35 +115,32 @@
         "zeckExecutionIds": [
           "00000000-0000-7000-8000-000000000066",
           "00000000-0000-7000-8000-000000000079",
-          "00000000-0000-7000-8000-000000000092",
-          "00000000-0000-7000-8000-000000000104",
-          "00000000-0000-7000-8000-000000000118"
+          "00000000-0000-7000-8000-000000000092"
         ],
         "evidenceBasis": "live"
       },
       {
         "edgeId": "cline.agent-loop.vision",
         "disposition": "delegated",
-        "zeckExecutionIds": [
-          "00000000-0000-7000-8000-000000000131"
-        ],
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000105"],
         "evidenceBasis": "live"
       },
       {
         "edgeId": "cline.agent-loop.reasoning",
         "disposition": "delegated",
-        "zeckExecutionIds": [
-          "00000000-0000-7000-8000-000000000144"
-        ],
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000118"],
         "evidenceBasis": "live"
       },
       {
         "edgeId": "cline.compaction.agentic",
         "disposition": "delegated",
         "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000144",
           "00000000-0000-7000-8000-000000000170",
           "00000000-0000-7000-8000-000000000196",
-          "00000000-0000-7000-8000-000000000222"
+          "00000000-0000-7000-8000-000000000222",
+          "00000000-0000-7000-8000-000000000248",
+          "00000000-0000-7000-8000-000000000274"
         ],
         "evidenceBasis": "live"
       }
@@ -129,7 +153,7 @@
           "host": "api.openai.com",
           "url": "/v1/chat/completions",
           "rule": "direct OpenAI provider endpoint (AI-provider egress class)",
-          "at": "2026-09-27T23:09:04.747Z",
+          "at": "2026-09-29T00:00:23.449Z",
           "blocked": true
         }
       ]
@@ -225,7 +249,7 @@
       {
         "baseline": "same-supply-direct-arm",
         "basis": "measured",
-        "statement": "Same-supply direct (non-Zeck) arm — the same pinned Cline CLI calling the same GLM supply endpoint directly with no Zeck mediation (the application holds the endpoint credential, by definition of a direct baseline): 4/4 tasks resolved vs the Zeck arm's 5/5; mean 27.0s per resolved direct outcome vs 18.0s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed in the direct arm's egress log (present — the direct-provider call the Zeck arm provably does not make); supply-side rate-limiting observed in the direct arm (no mediation-side pacing — disclosed). Token usage per arm recorded in the battery section."
+        "statement": "Same-supply direct (non-Zeck) arm — the same pinned Cline CLI calling the same GLM supply endpoint directly with no Zeck mediation (the application holds the endpoint credential, by definition of a direct baseline): 4/4 tasks resolved vs the Zeck arm's 5/5; mean 51.7s per resolved direct outcome vs 51.0s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed in the direct arm's egress log (present — the direct-provider call the Zeck arm provably does not make); supply-side rate-limiting observed in the direct arm (no mediation-side pacing — disclosed). Token usage per arm recorded in the battery section."
       },
       {
         "baseline": "strong-optimized-external",
@@ -235,7 +259,7 @@
       {
         "baseline": "cost-per-resolved-outcome",
         "basis": "not-measured",
-        "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 16314 in / 386 out tokens per resolved outcome; direct arm tokens in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+        "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 27442 in / 651 out tokens per resolved outcome; direct arm tokens in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
       }
     ],
     "zeckTraces": [
@@ -336,6 +360,25 @@
       },
       {
         "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000131",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
         "executionId": "00000000-0000-7000-8000-000000000157",
         "applicationId": "00000000-0000-7000-8000-00000000b001",
         "found": true,
@@ -412,7 +455,501 @@
       },
       {
         "edgeId": "cline.agent-loop.act",
-        "executionId": "00000000-0000-7000-8000-000000000248",
+        "executionId": "00000000-0000-7000-8000-000000000261",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000287",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000300",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000313",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000326",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000339",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000352",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000365",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000378",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000391",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000403",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000415",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000427",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000439",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000451",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000463",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000475",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000487",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000499",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000511",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000523",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000535",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000547",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000559",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000571",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000583",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.agent-loop.act",
+        "executionId": "00000000-0000-7000-8000-000000000595",
         "applicationId": "00000000-0000-7000-8000-00000000b001",
         "found": true,
         "status": "COMPLETED",
@@ -472,44 +1009,6 @@
         "executionId": "00000000-0000-7000-8000-000000000092",
         "applicationId": "00000000-0000-7000-8000-00000000b001",
         "found": true,
-        "status": "FAILED",
-        "terminal": true,
-        "eventCount": 10,
-        "verificationCount": 1,
-        "passingVerificationCount": 0,
-        "correlated": true,
-        "route": {
-          "provider": "custom",
-          "model": "glm-4-plus",
-          "strategyClass": "model-rail"
-        },
-        "costMicroUsd": null,
-        "usage": null
-      },
-      {
-        "edgeId": "cline.agent-loop.plan",
-        "executionId": "00000000-0000-7000-8000-000000000104",
-        "applicationId": "00000000-0000-7000-8000-00000000b001",
-        "found": true,
-        "status": "COMPLETED",
-        "terminal": true,
-        "eventCount": 11,
-        "verificationCount": 2,
-        "passingVerificationCount": 2,
-        "correlated": true,
-        "route": {
-          "provider": "custom",
-          "model": "glm-4-plus",
-          "strategyClass": "model-rail"
-        },
-        "costMicroUsd": null,
-        "usage": null
-      },
-      {
-        "edgeId": "cline.agent-loop.plan",
-        "executionId": "00000000-0000-7000-8000-000000000118",
-        "applicationId": "00000000-0000-7000-8000-00000000b001",
-        "found": true,
         "status": "COMPLETED",
         "terminal": true,
         "eventCount": 10,
@@ -526,7 +1025,7 @@
       },
       {
         "edgeId": "cline.agent-loop.vision",
-        "executionId": "00000000-0000-7000-8000-000000000131",
+        "executionId": "00000000-0000-7000-8000-000000000105",
         "applicationId": "00000000-0000-7000-8000-00000000b001",
         "found": true,
         "status": "COMPLETED",
@@ -545,6 +1044,25 @@
       },
       {
         "edgeId": "cline.agent-loop.reasoning",
+        "executionId": "00000000-0000-7000-8000-000000000118",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.compaction.agentic",
         "executionId": "00000000-0000-7000-8000-000000000144",
         "applicationId": "00000000-0000-7000-8000-00000000b001",
         "found": true,
@@ -618,6 +1136,44 @@
         },
         "costMicroUsd": null,
         "usage": null
+      },
+      {
+        "edgeId": "cline.compaction.agentic",
+        "executionId": "00000000-0000-7000-8000-000000000248",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "cline.compaction.agentic",
+        "executionId": "00000000-0000-7000-8000-000000000274",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
       }
     ],
     "limitations": [
@@ -649,7 +1205,7 @@
         "owner": "Lead"
       }
     ],
-    "recordedAt": "2026-09-27T23:14:39.816Z"
+    "recordedAt": "2026-09-29T00:18:08.383Z"
   },
   "derivedAssessment": {
     "status": "AI_EXECUTION_COMPLETE",
@@ -684,9 +1240,9 @@
     "staticFindings": []
   },
   "finalCertification": {
-    "status": "PENDING",
+    "status": "COMPLETE — BOUND through the merged PPR-018A harness (PR #160, merge head 0bddee1)",
     "owner": "Tech-Lead",
-    "bindingStep": "PPR-018A (the reusable runner/certification harness) is not merged at delivery time: the final evidence must be re-run and bound through the merged PPR-018A harness before AI_EXECUTION_COMPLETE may be claimed for the Demo Mirror. This record's derivedAssessment is the PPR-017/ACR-007 self-assessment; the PPR-018A binding is the Lead's act."
+    "bindingStep": "The PPR-018A reusable runner/certification harness is merged (PR #160, merge head 0bddee1; records commit 51fdd3d — the governed delivery base this record's pinnedApplication.pin.integrationRevision is re-pinned to, from the worker's proof-time b35d7e857a5a1f84bbf94ae3277a66d59a069c76; the PR records commit of this binding names the final merge head). Final certification resolved by the Tech-Lead binding on branch work/PPR-019-cline-proof: the certified re-run of the full battery on the repaired base derived AI_EXECUTION_COMPLETE (recorded 2026-09-29T00:18:08Z; 5/5 declared corpus tasks resolved; direct same-supply arm 4/4 resolved; all five admission rules PASS; battery duration 1067544ms), and the Cline pinned-runtime driver (compat/cline/runtime/cline-pinned-driver.ts) is bound at the deployment seam through the harness — createRuntimeRegistry + createDemoRunService wiring the Demo Mirror run route, the merge-time act the worker's demo-entry warning reserves for the Lead. Repair provenance: the certified re-run required the Lead repair commit a395b5c on this branch (direct-arm supply URL join double-/v1 normalization — a latent portability defect exposed by the clean-room re-run; class-precedent PR #159) for the direct baseline arm to reproduce on this sandbox's supply config. This wrapper's derivedAssessment is the re-run's own PPR-017/ACR-007 strict-admission derivation; the certified re-run facts live in the battery section."
   },
   "battery": {
     "batterySteps": [
@@ -709,7 +1265,7 @@
         "resolved": true,
         "checkOutput": "T1 ok (verify.js → GAME-OK)",
         "exitCode": 0,
-        "durationMs": 13842,
+        "durationMs": 16510,
         "edgeExecutions": [
           {
             "edgeId": "cline.agent-loop.act",
@@ -738,20 +1294,20 @@
           }
         ],
         "railUsage": {
-          "inputTokens": 30390,
-          "outputTokens": 569,
+          "inputTokens": 31043,
+          "outputTokens": 886,
           "dispatches": 5,
           "failures": 0
         },
         "egressViolations": 0,
-        "stdoutTail": "l score\\n\\nAfter running the verification command `node verify.js`, it successfully printed \\\"GAME-OK\\\", confirming that the implementation passes all test cases. The function correctly handles various cases including:\\n- Mixed case words with punctuation\\n- Words with spaces\\n- Empty strings\\n- Words with only vowels or only consonants\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
+        "stdoutTail": "by printing \\\"GAME-OK\\\".\\n\\nThe implementation handles all the test cases correctly:\\n- 'abc' = 7 (a=1, b=3, c=3)\\n- 'aeiou' = 5 (all vowels = 1 each)\\n- 'Zz!' = 3 (z=3, Z=0, !=0)\\n- '' = 0 (empty string)\\n- 'hello world' = 24 (properly accounts for spaces and all letter values)\\n\\nThe function is now complete and working as documented.\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
       },
       {
         "taskId": "plan-mode",
         "resolved": true,
         "checkOutput": "T2 ok (numbered plan mentioning capitalize)",
         "exitCode": 0,
-        "durationMs": 52484,
+        "durationMs": 8064,
         "edgeExecutions": [
           {
             "edgeId": "cline.agent-loop.plan",
@@ -767,37 +1323,27 @@
             "edgeId": "cline.agent-loop.plan",
             "executionId": "00000000-0000-7000-8000-000000000092",
             "replayed": false
-          },
-          {
-            "edgeId": "cline.agent-loop.plan",
-            "executionId": "00000000-0000-7000-8000-000000000104",
-            "replayed": false
-          },
-          {
-            "edgeId": "cline.agent-loop.plan",
-            "executionId": "00000000-0000-7000-8000-000000000118",
-            "replayed": false
           }
         ],
         "railUsage": {
-          "inputTokens": 21263,
-          "outputTokens": 366,
-          "dispatches": 5,
-          "failures": 1
+          "inputTokens": 15926,
+          "outputTokens": 273,
+          "dispatches": 3,
+          "failures": 0
         },
         "egressViolations": 0,
-        "stdoutTail": "cription of available utilities.\\n\\n5. **Test the implementation**: Run the verification script to confirm both functions work correctly and that the module exports are properly structured.\\n\\nThis plan maintains consistency with the existing codebase while adding the requested functionality and ensuring it works through proper testing.\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
+        "stdoutTail": "oth the existing shout function and the new capitalize function, ensuring they work as expected.\\n\\n4. **Update README.md** to document the new capitalize function, maintaining the same format as the existing documentation.\\n\\n5. **Test the implementation** by running verify.js to confirm both functions work correctly before finalizing.\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
       },
       {
         "taskId": "vision-qa",
         "resolved": true,
         "checkOutput": "T3 ok (final answer names the color)",
         "exitCode": 0,
-        "durationMs": 3182,
+        "durationMs": 3558,
         "edgeExecutions": [
           {
             "edgeId": "cline.agent-loop.vision",
-            "executionId": "00000000-0000-7000-8000-000000000131",
+            "executionId": "00000000-0000-7000-8000-000000000105",
             "replayed": false
           }
         ],
@@ -808,37 +1354,47 @@
           "failures": 0
         },
         "egressViolations": 0,
-        "stdoutTail": "pleted\",\"iterations\":1,\"usage\":{\"inputTokens\":910,\"outputTokens\":21,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"aggregateUsage\":{\"inputTokens\":910,\"outputTokens\":21,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"durationMs\":931,\"text\":\"Looking at the image, I can see it's a solid orange color swatch.\\n\\n**Orange**\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
+        "stdoutTail": "leted\",\"iterations\":1,\"usage\":{\"inputTokens\":910,\"outputTokens\":21,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"aggregateUsage\":{\"inputTokens\":910,\"outputTokens\":21,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"durationMs\":1114,\"text\":\"Looking at the image, I can see it's a solid orange color swatch.\\n\\n**Orange**\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
       },
       {
         "taskId": "reasoning-math",
         "resolved": true,
         "checkOutput": "T4 ok (final answer 154)",
         "exitCode": 0,
-        "durationMs": 4072,
+        "durationMs": 4021,
         "edgeExecutions": [
           {
             "edgeId": "cline.agent-loop.reasoning",
-            "executionId": "00000000-0000-7000-8000-000000000144",
+            "executionId": "00000000-0000-7000-8000-000000000118",
             "replayed": false
           }
         ],
         "railUsage": {
           "inputTokens": 5236,
-          "outputTokens": 98,
+          "outputTokens": 115,
           "dispatches": 1,
           "failures": 0
         },
         "egressViolations": 0,
-        "stdoutTail": "\"outputTokens\":98,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"durationMs\":2034,\"text\":\"\\nI'll compute the sum of all prime numbers strictly less than 20, then double it.\\n\\nPrime numbers strictly less than 20 are: 2, 3, 5, 7, 11, 13, 17, 19\\n\\nSum = 2 + 3 + 5 + 7 + 11 + 13 + 17 + 19 = 77\\n\\nDoubled sum = 77 × 2 = 154\\n\\n154\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
+        "stdoutTail": ":1446,\"text\":\"\\nI'll compute the sum of all prime numbers strictly less than 20, then double it.\\n\\nFirst, let me identify the prime numbers strictly less than 20:\\n2, 3, 5, 7, 11, 13, 17, 19\\n\\nNow, I'll sum these primes:\\n2 + 3 + 5 + 7 + 11 + 13 + 17 + 19 = 77\\n\\nFinally, I'll double this sum:\\n77 × 2 = 154\\n\\nThe final answer is 154.\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\"}}\n"
       },
       {
         "taskId": "context-compaction",
         "resolved": true,
         "checkOutput": "T5 ok (summary.txt = alpha/bravo/charlie/delta)",
-        "exitCode": 0,
-        "durationMs": 16232,
+        "exitCode": 1,
+        "durationMs": 222835,
         "edgeExecutions": [
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000131",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000144",
+            "replayed": false
+          },
           {
             "edgeId": "cline.agent-loop.act",
             "executionId": "00000000-0000-7000-8000-000000000157",
@@ -873,16 +1429,141 @@
             "edgeId": "cline.agent-loop.act",
             "executionId": "00000000-0000-7000-8000-000000000235",
             "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000261",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000287",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000300",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000313",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000326",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000339",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000352",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000365",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000378",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.compaction.agentic",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": true
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000391",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000403",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000415",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000427",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000439",
+            "replayed": false
+          },
+          {
+            "edgeId": "cline.agent-loop.act",
+            "executionId": "00000000-0000-7000-8000-000000000451",
+            "replayed": false
           }
         ],
         "railUsage": {
-          "inputTokens": 23772,
-          "outputTokens": 878,
-          "dispatches": 7,
-          "failures": 0
+          "inputTokens": 84094,
+          "outputTokens": 1959,
+          "dispatches": 26,
+          "failures": 6
         },
         "egressViolations": 0,
-        "stdoutTail": "words from each of the four report files (a.txt, b.txt, c.txt, d.txt) in alphabetical order:\\n\\n1. alpha\\n2. bravo\\n3. charlie\\n4. delta\\n\\nThe file is located at `/tmp/ppr-019-battery/corpus/context-compaction/summary.txt` and contains exactly four lines as required.\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\",\"info\":{\"contextWindow\":9000,\"maxInputTokens\":9000,\"id\":\"glm-4-plus\"}}}\n"
+        "stdoutTail": ":1011,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"aggregateUsage\":{\"inputTokens\":81927,\"outputTokens\":1011,\"cacheReadTokens\":0,\"cacheWriteTokens\":0,\"totalCost\":0},\"durationMs\":220338,\"text\":\"Zeck execution 00000000-0000-7000-8000-000000000391 ended FAILED\",\"model\":{\"id\":\"glm-4-plus\",\"provider\":\"openai-compatible\",\"info\":{\"contextWindow\":9000,\"maxInputTokens\":9000,\"id\":\"glm-4-plus\"}}}\n"
       }
     ],
     "canaryProbes": {
@@ -891,14 +1572,14 @@
         "host": "api.openai.com",
         "url": "/v1/chat/completions",
         "rule": "direct OpenAI provider endpoint (AI-provider egress class)",
-        "at": "2026-09-27T23:09:04.747Z",
+        "at": "2026-09-29T00:00:23.449Z",
         "blocked": true
       }
     },
     "duplicateProbe": {
-      "firstEdgeExecutions": 1,
-      "secondEdgeExecutions": 1,
-      "secondReplayed": 1
+      "firstEdgeExecutions": 6,
+      "secondEdgeExecutions": 6,
+      "secondReplayed": 0
     },
     "failureValidation": {
       "providerUnavailableExecutions": [
@@ -947,50 +1628,41 @@
         {
           "executionId": "00000000-0000-7000-8000-000000000049",
           "terminal": "FAILED"
-        },
-        {
-          "executionId": "00000000-0000-7000-8000-000000000061",
-          "terminal": "FAILED"
         }
       ],
       "cliSurfacedError": true,
       "timeoutPathUnitPinned": true
     },
     "directBaseline": {
-      "ranTasks": [
-        "act-mode-edit",
-        "plan-mode",
-        "reasoning-math",
-        "context-compaction"
-      ],
+      "ranTasks": ["act-mode-edit", "plan-mode", "reasoning-math", "context-compaction"],
       "outcomes": [
         {
           "taskId": "act-mode-edit",
           "resolved": true,
-          "durationMs": 12419,
+          "durationMs": 17566,
           "tokensIn": 5241,
-          "tokensOut": 64
+          "tokensOut": 94
         },
         {
           "taskId": "plan-mode",
           "resolved": true,
-          "durationMs": 7963,
+          "durationMs": 15257,
           "tokensIn": 5128,
-          "tokensOut": 77
+          "tokensOut": 57
         },
         {
           "taskId": "reasoning-math",
           "resolved": true,
-          "durationMs": 4352,
+          "durationMs": 7815,
           "tokensIn": 5235,
-          "tokensOut": 95
+          "tokensOut": 98
         },
         {
           "taskId": "context-compaction",
           "resolved": true,
-          "durationMs": 83304,
+          "durationMs": 166289,
           "tokensIn": 5254,
-          "tokensOut": 119
+          "tokensOut": 112
         }
       ],
       "visionRejectedByDirectEndpoint": true,
@@ -1002,15 +1674,15 @@
       "evidence": "corpus task settings + args (corpus/tasks.ts) + the per-task adapter logs"
     },
     "telemetry": {
-      "executions": 20,
-      "eventsTotal": 201,
+      "executions": 48,
+      "eventsTotal": 480,
       "eventsPerExecutionMin": 10,
-      "verificationPassTotal": 38,
-      "routeFactsPresent": 20,
+      "verificationPassTotal": 62,
+      "routeFactsPresent": 48,
       "usageFactsPresent": 0
     },
     "reuse": {
-      "statement": "Content-addressed idempotency keys: the identical replay probe re-issued 1 request(s), of which 1 replayed the durable outcome (content-identical requests are served from the execution ledger, not re-dispatched)."
+      "statement": "Content-addressed idempotency keys: the identical replay probe re-issued 6 request(s), of which 0 replayed the durable outcome (content-identical requests are served from the execution ledger, not re-dispatched)."
     }
   },
   "dormantEdgeDisclosures": [
@@ -1069,6 +1741,51 @@
   ],
   "staticFindings": [],
   "durations": {
-    "batteryMs": 337361
+    "batteryMs": 1067544
+  },
+  "discoveredInventory": {
+    "source": "static seam scan of pinned Cline 252082b9e93b4f91253876391e35b4c13326f5e6 (createMessage/createHandlerAsync/transcription call-site grep, CLI-runtime reachability restricted to the declared corpus configuration)",
+    "edges": [
+      {
+        "edgeId": "cline.agent-loop.act",
+        "component": "sdk/packages/core/src/services/llms/apihandler-agent-model-adapter.ts:151 (handler.createMessage — the agent-loop model stream) via handler-factory.ts:226",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (streaming, native tool calls)",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions)",
+        "materiality": "discovered agent-loop seam: every act-mode tool decision and delegated subagent/teammate loop completion"
+      },
+      {
+        "edgeId": "cline.agent-loop.plan",
+        "component": "sdk/packages/core/src/services/llms/apihandler-agent-model-adapter.ts:151 (handler.createMessage) under the plan-mode system prompt (@cline/shared prompt/system PLAN_MODE_INSTRUCTIONS)",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (streaming, native tool calls)",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions)",
+        "materiality": "discovered plan-mode seam: the same call site producing plan-mode turns (CLI --plan)"
+      },
+      {
+        "edgeId": "cline.agent-loop.vision",
+        "component": "sdk/packages/core/src/services/llms/apihandler-agent-model-adapter.ts:151 (handler.createMessage) with multimodal content parts from apps/cli/src/runtime/prompt.ts image attachments",
+        "surface": "vision-image-understanding",
+        "transport": "OpenAI-compatible chat completions with multimodal content parts",
+        "externalExecution": "the configured provider's vision-capable chat-completions endpoint (undelegated)",
+        "materiality": "discovered vision seam: image data URLs ride the same agent-loop call site into the provider's vision surface"
+      },
+      {
+        "edgeId": "cline.agent-loop.reasoning",
+        "component": "sdk/packages/core/src/services/llms/apihandler-agent-model-adapter.ts:151 (handler.createMessage) with reasoning effort from apps/cli/src/utils/reasoning.ts (CLI --thinking)",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions with reasoning_effort control",
+        "externalExecution": "the configured provider's reasoning chat-completions endpoint (undelegated)",
+        "materiality": "discovered reasoning seam: reasoning-effort-controlled agent turns (CLI --thinking <level>)"
+      },
+      {
+        "edgeId": "cline.compaction.agentic",
+        "component": "sdk/packages/core/src/extensions/context/agentic-compaction.ts:75,79 (createHandlerAsync + handler.createMessage — the agentic compaction summarizer)",
+        "surface": "text-generation",
+        "transport": "@cline/llms createHandlerAsync → OpenAI-compatible chat completions",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (the compaction summarizer's own model call, undelegated)",
+        "materiality": "discovered auxiliary seam: the default agentic compaction strategy's own model call"
+      }
+    ]
   }
 }

@@ -3,7 +3,8 @@
  * record (deploy/evidence/ppr-019.json), validates its STRUCTURE with
  * the PPR-017 framework's own validator, re-derives the assessment with
  * the strict admission machine, and asserts the honest final-
- * certification state (PENDING, owner Tech-Lead — the PPR-018A binding).
+ * certification state (resolved through the merged PPR-018A harness,
+ * owner Tech-Lead — the PPR-019 Lead binding).
  *
  * Run: bun run compat/cline/tests/validate-evidence.ts
  * Exits non-zero when the delivered record is structurally invalid or
@@ -42,9 +43,16 @@ export function main(): void {
     delivered.evidenceRecord,
     CLINE_DISCOVERED_INVENTORY as DiscoveredEdgeInventory,
   );
-  if (delivered.finalCertification.status !== "PENDING" || delivered.finalCertification.owner !== "Tech-Lead") {
+  // PPR-019 Lead binding: the final certification is RESOLVED through
+  // the merged PPR-018A harness — COMPLETE/BOUND with owner Tech-Lead
+  // (the pre-binding PENDING guard is superseded by the binding itself).
+  if (
+    delivered.finalCertification.owner !== "Tech-Lead" ||
+    !/COMPLETE/.test(delivered.finalCertification.status) ||
+    !/PPR-018A/.test(delivered.finalCertification.status)
+  ) {
     throw new Error(
-      `final certification must be honestly PENDING with owner Tech-Lead until the PPR-018A harness is merged and the evidence binds to it (found: ${delivered.finalCertification.status}/${delivered.finalCertification.owner})`,
+      `final certification must be resolved through the merged PPR-018A harness with owner Tech-Lead (found: ${delivered.finalCertification.status}/${delivered.finalCertification.owner})`,
     );
   }
   console.log(`[validate-evidence] record valid; derived status: ${assessment.status}`);

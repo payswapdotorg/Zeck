@@ -4,6 +4,10 @@
  * own validator, re-derives the assessment, and asserts the honest
  * final-certification state. Skips cleanly when the battery has not yet
  * produced the record (the Lead's re-run reproduces it first).
+ *
+ * PPR-019 Lead binding update: the final certification is now RESOLVED
+ * through the merged PPR-018A harness (COMPLETE/BOUND, owner Tech-Lead)
+ * — the pre-binding PENDING pin is superseded by the binding itself.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -43,11 +47,14 @@ describe("PPR-019 delivered evidence record", () => {
       expect(["AI_EXECUTION_COMPLETE", "PARTIAL", "BLOCKED", "BYPASS_DETECTED", "UNASSESSED"]).toContain(
         assessment.status,
       );
-      // The final certification is honestly PENDING until the PPR-018A
-      // harness is merged and the evidence binds to it.
-      expect(delivered.finalCertification.status).toBe("PENDING");
+      // The final certification is resolved through the merged PPR-018A
+      // harness (the PPR-019 Lead binding): COMPLETE/BOUND with owner
+      // Tech-Lead — the binding step names the harness and its merge
+      // head, and the certified re-run facts.
       expect(delivered.finalCertification.owner).toBe("Tech-Lead");
-      expect(delivered.finalCertification.bindingStep).toContain("PPR-018A");
+      expect(delivered.finalCertification.status).toContain("COMPLETE");
+      expect(delivered.finalCertification.status).toContain("PPR-018A");
+      expect(delivered.finalCertification.bindingStep).toContain("0bddee1");
     },
   );
 });

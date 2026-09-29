@@ -181,16 +181,19 @@ async function get(path: string): Promise<Response> {
 }
 
 describe("the demo surface on the live server", () => {
-  test("the index renders with the honest derived statuses (UNASSESSED + PARTIAL, visually distinct)", async () => {
+  test("the index renders with the honest derived statuses (UNASSESSED + PARTIAL fixtures, visually distinct; the REAL certified demo renders COMPLETE)", async () => {
     const response = await get("/console/demos");
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("Demo Mirror");
     expect(html).toContain("compat-UNASSESSED");
     expect(html).toContain("compat-PARTIAL");
-    // No COMPLETE chip or banner INSTANCE renders (the CSS class
-    // definitions exist in the stylesheet; no element carries them).
-    expect(html).not.toContain('data-compat-status="AI_EXECUTION_COMPLETE"');
+    // PPR-019 Lead binding: the REAL certified Cline demo (the file-sourced
+    // record + entry, bound through the PPR-018A harness) carries the
+    // COMPLETE chip — the fixture demos never do (their records cannot
+    // derive AI_EXECUTION_COMPLETE, by construction).
+    expect(html).toContain('data-compat-status="AI_EXECUTION_COMPLETE"');
+    expect(html).toContain("cline-ide-agent");
     // The fixture disclosure is visible on the index.
     expect(html).toContain("FIXTURE");
   });
@@ -237,7 +240,14 @@ describe("the demo surface on the live server", () => {
     const index = (await (await get("/console/demos/facts.json")).json()) as {
       demos: { status: string }[];
     };
-    expect(index.demos.map((demo) => demo.status).sort()).toEqual(["PARTIAL", "UNASSESSED"]);
+    // PPR-019 Lead binding: the index now carries the REAL certified
+    // Cline demo beside the two fixtures — all three derived from their
+    // bound records through the same admission evaluation.
+    expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
+      "PARTIAL",
+      "UNASSESSED",
+    ]);
 
     const partial = (await (
       await get("/console/demos/example-rag-knowledge-app/facts.json")

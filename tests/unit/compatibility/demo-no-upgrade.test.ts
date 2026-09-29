@@ -213,9 +213,19 @@ describe("demo status cannot upgrade evidence", () => {
 
   test("the demo surface's own index projection derives the same statuses as the evaluation (no drift)", () => {
     const rows = demoMirrorIndexRows();
-    expect(rows.map((row) => row.status).sort()).toEqual(["PARTIAL", "UNASSESSED"]);
-    for (const row of rows) {
+    // The PPR-017 fixture demos stay UNASSESSED/PARTIAL and never runnable
+    // (a fixture record can never derive AI_EXECUTION_COMPLETE).
+    const fixtures = rows.filter((row) => row.demoId.startsWith("example-"));
+    expect(fixtures.map((row) => row.status).sort()).toEqual(["PARTIAL", "UNASSESSED"]);
+    for (const row of fixtures) {
       expect(row.runAvailable).toBe(false);
     }
+    // PPR-019 Lead binding: the REAL certified Cline demo (the file-sourced
+    // record + entry) derives AI_EXECUTION_COMPLETE through the SAME
+    // projection — the no-drift property now spans a real certified entry,
+    // and only the bound record's own facts made it runnable.
+    const cline = rows.find((row) => row.demoId === "cline-ide-agent");
+    expect(cline?.status).toBe("AI_EXECUTION_COMPLETE");
+    expect(cline?.runAvailable).toBe(true);
   });
 });

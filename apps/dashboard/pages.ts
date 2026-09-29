@@ -17,6 +17,11 @@
  * (AC10).
  */
 
+// PPR-019 Lead binding (provenance-disclosed): the certified Cline
+// pinned-runtime driver, composed from the worker's own proof pieces
+// (compat/cline — the worker surface never touches apps/dashboard; this
+// import is the Tech Lead's merge-time act, class-precedent PR #159).
+import { createClineDemoRunExecutor } from "../../compat/cline/runtime/cline-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
@@ -6875,6 +6880,22 @@ export function createDashboardRoutes(
     pattern: string,
     handler: (ctx: HttpContext) => Promise<HandlerResult> | HandlerResult,
   ): RouteDefinition => ({ method, pattern, handler });
+  // PPR-019 Lead binding (provenance-disclosed; the merge-time act the
+  // worker's demo-entry warning reserves for the Tech Lead — the worker
+  // surface never touches apps/dashboard): the certified Cline pinned
+  // runtime is registered through the merged PPR-018A harness (PR #160,
+  // merge head 0bddee1) — createRuntimeRegistry + createDemoRunService,
+  // composed in compat/cline/runtime/cline-pinned-driver.ts over the
+  // worker's certified proof environment (the in-process Zeck public
+  // API, the chat-completions-wire Zeck adapter, the egress-deny proof
+  // environment and the pinned Cline CLI — composed lazily on the first
+  // certified run, never at construction). The executor wires into the
+  // Demo Mirror run route below; every authorization gate (derived
+  // status, pinned-runtime binding, registry resolution, exact pins,
+  // credential erasure) remains the harness's own — an uncertified or
+  // unbound demo still refuses honestly, and a synthetic response is
+  // never substituted.
+  const clineDemoRunExecutor = createClineDemoRunExecutor();
   return [
     // PPR-015 — the canonical Home experience lives at /home. The bare /
     // path can NEVER serve the experience composition on the public
@@ -7023,11 +7044,15 @@ export function createDashboardRoutes(
     ),
     // PPR-018A: the run initiation is now async — the certified branch
     // executes the bound pinned runtime through the demo-run executor
-    // seam (undefined in the base composition: the honest no-executor
-    // refusal renders; the deployment composition binds the application
-    // runtimes through the harness registry + demo-run service).
+    // seam. PPR-019 Lead binding: the certified Cline runtime is the
+    // executor registered above; anything uncertified or unbound still
+    // renders the honest refusal — never a synthetic response.
     wrap("POST", "/console/demos/:demoId/run", (ctx) =>
-      demoMirrorRunHandler(ctx.params.demoId ?? "", (location) => redirectResult(location)),
+      demoMirrorRunHandler(
+        ctx.params.demoId ?? "",
+        (location) => redirectResult(location),
+        clineDemoRunExecutor,
+      ),
     ),
     wrap("GET", "/console/demos/:demoId", (ctx) => demoMirrorDetailPage(ctx)),
     wrap("GET", "/console/demos/:demoId/facts.json", (ctx) =>
