@@ -1,0 +1,23 @@
+{
+  "demoId": "openhands-software-agent",
+  "evidenceRecordId": "ppr-020-openhands-live-proof",
+  "representativeTask": {
+    "title": "Run a representative coding-agent task with pinned OpenHands through Zeck",
+    "description": "Run the pinned OpenHands agent SDK (upstream fcc102a697874d54a357e36004e02c95040dbdc0, software-agent-sdk v1.49.6 — the agent revision the Agent Canvas v1.24.0 distribution itself pins) on a representative corpus task (implement-edit). OpenHands operates with Zeck as its sole AI execution authority: every agent-loop model call — tool-deciding main-loop turns, vision-carrying turns, the LLMSummarizingCondenser's own summarization call, sub-agent task loops, and the ask-oracle auxiliary profile consult — becomes a real Zeck execution through the public API; the task result (the implemented function, verified by the corpus check script) and the full Zeck execution trace (lifecycle, route, verification, usage) are exposed."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/openhands"
+  },
+  "reproducibility": {
+    "instructions": "From the Zeck repository root: (1) clone and install the pinned OpenHands agent verbatim: git clone https://github.com/OpenHands/software-agent-sdk.git /home/z/my-project/openhands-sdk && cd /home/z/my-project/openhands-sdk && git checkout fcc102a697874d54a357e36004e02c95040dbdc0 && uv venv --python 3.12 /home/z/my-project/.venv-openhands && uv pip install --python /home/z/my-project/.venv-openhands/bin/python /home/z/my-project/openhands-sdk/openhands-sdk /home/z/my-project/openhands-sdk/openhands-tools; (2) run the battery: bun run compat/openhands/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter on a loopback port, runs the pinned OpenHands agent over the 5-task corpus under the credential-scrubbed allowlist environment and the default-deny egress proxy, and writes deploy/evidence/ppr-020.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config). The website's certified demo run executes the same pinned composition through the PPR-018A harness (the OpenHands pinned-runtime driver registered at the deployment seam — compat/openhands/runtime/openhands-pinned-driver.ts).",
+    "pinnedUpstreamRevision": "fcc102a697874d54a357e36004e02c95040dbdc0",
+    "integrationRevision": "cf4bb49daf38d6aa9884283a55885c96af24efda"
+  },
+  "warnings": [
+    "PPR-020 Lead binding (provenance-disclosed): this entry is BOUND at merge time by the Tech Lead — the runBinding names the registry id of the OpenHands pinned-runtime driver (compat/openhands/runtime/openhands-pinned-driver.ts) registered through the merged PPR-018A harness (createRuntimeRegistry + createDemoRunService at the Demo Mirror run route). The worker shipped this entry as data only and never activated their own demo; the binding is the Lead's merge-time act.",
+    "The demo runs only when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the harness re-derives the status from the bound record on every run — the entry can never assert one) and the registered driver's pins exactly match the record's pins.",
+    "Upstream provenance (disclosed): the work-order-named repository github.com/All-Hands-AI/OpenHands at v1.24.0 (7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6) is Agent Canvas, which distributes the OpenHands agent as agent-server 1.49.6 (its config/defaults.json pin); the application under proof is the agent repository (OpenHands/software-agent-sdk) at the exact distribution-pinned tag v1.49.6 (fcc102a697874d54a357e36004e02c95040dbdc0).",
+    "The proof's model supply is the sandbox's authorized GLM endpoint — not an external commercial provider (disclosed in the record's limitations)."
+  ]
+}

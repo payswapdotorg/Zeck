@@ -22,6 +22,11 @@
 // (compat/cline — the worker surface never touches apps/dashboard; this
 // import is the Tech Lead's merge-time act, class-precedent PR #159).
 import { createClineDemoRunExecutor } from "../../compat/cline/runtime/cline-pinned-driver";
+// PPR-020 Lead binding (provenance-disclosed, same class): the certified
+// OpenHands pinned-runtime driver, composed from the worker's own proof
+// pieces (compat/openhands — the worker surface never touches
+// apps/dashboard; this import is the Tech Lead's merge-time act).
+import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/openhands-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
@@ -33,6 +38,7 @@ import {
   ZeckApiError,
   type ZeckClient,
 } from "../../sdk";
+import type { DemoRunExecutor } from "../../src/integrations/compatibility/ports/demo-run";
 import { attentionArea, attentionSummary } from "./attention";
 import { CLIENT_SCRIPT } from "./client";
 import {
@@ -6896,6 +6902,46 @@ export function createDashboardRoutes(
   // unbound demo still refuses honestly, and a synthetic response is
   // never substituted.
   const clineDemoRunExecutor = createClineDemoRunExecutor();
+  // PPR-020 Lead binding (provenance-disclosed; the merge-time act the
+  // OpenHands demo-entry warning reserves for the Tech Lead): the
+  // certified OpenHands pinned runtime is registered through the same
+  // merged PPR-018A harness seam — createRuntimeRegistry +
+  // createDemoRunService, composed in
+  // compat/openhands/runtime/openhands-pinned-driver.ts over the worker's
+  // certified proof environment (the in-process Zeck public API, the
+  // chat-completions-wire Zeck adapter the pinned OpenHands SDK's
+  // litellm layer points at, the credential-scrubbed allowlist
+  // environment and the default-deny egress proxy — composed lazily on
+  // the first certified run, never at construction). The run route hands
+  // entry's bound runtime its own executor; anything uncertified,
+  // unbound or foreign still renders the honest refusal — never a
+  // synthetic response. Every authorization gate (derived status,
+  // pinned-runtime binding, registry resolution, exact pins, credential
+  // erasure) remains the harness's own.
+  const openHandsDemoRunExecutor = createOpenHandsDemoRunExecutor();
+  const demoRunExecutors = new Map<string, DemoRunExecutor>([
+    ["compat/cline", clineDemoRunExecutor],
+    ["compat/openhands", openHandsDemoRunExecutor],
+  ]);
+  // The run-route executor: one object routing each entry to its own
+  // bound certified runtime (the handler's authorization gates stay the
+  // harness's own; an entry with no bound executor still gets the honest
+  // refusal — never a synthetic response).
+  const demoRunExecutor: DemoRunExecutor = {
+    run: (entry, record, inventory) => {
+      const executor =
+        entry.runBinding.kind === "pinned-runtime"
+          ? demoRunExecutors.get(entry.runBinding.runtime)
+          : undefined;
+      return executor === undefined
+        ? Promise.resolve({
+            ran: false,
+            reason:
+              "no certified executor is bound for this entry's runtime in this deployment surface — a synthetic response is never substituted",
+          })
+        : executor.run(entry, record, inventory ?? null);
+    },
+  };
   return [
     // PPR-015 — the canonical Home experience lives at /home. The bare /
     // path can NEVER serve the experience composition on the public
@@ -7044,14 +7090,15 @@ export function createDashboardRoutes(
     ),
     // PPR-018A: the run initiation is now async — the certified branch
     // executes the bound pinned runtime through the demo-run executor
-    // seam. PPR-019 Lead binding: the certified Cline runtime is the
-    // executor registered above; anything uncertified or unbound still
+    // seam. PPR-019 + PPR-020 Lead binding: the certified Cline and
+    // OpenHands runtimes are the executors registered above, resolved by
+    // each entry's bound runtime; anything uncertified or unbound still
     // renders the honest refusal — never a synthetic response.
     wrap("POST", "/console/demos/:demoId/run", (ctx) =>
       demoMirrorRunHandler(
         ctx.params.demoId ?? "",
         (location) => redirectResult(location),
-        clineDemoRunExecutor,
+        demoRunExecutor,
       ),
     ),
     wrap("GET", "/console/demos/:demoId", (ctx) => demoMirrorDetailPage(ctx)),

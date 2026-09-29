@@ -1,0 +1,1975 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-020",
+  "title": "OpenHands Zeck-complete application proof (compat/openhands)",
+  "recordedBy": "the one PPR-020 implementation worker (this session)",
+  "date": "2026-09-29T19:16:51.786Z",
+  "environment": "sandboxed worker pod; anonymous public clones of https://github.com/OpenHands/software-agent-sdk (pinned fcc102a697874d54a357e36004e02c95040dbdc0, installed editable into a dedicated venv) and https://github.com/All-Hands-AI/OpenHands (pinned 7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6 — the distribution provenance); Zeck integration branch work/PPR-020-openhands-proof based on governed base cf4bb49daf38d6aa9884283a55885c96af24efda; model supply = the sandbox's authorized GLM endpoint (/etc/.z-ai-config, platform-side BYOK material, never present in the OpenHands runtime)",
+  "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment cannot produce is recorded as NOT RUN with its owner. No fixture, mock or simulated provider path is counted as an external PASS.",
+  "upstreamProvenance": {
+    "agentRepository": "https://github.com/OpenHands/software-agent-sdk",
+    "agentRevision": "fcc102a697874d54a357e36004e02c95040dbdc0",
+    "distributionRepository": "https://github.com/All-Hands-AI/OpenHands",
+    "distributionRevision": "7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6",
+    "note": "Agent Canvas v1.24.0 (the work-order-named upstream repository at the pinned revision) distributes the OpenHands agent as agent-server 1.49.6 via its config/defaults.json; the agent repository tag v1.49.6 is the pinned application under proof"
+  },
+  "evidenceRecord": {
+    "recordId": "ppr-020-openhands-live-proof",
+    "recordBasis": "live-proof",
+    "pinnedApplication": {
+      "identity": {
+        "name": "OpenHands",
+        "repository": "https://github.com/OpenHands/software-agent-sdk",
+        "applicationId": "00000000-0000-7000-8000-00000000b001"
+      },
+      "pin": {
+        "upstreamRevision": "fcc102a697874d54a357e36004e02c95040dbdc0",
+        "integrationRevision": "cf4bb49daf38d6aa9884283a55885c96af24efda"
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "edgeId": "openhands.agent-loop.main",
+          "component": "openhands.sdk.agent.Agent._step (agent/agent.py:728 llm.generate) → openhands.sdk.llm.LLM.completion (llm/llm.py:1648) → litellm completion (llm/llm.py:2427)",
+          "surface": "text-generation",
+          "transport": "litellm OpenAI-compatible chat completions (native tool calls, non-streaming)",
+          "externalExecution": "the configured LLM provider chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions)",
+          "materiality": "the primary agent-loop model call: every tool decision (terminal execution, file edits, task tracking, finish) and every spawned sub-agent loop completion is produced through this seam — routing only a 'chat model' and leaving this seam direct would leave the application's whole agentic surface provider-owned"
+        },
+        {
+          "edgeId": "openhands.agent-loop.vision",
+          "component": "openhands.sdk.agent.Agent._step with ImageContent attachments (SDK image inlining, llm/utils/image_inline.py) → the same LLM.completion seam",
+          "surface": "vision-image-understanding",
+          "transport": "litellm OpenAI-compatible chat completions with multimodal content parts",
+          "externalExecution": "the configured provider's vision-capable chat-completions endpoint (undelegated)",
+          "materiality": "agent-loop turns carrying image content parts (browser screenshots, user image attachments) invoke the provider's vision surface — a text-only delegation would leave the vision edge a direct-provider bypass"
+        },
+        {
+          "edgeId": "openhands.condenser.llm-summarize",
+          "component": "openhands.sdk.context.condenser.llm_summarizing_condenser.LLMSummarizingCondenser._generate_condensation (:229, its own llm field) → LLM.generate → litellm completion",
+          "surface": "text-generation",
+          "transport": "litellm OpenAI-compatible chat completions (the condenser's own LLM object, stream force-disabled)",
+          "externalExecution": "the configured LLM provider chat-completions endpoint (the condenser summarizer's own model call, undelegated)",
+          "materiality": "the LLMSummarizingCondenser summarizes conversation history through its OWN LLM object (a distinct auxiliary edge) — leaving an auxiliary/summarizer call direct is exactly the 'main model only' incompleteness ACR-006 forbids"
+        },
+        {
+          "edgeId": "openhands.subagent.task-loop",
+          "component": "openhands.tools.task TaskToolSet → TaskManager._get_sub_agent_from_factory (task/manager.py:361 parent_llm.model_copy) → a full sub-agent Agent loop → agent.py:728 llm.generate",
+          "surface": "text-generation",
+          "transport": "litellm OpenAI-compatible chat completions (the sub-agent's system prompt is the agent-definition markdown)",
+          "externalExecution": "the configured LLM provider chat-completions endpoint (the sub-agent loop's own model calls, undelegated)",
+          "materiality": "the task/delegation tool set spawns sub-agent conversations that make their own agent-loop model calls (inheriting the parent LLM by default) — a sub-agent loop that stayed direct would leave delegated execution provider-owned"
+        },
+        {
+          "edgeId": "openhands.tool.ask-oracle",
+          "component": "openhands.tools.ask_oracle.impl.AskOracleExecutor (:98 oracle_llm.generate, the saved `oracle` profile resolved from the LLMProfileStore) → LLM.generate → litellm completion",
+          "surface": "text-generation",
+          "transport": "litellm OpenAI-compatible chat completions (a separate stateless auxiliary model client)",
+          "externalExecution": "the oracle profile's configured provider endpoint (undelegated)",
+          "materiality": "the ask-oracle tool consults a SEPARATE saved LLM profile (its own model/api_key/base_url in the profile store) — an auxiliary model client outside the main loop that would silently bypass a main-model-only delegation"
+        }
+      ]
+    },
+    "dispositions": [
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000001",
+          "00000000-0000-7000-8000-000000000014",
+          "00000000-0000-7000-8000-000000000027",
+          "00000000-0000-7000-8000-000000000040",
+          "00000000-0000-7000-8000-000000000053",
+          "00000000-0000-7000-8000-000000000066",
+          "00000000-0000-7000-8000-000000000092",
+          "00000000-0000-7000-8000-000000000105",
+          "00000000-0000-7000-8000-000000000118",
+          "00000000-0000-7000-8000-000000000131",
+          "00000000-0000-7000-8000-000000000144",
+          "00000000-0000-7000-8000-000000000170",
+          "00000000-0000-7000-8000-000000000183",
+          "00000000-0000-7000-8000-000000000196",
+          "00000000-0000-7000-8000-000000000222",
+          "00000000-0000-7000-8000-000000000235",
+          "00000000-0000-7000-8000-000000000248",
+          "00000000-0000-7000-8000-000000000274",
+          "00000000-0000-7000-8000-000000000287",
+          "00000000-0000-7000-8000-000000000300",
+          "00000000-0000-7000-8000-000000000471",
+          "00000000-0000-7000-8000-000000000484",
+          "00000000-0000-7000-8000-000000000497",
+          "00000000-0000-7000-8000-000000000549",
+          "00000000-0000-7000-8000-000000000562",
+          "00000000-0000-7000-8000-000000000575",
+          "00000000-0000-7000-8000-000000000601",
+          "00000000-0000-7000-8000-000000000614"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openhands.agent-loop.vision",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000079"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000157",
+          "00000000-0000-7000-8000-000000000209",
+          "00000000-0000-7000-8000-000000000261",
+          "00000000-0000-7000-8000-000000000313",
+          "00000000-0000-7000-8000-000000000325",
+          "00000000-0000-7000-8000-000000000337",
+          "00000000-0000-7000-8000-000000000349",
+          "00000000-0000-7000-8000-000000000361",
+          "00000000-0000-7000-8000-000000000373",
+          "00000000-0000-7000-8000-000000000385",
+          "00000000-0000-7000-8000-000000000397",
+          "00000000-0000-7000-8000-000000000409",
+          "00000000-0000-7000-8000-000000000421",
+          "00000000-0000-7000-8000-000000000433",
+          "00000000-0000-7000-8000-000000000445",
+          "00000000-0000-7000-8000-000000000457"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openhands.subagent.task-loop",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000510",
+          "00000000-0000-7000-8000-000000000523",
+          "00000000-0000-7000-8000-000000000536"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openhands.tool.ask-oracle",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000588"],
+        "evidenceBasis": "live"
+      }
+    ],
+    "egressObservation": {
+      "mode": "deny",
+      "status": "provably-blocked",
+      "violations": [
+        {
+          "host": "api.openai.com",
+          "url": "https://api.openai.com/",
+          "rule": "direct OpenAI provider endpoint (AI-provider egress class)",
+          "at": "2026-09-29T18:25:24.938Z",
+          "blocked": true
+        }
+      ]
+    },
+    "providerCredentials": [
+      {
+        "envVarName": "OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ANTHROPIC_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OPENROUTER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GEMINI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GOOGLE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GROQ_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MISTRAL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPSEEK_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "TOGETHER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "COHERE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_COPILOT_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "HF_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "REPLICATE_API_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "LMNR_PROJECT_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GRAYSWAN_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "CODEX_API_KEY",
+        "present": false
+      }
+    ],
+    "runtimeEvidence": {
+      "corpusDeclared": true,
+      "corpusUsability": "verified",
+      "observations": [
+        "Zeck arm: 5/5 declared corpus tasks resolved by the pinned unmodified OpenHands agent SDK with Zeck as its sole AI execution authority (implement-edit:resolved, vision-qa:resolved, context-compaction:resolved, delegate-explore:resolved, oracle-consult:resolved).",
+        "Every corpus edge execution terminated COMPLETED with durable verification (see zeckTraces); the rail-reported usage per turn is recorded in the battery section.",
+        "Upstream provenance (the structural finding this proof's execution surfaced, disclosed): the work-order-named upstream repository https://github.com/All-Hands-AI/OpenHands at its pinned revision 7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6 is Agent Canvas v1.24.0, which distributes the OpenHands agent as agent-server 1.49.6 via its own config/defaults.json; the application under proof is the OpenHands agent at the exact distribution-pinned revision fcc102a697874d54a357e36004e02c95040dbdc0 (software-agent-sdk tag v1.49.6), installed verbatim from the tagged checkout.",
+        "Upstream behavior the proof run surfaced (disclosed): the pinned SDK's model-features fallback force-string-serializes any model id containing the substring \"glm\" (FORCE_STRING_SERIALIZER_MODELS), which silently drops ImageContent attachments; the vision edge is activated through the LLM constructor's own public force_string_serializer=False + supports_vision capability override (the application's configuration surface, never a fork), and the supply's vision surface carries no tools axis, so the vision corpus task is an answer-directly-from-the-attachment question by design.",
+        "Direct same-supply arm (no Zeck mediation): 1/4 tasks resolved."
+      ]
+    },
+    "comparison": [
+      {
+        "baseline": "same-supply-direct-arm",
+        "basis": "measured",
+        "statement": "Same-supply direct (non-Zeck) arm — the same pinned OpenHands agent SDK calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key and session headers through the LLM constructor's own api_key/extra_headers axes — by definition of a direct baseline): 1/4 text-reachable tasks resolved (the vision edge is outside this arm: the supply's text endpoint rejects multimodal content — live-probed; the vision surface is a separate endpoint the plain openai/ transport does not route to) vs the Zeck arm's 5/5; mean 26.5s per resolved direct outcome vs 80.5s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed (present — the direct-provider call the Zeck arm provably does not make); supply-side rate-limiting observed in the direct arm (no mediation-side pacing — disclosed). Token usage per arm recorded in the battery section."
+      },
+      {
+        "baseline": "strong-optimized-external",
+        "basis": "not-measured",
+        "statement": "Strong optimized non-Zeck baseline (external commercial providers via OpenRouter or first-party endpoints) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+      },
+      {
+        "baseline": "cost-per-resolved-outcome",
+        "basis": "not-measured",
+        "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 41619 in / 553 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+      }
+    ],
+    "zeckTraces": [
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000001",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000014",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000027",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000040",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000053",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000066",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000092",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000105",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000118",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000131",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000144",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000170",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000183",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000196",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000222",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000235",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000248",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000274",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000287",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000300",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000471",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000484",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000497",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000549",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000562",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000575",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000601",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000614",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.agent-loop.vision",
+        "executionId": "00000000-0000-7000-8000-000000000079",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4.5v",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000157",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000209",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000261",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000313",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000325",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000337",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000349",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000361",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000373",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000385",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000397",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000409",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000421",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000433",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000445",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "FAILED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 1,
+        "passingVerificationCount": 0,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "executionId": "00000000-0000-7000-8000-000000000457",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 11,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.subagent.task-loop",
+        "executionId": "00000000-0000-7000-8000-000000000510",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.subagent.task-loop",
+        "executionId": "00000000-0000-7000-8000-000000000523",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.subagent.task-loop",
+        "executionId": "00000000-0000-7000-8000-000000000536",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openhands.tool.ask-oracle",
+        "executionId": "00000000-0000-7000-8000-000000000588",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      }
+    ],
+    "limitations": [
+      {
+        "area": "upstream repository structure",
+        "statement": "The work-order-named upstream repository (https://github.com/All-Hands-AI/OpenHands) at its pinned revision 7dc6805406ea3c76cb4a3ce407c3c72d481b0ac6 is Agent Canvas — the OpenHands control center — and no longer contains the Python agent; the agent (the litellm completion layer this proof delegates) lives in https://github.com/OpenHands/software-agent-sdk, whose tag v1.49.6 (fcc102a697874d54a357e36004e02c95040dbdc0) the canvas distribution itself pins (config/defaults.json agentServer 1.49.6). Agent Canvas v1.24.0 (the work-order-named upstream repository at the pinned revision) distributes the OpenHands agent as agent-server 1.49.6 via its config/defaults.json; the agent repository tag v1.49.6 is the pinned application under proof.",
+        "owner": "worker"
+      },
+      {
+        "area": "model supply",
+        "statement": "The model supply for every delegated edge is the sandbox's authorized GLM endpoint (internal-api.z.ai), dispatched platform-side through the real model gateway (custom rail; the vision surface through its vision endpoint). No external AI provider was reachable or used; external-provider rails are an operator boundary, not evidence about the delegation boundary this proof tests.",
+        "owner": "operator"
+      },
+      {
+        "area": "browser-use tool set",
+        "statement": "The browser tool set is a declared DORMANT seam at the pinned revision: it requires a browser-use browser environment (CDP-driven chromium + the browser-use extension) which this proof sandbox does not provide, and the declared corpus does not enable browser tools. The tool constructs NO separate LLM client at this revision (its observations ride the main agent-loop seam — the inventory finding), so the browser-delegation surface is disclosed as configuration-gated, never silently ignored.",
+        "owner": "operator"
+      },
+      {
+        "area": "agent-server conveniences",
+        "statement": "The agent-server process (auto-title generation, profile pre-flight validation, ask-agent/goal endpoints) is not part of the declared corpus runtime: the corpus runs the in-process standalone SDK (LocalConversation), where none of these fire. Disclosed as the server-mode-only seam inventory.",
+        "owner": "worker"
+      },
+      {
+        "area": "terminal backend",
+        "statement": "The sandbox provides no tmux server; the terminal tool runs on its own subprocess backend (the tool's public terminal_type configuration axis) — an environment boundary disclosed, not a delegation-boundary property.",
+        "owner": "operator"
+      }
+    ],
+    "notRunCauses": [
+      {
+        "area": "strong-optimized-external-baseline",
+        "cause": "No external AI-provider credentials exist in this sandbox (OpenRouter/OpenAI/Anthropic first-party endpoints are unreachable); a strong optimized non-Zeck baseline cannot be measured here.",
+        "owner": "Lead"
+      }
+    ],
+    "recordedAt": "2026-09-29T19:16:51.784Z"
+  },
+  "derivedAssessment": {
+    "status": "AI_EXECUTION_COMPLETE",
+    "ruleResults": [
+      {
+        "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+        "satisfied": true,
+        "detail": "All 5 declared edges are delegated through Zeck (or explicitly reclassified non-AI with recorded justification)."
+      },
+      {
+        "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+        "satisfied": true,
+        "detail": "Direct AI-provider egress is provably blocked (deny harness active, every violation blocked) during the proof."
+      },
+      {
+        "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+        "satisfied": true,
+        "detail": "The application remained functionally usable for the declared corpus during the proof."
+      },
+      {
+        "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+        "satisfied": true,
+        "detail": "All 5 delegated edge(s) correlate to Zeck execution records with durable evidence."
+      },
+      {
+        "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+        "satisfied": true,
+        "detail": "Every delegated edge carries live Zeck evidence from a live proof record."
+      }
+    ],
+    "findings": [],
+    "staticFindings": []
+  },
+  "finalCertification": {
+    "status": "COMPLETE — BOUND through the merged PPR-018A harness (PR #160, merge head 0bddee1)",
+    "owner": "Tech-Lead",
+    "bindingStep": "The PPR-018A reusable runner/certification harness is merged (PR #160, merge head 0bddee1). Final certification resolved by the Tech-Lead binding on branch work/PPR-020-openhands-proof (Lead-assembled from the harvested worker session — chat ebc76682, worker pod c-6abbca4f; the session survived a platform tool-service outage and four mid-run stream deaths, each recovered with content preserved server-side; delivery tarball PPR-020-files.tgz sha256 97b991c1e1097dde1ed9c47eee2a05a83023fad26e389d71cfccd9fcca96c7bc verified byte-exact at harvest): the worker's certified battery derived AI_EXECUTION_COMPLETE (5/5 declared corpus tasks resolved — implement-edit 58.4s, vision-qa 7.4s, context-compaction 306.3s, delegate-explore 17.3s, oracle-consult 13.3s; 49 executions, 49/49 Zeck trace-correlated; replay 1/1; egress canary ok; failure arms honest FAILED), and the Lead's independent merge-tree battery re-verified the delivery (2026-09-29: typecheck 0 errors; lint 5E/68W/8I baseline-exact; unit 380f/6572t; architecture 140f/2240t; integration 178f/1320t with the PG rail; full suite 701f/10159t 0-failed; governance OK 60 WOs). This record's pinnedApplication.pin.integrationRevision is re-pinned from the worker's proof-time 'work/PPR-020-openhands-proof proof-time HEAD' to the governed delivery base cf4bb49daf38d6aa9884283a55885c96af24efda (the exact main head the branch was cut from and merges onto; the PR records commit of this binding names the final merge head). The OpenHands pinned-runtime driver (compat/openhands/runtime/openhands-pinned-driver.ts) is registered at the deployment seam through createRuntimeRegistry + createDemoRunService (apps/dashboard/pages.ts, the PPR-019 executor-binding class); every authorization gate remains the harness's own."
+  },
+  "battery": {
+    "batterySteps": [
+      "edge inventory (static seam scan of the pinned revision, config-restricted to the declared corpus)",
+      "provider credential removal from the OpenHands runtime (allowlist-scrubbed subprocess environment + recorded credential facts + the literal placeholder the litellm client's shape check requires)",
+      "direct-provider egress block (default-deny proof proxy wrapping every OpenHands egress except the loopback Zeck adapter + the positive-control canary)",
+      "representative coding-agent corpus (5 tasks, pinned OpenHands agent SDK over Zeck, verified mechanically)",
+      "Zeck trace correlation (every delegated edge's executions read back through the public SDK wire reads)",
+      "duplicate/retry/failure validation (idempotent replay, the runtime's own retry over fault-injected rails, honest FAILED executions, timeout path unit-pinned)",
+      "direct same-supply baseline (measured) + strong optimized external baseline (NOT RUN, owner: Lead)",
+      "customization test (the app's own configuration surface through the delegated boundary)",
+      "deterministic/reuse measurement (content-addressed idempotency keys → measured replay rate)",
+      "telemetry inspection (per-execution ledger events, route facts, usage, latency)",
+      "no-bypass audit (static reconciliation + runtime egress observation)",
+      "reproducibility (the battery is the reproduction script; the replay probe demonstrates it)"
+    ],
+    "corpus": [
+      {
+        "taskId": "implement-edit",
+        "resolved": true,
+        "checkOutput": "T1 ok (verify.js → GAME-OK)",
+        "exitCode": 0,
+        "durationMs": 58442,
+        "driverOk": true,
+        "edgeExecutions": [
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000001",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000014",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000027",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000040",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000053",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000066",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 47247,
+          "outputTokens": 769,
+          "dispatches": 6,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": ".js exactly as documented in its docstring. The function correctly scores words by giving vowels 1 point each, other lowercase letters 3 points each, and non-lowercase characters 0 points, then returns the total sum. Running `node verify.js` confirms the implementation works correctly by printing \\\"GAME-OK\\\".\", \"iterations\": 40, \"events\": 14, \"exit_status\": \"ConversationExecutionStatus.FINISHED\"}\n"
+      },
+      {
+        "taskId": "vision-qa",
+        "resolved": true,
+        "checkOutput": "T2 ok (final answer names the color)",
+        "exitCode": 0,
+        "durationMs": 7363,
+        "driverOk": true,
+        "edgeExecutions": [
+          {
+            "edgeId": "openhands.agent-loop.vision",
+            "executionId": "00000000-0000-7000-8000-000000000079",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 3309,
+          "outputTokens": 2,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "A) • ↓ output (total 0) • $ \n(total 0.00)\n\nMessage from Agent ─────────────────────────────────────────────────────────────\n\nOrange\n\nTokens: ↑ input 3.31K (total 3.31K) • cache hit 0.00% (total 0.00%) • ↓ output 2\n(total 2) • $ (total 0.00)\n\nOPENHANDS_RESULT:{\"ok\": true, \"error\": null, \"final_message\": \"Orange\", \"iterations\": 15, \"events\": 3, \"exit_status\": \"ConversationExecutionStatus.FINISHED\"}\n"
+      },
+      {
+        "taskId": "context-compaction",
+        "resolved": true,
+        "checkOutput": "T3 ok (summary.txt = alpha/bravo/charlie/delta)",
+        "exitCode": 0,
+        "durationMs": 306348,
+        "driverOk": true,
+        "edgeExecutions": [
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000092",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000105",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000118",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000131",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000144",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000157",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000170",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000183",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000196",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000209",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000222",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000235",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000261",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000287",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000300",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000313",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000325",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000337",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000349",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000361",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000373",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000385",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000397",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000409",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000421",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000433",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000445",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.condenser.llm-summarize",
+            "executionId": "00000000-0000-7000-8000-000000000457",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000471",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000484",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 107175,
+          "outputTokens": 1340,
+          "dispatches": 32,
+          "failures": 12
+        },
+        "egressViolations": 0,
+        "stdoutTail": "llowed by one append operation, strictly one at a time as requested.\\n\\nFinally, I created summary.txt containing exactly the four lines that were appended to notes/words.txt:\\n- alpha\\n- bravo  \\n- charlie\\n- delta\\n\\nThe summary.txt file has been created and contains the correct content in the proper order.\", \"iterations\": 60, \"events\": 38, \"exit_status\": \"ConversationExecutionStatus.FINISHED\"}\n"
+      },
+      {
+        "taskId": "delegate-explore",
+        "resolved": true,
+        "checkOutput": "T4 ok (secret.txt carries the sub-agent's finding)",
+        "exitCode": 0,
+        "durationMs": 17300,
+        "driverOk": true,
+        "edgeExecutions": [
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000497",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.subagent.task-loop",
+            "executionId": "00000000-0000-7000-8000-000000000510",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.subagent.task-loop",
+            "executionId": "00000000-0000-7000-8000-000000000523",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.subagent.task-loop",
+            "executionId": "00000000-0000-7000-8000-000000000536",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000549",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000562",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 31743,
+          "outputTokens": 441,
+          "dispatches": 6,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "\n\nTokens: ↑ input 5.67K (total 31.74K) • cache hit 0.00% (total 0.00%) • ↓ output \n67 (total 441) • $ (total 0.00)\n\nOPENHANDS_RESULT:{\"ok\": true, \"error\": null, \"final_message\": \"Task completed successfully! I found the secret word \\\"QUIET-OTTER-42\\\" in notes/secret.txt and wrote it to secret.txt as requested.\", \"iterations\": 40, \"events\": 8, \"exit_status\": \"ConversationExecutionStatus.FINISHED\"}\n"
+      },
+      {
+        "taskId": "oracle-consult",
+        "resolved": true,
+        "checkOutput": "T5 ok (answer.txt = 391)",
+        "exitCode": 0,
+        "durationMs": 13263,
+        "driverOk": true,
+        "edgeExecutions": [
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000575",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.tool.ask-oracle",
+            "executionId": "00000000-0000-7000-8000-000000000588",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000601",
+            "replayed": false
+          },
+          {
+            "edgeId": "openhands.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000614",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 18620,
+          "outputTokens": 215,
+          "dispatches": 4,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "e Oracle.\n\nTokens: ↑ input 6.28K (total 18.62K) • cache hit 0.00% (total 0.00%) • ↓ output \n57 (total 215) • $ (total 0.00)\n\nOPENHANDS_RESULT:{\"ok\": true, \"error\": null, \"final_message\": \"I have successfully created answer.txt with the number 391, which is the product of 17 and 23 as recommended by the Oracle.\", \"iterations\": 30, \"events\": 8, \"exit_status\": \"ConversationExecutionStatus.FINISHED\"}\n"
+      }
+    ],
+    "canaryProbes": {
+      "ok": true,
+      "violation": {
+        "host": "api.openai.com",
+        "url": "https://api.openai.com/",
+        "rule": "direct OpenAI provider endpoint (AI-provider egress class)",
+        "at": "2026-09-29T18:25:24.938Z",
+        "blocked": true
+      }
+    },
+    "duplicateProbe": {
+      "firstEdgeExecutions": 1,
+      "secondEdgeExecutions": 1,
+      "secondReplayed": 1
+    },
+    "failureValidation": {
+      "providerUnavailableExecutions": [
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000012",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000023",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000034",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000045",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000056",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000067",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000078",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000089",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000100",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000111",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000122",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000133",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000144",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000155",
+          "terminal": "FAILED"
+        }
+      ],
+      "rateLimitExecutions": [
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000013",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000025",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000037",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000049",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000061",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000073",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000085",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000097",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000109",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000121",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000133",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000145",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000157",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000169",
+          "terminal": "FAILED"
+        }
+      ],
+      "runtimeSurfacedError": true,
+      "timeoutPathUnitPinned": true
+    },
+    "directBaseline": {
+      "ranTasks": ["implement-edit", "context-compaction", "delegate-explore", "oracle-consult"],
+      "outcomes": [
+        {
+          "taskId": "implement-edit",
+          "resolved": true,
+          "durationMs": 26490
+        },
+        {
+          "taskId": "context-compaction",
+          "resolved": false,
+          "durationMs": 156757
+        },
+        {
+          "taskId": "delegate-explore",
+          "resolved": false,
+          "durationMs": 133635
+        },
+        {
+          "taskId": "oracle-consult",
+          "resolved": false,
+          "durationMs": 133257
+        }
+      ],
+      "providerEgressObserved": true,
+      "rateLimited": true,
+      "visionRejectedByDirectEndpoint": true
+    },
+    "customization": {
+      "statement": "The pinned app's own configuration surface remains fully operative through the delegated boundary: per-task tool selection (terminal/file_editor/task_tracker/ask_oracle/task_tool_set), the terminal backend axis (terminal_type=subprocess), per-task condenser configuration (the compaction task declares max_size=10/keep_first=2 while the others run condenser-less), the seeded sub-agent definition (.agents/agents/explorer.md — the app's own file-based agent surface), the seeded oracle profile (the SDK's own LLMProfileStore), max_iterations, vision capability declaration, and the LLM model id/base_url/api_mode axes — all flowed through the same single delegated seam with zero application-code changes.",
+      "evidence": "corpus task specs (harness/corpus-runner.ts writes one driver spec per task) + the per-task adapter logs"
+    },
+    "telemetry": {
+      "executions": 49,
+      "eventsTotal": 491,
+      "eventsPerExecutionMin": 10,
+      "verificationPassTotal": 74,
+      "routeFactsPresent": 49,
+      "usageFactsPresent": 0
+    },
+    "reuse": {
+      "statement": "Content-addressed idempotency keys: the identical replay probe re-issued 1 request(s), of which 1 replayed the durable outcome (content-identical requests are served from the execution ledger, not re-dispatched)."
+    }
+  },
+  "dormantEdgeDisclosures": [
+    {
+      "edgeId": "openhands.tool.browser-use",
+      "component": "openhands-tools/openhands/tools/browser_use (BrowserToolSet → CustomBrowserUseServer primitives; observations returned to the main agent loop as TextContent/ImageContent)",
+      "surface": "browser-use-intelligence",
+      "gate": "the browser tool set requires a browser-use browser environment (CDP-driven chromium + the browser-use extension); the declared corpus does not enable browser tools and the proof sandbox provides no browser — the tool constructs NO separate LLM client at this revision (all intelligence rides the main agent-loop seam, disclosed as an inventory finding)"
+    },
+    {
+      "edgeId": "openhands.tool.tom-consult",
+      "component": "openhands-tools/openhands/tools/tom_consult/executor.py:74-82 (create_tom_agent from the external tom_swe package — its own LLM client, configured solely through tool params llm_model/api_key/api_base)",
+      "surface": "text-generation",
+      "gate": "the tom_consult / sleeptime_compute tools are not in the declared corpus tool set; the external ToM agent's LLM is a second AI client path that does not honor the SDK LLM(base_url=...) seam (inventoried as a disclosed second-client seam of the pinned revision)"
+    },
+    {
+      "edgeId": "openhands.critic.api",
+      "component": "openhands-sdk/openhands/sdk/critic/impl/api/client.py:262-299 (httpx POST {server_url}/classify with its own Bearer api_key — an external vLLM classification service, not litellm)",
+      "surface": "text-generation",
+      "gate": "Agent(critic=APIBasedCritic(...)) is not configured for the declared corpus (the default Agent critic is None); the critic's default endpoint is an OpenHands-hosted service"
+    },
+    {
+      "edgeId": "openhands.security.toolshield-guardrail",
+      "component": "openhands-sdk/openhands/sdk/security/toolshield_llm_analyzer.py:479 (a dedicated guardrail LLM object per action)",
+      "surface": "text-generation",
+      "gate": "a security analyzer is attached only via conversation.set_security_analyzer(...); the declared corpus attaches none"
+    },
+    {
+      "edgeId": "openhands.security.grayswan",
+      "component": "openhands-sdk/openhands/sdk/security/grayswan/analyzer.py (external Cygnal HTTP API, GRAYSWAN_API_KEY)",
+      "surface": "text-generation",
+      "gate": "external security-analyzer service; not configured for the declared corpus"
+    },
+    {
+      "edgeId": "openhands.observability.laminar",
+      "component": "openhands-sdk/openhands/sdk/observability/laminar.py (LMNR/OTEL trace export initialized at import of openhands.sdk.agent)",
+      "surface": "text-generation",
+      "gate": "activates only when LMNR_PROJECT_API_KEY / OTEL_* env vars are present; the certified runtime's scrubbed allowlist environment carries none (scrubbed by construction)"
+    },
+    {
+      "edgeId": "openhands.hooks.prompt-agent",
+      "component": "openhands-sdk/openhands/sdk/hooks/executor.py:260-361 (prompt-type hook LLM calls and full agent-type hook sub-conversations)",
+      "surface": "text-generation",
+      "gate": "Conversation(hook_config=...) is not configured for the declared corpus"
+    },
+    {
+      "edgeId": "openhands.builtin.classify-and-switch-llm",
+      "component": "openhands-sdk/openhands/sdk/tool/builtins/classify_and_switch_llm.py:346 (classifier_llm.completion — a saved classifier profile) + switch_llm.py (profile switching)",
+      "surface": "text-generation",
+      "gate": "the classify-and-switch builtin is disabled by default (enable_classify_and_switch_llm_tool=False); the declared corpus does not enable it"
+    },
+    {
+      "edgeId": "openhands.builtin.vision-inspect",
+      "component": "openhands-sdk/openhands/sdk/tool/builtins/vision_inspect.py:249 (vision_llm.generate — a saved vision profile, auto-attached only when the main model is non-vision)",
+      "surface": "vision-image-understanding",
+      "gate": "the declared corpus declares a vision-capable main model (capability_overrides), so the vision-inspect builtin is never auto-attached; image content rides the main agent-loop vision edge instead"
+    },
+    {
+      "edgeId": "openhands.goal.judge + openhands.conversation.ask-agent",
+      "component": "openhands-sdk/openhands/sdk/conversation/goal/judge.py:65 (judge_llm.completion) and local_conversation.py:2910 (question_llm.generate)",
+      "surface": "text-generation",
+      "gate": "the goal-controller driver and the ask-agent API are explicit-call SDK seams; the declared corpus issues neither"
+    },
+    {
+      "edgeId": "openhands.agent-server.autotitle",
+      "component": "openhands-agent-server/openhands/agent_server/conversation_service.py:2659-2714 (AutoTitleSubscriber → title_utils.py:145 llm.generate; default ON in server mode) + profiles_router.py:327-330 (profile pre-flight validation)",
+      "surface": "text-generation",
+      "gate": "the agent-server process is not part of the declared corpus runtime (the corpus runs the in-process standalone SDK, where LocalConversation has no auto-title); disclosed as the server-mode-only convenience seam"
+    },
+    {
+      "edgeId": "openhands.agent.acp",
+      "component": "openhands-sdk/openhands/sdk/agent/acp_agent.py (external ACP agent CLI subprocess owning its own LLM; the SDK holds a sentinel dummy LLM)",
+      "surface": "text-generation",
+      "gate": "ACPAgent runs external agent CLIs (Codex/Claude Code); the declared corpus constructs the in-process Agent, never ACPAgent"
+    },
+    {
+      "edgeId": "openhands.llm.fallback-profiles",
+      "component": "openhands-sdk/openhands/sdk/llm/fallback_strategy.py:63-118 (fallback profiles loaded from the LLMProfileStore on transient primary failure)",
+      "surface": "text-generation",
+      "gate": "LLM(fallback_strategy=...) is opt-in; the declared corpus configures no fallback profiles (the Zeck side owns policy-permitted retry for the delegated edge — the rail worker's bounded retry)"
+    }
+  ],
+  "nonAiOperations": [
+    {
+      "name": "terminal (subprocess backend command execution)",
+      "note": "local shell command execution (the terminal tool's own subprocess backend); no AI provider call (the decision to run a command comes from the delegated agent-loop edge)"
+    },
+    {
+      "name": "file_editor / apply_patch / glob / grep (filesystem)",
+      "note": "local file operations and code search; no AI provider call"
+    },
+    {
+      "name": "task_tracker (task state)",
+      "note": "local task-state bookkeeping; no AI provider call"
+    },
+    {
+      "name": "skills / plugins / marketplace trigger system",
+      "note": "purely deterministic at the pinned revision: keyword (whole-token, case-insensitive) and gitignore-style path triggers — repo-wide scan found no embeddings, reranking or semantic-search call; marketplace/plugin fetching is git clone (network, not AI)"
+    },
+    {
+      "name": "git operations / workspace management",
+      "note": "workspace and repository domain operations; no AI provider call"
+    },
+    {
+      "name": "tree-sitter parsing / local token counting / LiteLLM local cost table",
+      "note": "local computation (LITELLM_LOCAL_MODEL_COST_MAP=True keeps cost lookups local); no AI provider call"
+    }
+  ],
+  "staticFindings": [],
+  "durations": {
+    "assemblyMs": 3
+  },
+  "discoveredInventory": {
+    "source": "static seam scan of pinned OpenHands software-agent-sdk v1.49.6 (fcc102a697874d54a357e36004e02c95040dbdc0; litellm call-site + LLM-object-construction grep, in-process SDK reachability restricted to the declared corpus configuration)",
+    "edges": [
+      {
+        "edgeId": "openhands.agent-loop.main",
+        "component": "openhands-sdk/openhands/sdk/agent/agent.py:728 (llm.generate in _step) via llm/llm.py:1648 completion → llm/llm.py:2427 litellm_completion",
+        "surface": "text-generation",
+        "transport": "litellm OpenAI-compatible chat completions (native tool calls)",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions)",
+        "materiality": "discovered agent-loop seam: every tool decision, every sub-agent loop completion, every follow-up turn"
+      },
+      {
+        "edgeId": "openhands.agent-loop.vision",
+        "component": "openhands-sdk/openhands/sdk/agent/agent.py:728 with ImageContent attachments inlined by llm/utils/image_inline.py into multimodal content parts",
+        "surface": "vision-image-understanding",
+        "transport": "litellm OpenAI-compatible chat completions with multimodal content parts",
+        "externalExecution": "the configured provider's vision-capable chat-completions endpoint (undelegated)",
+        "materiality": "discovered vision seam: image content parts ride the same agent-loop call site into the provider's vision surface"
+      },
+      {
+        "edgeId": "openhands.condenser.llm-summarize",
+        "component": "openhands-sdk/openhands/sdk/context/condenser/llm_summarizing_condenser.py:229 (self.llm.generate in _generate_condensation; the condenser's own llm field, usage_id 'condenser')",
+        "surface": "text-generation",
+        "transport": "litellm OpenAI-compatible chat completions (the summarization prompt template prompts/summarizing_prompt.j2)",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (the condenser summarizer's own model call, undelegated)",
+        "materiality": "discovered auxiliary seam: the LLMSummarizingCondenser's own model call (a separately-configurable LLM object)"
+      },
+      {
+        "edgeId": "openhands.subagent.task-loop",
+        "component": "openhands-tools/openhands/tools/task/manager.py:361-378 (parent_llm.model_copy → agent factory → sub-agent conversation.run → agent.py:728), the same path WorkflowTool scripts drive (workflow/impl.py:88-115)",
+        "surface": "text-generation",
+        "transport": "litellm OpenAI-compatible chat completions (sub-agent system prompt = the agent-definition markdown)",
+        "externalExecution": "the configured LLM provider chat-completions endpoint (the sub-agent loop's model calls, undelegated)",
+        "materiality": "discovered sub-agent seam: the task/delegation tool set's full sub-agent loops (LLM inherited from the parent by default; agent definitions with model: != inherit would load a separate profile — disclosed)"
+      },
+      {
+        "edgeId": "openhands.tool.ask-oracle",
+        "component": "openhands-tools/openhands/tools/ask_oracle/impl.py:98 (oracle_llm.generate — the saved 'oracle' profile from the LLMProfileStore, resolved via conversation.get_or_create_profile_llm)",
+        "surface": "text-generation",
+        "transport": "litellm OpenAI-compatible chat completions (stateless: fixed Oracle system prompt + the question, no history, no tools)",
+        "externalExecution": "the oracle profile's configured provider endpoint (undelegated)",
+        "materiality": "discovered auxiliary model client: a separate profile-backed LLM outside the main loop"
+      }
+    ]
+  }
+}
