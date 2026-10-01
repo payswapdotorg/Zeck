@@ -1,0 +1,18 @@
+{
+  "demoId": "hermes-agent",
+  "evidenceRecordId": "ppr-022-hermes-live-proof",
+  "representativeTask": {
+    "title": "Hermes agent: implement and verify a code edit",
+    "description": "The pinned Hermes-Agent runtime (Nous Research, revision 77e2992020eafded09e0c344e687ae53e52e6eab) solves a real coding task headless — implementing a documented function through its file and terminal tools, running the verification itself — with Zeck as its sole AI execution authority: every model turn (the agent loop and the automatic session-title auxiliary call) is a real Zeck execution dispatched through the multi-surface delegation boundary (text, vision, speech, transcription and image surfaces are all certified on the same boundary)."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/hermes-agent"
+  },
+  "reproducibility": {
+    "instructions": "Build the pinned runtime: git clone https://github.com/NousResearch/hermes-agent.git && git -C hermes-agent checkout 77e2992020eafded09e0c344e687ae53e52e6eab && uv venv /home/z/my-project/.venv-hermes --python 3.14.7 && uv pip install --python /home/z/my-project/.venv-hermes/bin/python -e ./hermes-agent. Then run the battery: bun run compat/hermes-agent/harness/run-battery.ts (resumable; every step checkpoints to /tmp/ppr-022-battery/battery-state.json). The battery requires the sandbox's authorized GLM supply config (/etc/.z-ai-config) — platform-side BYOK material, never present in the Hermes runtime.",
+    "pinnedUpstreamRevision": "77e2992020eafded09e0c344e687ae53e52e6eab",
+    "integrationRevision": "241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d"
+  },
+  "warnings": []
+}
