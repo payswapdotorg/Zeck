@@ -1,0 +1,564 @@
+/**
+ * The PPR-021 rail worker — the execution-plane driver that takes every
+ * execution the adapter creates (through the public API) and executes it
+ * through the executions authority's own public commands, dispatching
+ * the model call through the REAL model gateway (the identical
+ * discipline the PPR-018/PPR-019/PPR-020 precedents established; the
+ * platform's own VAL-010 / docs-battery `driveExecutionToCompletion`
+ * pattern):
+ *
+ *   authorize → plan → recordPlanningDecision (durable route facts)
+ *   → queue → start (+ budget reservation estimate)
+ *   → step event tool-requested
+ *   → gateway.complete (identity → admission → capability → rail →
+ *     durable intent → credential materialization → adapter call)
+ *   → step event tool-result (the normalized result — the structured
+ *     turn / completion text / rerank scores, usage, latency — the
+ *     public output fact the adapter reads back)
+ *   → verify → pass (mechanical verification criteria) | fail
+ *
+ * The response fact rides the execution's public event ledger — the same
+ * ledger the public API exposes at GET /executions/:id/events. Nothing
+ * flows back to the application except through the public boundary.
+ *
+ * HONEST TERMINAL STATES: a provider-axis failure (including the
+ * disclosed embeddings supply boundary) lands the execution in FAILED
+ * with a FAIL verification result — never a guessed pass.
+ */
+
+import type { ApiWorld } from "../../../tests/unit/api/world";
+import type { ExecutionActor, ExecutionRecord } from "../../../src/modules/executions/public";
+import type { ModelRequest } from "../../../src/modules/models/domain/request";
+import type {
+  ModelDispatchResult,
+} from "../../../src/modules/models/application/model-gateway";
+import {
+  buildRailEnvelope,
+  encodeModelRequest,
+  hasImagePart,
+  parseContinueRailTask,
+  type ContinueRailTask,
+} from "./rail-protocol";
+import { RAIL_MODEL, RAIL_VISION_MODEL } from "./zai-config";
+
+/** The rail worker's dispatch seam over the real gateway. */
+export interface RailGateway {
+  complete(request: ModelRequest): Promise<ModelDispatchResult>;
+}
+
+export interface RailWorkerHooks {
+  /** Recorded for every rail dispatch outcome (the battery's telemetry axis). */
+  onRailOutcome(fact: {
+    readonly executionId: string;
+    readonly attemptId: string;
+    readonly outcome: "provider-success" | "provider-failure";
+    readonly latencyMs: number | null;
+    readonly usage: { readonly inputTokens: number; readonly outputTokens: number } | null;
+    readonly replayed: boolean;
+  }): void;
+}
+
+export interface RailWorkerOptions {
+  readonly world: ApiWorld;
+  readonly gateway: RailGateway;
+  readonly hooks?: RailWorkerHooks;
+  /**
+   * Minimum interval between rail dispatches (supply pacing). The
+   * sandbox's GLM supply throttles request bursts; serializing with a
+   * floor interval keeps the proof's dispatch pattern gentle (each
+   * dispatch still fully executes — this is pacing, never batching).
+   */
+  readonly minDispatchIntervalMs?: number;
+  /**
+   * The Zeck-OWNED bounded retry for retryable provider-axis failures
+   * (rate-limit/timeout/network): ACR-007 §1 — "Zeck owns …
+   * policy-permitted retry, escalation and continuation" for the
+   * delegated edge. ONE retry after a cooldown; both attempts are
+   * recorded honestly (never an application-side shadow retry).
+   */
+  readonly retryCooldownMs?: number;
+  /** The sleeper (injectable for tests). */
+  readonly sleeper?: (ms: number) => Promise<void>;
+}
+
+export interface RailWorker {
+  /**
+   * Execute one CREATED execution through the authority's commands to a
+   * terminal status. Throws only on infrastructure bugs; provider-axis
+   * failures land the execution in FAILED (the honest terminal state).
+   */
+  execute(record: ExecutionRecord, actor: ExecutionActor): Promise<void>;
+}
+
+export function createRailWorker(options: RailWorkerOptions): RailWorker {
+  const { world, gateway, hooks } = options;
+  const executions = world.executions;
+  const minInterval = options.minDispatchIntervalMs ?? 0;
+  const retryCooldownMs = options.retryCooldownMs ?? 20_000;
+  const sleep = options.sleeper ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  let lastDispatchStartedAt = 0;
+  const pace = async (): Promise<void> => {
+    if (minInterval <= 0) {
+      return;
+    }
+    const wait = lastDispatchStartedAt + minInterval - Date.now();
+    if (wait > 0) {
+      await sleep(wait);
+    }
+  };
+
+  /**
+   * Dispatch through the gateway with the Zeck-owned bounded retry for
+   * retryable provider-axis failures (one cooldown retry — the
+   * platform's policy-permitted retry, both attempts recorded).
+   */
+  const dispatchWithPolicyRetry = async (
+    request: Parameters<RailGateway["complete"]>[0],
+    record: ExecutionRecord,
+    actor: ExecutionActor,
+  ): Promise<ModelDispatchResult> => {
+    await pace();
+    lastDispatchStartedAt = Date.now();
+    const first = await gateway.complete(request);
+    if (first.outcome.kind === "provider-failure" && first.outcome.failure.retryable) {
+      await executions.recordStepEvent(
+        {
+          applicationId: record.applicationId,
+          executionId: record.id,
+          actor,
+          command: "tool-result",
+          cause: "model-rail-retryable-failure",
+          reference: { tool: "model-rail", attemptId: first.attemptId },
+          payload: {
+            tool: "model-rail",
+            kind: "model-failure",
+            category: first.outcome.failure.category,
+            retryable: true,
+            policyRetry: "scheduled",
+          },
+        },
+        `ppr-021-rail-${record.id}-retry-note`,
+      );
+      await sleep(retryCooldownMs);
+      await pace();
+      lastDispatchStartedAt = Date.now();
+      const second = await gateway.complete(request);
+      return second;
+    }
+    return first;
+  };
+
+  const execute = async (record: ExecutionRecord, actor: ExecutionActor): Promise<void> => {
+    const task = parseContinueRailTask(record.task as Record<string, unknown>);
+    const key = (step: string) => `ppr-021-rail-${record.id}-${step}`;
+
+    // The canonical lifecycle drive (VAL-010's sequence).
+    for (const step of ["authorize", "plan"] as const) {
+      await executions.transition(
+        { command: step, applicationId: record.applicationId, executionId: record.id, ...actor },
+        key(step),
+      );
+    }
+
+    // The route facts (the rail's execution-plane choice, per surface).
+    const vision =
+      task !== null &&
+      task.kind === "continue-role.chat-completions" &&
+      (task.messages ?? []).some((message) => hasImagePart(message));
+    const routeModel =
+      task === null
+        ? "task-rejected"
+        : task.kind === "continue-role.embeddings"
+          ? "embeddings-supply-unavailable"
+          : vision
+            ? RAIL_VISION_MODEL
+            : RAIL_MODEL;
+
+    // The durable planning decision: the rail's route facts, recorded on
+    // the ledger before dispatch (route = neutral strings).
+    await executions.recordPlanningDecision(
+      {
+        applicationId: record.applicationId,
+        executionId: record.id,
+        tenantId: record.tenantId,
+        actorId: actor.actorId,
+        decisionId: `decision-${record.id}`,
+        planId: `plan-${record.id}`,
+        payload: {
+          candidates: [
+            {
+              strategyId: "ppr-021-model-rail",
+              plan: {
+                strategyClass: "model-rail",
+                modelCalls: 1,
+                steps: [{ routeRef: { provider: "custom", model: routeModel } }],
+              },
+            },
+          ],
+          selectedStrategyId: "ppr-021-model-rail",
+        },
+      },
+      key("decision"),
+    );
+
+    await executions.transition(
+      { command: "queue", applicationId: record.applicationId, executionId: record.id, ...actor },
+      key("queue"),
+    );
+    await executions.transition(
+      {
+        command: "start",
+        applicationId: record.applicationId,
+        executionId: record.id,
+        ...actor,
+        dispatch: { operationId: `dispatch-${record.id}`, amountMicroUsd: "5000" },
+      },
+      key("start"),
+    );
+
+    if (task === null) {
+      // A malformed task is an honest FAILED execution (never a guess).
+      await executions.transition(
+        {
+          command: "fail",
+          applicationId: record.applicationId,
+          executionId: record.id,
+          ...actor,
+          reason: "task shape rejected by the rail worker",
+          verificationResults: [
+            {
+              criterionId: "task-shape",
+              strategy: "mechanical-validation",
+              status: "FAIL",
+              recordedBy: "ppr-021-rail-worker",
+            },
+          ],
+        },
+        key("fail"),
+      );
+      return;
+    }
+
+    await executions.recordStepEvent(
+      {
+        applicationId: record.applicationId,
+        executionId: record.id,
+        actor,
+        command: "tool-requested",
+        cause: "model-rail-dispatch",
+        reference: { tool: "model-rail", provider: "custom", model: routeModel },
+        payload: {
+          tool: "model-rail",
+          edge: task.edge,
+          role: task.role,
+          surface: task.kind,
+          ...(task.messages !== undefined ? { requestMessages: task.messages.length } : {}),
+          ...(task.input !== undefined ? { embedInputs: task.input.length } : {}),
+          ...(task.documents !== undefined ? { rerankDocuments: task.documents.length } : {}),
+          ...(task.prompt !== undefined ? { promptChars: task.prompt.length } : {}),
+          toolsDeclared: task.tools?.length ?? 0,
+          vision,
+        },
+      },
+      key("tool-requested"),
+    );
+
+    const request = encodeModelRequest(buildRailEnvelope(task), routeModel);
+
+    let dispatch: ModelDispatchResult;
+    try {
+      dispatch = await dispatchWithPolicyRetry(request, record, actor);
+    } catch (error) {
+      // Pre-dispatch rejections (identity/scope/admission) — record and fail.
+      const message = error instanceof Error ? error.message : String(error);
+      await executions.recordStepEvent(
+        {
+          applicationId: record.applicationId,
+          executionId: record.id,
+          actor,
+          command: "tool-denied",
+          cause: "gateway-rejection",
+          reference: { tool: "model-rail" },
+          payload: { tool: "model-rail", rejection: message.slice(0, 200) },
+        },
+        key("tool-denied"),
+      );
+      await executions.transition(
+        {
+          command: "fail",
+          applicationId: record.applicationId,
+          executionId: record.id,
+          ...actor,
+          reason: `model gateway rejected the dispatch: ${message.slice(0, 160)}`,
+          verificationResults: [
+            {
+              criterionId: "rail-dispatch",
+              strategy: "mechanical-validation",
+              status: "FAIL",
+              recordedBy: "ppr-021-rail-worker",
+            },
+          ],
+        },
+        key("fail"),
+      );
+      hooks?.onRailOutcome({
+        executionId: record.id,
+        attemptId: "",
+        outcome: "provider-failure",
+        latencyMs: null,
+        usage: null,
+        replayed: false,
+      });
+      return;
+    }
+
+    hooks?.onRailOutcome({
+      executionId: record.id,
+      attemptId: dispatch.attemptId,
+      outcome: dispatch.outcome.kind,
+      latencyMs:
+        dispatch.outcome.kind === "provider-success"
+          ? dispatch.outcome.response.providerLatencyMs
+          : dispatch.outcome.failure.durationMs,
+      usage:
+        dispatch.outcome.kind === "provider-success"
+          ? {
+              inputTokens: dispatch.outcome.response.usage.inputTokens,
+              outputTokens: dispatch.outcome.response.usage.outputTokens,
+            }
+          : null,
+      replayed: false,
+    });
+
+    if (dispatch.outcome.kind === "provider-failure") {
+      await executions.recordStepEvent(
+        {
+          applicationId: record.applicationId,
+          executionId: record.id,
+          actor,
+          command: "tool-result",
+          cause: "model-rail-provider-failure",
+          reference: { tool: "model-rail", attemptId: dispatch.attemptId },
+          payload: {
+            tool: "model-rail",
+            kind: "model-failure",
+            category: dispatch.outcome.failure.category,
+            retryable: dispatch.outcome.failure.retryable,
+            providerMessage: dispatch.outcome.failure.providerMessage,
+          },
+        },
+        key("tool-result-failure"),
+      );
+      await executions.transition(
+        {
+          command: "fail",
+          applicationId: record.applicationId,
+          executionId: record.id,
+          ...actor,
+          reason: `provider-axis failure (${dispatch.outcome.failure.category}): ${(dispatch.outcome.failure.providerMessage ?? "no provider message").slice(0, 120)}`,
+          verificationResults: [
+            {
+              criterionId: "rail-dispatch",
+              strategy: "provider-axis-observation",
+              status: "FAIL",
+              recordedBy: "ppr-021-rail-worker",
+            },
+          ],
+        },
+        key("fail"),
+      );
+      return;
+    }
+
+    const response = dispatch.outcome.response;
+    await recordNormalizedResult(task, response, record, actor, dispatch.attemptId);
+  };
+
+  /** Record the surface-specific normalized result + verify + terminalize. */
+  const recordNormalizedResult = async (
+    task: ContinueRailTask,
+    response: import("../../../src/modules/models/domain/response").ModelResponse,
+    record: ExecutionRecord,
+    actor: ExecutionActor,
+    attemptId: string,
+  ): Promise<void> => {
+    const key = (step: string) => `ppr-021-rail-${record.id}-${step}`;
+    const usageRecorded = response.usage.inputTokens > 0 || response.usage.outputTokens > 0;
+
+    if (task.kind === "continue-role.embeddings") {
+      // Unreachable today (the rail fails embeddings dispatch honestly);
+      // kept for completeness: an embeddings success would carry vectors.
+      await executions.recordStepEvent(
+        {
+          applicationId: record.applicationId,
+          executionId: record.id,
+          actor,
+          command: "tool-result",
+          cause: "model-rail-completion",
+          reference: { tool: "model-rail", attemptId },
+          payload: {
+            tool: "model-rail",
+            kind: "embeddings-result",
+            vectors: (response.structuredOutput?.json as { vectors?: unknown })?.vectors ?? null,
+          },
+        },
+        key("tool-result"),
+      );
+      await executions.transition(
+        { command: "verify", applicationId: record.applicationId, executionId: record.id, ...actor },
+        key("verify"),
+      );
+      await executions.transition(
+        {
+          command: "pass",
+          applicationId: record.applicationId,
+          executionId: record.id,
+          ...actor,
+          verificationResults: [
+            {
+              criterionId: "usage-recorded",
+              strategy: "mechanical-usage-presence",
+              status: usageRecorded ? "PASS" : "INCONCLUSIVE",
+              recordedBy: "ppr-021-rail-worker",
+            },
+          ],
+        },
+        key("pass"),
+      );
+      return;
+    }
+
+    if (task.kind === "continue-role.rerank") {
+      const scores = response.structuredOutput?.json as { readonly scores?: unknown };
+      const scoreList = Array.isArray(scores?.scores) ? (scores.scores as number[]) : [];
+      const wellFormed =
+        scoreList.length === (task.documents?.length ?? 0) &&
+        scoreList.every((s) => typeof s === "number" && s >= 0 && s <= 1);
+      await executions.recordStepEvent(
+        {
+          applicationId: record.applicationId,
+          executionId: record.id,
+          actor,
+          command: "tool-result",
+          cause: "model-rail-completion",
+          reference: { tool: "model-rail", attemptId },
+          payload: {
+            tool: "model-rail",
+            kind: "rerank-scores",
+            scores: scoreList,
+          },
+        },
+        key("tool-result"),
+      );
+      await executions.transition(
+        { command: "verify", applicationId: record.applicationId, executionId: record.id, ...actor },
+        key("verify"),
+      );
+      await executions.transition(
+        {
+          command: "pass",
+          applicationId: record.applicationId,
+          executionId: record.id,
+          ...actor,
+          verificationResults: [
+            {
+              criterionId: "scores-wellformed",
+              strategy: "mechanical-score-shape",
+              status: wellFormed ? "PASS" : "FAIL",
+              recordedBy: "ppr-021-rail-worker",
+              evidence: [`tool-result:${attemptId}`],
+            },
+            {
+              criterionId: "usage-recorded",
+              strategy: "mechanical-usage-presence",
+              status: usageRecorded ? "PASS" : "INCONCLUSIVE",
+              recordedBy: "ppr-021-rail-worker",
+            },
+          ],
+        },
+        key("pass"),
+      );
+      return;
+    }
+
+    // chat-completions + completions: the normalized turn / completion text.
+    const structured = response.structuredOutput?.json as
+      | { readonly content?: unknown; readonly toolCalls?: unknown; readonly finishReason?: unknown }
+      | undefined;
+    const turn =
+      structured !== undefined && typeof structured.content === "string"
+        ? {
+            content: structured.content,
+            toolCalls: Array.isArray(structured.toolCalls) ? structured.toolCalls : [],
+            finishReason: typeof structured.finishReason === "string" ? structured.finishReason : "stop",
+          }
+        : {
+            content: response.content.join(""),
+            toolCalls: [],
+            finishReason: response.stopReason,
+          };
+    const wellFormed = turn.content.length > 0 || (turn.toolCalls as unknown[]).length > 0;
+
+    // The normalized model result rides the PUBLIC ledger (the output fact).
+    await executions.recordStepEvent(
+      {
+        applicationId: record.applicationId,
+        executionId: record.id,
+        actor,
+        command: "tool-result",
+        cause: "model-rail-completion",
+        reference: { tool: "model-rail", attemptId },
+        payload: {
+          tool: "model-rail",
+          kind: "model-completion",
+          content: turn.content,
+          toolCalls: turn.toolCalls,
+          finishReason: turn.finishReason,
+          usage: {
+            // Key names deliberately avoid the wire scrubber's
+            // secret-shaped-key pattern (it redacts any *token* key).
+            input: response.usage.inputTokens,
+            output: response.usage.outputTokens,
+          },
+          providerLatencyMs: response.providerLatencyMs,
+          stopReason: response.stopReason,
+        },
+      },
+      key("tool-result"),
+    );
+
+    await executions.transition(
+      { command: "verify", applicationId: record.applicationId, executionId: record.id, ...actor },
+      key("verify"),
+    );
+    await executions.transition(
+      {
+        command: "pass",
+        applicationId: record.applicationId,
+        executionId: record.id,
+        ...actor,
+        verificationResults: [
+          {
+            criterionId: "response-wellformed",
+            strategy: "mechanical-nonempty",
+            status: wellFormed ? "PASS" : "FAIL",
+            recordedBy: "ppr-021-rail-worker",
+            evidence: [`tool-result:${attemptId}`],
+          },
+          {
+            criterionId: "usage-recorded",
+            strategy: "mechanical-usage-presence",
+            status: usageRecorded ? "PASS" : "INCONCLUSIVE",
+            recordedBy: "ppr-021-rail-worker",
+          },
+        ],
+      },
+      key("pass"),
+    );
+  };
+
+  return { execute };
+}
+
+/** The task contract re-export (the adapter's payload shape). */
+export type { ContinueRailTask };

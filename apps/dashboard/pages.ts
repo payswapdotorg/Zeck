@@ -27,6 +27,11 @@ import { createClineDemoRunExecutor } from "../../compat/cline/runtime/cline-pin
 // pieces (compat/openhands — the worker surface never touches
 // apps/dashboard; this import is the Tech Lead's merge-time act).
 import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/openhands-pinned-driver";
+// Continue pinned-runtime driver, composed from the worker's own proof
+// pieces (compat/continue — the worker surface never touches
+// apps/dashboard; this Lead binding reserves for the Tech Lead — see the
+// PPR-021 demo-entry warning).
+import { createContinueDemoRunExecutor } from "../../compat/continue/runtime/continue-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
@@ -6919,9 +6924,26 @@ export function createDashboardRoutes(
   // pinned-runtime binding, registry resolution, exact pins, credential
   // erasure) remains the harness's own.
   const openHandsDemoRunExecutor = createOpenHandsDemoRunExecutor();
+  // PPR-021 Lead binding (provenance-disclosed; the merge-time act the
+  // Continue demo-entry warning reserves for the Tech Lead): the
+  // certified Continue pinned runtime is registered through the same
+  // merged PPR-018A harness seam — createRuntimeRegistry +
+  // createDemoRunService, composed in
+  // compat/continue/runtime/continue-pinned-driver.ts over the worker's
+  // certified proof environment (the in-process Zeck public API, the
+  // chat-completions-wire Zeck adapter the pinned Continue core points
+  // at, the egress-deny proof environment and the pinned Continue CLI —
+  // composed lazily on the first certified run, never at construction).
+  // The run route hands entry's bound runtime its own executor; anything
+  // uncertified, unbound or foreign still renders the honest refusal —
+  // never a synthetic response. Every authorization gate (derived
+  // status, pinned-runtime binding, registry resolution, exact pins,
+  // credential erasure) remains the harness's own.
+  const continueDemoRunExecutor = createContinueDemoRunExecutor();
   const demoRunExecutors = new Map<string, DemoRunExecutor>([
     ["compat/cline", clineDemoRunExecutor],
     ["compat/openhands", openHandsDemoRunExecutor],
+    ["compat/continue", continueDemoRunExecutor],
   ]);
   // The run-route executor: one object routing each entry to its own
   // bound certified runtime (the handler's authorization gates stay the

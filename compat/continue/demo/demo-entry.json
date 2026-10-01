@@ -1,0 +1,23 @@
+{
+  "demoId": "continue",
+  "evidenceRecordId": "ppr-021-continue-live-proof",
+  "representativeTask": {
+    "title": "Run a representative coding-agent task with pinned Continue through Zeck",
+    "description": "Run the pinned Continue runtime (upstream 5522c6f44ca0ac3528b37244818fbfa39b5af470, continuedev/continue — the IDE/model platform monorepo at its main head) on a representative corpus task (agent-edit-task: a real code edit through the Continue CLI agent loop's Bash/Edit tool path). Continue operates with Zeck as its sole AI execution authority: every model-role call — the CLI agent loop's chat turns, the Subagent tool's child sessions, the edit and fast-apply paths, the tab-autocomplete engine, the codebase indexer's embedding call and the retrieval reranker — becomes a real Zeck execution through the public API; the task result (the implemented function, verified by the corpus check script) and the full Zeck execution trace (lifecycle, route, verification, usage) are exposed."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/continue"
+  },
+  "reproducibility": {
+    "instructions": "From the Zeck repository root: (1) clone and build the pinned Continue verbatim with its own toolchain: git clone https://github.com/continuedev/continue.git /home/z/my-project/continue && cd /home/z/my-project/continue && git checkout 5522c6f44ca0ac3528b37244818fbfa39b5af470 && (cd packages/config-types && bun install && bun run build) && (cd packages/fetch && bun install && bun run build) && (cd packages/llm-info && bun install && bun run build) && (cd packages/terminal-security && bun install && bun run build) && (cd packages/config-yaml && bun install && bun run build) && (cd packages/openai-adapters && bun install && bun run build) && (cd core && bun add -d @types/minimatch@latest && bun install && bun run build) && (cd extensions/cli && bun install); (2) run the battery: bun run compat/continue/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter (all four Continue wire surfaces) on a loopback port, runs the pinned Continue runtime over the 7-task role corpus under the credential-scrubbed allowlist environment, the default-deny egress proxy + fetch-level preload, and the role-model config.yaml, and writes deploy/evidence/ppr-021.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config). The website's certified demo run executes the same pinned composition through the PPR-018A harness (the Continue pinned-runtime driver registered at the deployment seam — compat/continue/runtime/continue-pinned-driver.ts).",
+    "pinnedUpstreamRevision": "5522c6f44ca0ac3528b37244818fbfa39b5af470",
+    "integrationRevision": "241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d"
+  },
+  "warnings": [
+    "PPR-021 Lead binding (provenance-disclosed): this entry is BOUND at merge time by the Tech Lead — the runBinding names the registry id of the Continue pinned-runtime driver (compat/continue/runtime/continue-pinned-driver.ts) registered through the merged PPR-018A harness (createRuntimeRegistry + createDemoRunService at the Demo Mirror run route). The worker shipped this entry as data only and never activated their own demo; the binding is the Lead's merge-time act.",
+    "The demo runs only when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the harness re-derives the status from the bound record on every run — the entry can never assert one) and the registered driver's pins exactly match the record's pins. The proof-time record honestly derives PARTIAL: the embed-role edge is delegated end-to-end but its delegated executions land FAILED on the authorized supply's missing embeddings surface (an operator boundary, owner Lead) — see the record's limitations and notRunCauses.",
+    "The proof's model supply is the sandbox's authorized GLM endpoint — not an external commercial provider (disclosed in the record's limitations). The rerank edge's Zeck-side execution is realized as disclosed LLM-based relevance scoring (no dedicated cross-encoder exists on the supply).",
+    "The declared corpus drives Continue's own headless surfaces (the Continue CLI agent loop + the core role APIs); the IDE GUI orchestration layer is disclosed as not headless-runnable (see the record's limitations)."
+  ]
+}
