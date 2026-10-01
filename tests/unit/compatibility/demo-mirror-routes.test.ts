@@ -253,7 +253,17 @@ describe("the demo surface on the live server", () => {
     // through Zeck; the embeddings edge is delegated but the sandbox's
     // authorized supply exposes no embeddings surface — the disclosed
     // environmental boundary, owner Lead).
+    // PPR-022: the Hermes-Agent demo joins the index with its derived
+    // AI_EXECUTION_COMPLETE status (its live-bound record carries the
+    // top-level discoveredInventory the admission evaluation reconciles
+    // against — the identical PPR-020/PPR-021 delivery shape — and every
+    // declared edge of its seven-edge multi-surface graph resolves through
+    // Zeck: the worker's proof-time status; the finalCertification stays
+    // PENDING the Tech-Lead's merge-time binding, and the pinned-runtime
+    // run executor binding in apps/dashboard is the Lead's surface, never
+    // the worker's).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "PARTIAL",

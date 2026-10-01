@@ -1,0 +1,1952 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-022",
+  "title": "Hermes-Agent Zeck-complete application proof (compat/hermes-agent)",
+  "recordedBy": "the one PPR-022 implementation worker (this session)",
+  "date": "2026-10-01T23:08:05.939Z",
+  "environment": "sandboxed worker pod; anonymous public clone of https://github.com/NousResearch/hermes-agent (pinned 77e2992020eafded09e0c344e687ae53e52e6eab, installed editable into a dedicated Python 3.14.7 venv at /home/z/my-project/.venv-hermes); Zeck integration branch work/PPR-022-hermes-agent-proof based on governed base 241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d; model supply = the sandbox's authorized GLM endpoint (/etc/.z-ai-config, platform-side BYOK material, never present in the Hermes runtime)",
+  "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment cannot produce is recorded as NOT RUN with its owner. No fixture, mock or simulated provider path is counted as an external PASS.",
+  "upstreamProvenance": {
+    "applicationRepository": "https://github.com/NousResearch/hermes-agent",
+    "applicationRevision": "77e2992020eafded09e0c344e687ae53e52e6eab",
+    "applicationVersion": "Hermes Agent vgit.77e2992 (2026.9.24) · upstream 77e29920",
+    "runtime": "editable install from the exact checkout into /home/z/my-project/.venv-hermes (Python 3.14.7)"
+  },
+  "evidenceRecord": {
+    "recordId": "ppr-022-hermes-live-proof",
+    "recordBasis": "live-proof",
+    "pinnedApplication": {
+      "identity": {
+        "name": "Hermes-Agent",
+        "repository": "https://github.com/NousResearch/hermes-agent",
+        "applicationId": "00000000-0000-7000-8000-00000000b001"
+      },
+      "pin": {
+        "upstreamRevision": "77e2992020eafded09e0c344e687ae53e52e6eab",
+        "integrationRevision": "241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d"
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "edgeId": "hermes.agent-loop.main",
+          "component": "run_agent.AIAgent conversation loop (run_agent.py) → providers chat_completions api_mode → openai SDK client → POST {base_url}/chat/completions (model.provider=custom resolves the certified runtime's one endpoint)",
+          "surface": "text-generation",
+          "transport": "OpenAI-compatible chat completions (native tool calls, streaming SSE preferred by the runtime, response_format/reasoning_effort axes tolerated)",
+          "externalExecution": "the configured provider's chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions, openrouter.ai/api/v1/chat/completions)",
+          "materiality": "the primary agent-loop model call: every tool decision (terminal execution, file operations, todo tracking, finish) in the one-shot corpus runs is produced through this seam — routing only a 'chat model' and leaving this seam direct would leave the application's whole agentic surface provider-owned"
+        },
+        {
+          "edgeId": "hermes.auxiliary.title-generation",
+          "component": "hermes_state_titles auto-title upgrade (aux task title_generation) → agent/auxiliary_client.call_llm → the resolved auxiliary chain's OpenAI-compatible client → POST {base}/chat/completions",
+          "surface": "text-generation",
+          "transport": "OpenAI-compatible chat completions (fixed system prompt 'You name chat sessions.' + session_title json_schema response_format; a separately-configurable auxiliary provider/model pair)",
+          "externalExecution": "the auxiliary chain's configured provider endpoint (undelegated: by default Gemini Flash via OpenRouter or Nous Portal — exactly the fragmented auxiliary path the target matrix flags)",
+          "materiality": "the automatic session-title model call is an AUXILIARY client outside the main loop (its own provider/model resolution through the auto chain) — leaving any auxiliary chain rung direct is exactly the 'main model only' incompleteness ACR-006 forbids"
+        },
+        {
+          "edgeId": "hermes.auxiliary.compression",
+          "component": "agent/context_compressor.py _attempt_summary → _call_summary_llm → aux task compression (agent/auxiliary_client.call_llm) → POST {base}/chat/completions",
+          "surface": "text-generation",
+          "transport": "OpenAI-compatible chat completions (the fixed 'You are a summarization agent creating a context checkpoint.' prompt; aux task compression's own provider/model/timeout config)",
+          "externalExecution": "the auxiliary chain's configured provider endpoint (undelegated)",
+          "materiality": "context compression summarizes conversation history through the auxiliary client (a distinct, separately-fallback-capable model path) — an auxiliary summarizer left direct would silently bypass a main-model-only delegation"
+        },
+        {
+          "edgeId": "hermes.auxiliary.vision-analyze",
+          "component": "tools/vision_tools.py vision_analyze_tool (legacy path — the custom provider profile declares no native vision) → _media_messages(prompt, image_url, data URL) → aux task vision (agent/auxiliary_client) → POST {base}/chat/completions with image content parts",
+          "surface": "vision-image-understanding",
+          "transport": "OpenAI-compatible chat completions with multimodal content parts (the aux vision model's own provider/model resolution)",
+          "externalExecution": "the auxiliary vision chain's configured vision-capable provider endpoint (undelegated)",
+          "materiality": "the vision_analyze tool's image understanding rides a SEPARATE auxiliary vision model client (not the main loop) whenever the main provider does not declare native vision — a text-only delegation would leave the vision edge a direct-provider bypass"
+        },
+        {
+          "edgeId": "hermes.tool.tts-openai",
+          "component": "tools/tts_tool.py text_to_speech → tts provider selection 'openai' → tools/tts_tool_openai.py _generate_openai_tts → openai SDK audio.speech.create → POST {base}/audio/speech",
+          "surface": "speech-generation",
+          "transport": "OpenAI-compatible speech API (model/voice/input/speed/response_format; tts.openai.{api_key,base_url} — the shared audio-client resolution that also serves STT)",
+          "externalExecution": "the selected TTS provider's speech endpoint (undelegated: e.g. api.openai.com/v1/audio/speech; the unselected defaults are Edge TTS's Microsoft endpoint, ElevenLabs, xAI, MiniMax, Mistral, Gemini — each a direct external AI service)",
+          "materiality": "the text_to_speech tool is a specialized MEDIA path that constructs its own provider clients — a bypass until delegated (the work order's rule); the OpenAI-compatible backend is the one the certified configuration routes through the adapter"
+        },
+        {
+          "edgeId": "hermes.tool.stt-openai",
+          "component": "tools/transcription_tools.py transcribe_audio → stt provider selection 'openai' → tools/transcription_cloud.py _transcribe_openai → openai SDK audio.transcriptions.create (multipart) → POST {base}/audio/transcriptions",
+          "surface": "speech-recognition",
+          "transport": "OpenAI-compatible transcription API (multipart file + model; the same shared tts.openai.{api_key,base_url} audio-client resolution)",
+          "externalExecution": "the selected STT provider's transcription endpoint (undelegated: e.g. api.openai.com/v1/audio/transcriptions; unselected defaults are local faster-whisper, Groq, xAI, ElevenLabs, Mistral)",
+          "materiality": "the voice-memo transcription surface (the exact function the gateway dispatches inbound voice notes through) is a specialized MEDIA path with its own provider clients — a bypass until delegated"
+        },
+        {
+          "edgeId": "hermes.tool.image-generate-openai",
+          "component": "tools/image_generation_tool.py image_generate → image_gen provider selection 'openai' → plugins/image_gen/openai generate → openai SDK images.generate → POST {base}/images/generations",
+          "surface": "image-generation",
+          "transport": "OpenAI-compatible images API (model/prompt/size/n; image_gen.openai.{base_url,key_env} — the app's own image-generation picker surface)",
+          "externalExecution": "the selected image-gen provider's endpoint (undelegated: FAL.ai's queue API via fal-client with FAL_KEY, the Nous managed gateways, Krea, Meta AI, xAI; the OpenAI-compatible plugin is the custom-endpoint surface)",
+          "materiality": "the image_generate tool is a specialized MEDIA path whose default backends are direct external AI services (fal.ai et al.) — a bypass until delegated through the adapter"
+        }
+      ]
+    },
+    "dispositions": [
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000009",
+          "00000000-0000-7000-8000-000000000027",
+          "00000000-0000-7000-8000-000000000040",
+          "00000000-0000-7000-8000-000000000053",
+          "00000000-0000-7000-8000-000000000066",
+          "00000000-0000-7000-8000-000000000105",
+          "00000000-0000-7000-8000-000000000118",
+          "00000000-0000-7000-8000-000000000139",
+          "00000000-0000-7000-8000-000000000157",
+          "00000000-0000-7000-8000-000000000170",
+          "00000000-0000-7000-8000-000000000183",
+          "00000000-0000-7000-8000-000000000196",
+          "00000000-0000-7000-8000-000000000209",
+          "00000000-0000-7000-8000-000000000235",
+          "00000000-0000-7000-8000-000000000248",
+          "00000000-0000-7000-8000-000000000274",
+          "00000000-0000-7000-8000-000000000287",
+          "00000000-0000-7000-8000-000000000300",
+          "00000000-0000-7000-8000-000000000313",
+          "00000000-0000-7000-8000-000000000326",
+          "00000000-0000-7000-8000-000000000365"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000001",
+          "00000000-0000-7000-8000-000000000074",
+          "00000000-0000-7000-8000-000000000126",
+          "00000000-0000-7000-8000-000000000334"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.auxiliary.compression",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000222",
+          "00000000-0000-7000-8000-000000000261"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.auxiliary.vision-analyze",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000087"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.tool.tts-openai",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000347"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.tool.stt-openai",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000378"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "hermes.tool.image-generate-openai",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000027"],
+        "evidenceBasis": "live"
+      }
+    ],
+    "egressObservation": {
+      "mode": "deny",
+      "status": "provably-blocked",
+      "violations": [
+        {
+          "host": "api.openai.com",
+          "url": "https://api.openai.com/",
+          "rule": "direct OpenAI provider endpoint (AI-provider egress class — chat, audio, images)",
+          "at": "2026-10-01T19:40:57.881Z",
+          "blocked": true
+        }
+      ]
+    },
+    "providerCredentials": [
+      {
+        "envVarName": "OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ANTHROPIC_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OPENROUTER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GEMINI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GOOGLE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GROQ_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MISTRAL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPSEEK_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "TOGETHER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "COHERE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_COPILOT_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "HF_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "REPLICATE_API_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "NOUS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GLM_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "KIMI_CODING_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_CN_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "NVIDIA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XIAOMI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ARCEEAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OLLAMA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPINFRA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "KILOCODE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AI_GATEWAY_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "LM_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "FAL_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "EXA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "FIRECRAWL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ELEVENLABS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "VOICE_TOOLS_OPENAI_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MANAGED_TOOL_GATEWAY_TOKEN",
+        "present": false
+      }
+    ],
+    "runtimeEvidence": {
+      "corpusDeclared": true,
+      "corpusUsability": "verified",
+      "observations": [
+        "Zeck arm: 6/6 declared corpus tasks resolved by the pinned unmodified Hermes-Agent runtime with Zeck as its sole AI execution authority (implement-edit:resolved, vision-qa:resolved, context-compaction:resolved, speak-text:resolved, transcribe-memo:resolved, generate-image:resolved).",
+        "Every corpus edge execution's terminal state and verification facts are recorded in zeckTraces (read back through the public SDK wire reads); the rail-reported usage per dispatch is recorded in the battery section.",
+        "Upstream provenance: the work-order-named target Hermes-Agent is https://github.com/NousResearch/hermes-agent by Nous Research; the pinned upstream revision 77e2992020eafded09e0c344e687ae53e52e6eab (origin/main at proof-time clone; the runtime's own version report: \"Hermes Agent vgit.77e2992 (2026.9.24) · upstream 77e29920\") is installed editable from the exact checkout into a dedicated Python 3.14.7 venv (the version its exact-pinned dependency closure targets).",
+        "Upstream configuration disclosures (the app's own axes, never forks): the corpus pins model.provider=custom at the adapter; every auxiliary task (title_generation, compression, vision, web_extract, session_search, background_review) is pinned provider=main so no OpenRouter/Nous/Anthropic auxiliary rung can fire; tts/stt/image_gen are selected onto their OpenAI-compatible backends pointed at the adapter (the app's own picker surfaces); agent.max_turns, model.context_length and compression.threshold are set per task — all documented config.yaml keys of the pinned revision.",
+        "Direct same-supply arm (no Zeck mediation): 2/4 direct-reachable tasks resolved; unresolved direct tasks and their recorded causes — speak-text (the task's own process output was not retained by the recorder at battery-time); transcribe-memo (the task's own process output was not retained by the recorder at battery-time)."
+      ]
+    },
+    "comparison": [
+      {
+        "baseline": "same-supply-direct-arm",
+        "basis": "measured",
+        "statement": "Same-supply direct (non-Zeck) arm — the same pinned Hermes-Agent runtime calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key through the app's own environment axes (OPENAI_API_KEY et al.) and its model/tts/stt config keys, the session headers through its model.default_headers axis — by definition of a direct baseline): 2/4 direct-reachable tasks resolved (the vision and image-generation edges are outside this arm: the supply's plain openai/ chat transport does not route image parts to its vision endpoint, and its images endpoint speaks a different wire — live-probed; the Zeck rail routes both surfaces explicitly) vs the Zeck arm's 6/6; mean 25.3s per resolved direct outcome vs 20.9s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed (present — the direct-provider call the Zeck arm provably does not make); supply-side rate-limiting observed in the direct arm's captured output (the arm runs without Zeck's mediation-side pacing and dispatch governance; each media-surface task was attempted ONCE at the battery level and never re-run — disclosed; the identical surfaces resolved through the Zeck arm); unresolved direct outcomes: speak-text (the task's own process output was not retained by the recorder at battery-time); transcribe-memo (the task's own process output was not retained by the recorder at battery-time). Token usage per arm recorded in the battery section."
+      },
+      {
+        "baseline": "strong-optimized-external",
+        "basis": "not-measured",
+        "statement": "Strong optimized non-Zeck baseline (external commercial providers via OpenRouter or first-party endpoints) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+      },
+      {
+        "baseline": "cost-per-resolved-outcome",
+        "basis": "not-measured",
+        "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 27642 in / 547 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+      }
+    ],
+    "zeckTraces": [
+      {
+        "edgeId": "(catalog-probe)",
+        "executionId": "",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": false,
+        "status": null,
+        "terminal": false,
+        "eventCount": 0,
+        "verificationCount": 0,
+        "passingVerificationCount": 0,
+        "correlated": false,
+        "route": null,
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "executionId": "00000000-0000-7000-8000-000000000001",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000009",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000027",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000040",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000053",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "(catalog-probe)",
+        "executionId": "",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": false,
+        "status": null,
+        "terminal": false,
+        "eventCount": 0,
+        "verificationCount": 0,
+        "passingVerificationCount": 0,
+        "correlated": false,
+        "route": null,
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000066",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "executionId": "00000000-0000-7000-8000-000000000074",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.vision-analyze",
+        "executionId": "00000000-0000-7000-8000-000000000087",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4.5v",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000105",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "(catalog-probe)",
+        "executionId": "",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": false,
+        "status": null,
+        "terminal": false,
+        "eventCount": 0,
+        "verificationCount": 0,
+        "passingVerificationCount": 0,
+        "correlated": false,
+        "route": null,
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000118",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "executionId": "00000000-0000-7000-8000-000000000126",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000139",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000157",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000170",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000183",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000196",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000209",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.compression",
+        "executionId": "00000000-0000-7000-8000-000000000222",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000235",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000248",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.compression",
+        "executionId": "00000000-0000-7000-8000-000000000261",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000274",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000287",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000300",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000313",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "(catalog-probe)",
+        "executionId": "",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": false,
+        "status": null,
+        "terminal": false,
+        "eventCount": 0,
+        "verificationCount": 0,
+        "passingVerificationCount": 0,
+        "correlated": false,
+        "route": null,
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000326",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "executionId": "00000000-0000-7000-8000-000000000334",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.tool.tts-openai",
+        "executionId": "00000000-0000-7000-8000-000000000347",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-tts",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000365",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.tool.stt-openai",
+        "executionId": "00000000-0000-7000-8000-000000000378",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-asr",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "(catalog-probe)",
+        "executionId": "",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": false,
+        "status": null,
+        "terminal": false,
+        "eventCount": 0,
+        "verificationCount": 0,
+        "passingVerificationCount": 0,
+        "correlated": false,
+        "route": null,
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "executionId": "00000000-0000-7000-8000-000000000001",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000009",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.tool.image-generate-openai",
+        "executionId": "00000000-0000-7000-8000-000000000027",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-image",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000040",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      }
+    ],
+    "limitations": [
+      {
+        "area": "model supply",
+        "statement": "The model supply for every delegated edge is the sandbox's authorized GLM endpoint (internal-api.z.ai), dispatched platform-side through the real model gateway (custom rail; text + vision + speech + transcription + image surfaces). No external AI provider was reachable or used; external-provider rails are an operator boundary, not evidence about the delegation boundary this proof tests.",
+        "owner": "operator"
+      },
+      {
+        "area": "video-generation surface",
+        "statement": "The pinned runtime's video_generate tool ships with no in-tree provider (plugins only); the OpenAI-compatible video plugin speaks an async create/poll/download protocol whose delegation translation was not built for this proof and the declared corpus does not exercise video — an honest implementation gap recorded WITHOUT weakening completeness; owner: worker (a future work order may delegate it).",
+        "owner": "worker"
+      },
+      {
+        "area": "gateway/platform surfaces",
+        "statement": "The gateway process (Telegram/Discord/Slack/WhatsApp/Signal adapters), the cron daemon, and the interactive TUI are not part of the declared corpus runtime (headless one-shot CLI runs); every AI surface they would dispatch (transcription, titles, agent turns) is the SAME seam set already declared and delegated — the platform adapters themselves are non-AI transport.",
+        "owner": "worker"
+      },
+      {
+        "area": "terminal backend",
+        "statement": "The one-shot corpus runs execute tools in the local shell (the default backend); container/SSH/Modal/Daytona terminal backends are application-owned execution substrates outside the AI delegation boundary (disclosed).",
+        "owner": "operator"
+      }
+    ],
+    "notRunCauses": [
+      {
+        "area": "strong-optimized-external-baseline",
+        "cause": "No external AI-provider credentials exist in this sandbox (OpenRouter/OpenAI/Anthropic first-party endpoints are unreachable); a strong optimized non-Zeck baseline cannot be measured here.",
+        "owner": "Lead"
+      }
+    ],
+    "recordedAt": "2026-10-01T23:08:05.937Z"
+  },
+  "derivedAssessment": {
+    "status": "AI_EXECUTION_COMPLETE",
+    "ruleResults": [
+      {
+        "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+        "satisfied": true,
+        "detail": "All 7 declared edges are delegated through Zeck (or explicitly reclassified non-AI with recorded justification)."
+      },
+      {
+        "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+        "satisfied": true,
+        "detail": "Direct AI-provider egress is provably blocked (deny harness active, every violation blocked) during the proof."
+      },
+      {
+        "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+        "satisfied": true,
+        "detail": "The application remained functionally usable for the declared corpus during the proof."
+      },
+      {
+        "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+        "satisfied": true,
+        "detail": "All 7 delegated edge(s) correlate to Zeck execution records with durable evidence."
+      },
+      {
+        "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+        "satisfied": true,
+        "detail": "Every delegated edge carries live Zeck evidence from a live proof record."
+      }
+    ],
+    "findings": [],
+    "staticFindings": []
+  },
+  "finalCertification": {
+    "status": "PENDING",
+    "owner": "Tech-Lead",
+    "bindingStep": "This record is the worker's proof-time self-assessment through the merged PPR-018A harness pieces (the corpus-runner discipline, the SDK-wire trace correlation, the derived status machine). Final certification and Demo Mirror binding are the Lead's merge-time acts; a worker never activates their own demo."
+  },
+  "battery": {
+    "batterySteps": [
+      "edge inventory (static seam scan of the pinned revision, config-restricted to the declared corpus)",
+      "provider credential removal from the Hermes runtime (allowlist-scrubbed subprocess environment + recorded credential facts + the literal placeholders the openai SDK's shape checks require)",
+      "direct-provider egress block (default-deny proof proxy wrapping every Hermes egress except the loopback Zeck adapter + the positive-control canary)",
+      "representative general-agent corpus (6 tasks — text, vision, compression, TTS, STT, image generation — pinned Hermes runtime over Zeck, verified mechanically)",
+      "Zeck trace correlation (every delegated edge's executions read back through the public SDK wire reads)",
+      "duplicate/retry/failure validation (idempotent replay, the runtime's own retry over fault-injected rails, honest FAILED executions, timeout path unit-pinned)",
+      "direct same-supply baseline (measured) + strong optimized external baseline (NOT RUN, owner: Lead)",
+      "customization test (the app's own configuration surface through the delegated boundary)",
+      "deterministic/reuse measurement (content-addressed idempotency keys → measured replay rate)",
+      "telemetry inspection (per-execution ledger events, route facts, usage, latency)",
+      "no-bypass audit (static reconciliation + runtime egress observation)",
+      "reproducibility (the battery is the reproduction script; the replay probe demonstrates it)"
+    ],
+    "corpus": [
+      {
+        "taskId": "implement-edit",
+        "resolved": true,
+        "checkOutput": "T1 ok (verify.js → GAME-OK)",
+        "exitCode": 0,
+        "durationMs": 14212,
+        "edgeExecutions": [
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.title-generation",
+            "executionId": "00000000-0000-7000-8000-000000000001",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000009",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000027",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000040",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000053",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 24055,
+          "outputTokens": 374,
+          "dispatches": 5,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "Perfect! The implementation is correct and the verification confirms it. The wordScore function has been implemented exactly as documented in the docstring, and the `node verify.js` command prints \"GAME-OK\" as expected.\n"
+      },
+      {
+        "taskId": "vision-qa",
+        "resolved": true,
+        "checkOutput": "T2 ok (final answer names the color)",
+        "exitCode": 0,
+        "durationMs": 9442,
+        "edgeExecutions": [
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000066",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.title-generation",
+            "executionId": "00000000-0000-7000-8000-000000000074",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.vision-analyze",
+            "executionId": "00000000-0000-7000-8000-000000000087",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000105",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 5506,
+          "outputTokens": 126,
+          "dispatches": 4,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "orange\n"
+      },
+      {
+        "taskId": "context-compaction",
+        "resolved": true,
+        "checkOutput": "T3 ok (summary.txt = alpha/bravo/charlie/delta)",
+        "exitCode": 0,
+        "durationMs": 53328,
+        "edgeExecutions": [
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000118",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.title-generation",
+            "executionId": "00000000-0000-7000-8000-000000000126",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000139",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000157",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000170",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000183",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000196",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000209",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.compression",
+            "executionId": "00000000-0000-7000-8000-000000000222",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000235",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000248",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.compression",
+            "executionId": "00000000-0000-7000-8000-000000000261",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000274",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000287",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000300",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000313",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 123557,
+          "outputTokens": 2546,
+          "dispatches": 16,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "lpha\"), b.txt (first word \"bravo\"), c.txt (first word \"charlie\"), d.txt (first word \"delta\"). Each first word was appended as a new line to notes/words.txt. After processing all files, notes/words.txt was re-read from disk and summary.txt was created with exactly the same content:\n\nnotes/words.txt contains:\n```\nalpha\nbravo\ncharlie\ndelta\n```\n\nsummary.txt contains:\n```\nalpha\nbravo\ncharlie\ndelta\n```\n"
+      },
+      {
+        "taskId": "speak-text",
+        "resolved": true,
+        "checkOutput": "T4 ok (/spoken.wav — 208656 bytes, RIFF/WAV)",
+        "exitCode": 0,
+        "durationMs": 9750,
+        "edgeExecutions": [
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000326",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.title-generation",
+            "executionId": "00000000-0000-7000-8000-000000000334",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.tool.tts-openai",
+            "executionId": "00000000-0000-7000-8000-000000000347",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000365",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 6015,
+          "outputTokens": 87,
+          "dispatches": 4,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "The audio file 'spoken.wav' has been created successfully in the current directory.\n"
+      },
+      {
+        "taskId": "transcribe-memo",
+        "resolved": true,
+        "checkOutput": "T5 ok (provider=openai: \"Proof of life, Hermes test one.\")",
+        "exitCode": 0,
+        "durationMs": 3151,
+        "edgeExecutions": [
+          {
+            "edgeId": "hermes.tool.stt-openai",
+            "executionId": "00000000-0000-7000-8000-000000000378",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 94,
+          "outputTokens": 11,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "HERMES_MEDIA:{\"ok\": true, \"error\": null, \"transcript\": \"Proof of life, Hermes test one.\", \"provider\": \"openai\"}\n"
+      },
+      {
+        "taskId": "generate-image",
+        "resolved": true,
+        "checkOutput": "T6 ok (/tmp/ppr-022-battery/corpus/generate-image-home/cache/images/openai_gpt-image-2-medium_20261001_195117_5b4ab4b1.png — 48883 bytes, JPEG)",
+        "exitCode": 0,
+        "durationMs": 35373,
+        "edgeExecutions": [
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.auxiliary.title-generation",
+            "executionId": "00000000-0000-7000-8000-000000000001",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000009",
+            "replayed": false
+          },
+          {
+            "edgeId": "(catalog-probe)",
+            "executionId": "",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.tool.image-generate-openai",
+            "executionId": "00000000-0000-7000-8000-000000000027",
+            "replayed": false
+          },
+          {
+            "edgeId": "hermes.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000040",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 6625,
+          "outputTokens": 137,
+          "dispatches": 4,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "stdoutTail": "The image was successfully generated and saved to `/tmp/ppr-022-battery/corpus/generate-image-home/cache/images/openai_gpt-image-2-medium_20261001_195117_5b4ab4b1.png`.\n"
+      }
+    ],
+    "canaryProbes": {
+      "ok": true,
+      "violation": {
+        "host": "api.openai.com",
+        "url": "https://api.openai.com/",
+        "rule": "direct OpenAI provider endpoint (AI-provider egress class — chat, audio, images)",
+        "at": "2026-10-01T19:40:57.881Z",
+        "blocked": true
+      }
+    },
+    "duplicateProbe": {
+      "firstEdgeExecutions": 5,
+      "secondEdgeExecutions": 5,
+      "secondReplayed": 2
+    },
+    "failureValidation": {
+      "providerUnavailableExecutions": [
+        {
+          "executionId": "",
+          "terminal": "N/A"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000012",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000023",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000034",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000045",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000056",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000067",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000078",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000089",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000100",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000111",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000122",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000133",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000144",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000155",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000166",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000177",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000188",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000199",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000210",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000221",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000232",
+          "terminal": "FAILED"
+        }
+      ],
+      "rateLimitExecutions": [
+        {
+          "executionId": "",
+          "terminal": "N/A"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000010",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000025",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000037",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000049",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000058",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000073",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000085",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000097",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000109",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000121",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000133",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000145",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000157",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000169",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000181",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000193",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000205",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000217",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000229",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000241",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000253",
+          "terminal": "FAILED"
+        }
+      ],
+      "runtimeSurfacedError": false,
+      "timeoutPathUnitPinned": true
+    },
+    "directBaseline": {
+      "ranTasks": ["implement-edit", "context-compaction", "speak-text", "transcribe-memo"],
+      "outcomes": [
+        {
+          "taskId": "implement-edit",
+          "resolved": true,
+          "durationMs": 15447
+        },
+        {
+          "taskId": "context-compaction",
+          "resolved": true,
+          "durationMs": 35053
+        },
+        {
+          "taskId": "speak-text",
+          "resolved": false,
+          "durationMs": 16508
+        },
+        {
+          "taskId": "transcribe-memo",
+          "resolved": false,
+          "durationMs": 2676
+        }
+      ],
+      "providerEgressObserved": true,
+      "rateLimited": true
+    },
+    "customization": {
+      "statement": "The pinned app's own configuration surface remains fully operative through the delegated boundary: per-task toolset selection (-t file,terminal/vision/tts/image_gen — the app's own toolset groups), per-task agent.max_turns, per-task model.context_length + compression.threshold + compression.threshold_tokens (the compaction task runs 65536/0.3 with a 10,000-token trigger cap while the others run the defaults), the auxiliary task provider pinning (auxiliary.<task>.provider=main — the app's auxiliary configuration section), the media tool picker selections (tts.provider/stt.provider/image_gen.provider onto the OpenAI-compatible backends — the app's own `hermes tools` surfaces), and the LLM model id/base_url/streaming axes — all flowed through the same single delegated seam with zero application-code changes.",
+      "evidence": "corpus task configs (harness/corpus-runner.ts writes one HERMES_HOME config.yaml per task) + the per-task adapter logs"
+    },
+    "telemetry": {
+      "executions": 39,
+      "eventsTotal": 340,
+      "eventsPerExecutionMin": 0,
+      "verificationPassTotal": 68,
+      "routeFactsPresent": 34,
+      "usageFactsPresent": 0
+    },
+    "reuse": {
+      "statement": "Content-addressed idempotency keys: the identical replay probe re-issued 5 request(s), of which 2 replayed the durable outcome (content-identical requests are served from the execution ledger, not re-dispatched)."
+    }
+  },
+  "dormantEdgeDisclosures": [
+    {
+      "edgeId": "hermes.tool.web-search",
+      "component": "tools/web_tools.py web_search/web_extract + search_policy.py (provider backends: Exa, Firecrawl, Parallel, DuckDuckGo ddgs — each with its own API-key-gated direct HTTP clients)",
+      "surface": "search-ai-search",
+      "gate": "the declared corpus configures NO web-search credentials (scrubbed allowlist environment) and the proof environment's default-deny egress blocks every search endpoint; the corpus tasks never instruct web use. If it were exercised with credentials, this would be a DIRECT external AI-service path (a bypass) — it is therefore declared dormant under the corpus configuration, never silently ignored"
+    },
+    {
+      "edgeId": "hermes.auxiliary.web-extract",
+      "component": "tools/web_tools_extract.py web page summarization → aux task web_extract (agent/auxiliary_client) → the aux chain",
+      "surface": "text-generation",
+      "gate": "the aux web_extract task rides the SAME delegated auxiliary chain (pinned provider=main) when it fires; under the declared corpus no page extraction occurs (egress-denied, no web instructions) — the chain itself is delegated by configuration"
+    },
+    {
+      "edgeId": "hermes.tool.browser-suite",
+      "component": "tools/browser_*.py (Camofox/CDP/Lightpanda/cloud backends; browser_vision rides the aux vision chain, page-text extraction rides aux web_extract)",
+      "surface": "browser-use-intelligence",
+      "gate": "the browser toolset requires a browser environment this proof sandbox does not provide; the declared corpus enables no browser toolset. The suite's intelligence rides the delegated main/aux seams when used (no separate LLM client of its own beyond those seams) — actuation is application-owned"
+    },
+    {
+      "edgeId": "hermes.tool.computer-use",
+      "component": "tools/computer_use_tool.py (cua-driver desktop control)",
+      "surface": "computer-use-intelligence",
+      "gate": "requires a cua-driver desktop environment; not enabled in the declared corpus (headless one-shot runs). Its action decisions ride the delegated main agent loop — no separate model client"
+    },
+    {
+      "edgeId": "hermes.tool.mcp",
+      "component": "tools/mcp_tool*.py + mcp_serve.py (external MCP servers; server-initiated sampling handled by tools/mcp_tool_sampling.py which translates sampling/createMessage into the agent's own OpenAI-format turn — the delegated main seam)",
+      "surface": "text-generation",
+      "gate": "the declared corpus configures no MCP servers; the MCP sampling handler routes through the SAME delegated chat-completions seam when a server requests sampling (no separate provider client) — disclosed as configuration-gated, with the classification recorded"
+    },
+    {
+      "edgeId": "hermes.tool.video-generation",
+      "component": "tools/video_generation_tool.py video_generate → plugins/video_gen/{fal,openrouter,xai,deepinfra} (each with its own provider clients; the in-tree tool ships NO provider until a plugin is selected)",
+      "surface": "video-generation",
+      "gate": "the declared corpus selects no video-gen plugin (the picker surface `hermes tools` → Video Generation is unset). The sandbox's supply rail does expose a video surface, but the pinned runtime's OpenAI-compatible video plugin (deepinfra) speaks an async create/poll/download protocol whose translation through the delegation boundary was not built for this proof — an honest implementation gap recorded WITHOUT weakening completeness (video is not exercised by the declared corpus); owner: worker (a future work order may delegate it)"
+    },
+    {
+      "edgeId": "hermes.tool.video-analyze",
+      "component": "tools/vision_tools.py video_analyze (aux task video/vision chain)",
+      "surface": "vision-image-understanding",
+      "gate": "the declared corpus carries no video fixture and enables no video toolset; the aux chain it would ride is delegated by configuration"
+    },
+    {
+      "edgeId": "hermes.auxiliary.background-review",
+      "component": "agent/background_review.py post-turn memory/skill self-improvement fork → aux task background_review (its own provider/model pair)",
+      "surface": "text-generation",
+      "gate": "explicitly DISABLED in the certified corpus configuration (auxiliary.background_review.enabled: false) to keep one-shot runs deterministic — an application configuration axis, disclosed; when enabled it rides the same pinned aux chain (provider=main)"
+    },
+    {
+      "edgeId": "hermes.auxiliary.session-search",
+      "component": "tools/session_search_tool.py session_search (FTS5 discovery + anchored scroll over the state DB)",
+      "surface": "deterministic-computation",
+      "gate": "at the pinned revision the session_search tool is FTS5-only discovery/scroll with NO separate LLM summarization call (the auxiliary.session_search config key exists for the chain, but the tool's handler issues no model call — the agent reasons over returned rows through the main loop); classified NON-AI at this revision"
+    },
+    {
+      "edgeId": "hermes.gateway-platforms",
+      "component": "gateway/ inbound processing (Telegram/Discord/Slack/WhatsApp/Signal adapters, voice-memo transcription dispatch, auto-title per platform channel)",
+      "surface": "text-generation",
+      "gate": "the gateway process is not part of the declared corpus runtime (headless one-shot CLI runs); every AI surface it would dispatch (transcription, titles, agent turns) is the SAME seam set already declared and delegated — the platform adapters themselves are non-AI transport"
+    },
+    {
+      "edgeId": "hermes.tts-alternate-providers",
+      "component": "tools/tts_tool_providers.py (Edge TTS's Microsoft endpoint, ElevenLabs, xAI, MiniMax, Mistral, Gemini) + local NeuTTS/Piper/KittenTTS engines",
+      "surface": "speech-generation",
+      "gate": "the certified configuration selects tts.provider=openai (the delegated OpenAI-compatible backend); every alternate cloud provider is credential-gated (none present in the scrubbed runtime) and the local engines are offline synthesis (non-provider). Disclosed as the unselected direct-service paths of the specialized tool"
+    },
+    {
+      "edgeId": "hermes.stt-alternate-providers",
+      "component": "tools/transcription_cloud.py (Groq, xAI, ElevenLabs, Mistral REST backends) + local faster-whisper",
+      "surface": "speech-recognition",
+      "gate": "the certified configuration selects stt.provider=openai (the delegated backend); alternates are credential-gated or local-offline (classified non-AI-service: faster-whisper runs in-process)"
+    },
+    {
+      "edgeId": "hermes.image-gen-alternate-providers",
+      "component": "tools/image_generation_tool.py in-tree FAL.ai path (fal-client + FAL_KEY) + plugins/image_gen/{fal,krea,meta-ai,openai-codex,xai,deepinfra} + the Nous managed gateways",
+      "surface": "image-generation",
+      "gate": "the certified configuration selects image_gen.provider=openai pointed at the adapter; the FAL default is credential-gated (no FAL_KEY in the scrubbed runtime) and the managed Nous gateway is unreachable (egress-denied). Disclosed as the unselected direct paths of the specialized tool"
+    },
+    {
+      "edgeId": "hermes.delegate-task",
+      "component": "tools/delegate_tool.py delegate_task (isolated subagent spawn → a full child hermes run with the same provider configuration)",
+      "surface": "text-generation",
+      "gate": "the declared corpus does not instruct delegation; when used, the child run resolves the SAME delegated custom endpoint (the subagent's model calls ride the declared main seam — no separate client). Disclosed with its classification"
+    },
+    {
+      "edgeId": "hermes.skills-hub",
+      "component": "tools/skills_hub_*.py (ClawhHub/GitHub skill installation — git/HTTP fetches, keyword search)",
+      "surface": "deterministic-computation",
+      "gate": "skill-hub operations are network/git fetches with keyword matching (no model calls at the pinned revision); egress-denied under the proof environment regardless"
+    },
+    {
+      "edgeId": "hermes.cron-scheduler",
+      "component": "cron/ scheduled automations (natural-language schedules dispatched as agent turns)",
+      "surface": "text-generation",
+      "gate": "the cron daemon is not part of the one-shot corpus runtime; a cron-fired turn would ride the same delegated main seam"
+    }
+  ],
+  "nonAiOperations": [
+    {
+      "name": "terminal / process_manage (command execution)",
+      "note": "local shell command execution and process management; no AI provider call (the decision to run a command comes from the delegated agent-loop edge)"
+    },
+    {
+      "name": "read_file / write_file / patch / search_files (filesystem)",
+      "note": "local file operations, ripgrep-backed search, patch application; document-to-text extraction is local parsing (no model call)"
+    },
+    {
+      "name": "todo_list / memory / kanban (state tools)",
+      "note": "local task-state and memory bookkeeping over the state DB; the memory PROVIDER is pluggable but the built-in is local storage — no AI provider call"
+    },
+    {
+      "name": "session_search (FTS5 discovery + anchored scroll)",
+      "note": "SQLite FTS5/trigram/LIKE search over past sessions — purely deterministic at the pinned revision (no embeddings, no reranker, no LLM summarization call in the tool handler)"
+    },
+    {
+      "name": "skills system (trigger matching, skill_view/skill_manage)",
+      "note": "deterministic skill triggering and markdown skill documents; the skill hub's installation is git/HTTP fetching (network, not AI)"
+    },
+    {
+      "name": "execute_code (code execution RPC)",
+      "note": "local/remote Python kernel execution; the code CONTENT is produced by the delegated main seam, the execution itself is deterministic"
+    },
+    {
+      "name": "state DB / session lifecycle / WAL / portability",
+      "note": "hermes_state*.py persistence machinery — local SQLite state, no AI provider calls"
+    },
+    {
+      "name": "local TTS engines (NeuTTS/Piper/KittenTTS) and local STT (faster-whisper)",
+      "note": "offline in-process synthesis/recognition when selected — no external AI service; the certified corpus selects the delegated OpenAI-compatible backends instead (disclosed)"
+    }
+  ],
+  "discoveredInventory": {
+    "source": "static seam scan of pinned Hermes-Agent 77e2992020eafded09e0c344e687ae53e52e6eab (openai-SDK client-construction + aux-task grep across agent/, tools/, plugins/, hermes_cli/; one-shot CLI reachability restricted to the declared corpus configuration)",
+    "edges": [
+      {
+        "edgeId": "hermes.agent-loop.main",
+        "component": "hermes_cli/runtime_provider.py resolve_runtime_provider (rung 4 local-endpoint bypass for the loopback custom base_url) → run_agent.AIAgent turn loop → openai SDK chat.completions (streaming preferred)",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (native tool calls)",
+        "externalExecution": "the configured provider's chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions)",
+        "materiality": "discovered primary seam: every one-shot turn, every tool decision, every finish"
+      },
+      {
+        "edgeId": "hermes.auxiliary.title-generation",
+        "component": "hermes_state_titles.py title upgrade → agent/auxiliary_client.py call_llm(task='title_generation') → the aux chain (auto: main → OpenRouter → Nous Portal → custom) → openai SDK chat.completions",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (session_title json_schema)",
+        "externalExecution": "the aux chain's provider endpoint (undelegated; default Gemini Flash via OpenRouter/Nous)",
+        "materiality": "discovered auxiliary seam: automatic after the first exchange of every session"
+      },
+      {
+        "edgeId": "hermes.auxiliary.compression",
+        "component": "agent/context_compressor.py _attempt_summary → _call_summary_llm → call_llm(task='compression') → the aux chain → openai SDK chat.completions",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (the fixed checkpoint-summary prompt)",
+        "externalExecution": "the aux chain's provider endpoint (undelegated)",
+        "materiality": "discovered auxiliary seam: fires when prompt_tokens cross the compression threshold % of context_length"
+      },
+      {
+        "edgeId": "hermes.auxiliary.vision-analyze",
+        "component": "tools/vision_tools.py _handle_vision_analyze (legacy path; _should_use_native_vision_fast_path() is False for the custom provider profile) → vision_analyze_tool → async_call_llm(task='vision') with _media_messages image parts → openai SDK chat.completions",
+        "surface": "vision-image-understanding",
+        "transport": "OpenAI-compatible chat completions with multimodal content parts",
+        "externalExecution": "the aux vision chain's vision-capable provider endpoint (undelegated)",
+        "materiality": "discovered auxiliary vision seam: the vision_analyze tool's own model client outside the main loop"
+      },
+      {
+        "edgeId": "hermes.tool.tts-openai",
+        "component": "tools/tts_tool_openai.py _resolve_openai_audio_client_config (tts.openai.{api_key,base_url}) → _generate_openai_tts → openai SDK audio.speech.create → POST {base}/audio/speech",
+        "surface": "speech-generation",
+        "transport": "OpenAI-compatible speech API",
+        "externalExecution": "the selected TTS provider's speech endpoint (undelegated)",
+        "materiality": "discovered specialized media seam: the text_to_speech tool's own provider client"
+      },
+      {
+        "edgeId": "hermes.tool.stt-openai",
+        "component": "tools/transcription_cloud.py _transcribe_openai (api_key=None → _resolve_openai_audio_client_config — the SAME tts.openai resolution) → openai SDK audio.transcriptions.create → POST {base}/audio/transcriptions",
+        "surface": "speech-recognition",
+        "transport": "OpenAI-compatible transcription API (multipart)",
+        "externalExecution": "the selected STT provider's transcription endpoint (undelegated)",
+        "materiality": "discovered specialized media seam: the gateway voice-memo transcription surface's own provider client"
+      },
+      {
+        "edgeId": "hermes.tool.image-generate-openai",
+        "component": "plugins/image_gen/openai/__init__.py _resolve_endpoint (image_gen.openai.{base_url,key_env}) → _build_client → client.images.generate(model, prompt, size, n) → POST {base}/images/generations",
+        "surface": "image-generation",
+        "transport": "OpenAI-compatible images API",
+        "externalExecution": "the selected image-gen provider's endpoint (undelegated)",
+        "materiality": "discovered specialized media seam: the image_generate tool's own provider client (the in-tree default is FAL.ai direct with FAL_KEY)"
+      }
+    ]
+  },
+  "staticFindings": [],
+  "durations": {
+    "assemblyMs": 3
+  }
+}
