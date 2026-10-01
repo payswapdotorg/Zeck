@@ -1,54 +1,54 @@
 {
-  "schemaVersion": 1,
-  "program": "zeck-post-release-public-productization",
-  "status": "ppr-020-delivered",
-  "currentBase": "5c189a898ee932df1df6337c63819c14be4923d1",
-  "delivered": [
-    "PPR-001",
-    "PPR-002",
-    "PPR-003",
-    "PPR-004",
-    "PPR-005",
-    "PPR-006",
-    "PPR-007",
-    "PPR-008",
-    "PPR-009",
-    "PPR-010",
-    "PPR-011",
-    "PPR-012",
-    "PPR-013",
-    "PPR-014",
-    "PPR-015",
-    "PPR-017",
-    "PPR-018",
-    "PPR-018A",
-    "PPR-019",
-    "PPR-020"
-  ],
-  "eligible": [
-    "PPR-021",
-    "PPR-022"
-  ],
-  "inFlight": [],
-  "blocked": [
-    "PPR-016"
-  ],
-  "maxConcurrentWorkers": 3,
-  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
-  "context": "PPR-020 (OpenHands) delivered (PR #162, merge head 5c189a8). The Application Compatibility Proof Program now has four bound proofs: Aider (PPR-018), Cline (PPR-019), and OpenHands (PPR-020) on the PPR-018A harness foundation (018A). PPR-021 (Continue) and PPR-022 (Hermes-Agent) are eligible — both depend only on PPR-020; PPR-016 remains operator-bound. Pre-authorized Tech Lead succession continues.",
-  "authorizedQueue": [
-    "PPR-017",
-    "PPR-018A",
-    "PPR-018",
-    "PPR-019",
-    "PPR-020",
-    "PPR-021",
-    "PPR-022",
-    "PPR-023",
-    "PPR-024",
-    "PPR-025",
-    "PPR-026",
-    "PPR-027"
-  ],
-  "advancementRule": "The Architect has pre-authorized the application-compatibility sequence PPR-017, PPR-018A, PPR-018, PPR-019 and PPR-020..PPR-027. The Tech Lead may activate dependency-complete successors without routine Architect re-authorization after exact-merge/evidence/governance finalization. Architect authority remains required for architecture changes, new authorities, frozen-invariant changes, breaking public-contract changes, and merge acceptance."
+ "schemaVersion": 1,
+ "program": "zeck-post-release-public-productization",
+ "status": "ppr-021-delivered",
+ "currentBase": "c6f8957fc5d05441ae09c323bc75ea60b0bd27bc",
+ "delivered": [
+  "PPR-001",
+  "PPR-002",
+  "PPR-003",
+  "PPR-004",
+  "PPR-005",
+  "PPR-006",
+  "PPR-007",
+  "PPR-008",
+  "PPR-009",
+  "PPR-010",
+  "PPR-011",
+  "PPR-012",
+  "PPR-013",
+  "PPR-014",
+  "PPR-015",
+  "PPR-017",
+  "PPR-018",
+  "PPR-018A",
+  "PPR-019",
+  "PPR-020",
+  "PPR-021"
+ ],
+ "eligible": [
+  "PPR-022"
+ ],
+ "inFlight": [],
+ "blocked": [
+  "PPR-016"
+ ],
+ "maxConcurrentWorkers": 3,
+ "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
+ "context": "PPR-021 (Continue) delivered (PR #163, merge head c6f8957). The Application Compatibility Proof Program now has five bound proofs: Aider (018), Cline (019), OpenHands (020) and Continue (021) on the PPR-018A harness foundation. PPR-021 derived PARTIAL with the mediation value-add proven (four surfaces resolve only through Zeck); the subagent child-session behavioral gap and the embeddings supply boundary are owner-Lead dispositions. PPR-022 (Hermes-Agent) remains eligible \u2014 its worker session is live with the battery checkpointed. PPR-016 remains operator-bound. Pre-authorized Tech Lead succession continues.",
+ "authorizedQueue": [
+  "PPR-017",
+  "PPR-018A",
+  "PPR-018",
+  "PPR-019",
+  "PPR-020",
+  "PPR-021",
+  "PPR-022",
+  "PPR-023",
+  "PPR-024",
+  "PPR-025",
+  "PPR-026",
+  "PPR-027"
+ ],
+ "advancementRule": "The Architect has pre-authorized the application-compatibility sequence PPR-017, PPR-018A, PPR-018, PPR-019 and PPR-020..PPR-027. The Tech Lead may activate dependency-complete successors without routine Architect re-authorization after exact-merge/evidence/governance finalization. Architect authority remains required for architecture changes, new authorities, frozen-invariant changes, breaking public-contract changes, and merge acceptance."
 }
