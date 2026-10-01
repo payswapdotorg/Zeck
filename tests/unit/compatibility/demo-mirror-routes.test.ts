@@ -248,9 +248,15 @@ describe("the demo surface on the live server", () => {
     // certified Cline AND OpenHands demos beside the two fixtures — all
     // four derived from their bound records through the same admission
     // evaluation.
+    // PPR-021: the Continue demo joins the index with its honest PARTIAL
+    // derived status (its live-bound record: six of seven edges resolve
+    // through Zeck; the embeddings edge is delegated but the sandbox's
+    // authorized supply exposes no embeddings surface — the disclosed
+    // environmental boundary, owner Lead).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
+      "PARTIAL",
       "PARTIAL",
       "UNASSESSED",
     ]);
