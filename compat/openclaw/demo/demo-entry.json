@@ -1,0 +1,18 @@
+{
+  "demoId": "openclaw",
+  "evidenceRecordId": "ppr-023-openclaw-live-proof",
+  "representativeTask": {
+    "title": "OpenClaw agent: implement and verify a code edit",
+    "description": "The pinned OpenClaw runtime (openclaw/openclaw, revision f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3, \"OpenClaw 2026.9.7 (f6883b3)\") solves a real coding task headless — implementing a documented function through its file and terminal tools, running the verification itself — with Zeck as its sole AI execution authority: every model turn rides the delegated agent-loop seam through the multi-surface delegation boundary, and the same boundary carries the vision, speech-recognition, speech-generation and image-generation surfaces the corpus proves."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/openclaw"
+  },
+  "reproducibility": {
+    "instructions": "Prepare the pinned checkout: git clone https://github.com/openclaw/openclaw.git && git -C openclaw checkout f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3 at /home/z/openclaw-upstream, then pnpm install --ignore-scripts (pnpm@12.5.1). Build the compiled runtime: bun run compat/openclaw/harness/build-compiled-runtime.ts (transforms every .ts under src/ and packages/<p>/src/ to in-place .js siblings with the checkout's own esbuild, generates per-package src/package.json exports from the app's own tsconfig paths, repoints the @openclaw workspace links at the packages' src/, and links dist to src; writes compiled-runtime.manifest.json; the builder's verify mode proves byte-identity). Then run the battery: bun run compat/openclaw/harness/run-battery.ts (resumable; every step checkpoints to /tmp/ppr-023-battery/battery-state.json). The battery requires the sandbox's authorized GLM supply config (/etc/.z-ai-config) — platform-side BYOK material, never present in the OpenClaw runtime — and the sandbox's Playwright Chromium for the browser task (browser.executablePath, the app's own config axis).",
+    "pinnedUpstreamRevision": "f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3",
+    "integrationRevision": "df6304521e74ea848f1a3691f34c381b42d45e2b"
+  },
+  "warnings": []
+}
