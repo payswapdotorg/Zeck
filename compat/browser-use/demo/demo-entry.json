@@ -1,0 +1,18 @@
+{
+  "demoId": "browseruse",
+  "evidenceRecordId": "ppr-024-browser-use-live-proof",
+  "representativeTask": {
+    "title": "Browser Use agent: navigate, act and report through both delegated planes",
+    "description": "The pinned Browser Use runtime (browser-use/browser-use, revision 7be96ed8bafa8dfe1eef228b59cf5c884b8b2431, package 0.13.10) drives the real Chromium headless through its full agent loop — navigate to the loopback fixture page, click the reveal button, read the revealed token, and answer DONE with the token — with Zeck as its sole execution authority on BOTH planes: every model turn rides the delegated chat-completions seam through the ACR-007 application-delegation boundary (stock ChatOpenAI over the adapter, zero upstream code changes), and every browser actuation (session open/close, state extraction, action execution) rides the neutral tool/substrate execution contract executed by the Zeck-side substrate driver driving the same pinned runtime's real BrowserSession over CDP — results read back from each execution's public event ledger."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/browser-use"
+  },
+  "reproducibility": {
+    "instructions": "Prepare the pinned checkout: git clone https://github.com/browser-use/browser-use.git /home/z/browser-use-upstream && git -C /home/z/browser-use-upstream checkout 7be96ed8bafa8dfe1eef228b59cf5c884b8b2431 (origin/main HEAD at proof-time clone; package version 0.13.10). Create the pinned runtime venv: uv venv /home/z/ppr-024-venv (Python 3.12) then uv pip install --python /home/z/ppr-024-venv/bin/python -e /home/z/browser-use-upstream (the exact editable checkout — the harness resolves /home/z/ppr-024-venv/bin/python as the application runtime). The substrate plane needs the sandbox's Playwright Chromium at /home/z/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome (Browser Use 0.13.10 drives Chromium via cdp-use native CDP; no Playwright dependency). Then run the battery: bun run compat/browser-use/harness/run-battery.ts from the Zeck checkout (resumable; every step checkpoints to /tmp/ppr-024-battery/battery-state.json; a completed run terminates cleanly). The battery requires the sandbox's authorized GLM supply config (/etc/.z-ai-config) — platform-side BYOK material, read at composition time, never present in the Browser Use runtime, the adapter process env, the repository or any evidence artifact — and composes the full certified plane in-process: the Zeck world + executions authority, the GLM supply rail (text + vision endpoints, json_schema passthrough, disclosed fence normalization), the substrate driver, the application-side adapter and the scrubbed egress-deny environment (the positive control: direct provider egress must be BLOCKED).",
+    "pinnedUpstreamRevision": "7be96ed8bafa8dfe1eef228b59cf5c884b8b2431",
+    "integrationRevision": "d51b5a59d53ef7824074acc4fce6726f065fcec5"
+  },
+  "warnings": []
+}

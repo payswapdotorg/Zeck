@@ -272,7 +272,14 @@ describe("the demo surface on the live server", () => {
     // PENDING the Tech-Lead's merge-time binding, and the pinned-runtime
     // run executor binding in apps/dashboard is the Lead's surface, never
     // the worker's).
+    // PPR-024: the Browser Use demo joins the index the same way — its
+    // live-bound record (deploy/evidence/ppr-024.json) carries the
+    // top-level discoveredInventory and every declared edge of its
+    // two-plane graph (model rail + browser substrate) resolves through
+    // Zeck: the worker's proof-time AI_EXECUTION_COMPLETE; certification
+    // stays the Lead's gate.
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
