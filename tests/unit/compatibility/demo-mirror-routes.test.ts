@@ -262,7 +262,18 @@ describe("the demo surface on the live server", () => {
     // PENDING the Tech-Lead's merge-time binding, and the pinned-runtime
     // run executor binding in apps/dashboard is the Lead's surface, never
     // the worker's).
+    // PPR-023: the OpenClaw demo joins the index with its derived
+    // AI_EXECUTION_COMPLETE status (its live-bound record carries the
+    // top-level discoveredInventory the admission evaluation reconciles
+    // against — the identical PPR-020 through PPR-022 delivery shape —
+    // and every declared edge of its multi-surface graph (model, image
+    // describe, ASR, TTS, image generation, browser) resolves through
+    // Zeck: the worker's proof-time status; the finalCertification stays
+    // PENDING the Tech-Lead's merge-time binding, and the pinned-runtime
+    // run executor binding in apps/dashboard is the Lead's surface, never
+    // the worker's).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
