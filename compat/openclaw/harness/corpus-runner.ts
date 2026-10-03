@@ -287,8 +287,22 @@ export function writeOpenClawConfig(
           baseUrl: `${adapterUrl}/v1`,
           apiKey: CORPUS_API_KEY_PLACEHOLDER,
           api: "openai-completions",
+          // The media-understanding provider HTTP layer resolves its
+          // SSRF policy through the provider's request overrides
+          // (mergeModelProviderRequestOverrides over
+          // models.providers.<name>.request): the loopback adapter is a
+          // private/special-use endpoint, so the app's own documented
+          // opt-in is required for the audio transcription and image
+          // provider calls to reach it (measured live: without it the
+          // audio path dies SsrFBlockedError "Blocked hostname or
+          // private/internal/special-use IP address").
+          request: { allowPrivateNetwork: true },
           models: [
-            { id: CORPUS_IMAGE_DESCRIBE_MODEL, name: "GLM 4.5V (delegated)" },
+            // input: the image-describe capability check reads the
+            // model's declared input modalities (measured live: without
+            // image input the describe task dies "Model does not
+            // support images: openai/glm-4.5v").
+            { id: CORPUS_IMAGE_DESCRIBE_MODEL, name: "GLM 4.5V (delegated)", input: ["text", "image"] },
             { id: CORPUS_AUDIO_MODEL, name: "GLM ASR (delegated)" },
             { id: CORPUS_IMAGE_GEN_MODEL, name: "GLM Image (delegated)" },
           ],
@@ -387,21 +401,22 @@ export function scrubbedOpenClawEnv(options: {
     // node); the cap keeps the main isolate inside this 4GB pod's
     // budget alongside everything else the sandbox runs.
     NODE_OPTIONS: "--max-old-space-size=1600",
-    // The app's own documented env axis (src/plugins/bundled-dir.ts:
-    // areBundledPluginsDisabled — the identical axis the repo's own
-    // CI/tests set): disable bundled-plugin discovery. In a source
-    // checkout, discovery CAPTURES every bundled plugin into the state
-    // dir first (openclaw-plugin-build-* under tmp/plugin-captures —
-    // measured 956MB for ONE run, which alone filled this sandbox's
-    // disk and killed the runtime with ENOSPC), and every captured
-    // plugin then loads through another tsx transpile storm (the same
-    // class of memory burn the heap cap contains). No corpus surface
-    // is a bundled plugin — the agent loop, the infer media surfaces
-    // and the browser tool are all core surfaces of the pinned
-    // revision, and the provider/model selection the corpus tests is
-    // pinned by the config file — so discovery-off is the honest,
-    // disk-viable certified runtime (disclosed in the evidence record).
-    OPENCLAW_DISABLE_BUNDLED_PLUGINS: "1",
+    // Bundled-plugin discovery: the app's OWN documented env axis
+    // (src/plugins/bundled-dir.ts reads OPENCLAW_BUNDLED_PLUGINS_DIR
+    // first) selects the builder's staged BUILT tree
+    // (extensions/.zeck-bundled — compiled entries with
+    // openclaw.runtimeExtensions, the repo's own deploy shape). The
+    // override is trusted (realpath inside the extensions bundled
+    // root, usable tree) and carries no dist/extensions path marker,
+    // so resolveBundledSourceCheckoutExtensionsDir finds NO legacy
+    // source root: the 159-plugin source-tree scan never runs (with
+    // the stock source-checkout discovery it DID run and the agent
+    // died "Plugin amazon-bedrock is retiring" — measured live), and
+    // the two staged extensions (openai: media/TTS providers; browser:
+    // the browser tool) load as compiled JavaScript — no source
+    // capture (openclaw-plugin-build-* — measured 956MB for one full
+    // discovery run, ENOSPC), no tsx transpile storm.
+    OPENCLAW_BUNDLED_PLUGINS_DIR: join(OPENCLAW_CHECKOUT_DIR, "extensions", ".zeck-bundled"),
     HTTP_PROXY: options.proxyUrl,
     HTTPS_PROXY: options.proxyUrl,
     http_proxy: options.proxyUrl,

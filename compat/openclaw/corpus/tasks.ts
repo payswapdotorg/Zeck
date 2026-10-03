@@ -336,11 +336,29 @@ const GENERATE_IMAGE: CorpusTask = {
     if (input.exitCode !== 0) {
       return { resolved: false, checkOutput: `infer image generate exited ${input.exitCode}` };
     }
-    const out = join(input.workdir, "mascot.png");
-    if (!existsSync(out)) {
-      return { resolved: false, checkOutput: `no output artifact at ${out}` };
+    // The runtime's image-generation surface names the artifact by the
+    // ACTUAL response format (measured live: the request said
+    // --output mascot.png and the runtime wrote mascot.jpg — the openai
+    // plugin's provider encodes JPEG when the model answers JPEG), so
+    // the verifier accepts the artifact under either extension and
+    // checks the magic bytes (the header's declared PNG/JPEG contract).
+    for (const name of ["mascot.png", "mascot.jpg", "mascot.jpeg"]) {
+      const out = join(input.workdir, name);
+      if (!existsSync(out)) {
+        continue;
+      }
+      const head = readFileSync(out).subarray(0, 4);
+      const isPng = head[0] === 0x89 && head[1] === 0x50 && head[2] === 0x4e && head[3] === 0x47;
+      const isJpeg = head[0] === 0xff && head[1] === 0xd8;
+      if (!isPng && !isJpeg) {
+        return { resolved: false, checkOutput: `the artifact at ${out} carries neither PNG nor JPEG magic bytes` };
+      }
+      return { resolved: true, checkOutput: `the image artifact exists at ${out} (magic bytes verified)` };
     }
-    return { resolved: true, checkOutput: `the image artifact exists at ${out}` };
+    return {
+      resolved: false,
+      checkOutput: `no output artifact at ${join(input.workdir, "mascot.png")} (or .jpg/.jpeg)`,
+    };
   },
 };
 

@@ -44,11 +44,11 @@ async function main(): Promise<void> {
     const result = await runOpenClawCommand(
       {
         proxy,
-        // The app's own documented env axis (src/plugins/bundled-dir.ts):
-        // disable bundled-plugin discovery — the smoke's task (the agent
-        // loop) is a core surface; the certified runtime stays tighter
-        // (zero dormant provider plugins loaded).
-        extraEnv: { OPENCLAW_DISABLE_BUNDLED_PLUGINS: "1" },
+        // Bundled-plugin discovery enabled: the builder stages the BUILT
+        // extensions (dist/extensions with runtimeExtensions) the runtime
+        // prefers over the source tree — the smoke exercises the same
+        // certified runtime the battery does.
+        extraEnv: {},
       },
       dirs.home,
       dirs.stateDir,

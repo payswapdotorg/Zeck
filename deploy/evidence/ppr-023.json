@@ -1,0 +1,1321 @@
+{
+  "schemaVersion": 1,
+  "workOrder": "PPR-023",
+  "title": "OpenClaw Zeck-complete application proof (compat/openclaw)",
+  "recordedBy": "the one PPR-023 implementation worker (this session)",
+  "date": "2026-10-03T03:30:05.064Z",
+  "environment": "sandboxed worker pod; anonymous public clone of https://github.com/openclaw/openclaw.git (pinned f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3, run from the exact source checkout at /home/z/openclaw-upstream through the repo's own tsx loader; the runtime's own version report: \"OpenClaw 2026.9.7 (f6883b3)\"); Zeck integration branch work/PPR-023-openclaw-proof based on governed base df6304521e74ea848f1a3691f34c381b42d45e2b; model supply = the sandbox's authorized GLM endpoint (/etc/.z-ai-config, platform-side BYOK material, never present in the OpenClaw runtime)",
+  "doctrine": "Every fact this record claims was produced by the environment named in it; every boundary the environment cannot produce is recorded as NOT RUN with its owner. No fixture, mock or simulated provider path is counted as an external PASS.",
+  "upstreamProvenance": {
+    "applicationRepository": "https://github.com/openclaw/openclaw.git",
+    "applicationRevision": "f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3",
+    "applicationVersion": "OpenClaw 2026.9.7 (f6883b3) — the pinned source runtime's own version report",
+    "runtime": "the exact pinned source checkout at /home/z/openclaw-upstream run through the repo's own tsx loader (node --import scripts/tsx.mjs src/entry.ts); the app's own tsdown bundle build refused at 4352MB needed vs 2035MB available; the process-ownership pair serves from compiled forms of the same pinned files beside them (anchor bundle + byte-identical transform) through the harness's NODE_OPTIONS loader redirect"
+  },
+  "evidenceRecord": {
+    "recordId": "ppr-023-openclaw-live-proof",
+    "recordBasis": "live-proof",
+    "pinnedApplication": {
+      "identity": {
+        "name": "OpenClaw",
+        "repository": "https://github.com/openclaw/openclaw.git",
+        "applicationId": "00000000-0000-7000-8000-00000000b001"
+      },
+      "pin": {
+        "upstreamRevision": "f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3",
+        "integrationRevision": "df6304521e74ea848f1a3691f34c381b42d45e2b"
+      }
+    },
+    "graph": {
+      "edges": [
+        {
+          "edgeId": "openclaw.agent-loop.main",
+          "component": "src/llm stream/complete facade (deferUntilTransportRuntimeHost → resolveRuntime(model) → @openclaw/ai provider registry) → models.providers.zeck {api: openai-completions, baseUrl: the certified adapter} → POST {base}/chat/completions — every `openclaw agent exec` turn, every tool decision (exec/read/write/browser/sessions), the compaction safeguard's summarization, and subagent delegation turns ride this seam",
+          "surface": "text-generation",
+          "transport": "OpenAI-compatible chat completions (native tool calls, streaming SSE, image content parts tolerated; the app's own models.providers.<id> custom-provider surface — zero code changes)",
+          "externalExecution": "the configured provider's chat-completions endpoint (undelegated: e.g. api.openai.com/v1/chat/completions, api.anthropic.com, openrouter.ai/api/v1 — the provider registry's 60+ bundled plugin providers)",
+          "materiality": "the primary agent-loop model call: every tool decision in the one-shot corpus runs is produced through this seam — routing only a 'chat model' and leaving this seam direct would leave the application's whole agentic surface provider-owned; the compaction safeguard and subagent turns ride it, so no separate auxiliary LLM client exists under the certified configuration"
+        },
+        {
+          "edgeId": "openclaw.media-understanding.image",
+          "component": "src/media-understanding image runtime (runner.ts → image-model-runtime → the image-capable provider entry from tools.media.models[] / models.providers resolution) → POST {base}/chat/completions with image content parts (the supply's vision model)",
+          "surface": "vision-image-understanding",
+          "transport": "OpenAI-compatible chat completions with multimodal content parts (tools.media.models[] provider entry with capabilities:[\"image\"]; provider auth resolves through the same models.providers.<providerId> surface as model calls — the docs' own rule)",
+          "externalExecution": "the configured image-capable provider's endpoint (undelegated: e.g. api.openai.com/v1/chat/completions with gpt-4o, generativelanguage.googleapis.com — the media-understanding provider-capability registry's catalog)",
+          "materiality": "inbound-image understanding is a SEPARATE capability-tagged model surface (its own provider/model resolution through tools.media.models[] — not necessarily the reply model): a text-only delegation would leave the vision edge a direct-provider bypass; the certified configuration routes it through the adapter's vision surface"
+        },
+        {
+          "edgeId": "openclaw.media-understanding.audio",
+          "component": "src/media-understanding audio transcription runner (transcribeAudioFile → openai-compatible-audio.ts → the audio-capable provider entry) → POST {base}/audio/transcriptions (multipart file + model)",
+          "surface": "speech-recognition",
+          "transport": "OpenAI-compatible transcription API (multipart; tools.media.models[] provider entry with capabilities:[\"audio\"] resolving through models.providers — the batch STT path the `infer audio transcribe` CLI and inbound voice notes both drive)",
+          "externalExecution": "the configured transcription provider's endpoint (undelegated: e.g. api.openai.com/v1/audio/transcriptions, api.groq.com/openai/v1/audio/transcriptions, api.deepgram.com — the audio provider registry)",
+          "materiality": "the speech-recognition surface (the exact function that transcribes inbound voice notes and the app's own `openclaw infer audio transcribe` capability) is a specialized MEDIA path with its own provider clients — a bypass until delegated (the work order's rule)"
+        },
+        {
+          "edgeId": "openclaw.tool.tts-openai",
+          "component": "src/tts tts tool + reply pipeline (tts-core → openai-compatible-speech-provider → tts.providers.openai {baseUrl, model, speakerVoice}) → POST {base}/audio/speech",
+          "surface": "speech-generation",
+          "transport": "OpenAI-compatible speech API (model/voice/input/speed/response_format; tts.providers.openai.{apiKey,baseUrl} — the app's own TTS provider configuration surface)",
+          "externalExecution": "the selected TTS provider's speech endpoint (undelegated: e.g. api.openai.com/v1/audio/speech; the unselected registry entries are Azure Speech, ElevenLabs, Fish Audio, MiniMax, volcengine, xAI, Xiaomi MiMo, Gradium, Inworld, Google Gemini, local CLI engines)",
+          "materiality": "the `tts` agent tool is a specialized MEDIA path that constructs its own provider clients — a bypass until delegated (the work order's rule); the OpenAI-compatible backend is the one the certified configuration routes through the adapter"
+        },
+        {
+          "edgeId": "openclaw.tool.image-generate-openai",
+          "component": "src/image-generation image_generate tool (runtime.ts → openai-compatible-image-provider → models.providers.<providerConfigKey>.baseUrl) → POST {base}/images/generations (json or multipart edit mode)",
+          "surface": "image-generation",
+          "transport": "OpenAI-compatible images API (model/prompt/size/n; agents.defaults.mediaModels.image.primary + the provider entry's models — the app's own image-generation picker surface)",
+          "externalExecution": "the configured image-gen provider's endpoint (undelegated: e.g. api.openai.com/v1/images/generations, fal.ai queue API, ComfyUI, Alibaba DashScope — the image provider registry)",
+          "materiality": "the image_generate tool is a specialized MEDIA path whose backends are direct external AI services — a bypass until delegated through the adapter"
+        }
+      ]
+    },
+    "dispositions": [
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "disposition": "delegated",
+        "zeckExecutionIds": [
+          "00000000-0000-7000-8000-000000000001",
+          "00000000-0000-7000-8000-000000000014",
+          "00000000-0000-7000-8000-000000000027",
+          "00000000-0000-7000-8000-000000000040",
+          "00000000-0000-7000-8000-000000000053",
+          "00000000-0000-7000-8000-000000000118",
+          "00000000-0000-7000-8000-000000000131",
+          "00000000-0000-7000-8000-000000000144",
+          "00000000-0000-7000-8000-000000000157",
+          "00000000-0000-7000-8000-000000000170",
+          "00000000-0000-7000-8000-000000000183",
+          "00000000-0000-7000-8000-000000000196",
+          "00000000-0000-7000-8000-000000000209",
+          "00000000-0000-7000-8000-000000000222"
+        ],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openclaw.media-understanding.image",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000066"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openclaw.media-understanding.audio",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000079"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openclaw.tool.tts-openai",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000092"],
+        "evidenceBasis": "live"
+      },
+      {
+        "edgeId": "openclaw.tool.image-generate-openai",
+        "disposition": "delegated",
+        "zeckExecutionIds": ["00000000-0000-7000-8000-000000000105"],
+        "evidenceBasis": "live"
+      }
+    ],
+    "egressObservation": {
+      "mode": "deny",
+      "status": "provably-blocked",
+      "violations": [
+        {
+          "host": "api.openai.com",
+          "url": "https://api.openai.com/",
+          "rule": "direct OpenAI provider endpoint (model + audio + images + transcription classes)",
+          "at": "2026-10-03T03:17:18.247Z",
+          "blocked": true
+        }
+      ]
+    },
+    "providerCredentials": [
+      {
+        "envVarName": "OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ANTHROPIC_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OPENROUTER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GEMINI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GOOGLE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GROQ_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MISTRAL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPSEEK_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "TOGETHER_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "COHERE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_OPENAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AZURE_SPEECH_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_COPILOT_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "GITHUB_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "HF_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "REPLICATE_API_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "ZAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "Z_AI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "KIMI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MOONSHOT_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_CN_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_CODE_PLAN_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_CODING_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "MINIMAX_OAUTH_TOKEN",
+        "present": false
+      },
+      {
+        "envVarName": "NVIDIA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "XIAOMI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ARCEEAI_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OLLAMA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "OLLAMA_HOST",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPINFRA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "KILOCODE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "AI_GATEWAY_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "LM_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "FAL_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "EXA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "FIRECRAWL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ELEVENLABS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "BRAVE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "TAVILY_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "PERPLEXITY_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "PARALLEL_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "SEARXNG_BASE_URL",
+        "present": false
+      },
+      {
+        "envVarName": "FISH_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "VOLCANO_ENGINE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "BYTEPLUS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "ALIBABA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DASHSCOPE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "VOYAGE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "DEEPGRAM_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "SENSEAUDIO_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "GRADIUM_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "INWORLD_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "CEREBRAS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "FIREWORKS_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "CHUTES_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "NOVITA_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "BASETEN_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "RUNWAY_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "PIXVERSE_API_KEY",
+        "present": false
+      },
+      {
+        "envVarName": "KIE_API_KEY",
+        "present": false
+      }
+    ],
+    "runtimeEvidence": {
+      "corpusDeclared": true,
+      "corpusUsability": "verified",
+      "observations": [
+        "Zeck arm: 6/6 declared corpus tasks resolved by the pinned unmodified OpenClaw runtime with Zeck as its sole AI execution authority (implement-edit:resolved, describe-image:resolved, transcribe-memo:resolved, speak-text:resolved, generate-image:resolved, browser-answer:resolved).",
+        "Every corpus edge execution's terminal state and verification facts are recorded in zeckTraces (read back through the public SDK wire reads); the rail-reported usage per dispatch is recorded in the battery section.",
+        "Upstream provenance: the work-order-named target OpenClaw is https://github.com/openclaw/openclaw.git; the pinned upstream revision f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3 (origin/main at proof-time clone; the runtime's own version report: \"OpenClaw 2026.9.7 (f6883b3)\") runs from the exact source checkout at /home/z/openclaw-upstream through the repo's own tsx loader (node --import scripts/tsx.mjs src/entry.ts) — the app's own tsdown bundle build measured 4352MB heap against the machine's 2035MB and refused (build log /tmp/openclaw-build.log), and running the exact pinned source is the tighter pin anyway.",
+        "Process-ownership enablement (disclosed; the app's own source files untouched): the pinned revision's exec-tool supervisor admits its Linux native process owner only from compiled modules, and the tsx loader's esbuild service child makes every source-run anchor process ineligible by the app's own dedicated-owner admission — so the checkout carries exactly TWO additional untracked compiled artifacts beside their pinned sources: service-child-group-anchor.compiled.mjs (an esbuild bundle of the pinned anchor .ts and its import graph) and linux-child-subreaper.js (a plain esbuild transform of the pinned process-owner .ts, byte-identity verified at proof time), served through a loader redirect that lives in this work order's surface (compat/openclaw/harness/runtime-preload.mjs + runtime-loader-hook.mjs, wired through the scrubbed environment's NODE_OPTIONS axis so every pinned-runtime process — including the app-spawned anchor — resolves the pair to its compiled form). Measured live: the anchor-protocol probe (subreaper admitted, command executed, descendantsReaped true, clean close).",
+        "Upstream configuration disclosures (the app's own axes, never forks): the corpus pins models.providers.zeck (api: openai-completions at the adapter) as the main agent provider + models.providers.openai (the OpenAI-compatible override the media surfaces resolve through), agents.defaults.model.primary, tools.media.models[] capability-tagged entries (image/audio), tts.providers.openai (model/speakerVoice/responseFormat), agents.defaults.mediaModels.image.primary, and browser.executablePath + the documented private-endpoint opt-in (ssrfPolicy.dangerouslyAllowPrivateNetwork for the loopback adapter) — all documented config keys of the pinned revision; the scrubbed allowlist environment (no provider credential names, HTTP(S)_PROXY → the deny proxy, NO_PROXY → loopback only, updates/telemetry disabled) is the certified runtime's process surface.",
+        "Direct same-supply arm (no Zeck mediation): 1/4 direct-reachable tasks resolved; unresolved direct tasks and their recorded causes — transcribe-memo (infer audio transcribe exited 1); speak-text (infer tts convert exited 1); browser-answer (answer.txt carries \"\" (expected the page token))."
+      ]
+    },
+    "comparison": [
+      {
+        "baseline": "same-supply-direct-arm",
+        "basis": "measured",
+        "statement": "Same-supply direct (non-Zeck) arm — the same pinned OpenClaw runtime calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key through the app's own models.providers.<id>.apiKey and tts.providers.openai.apiKey config axes, the session headers through its models.providers.<id>.headers axis — by definition of a direct baseline): 1/4 direct-reachable tasks resolved (the vision and image-generation edges are outside this arm: the supply's plain openai/ chat transport does not route image parts to its vision endpoint, and its images endpoint serves hosted-URL artifact references the app's openai image client does not resolve — the Zeck rail routes the former explicitly and materializes the latter platform-side) vs the Zeck arm's 6/6; mean 35.6s per resolved direct outcome vs 23.4s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed (present — the direct-provider call the Zeck arm provably does not make); unresolved direct outcomes: transcribe-memo (infer audio transcribe exited 1); speak-text (infer tts convert exited 1); browser-answer (answer.txt carries \"\" (expected the page token)). Token usage per arm recorded in the battery section."
+      },
+      {
+        "baseline": "strong-optimized-external",
+        "basis": "not-measured",
+        "statement": "Strong optimized non-Zeck baseline (external commercial providers via first-party endpoints or aggregators) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+      },
+      {
+        "baseline": "cost-per-resolved-outcome",
+        "basis": "not-measured",
+        "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 28218 in / 210 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+      }
+    ],
+    "zeckTraces": [
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000001",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000014",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000027",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000040",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000053",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.media-understanding.image",
+        "executionId": "00000000-0000-7000-8000-000000000066",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4.5v",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.media-understanding.audio",
+        "executionId": "00000000-0000-7000-8000-000000000079",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-asr",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.tool.tts-openai",
+        "executionId": "00000000-0000-7000-8000-000000000092",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-tts",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.tool.image-generate-openai",
+        "executionId": "00000000-0000-7000-8000-000000000105",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-image",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000118",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000131",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000144",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000157",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000170",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000183",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000196",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000209",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      },
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "executionId": "00000000-0000-7000-8000-000000000222",
+        "applicationId": "00000000-0000-7000-8000-00000000b001",
+        "found": true,
+        "status": "COMPLETED",
+        "terminal": true,
+        "eventCount": 10,
+        "verificationCount": 2,
+        "passingVerificationCount": 2,
+        "correlated": true,
+        "route": {
+          "provider": "custom",
+          "model": "glm-4-plus",
+          "strategyClass": "model-rail"
+        },
+        "costMicroUsd": null,
+        "usage": null
+      }
+    ],
+    "limitations": [
+      {
+        "area": "model supply",
+        "statement": "The model supply for every delegated edge is the sandbox's authorized GLM endpoint, dispatched platform-side through the real model gateway (custom rail; text + vision + speech + transcription + image surfaces). No external AI provider was reachable or used; external-provider rails are an operator boundary, not evidence about the delegation boundary this proof tests.",
+        "owner": "operator"
+      },
+      {
+        "area": "process-ownership enablement",
+        "statement": "The pinned revision's exec-tool supervisor admits its Linux native process owner only from compiled modules, and the sandbox cannot build the app's full tsdown bundle (the app's own build script measured 4352MB heap against the machine's 2035MB and refused) — so the certified source-run carries exactly TWO untracked compiled artifacts beside their pinned sources (the anchor bundle + the process-owner transform, byte-identity verified for the latter) served through the harness's NODE_OPTIONS loader redirect. The app's own source files are untouched; the enablement is fully disclosed here and in the demo entry's reproducibility instructions.",
+        "owner": "worker"
+      },
+      {
+        "area": "gateway/platform surfaces",
+        "statement": "The gateway process (channel adapters: Telegram/Discord/Slack/WhatsApp/Signal), the cron daemon, and the interactive TUI are not part of the declared corpus runtime (headless one-shot `agent exec` / `infer` CLI runs); every AI surface they would dispatch (agent turns, titles, voice notes, transcription) is the SAME seam set already declared and delegated — the platform adapters themselves are non-AI transport.",
+        "owner": "worker"
+      },
+      {
+        "area": "browser actuation",
+        "statement": "The browser task's actuation (CDP over the sandbox's Playwright Chromium) is app-owned and non-AI; the browser-tool intelligence (deciding what to open/read/write) rides the delegated main seam, which the corpus's browser task exercises.",
+        "owner": "worker"
+      },
+      {
+        "area": "realtime voice rail",
+        "statement": "The realtime-transcription/talk websocket sessions need an unavailable operator rail (LiveKit-class media transport); the batch STT/TTS surfaces are declared and delegated. Owner: operator-provider boundary.",
+        "owner": "operator"
+      }
+    ],
+    "notRunCauses": [
+      {
+        "area": "strong-optimized-external-baseline",
+        "cause": "No external AI-provider credentials exist in this sandbox (first-party endpoints and aggregators are unreachable); a strong optimized non-Zeck baseline cannot be measured here.",
+        "owner": "Lead"
+      }
+    ],
+    "recordedAt": "2026-10-03T03:30:05.062Z"
+  },
+  "derivedAssessment": {
+    "status": "AI_EXECUTION_COMPLETE",
+    "ruleResults": [
+      {
+        "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+        "satisfied": true,
+        "detail": "All 5 declared edges are delegated through Zeck (or explicitly reclassified non-AI with recorded justification)."
+      },
+      {
+        "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+        "satisfied": true,
+        "detail": "Direct AI-provider egress is provably blocked (deny harness active, every violation blocked) during the proof."
+      },
+      {
+        "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+        "satisfied": true,
+        "detail": "The application remained functionally usable for the declared corpus during the proof."
+      },
+      {
+        "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+        "satisfied": true,
+        "detail": "All 5 delegated edge(s) correlate to Zeck execution records with durable evidence."
+      },
+      {
+        "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+        "satisfied": true,
+        "detail": "Every delegated edge carries live Zeck evidence from a live proof record."
+      }
+    ],
+    "findings": [],
+    "staticFindings": []
+  },
+  "finalCertification": {
+    "status": "PENDING",
+    "owner": "Tech-Lead",
+    "bindingStep": "This record is the worker's proof-time self-assessment through the merged PPR-018A harness pieces (the corpus-runner discipline, the SDK-wire trace correlation, the derived status machine). Final certification and Demo Mirror binding are the Lead's merge-time acts; a worker never activates their own demo."
+  },
+  "battery": {
+    "batterySteps": [
+      "edge inventory (static seam scan of the pinned revision, config-restricted to the declared corpus)",
+      "provider credential removal from the OpenClaw runtime (allowlist-scrubbed subprocess environment + recorded credential facts + the literal placeholder the OpenAI-compatible clients' shape checks require)",
+      "direct-provider egress block (default-deny proof proxy wrapping every OpenClaw egress except the loopback Zeck adapter + the positive-control canary)",
+      "representative general-agent corpus (6 tasks — text, vision, speech recognition, TTS, image generation, browser — pinned OpenClaw runtime over Zeck, verified mechanically)",
+      "Zeck trace correlation (every delegated edge's executions read back through the public SDK wire reads)",
+      "duplicate/retry/failure validation (idempotent replay, the runtime's own retry over fault-injected rails, honest FAILED executions, timeout path unit-pinned)",
+      "direct same-supply baseline (measured) + strong optimized external baseline (NOT RUN, owner: Lead)",
+      "customization test (the app's own configuration surface through the delegated boundary)",
+      "deterministic/reuse measurement (content-addressed idempotency keys → measured replay rate)",
+      "telemetry inspection (per-execution ledger events, route facts, usage, latency)",
+      "no-bypass audit (static reconciliation + runtime egress observation)",
+      "reproducibility (the battery is the reproduction script; the replay probe demonstrates it)"
+    ],
+    "corpus": [
+      {
+        "taskId": "implement-edit",
+        "resolved": true,
+        "checkOutput": "agent run confirmed GAME-OK",
+        "exitCode": 0,
+        "durationMs": 36686,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000001",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000014",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000027",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000040",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000053",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 43928,
+          "outputTokens": 568,
+          "dispatches": 5,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": ": 44496,\n    \"cost\": {\n      \"total\": 0\n    }\n  },\n  \"codeModeEngaged\": false,\n  \"assistantTurns\": 5,\n  \"bridgeCalls\": {\n    \"search\": 0,\n    \"describe\": 0,\n    \"call\": 0\n  },\n  \"toolSummary\": {\n    \"calls\": 4,\n    \"tools\": [\n      \"read\",\n      \"edit\",\n      \"exec\"\n    ],\n    \"failures\": 0\n  },\n  \"model\": \"glm-4-plus\",\n  \"provider\": \"zeck\",\n  \"sessionId\": \"4ff3e1d1-2b4f-42f4-8682-8253d1c59207\"\n}\n"
+      },
+      {
+        "taskId": "describe-image",
+        "resolved": true,
+        "checkOutput": "the description names the orange swatch color",
+        "exitCode": 0,
+        "durationMs": 9776,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.media-understanding.image",
+            "executionId": "00000000-0000-7000-8000-000000000066",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 28,
+          "outputTokens": 36,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": ".5v\",\n  \"attempts\": [],\n  \"outputs\": [\n    {\n      \"path\": \"/home/z/Zeck/compat/openclaw/corpus/assets/orange-swatch.png\",\n      \"text\": \"The image is a **solid, uniform orange color** with no other objects, patterns, text, or variations. It appears to be a plain orange fill or background image.\",\n      \"provider\": \"openai\",\n      \"model\": \"glm-4.5v\",\n      \"kind\": \"image.description\"\n    }\n  ]\n}\n"
+      },
+      {
+        "taskId": "transcribe-memo",
+        "resolved": true,
+        "checkOutput": "the transcript carries 4/4 content words of the known phrase",
+        "exitCode": 0,
+        "durationMs": 8439,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.media-understanding.audio",
+            "executionId": "00000000-0000-7000-8000-000000000079",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 105,
+          "outputTokens": 12,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": "{\n  \"ok\": true,\n  \"capability\": \"audio.transcribe\",\n  \"transport\": \"local\",\n  \"provider\": \"openai\",\n  \"model\": \"glm-asr\",\n  \"attempts\": [],\n  \"outputs\": [\n    {\n      \"path\": \"/home/z/Zeck/compat/openclaw/corpus/assets/known-phrase.wav\",\n      \"text\": \"Proof of life, Open Claw Test One.\",\n      \"kind\": \"audio.transcription\"\n    }\n  ]\n}\n"
+      },
+      {
+        "taskId": "speak-text",
+        "resolved": true,
+        "checkOutput": "the audio artifact exists at /tmp/ppr-023-battery/corpus/task-speak-text/spoken.wav",
+        "exitCode": 0,
+        "durationMs": 8763,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.tool.tts-openai",
+            "executionId": "00000000-0000-7000-8000-000000000092",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": ": \"tts.convert\",\n  \"transport\": \"local\",\n  \"provider\": \"openai\",\n  \"attempts\": [\n    {\n      \"provider\": \"openai\",\n      \"outcome\": \"success\",\n      \"reasonCode\": \"success\",\n      \"personaBinding\": \"none\",\n      \"latencyMs\": 1692\n    }\n  ],\n  \"outputs\": [\n    {\n      \"path\": \"/tmp/ppr-023-battery/corpus/task-speak-text/spoken.wav\",\n      \"format\": \"wav\",\n      \"voiceCompatible\": false\n    }\n  ]\n}\n"
+      },
+      {
+        "taskId": "generate-image",
+        "resolved": true,
+        "checkOutput": "the image artifact exists at /tmp/ppr-023-battery/corpus/task-generate-image/mascot.jpg (magic bytes verified)",
+        "exitCode": 0,
+        "durationMs": 32923,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.tool.image-generate-openai",
+            "executionId": "00000000-0000-7000-8000-000000000105",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "dispatches": 1,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": "{\n  \"ok\": true,\n  \"capability\": \"image.generate\",\n  \"transport\": \"local\",\n  \"provider\": \"openai\",\n  \"model\": \"glm-image\",\n  \"attempts\": [],\n  \"outputs\": [\n    {\n      \"path\": \"/tmp/ppr-023-battery/corpus/task-generate-image/mascot.jpg\",\n      \"mimeType\": \"image/jpeg\",\n      \"size\": 47410,\n      \"width\": 1024,\n      \"height\": 1024\n    }\n  ],\n  \"ignoredOverrides\": []\n}\n"
+      },
+      {
+        "taskId": "browser-answer",
+        "resolved": true,
+        "checkOutput": "answer.txt carries the page's displayed token",
+        "exitCode": 0,
+        "durationMs": 43691,
+        "edgeExecutions": [
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000118",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000131",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000144",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000157",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000170",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000183",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000196",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000209",
+            "replayed": false
+          },
+          {
+            "edgeId": "openclaw.agent-loop.main",
+            "executionId": "00000000-0000-7000-8000-000000000222",
+            "replayed": false
+          }
+        ],
+        "railUsage": {
+          "inputTokens": 125246,
+          "outputTokens": 646,
+          "dispatches": 9,
+          "failures": 0
+        },
+        "egressViolations": 0,
+        "unavailable": null,
+        "stdoutTail": "scribe\": 0,\n    \"call\": 0\n  },\n  \"toolSummary\": {\n    \"calls\": 8,\n    \"tools\": [\n      \"tool_search\",\n      \"skills_search\",\n      \"read\",\n      \"dashboard\",\n      \"web_fetch\",\n      \"exec\",\n      \"write\"\n    ],\n    \"failures\": 4,\n    \"unresolvedError\": {\n      \"toolName\": \"web_fetch\"\n    }\n  },\n  \"model\": \"glm-4-plus\",\n  \"provider\": \"zeck\",\n  \"sessionId\": \"ddb28829-b289-448c-bd81-f69236b47c42\"\n}\n"
+      }
+    ],
+    "canaryProbes": {
+      "ok": true,
+      "violation": {
+        "host": "api.openai.com",
+        "url": "https://api.openai.com/",
+        "rule": "direct OpenAI provider endpoint (model + audio + images + transcription classes)",
+        "at": "2026-10-03T03:17:18.247Z",
+        "blocked": true
+      }
+    },
+    "duplicateProbe": {
+      "firstEdgeExecutions": 1,
+      "secondEdgeExecutions": 1,
+      "secondReplayed": 0
+    },
+    "failureValidation": {
+      "providerUnavailableExecutions": [
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000012",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000023",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000034",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000045",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000056",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000067",
+          "terminal": "FAILED"
+        }
+      ],
+      "rateLimitExecutions": [
+        {
+          "executionId": "00000000-0000-7000-8000-000000000001",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000013",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000025",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000037",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000049",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000061",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000073",
+          "terminal": "FAILED"
+        },
+        {
+          "executionId": "00000000-0000-7000-8000-000000000085",
+          "terminal": "FAILED"
+        }
+      ],
+      "runtimeSurfacedError": true,
+      "timeoutPathUnitPinned": true
+    },
+    "directBaseline": {
+      "ranTasks": ["implement-edit", "transcribe-memo", "speak-text", "browser-answer"],
+      "outcomes": [
+        {
+          "taskId": "implement-edit",
+          "resolved": true,
+          "durationMs": 35564,
+          "checkOutput": "agent run confirmed GAME-OK",
+          "rateLimited": false,
+          "stdoutTail": "ion is correct and meets all the requirements specified in the docstring.\",\n  \"payloads\": [\n    {\n      \"text\": \"Perfect! I've successfully implemented the `wordScore(word)` function in `game.js` exactly as documented in its docstring. The implementation:\\n\\n1. Scores vowels (a, e, i, o, u) at 1 point each\\n2. Scores all other lowercase letters at 3 points each  \\n3. Scores non-lowercase-letter characters at 0 points\\n4. Returns the total sum of all letter values\\n\\nThe verification command `node verify.js` ran successfully and printed \\\"GAME-OK\\\", confirming that the implementation is correct and meets all the requirements specified in the docstring.\",\n      \"mediaUrl\": null\n    }\n  ],\n  \"usage\": {\n    \"input\": 34579,\n    \"output\": 383,\n    \"cacheRead\": 0,\n    \"cacheWrite\": 0,\n    \"total\": 34962,\n    \"cost\": {\n      \"total\": 0\n    }\n  },\n  \"codeModeEngaged\": false,\n  \"assistantTurns\": 4,\n  \"bridgeCalls\": {\n    \"search\": 0,\n    \"describe\": 0,\n    \"call\": 0\n  },\n  \"toolSummary\": {\n    \"calls\": 3,\n    \"tools\": [\n      \"read\",\n      \"edit\",\n      \"exec\"\n    ],\n    \"failures\": 0\n  },\n  \"model\": \"glm-4-plus\",\n  \"provider\": \"zeck\",\n  \"sessionId\": \"c712c533-8329-4030-a821-79b939c9c5e3\"\n}\n",
+          "stderrTail": "us release not observed\n[state/agent-db] agent database stale lease: owner-pid-dead; previous release not observed\n[state/agent-db] agent database integrity gate\n[session-sqlite] slow SQLite reclamation Worker operation pid=14615 threadId=0 isMainThread=true reclamationKind=maintenance-plan workerThreadId=7 elapsedMs=4929 outcome=resolved\n[agent/embedded] tool-search: cataloged 39 tools behind compact prompt surface\n[provider-transport-fetch] [model-fetch] response provider=zeck api=openai-completions model=glm-4-plus status=200 elapsedMs=1065 dispatcher=new contentType=text/event-stream;charset=UTF-8\n[provider-transport-fetch] [model-fetch] response provider=zeck api=openai-completions model=glm-4-plus status=200 elapsedMs=2486 dispatcher=reused contentType=text/event-stream;charset=UTF-8\n[agents/agent-command] [agent] run c712c533-8329-4030-a821-79b939c9c5e3 ended with stopReason=stop\n[state/agent-db] agent database clean-close receipt: active-leases\n[session-sqlite] reclamation worker retired reason=revoked kind=maintenance-plan ageMs=16359 opsServed=3\n[state/agent-db] agent database clean-close receipt: active-leases\n[state/agent-db] agent database clean-close receipt: written\n"
+        },
+        {
+          "taskId": "transcribe-memo",
+          "resolved": false,
+          "durationMs": 8029,
+          "checkOutput": "infer audio transcribe exited 1",
+          "rateLimited": false,
+          "stdoutTail": "{\n  \"ok\": false,\n  \"error\": {\n    \"type\": \"cli_error\",\n    \"message\": \"ProviderHttpError: Audio transcription failed (HTTP 404): 404 page not found\"\n  }\n}\n",
+          "stderrTail": "[media-understanding] audio: failed (0/1) reason=ProviderHttpError\n[openclaw] The CLI command failed.\n[openclaw] Reason: ProviderHttpError: Audio transcription failed (HTTP 404): 404 page not found\n[openclaw] Debug: set OPENCLAW_DEBUG=1 to include the stack trace.\n[openclaw] Try: openclaw doctor\n[openclaw] Help: openclaw --help\n"
+        },
+        {
+          "taskId": "speak-text",
+          "resolved": false,
+          "durationMs": 7465,
+          "checkOutput": "infer tts convert exited 1",
+          "rateLimited": false,
+          "stdoutTail": "{\n  \"ok\": false,\n  \"error\": {\n    \"type\": \"cli_error\",\n    \"message\": \"TTS conversion failed: openai: OpenAI TTS API error (404): 404 page not found\"\n  }\n}\n",
+          "stderrTail": "[openclaw] The CLI command failed.\n[openclaw] Reason: TTS conversion failed: openai: OpenAI TTS API error (404): 404 page not found\n[openclaw] Debug: set OPENCLAW_DEBUG=1 to include the stack trace.\n[openclaw] Try: openclaw doctor\n[openclaw] Help: openclaw --help\n"
+        },
+        {
+          "taskId": "browser-answer",
+          "resolved": false,
+          "durationMs": 44904,
+          "checkOutput": "answer.txt carries \"\" (expected the page token)",
+          "rateLimited": false,
+          "stdoutTail": "en, I'm unable to complete the task as requested. The available tools don't provide a way to:\\n\\n1. Open a browser to navigate to `http://127.0.0.1:8901/token.html`\\n2. Read the dynamic content of that page \\n3. Extract the access token\\n\\nIf you have access to the browser tool through a different method or if there's an alternative way to access this page, please let me know. Otherwise, I would need you to provide the access token directly so I can complete the task of writing it to answer.txt.\",\n      \"mediaUrl\": null\n    }\n  ],\n  \"usage\": {\n    \"input\": 160067,\n    \"output\": 909,\n    \"cacheRead\": 0,\n    \"cacheWrite\": 0,\n    \"total\": 160976,\n    \"cost\": {\n      \"total\": 0\n    }\n  },\n  \"codeModeEngaged\": false,\n  \"assistantTurns\": 9,\n  \"bridgeCalls\": {\n    \"search\": 3,\n    \"describe\": 0,\n    \"call\": 4\n  },\n  \"toolSummary\": {\n    \"calls\": 12,\n    \"tools\": [\n      \"tool_search\",\n      \"web_fetch\",\n      \"tool_call\",\n      \"skills_search\",\n      \"skills_read\",\n      \"exec\",\n      \"dashboard\"\n    ],\n    \"failures\": 5,\n    \"unresolvedError\": {\n      \"toolName\": \"tool_call\"\n    }\n  },\n  \"model\": \"glm-4-plus\",\n  \"provider\": \"zeck\",\n  \"sessionId\": \"0d64c813-1fb5-4db9-8917-fcffc5a7cd46\"\n}\n",
+          "stderrTail": "er-transport-fetch] [model-fetch] response provider=zeck api=openai-completions model=glm-4-plus status=200 elapsedMs=1223 dispatcher=reused contentType=text/event-stream;charset=UTF-8\n[tools] tool_call failed: Invalid arguments for tool \"openclaw:core:dashboard\": name: must match pattern \"^[a-z0-9][a-z0-9._-]{0,63}$\". Expected input: { action: string; after?: string; name?: string; pluginKind?: string; position?: number /* integer, >= 0 */; presentation?: \"split\" | \"expanded\"; props?: { ... }; size?: \"sm\" | \"md\" | \"lg\" | \"xl\" | \"full\"; sizeH?: number /* integer, >= 1, <= 20 */; sizeW?: number /* integer, >= 1, <= 12 */; ... }. raw_params={\"id\":\"openclaw:core:dashboard\",\"args\":{\"action\":\"widget_put\",\"name\":\"session:website\",\"props\":{\"url\":\"http://127.0.0.1:8901/token.html\"},\"size\":\"full\"}}\n[agents/agent-command] [agent] run 0d64c813-1fb5-4db9-8917-fcffc5a7cd46 ended with stopReason=stop\n[state/agent-db] agent database clean-close receipt: active-leases\n[session-sqlite] reclamation worker retired reason=revoked kind=maintenance-plan ageMs=26644 opsServed=4\n[state/agent-db] agent database clean-close receipt: active-leases\n[state/agent-db] agent database clean-close receipt: written\n"
+        }
+      ],
+      "providerEgressObserved": true,
+      "rateLimited": false
+    },
+    "customization": {
+      "statement": "The pinned app's own configuration surface remains fully operative through the delegated boundary: per-task --config files carrying the custom provider (models.providers.zeck with api: openai-completions at the adapter), the OpenAI-compatible override the media surfaces resolve through (models.providers.openai), the agent model pin (agents.defaults.model.primary), the capability-tagged media-understanding entries (tools.media.models[] image/audio), the TTS provider block (tts.providers.openai with model/speakerVoice/responseFormat), the image-generation model pin (agents.defaults.mediaModels.image.primary), the browser binary + the documented loopback-endpoint opt-in (browser.executablePath + ssrfPolicy.dangerouslyAllowPrivateNetwork), the infer CLI surfaces' own --model/--provider selections, and agent exec's own --cwd/--state-dir/--json axes — all flowed through the same single delegated seam with zero application-code changes.",
+      "evidence": "corpus task configs (harness/corpus-runner.ts writes one openclaw.json per task) + the per-task adapter logs"
+    },
+    "telemetry": {
+      "executions": 18,
+      "eventsTotal": 180,
+      "eventsPerExecutionMin": 10,
+      "verificationPassTotal": 36,
+      "routeFactsPresent": 18,
+      "usageFactsPresent": 0
+    },
+    "reuse": {
+      "statement": "Content-addressed idempotency keys: the identical replay probe re-issued 1 request(s), of which 0 replayed the durable outcome (content-identical requests are served from the execution ledger, not re-dispatched)."
+    }
+  },
+  "dormantEdgeDisclosures": [
+    {
+      "edgeId": "openclaw.tool.web-search",
+      "component": "src/web-search/runtime.ts runWebSearch → runtime-execution.ts executeWebSearchCandidates → the plugin web-search providers (Brave, Exa, Firecrawl, Gemini Google Search, Grok xAI, Kimi Moonshot, MiniMax, Parallel, Perplexity, Tavily, Ollama, SearXNG, DuckDuckGo — each with its own credential-gated direct HTTP client)",
+      "surface": "search-ai-search",
+      "gate": "the declared corpus configures NO web-search credentials (scrubbed allowlist environment; plugins.entries.*.config.webSearch.apiKey unset, no provider env keys) and the proof environment's default-deny egress blocks every non-loopback host. Classification from the pinned runtime: DuckDuckGo (key-free HTML scrape) and SearXNG (self-hosted aggregation) are NON-AI retrieval; Brave/Exa/Tavily are keyed retrieval APIs; Perplexity/Grok/Kimi/Gemini/MiniMax/Ollama-search are model-grounded AI search. The authorized sandbox supply rail exposes NO search execution surface, so a search-backed corpus task cannot be delegated LIVE — recorded as an honest NOT-RUN (the work order's conditional: only 'where the pinned runtime exercises them'), never a fabricated result and never a completeness weakening",
+      "owner": "operator-provider boundary (the authorized supply rail has no search execution surface; search provider credentials are absent by erasure design)"
+    },
+    {
+      "edgeId": "openclaw.tool.web-fetch",
+      "component": "src/web-fetch/runtime.ts resolveWebFetchDefinition → the Firecrawl provider (keyed) or the default direct-fetch path + the bundled web-readability local extraction plugin",
+      "surface": "extraction-document-intelligence",
+      "gate": "the certified configuration leaves Firecrawl unconfigured (no FIRECRAWL_API_KEY in the scrubbed runtime) so the ACTIVE path is direct HTTP fetch + local Readability extraction — verified at the pinned revision to make NO model call (the extractor is local DOM parsing; the summary the agent produces rides the delegated main seam). The Firecrawl path is a keyed external extraction API — credential-gated and egress-denied under the proof environment; disclosed as the unselected path",
+      "owner": "classification: the actually-active web-fetch path is non-AI at the pinned revision (owner: worker, disclosed); the unselected Firecrawl path is credential-gated (owner: operator-provider boundary)"
+    },
+    {
+      "edgeId": "openclaw.tool.video-generate",
+      "component": "src/video-generation/runtime.ts video_generate → dashscope-compatible + provider registry (Alibaba, BytePlus, fal, Runway, PixVerse, Kie — each with its own provider clients)",
+      "surface": "video-generation",
+      "gate": "the declared corpus pins no video model (agents.defaults.mediaModels.video unset — auto-detection finds no configured video provider under the scrubbed runtime) and the sandbox's authorized supply rail exposes no video execution surface; the async create/poll/download protocol translation was not built for this proof — an honest NOT-RUN recorded WITHOUT weakening completeness (video is not exercised by the declared corpus)",
+      "owner": "operator-provider boundary (supply has no video execution surface); future delegation owner: worker"
+    },
+    {
+      "edgeId": "openclaw.tool.music-generate",
+      "component": "src/music-generation/runtime.ts music_generate → the music provider registry (ComfyUI-class providers)",
+      "surface": "three-d-generation",
+      "gate": "no music model configured and no music execution surface on the authorized supply rail — honest NOT-RUN, not exercised by the declared corpus",
+      "owner": "operator-provider boundary (supply has no music execution surface)"
+    },
+    {
+      "edgeId": "openclaw.memory.embeddings",
+      "component": "src/memory semantic search → the memory.search.provider remote embedding adapters (openai, gemini, voyage, mistral, deepinfra, github-copilot, amazon-bedrock) or the local/on-device engine",
+      "surface": "embeddings",
+      "gate": "the certified corpus runs carry no semantic-memory instruction and memory.search is unset under the pinned --config (the default embed path stays local/off); every REMOTE embedding adapter is credential-gated (no keys in the scrubbed runtime) and the authorized supply rail exposes no embeddings endpoint. The sandbox has no live embeddings surface to delegate onto — disclosed as configuration-gated with the classification recorded",
+      "owner": "operator-provider boundary (supply has no embeddings surface); the active default path is local non-AI storage"
+    },
+    {
+      "edgeId": "openclaw.realtime-voice",
+      "component": "src/realtime-transcription/websocket-session.ts + talk realtime sessions (LiveKit-class streaming STT/TTS transports)",
+      "surface": "realtime-multimodal-session",
+      "gate": "realtime streaming sessions require an operator realtime rail (LiveKit-class credentials/infrastructure) this sandbox does not provide; the declared corpus is one-shot text/audio runs and never opens a realtime session",
+      "owner": "operator-provider boundary (no realtime rail provisioned — the same class of boundary PPR-022 recorded)"
+    }
+  ],
+  "nonAiOperations": [
+    {
+      "name": "exec / terminal (command execution)",
+      "note": "local shell command execution; no AI provider call (the decision to run a command comes from the delegated agent-loop edge)"
+    },
+    {
+      "name": "read / write / edit (filesystem tools)",
+      "note": "local file operations; document/PDF text extraction is local parsing at the pinned revision (pdf-native-providers are extraction engines, no model call)"
+    },
+    {
+      "name": "browser actuation (browser_* tools over CDP)",
+      "note": "Chromium window/page control, screenshots, input dispatch — application-owned actuation; the INTELLIGENCE choosing actions rides the delegated main seam (browser screenshots return as vision input through the same chat-completions surface); no separate browser LLM client exists at the pinned revision"
+    },
+    {
+      "name": "computer-use actuation (screen/computer tools)",
+      "note": "OS-level window/control actuation is app-owned; action decisions ride the delegated main seam"
+    },
+    {
+      "name": "web_fetch direct path + web-readability",
+      "note": "plain HTTP fetch + local Readability DOM extraction — no model call (the agent's reading of the extracted text rides the main seam)"
+    },
+    {
+      "name": "sessions / transcripts / state storage (SQLite)",
+      "note": "local durable state; session search is local query (no embeddings at the certified config)"
+    },
+    {
+      "name": "media transcode (ffmpeg) + media store",
+      "note": "local audio/video transcoding and artifact storage — deterministic computation, no AI call"
+    },
+    {
+      "name": "cron / automations scheduling",
+      "note": "local scheduling; a cron-fired turn would ride the same delegated main seam"
+    },
+    {
+      "name": "channels / gateway transport adapters",
+      "note": "Telegram/Discord/Slack/WhatsApp/Signal adapters are non-AI transport; every AI surface they dispatch rides the SAME declared seams"
+    }
+  ],
+  "discoveredInventory": {
+    "source": "static seam scan of pinned OpenClaw f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3 (provider-HTTP call-site + provider-registry grep across packages/ai/src/providers/, src/llm/, src/web-search/, src/web-fetch/, src/image-generation/, src/tts/, src/media-understanding/, src/video-generation/, src/music-generation/, src/memory/, src/realtime-transcription/; headless `agent exec` reachability restricted to the declared corpus configuration)",
+    "edges": [
+      {
+        "edgeId": "openclaw.agent-loop.main",
+        "component": "src/llm/stream.ts stream/complete/streamSimple/completeSimple → resolveRuntime(model) → defaultLlmRuntime / getModelLlmRuntime binding → packages/ai provider registry (openai-completions api for the certified custom provider) — the ONE model client construction seam every agent turn, tool decision, compaction summarization and subagent turn rides",
+        "surface": "text-generation",
+        "transport": "OpenAI-compatible chat completions (streaming SSE preferred; native tool calls; response_format/reasoning_effort axes tolerated)",
+        "externalExecution": "the configured provider's chat-completions endpoint (undelegated: the 60+ bundled provider plugins — OpenAI, Anthropic, Google, OpenRouter, zai, ... each with its own credential env)",
+        "materiality": "declared edge (the primary agent-loop seam — the target matrix's 'generic streaming/model abstraction' itself)"
+      },
+      {
+        "edgeId": "openclaw.media-understanding.image",
+        "component": "src/media-understanding/runner.ts mediaUnderstandingRunner → image.ts/image-model-runtime.ts → packages/ai provider call with image content parts (the tools.media.models[] image-capable entry; ALSO the native-vision path when the reply model declares input:[text,image])",
+        "surface": "vision-image-understanding",
+        "transport": "OpenAI-compatible chat completions with image content parts (multimodal message content)",
+        "externalExecution": "the configured image-capable provider's endpoint (undelegated: gpt-4o-class vision endpoints, Google/Gemini vision, MiniMax-VL plugin, ...)",
+        "materiality": "declared edge (inbound-image understanding is its own capability-tagged surface — separate model resolution from the reply model)"
+      },
+      {
+        "edgeId": "openclaw.media-understanding.audio",
+        "component": "src/media-understanding/audio-transcription-runner.ts + openai-compatible-audio.ts → POST {base}/audio/transcriptions (multipart) — the batch STT path (`infer audio transcribe`, inbound voice notes, preflight gating)",
+        "surface": "speech-recognition",
+        "transport": "OpenAI-compatible transcription API (multipart file + model + language hint)",
+        "externalExecution": "the configured transcription provider's endpoint (undelegated: OpenAI/Groq/xAI/Deepgram/ElevenLabs/Mistral/SenseAudio registries)",
+        "materiality": "declared edge (the specialized speech-recognition client — its own provider registry)"
+      },
+      {
+        "edgeId": "openclaw.tool.tts-openai",
+        "component": "src/tts/tts-core.ts + tts-synthesis.ts → openai-compatible-speech-provider.ts → POST {base}/audio/speech (the tts.providers.openai entry; the `tts` agent tool and `infer tts convert` both land here)",
+        "surface": "speech-generation",
+        "transport": "OpenAI-compatible speech API (model/voice/input/speed/response_format)",
+        "externalExecution": "the selected TTS provider's speech endpoint (undelegated: OpenAI speech, Azure Speech, ElevenLabs, Fish Audio, volcengine, xAI, MiniMax, Xiaomi, Gradium, Inworld, Gemini, local engines)",
+        "materiality": "declared edge (the specialized speech-generation client — its own provider registry)"
+      },
+      {
+        "edgeId": "openclaw.tool.image-generate-openai",
+        "component": "src/image-generation/runtime.ts + openai-compatible-image-provider.ts → POST {base}/images/generations (the mediaModels.image.primary resolution over models.providers)",
+        "surface": "image-generation",
+        "transport": "OpenAI-compatible images API (generate/edit modes; json/multipart)",
+        "externalExecution": "the configured image-gen provider's endpoint (undelegated: OpenAI images, fal.ai, ComfyUI, Alibaba, BytePlus, ...)",
+        "materiality": "declared edge (the specialized image-generation client — its own provider registry)"
+      }
+    ]
+  },
+  "staticFindings": [],
+  "durations": {
+    "assemblyMs": 96395
+  }
+}

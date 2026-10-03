@@ -145,6 +145,9 @@ interface BatteryState {
       checkOutput?: string;
       /** Whether the task's own recorded output matched the rate-limit signature. */
       rateLimited?: boolean;
+      /** The captured process output tails (diagnosis, no quota cost). */
+      stdoutTail?: string;
+      stderrTail?: string;
     }[];
     providerEgressObserved: boolean;
     rateLimited: boolean;
@@ -649,6 +652,16 @@ async function runFailureValidation(): Promise<NonNullable<BatteryState["failure
  * platform-side) — the honest direct-arm corpus is the direct-reachable
  * subset (the identical boundary class PPR-020/022 recorded for their
  * vision/image edges).
+ *
+ * speak-text and transcribe-memo STAY in the subset and are expected to
+ * record honest UNRESOLVED outcomes: measured live, the supply serves
+ * its media surfaces in NATIVE shapes (/audio/tts, /audio/asr — the
+ * shapes the Zeck rail translates) while the app's direct
+ * OpenAI-compatible clients address /audio/speech and
+ * /audio/transcriptions — HTTP 404 "page not found" at the supply. That
+ * boundary is itself the delegation value the Zeck arm proves (the
+ * adapter's shape translation is what makes the multi-surface seam
+ * work) and rides in the evidence as the measured direct-arm fact.
  */
 function directRunnableTasks(): readonly CorpusTask[] {
   return CORPUS_TASKS.filter(
@@ -659,10 +672,13 @@ function directRunnableTasks(): readonly CorpusTask[] {
 /** The direct config's overlay axes (the app's own configuration keys). */
 interface DirectConfigOverlay {
   models: {
-    providers: Record<string, { apiKey?: string; headers?: Record<string, string> }>;
+    providers: Record<
+      string,
+      { apiKey?: string; headers?: Record<string, string>; baseUrl?: string }
+    >;
   };
   tts: {
-    providers: Record<string, { apiKey?: string }>;
+    providers: Record<string, { apiKey?: string; baseUrl?: string }>;
   };
 }
 
@@ -691,6 +707,8 @@ async function runDirectTask(
     durationMs: number;
     checkOutput: string;
     rateLimited: boolean;
+    stdoutTail?: string;
+    stderrTail?: string;
   };
   rateLimited: boolean;
 }> {
@@ -722,11 +740,17 @@ async function runDirectTask(
     if (provider !== undefined) {
       provider.apiKey = bearer;
       provider.headers = sessionHeaders;
+      // The supply serves its OpenAI-compatible chat surface at the ROOT
+      // (measured live: {base}/chat/completions answers; {base}/v1/chat/
+      // completions returns 404 "page not found" — the adapter's /v1
+      // convention is the ADAPTER's own surface, not the supply's).
+      provider.baseUrl = directBase;
     }
   }
   const ttsProvider = overlay.tts.providers.openai;
   if (ttsProvider !== undefined) {
     ttsProvider.apiKey = bearer;
+    ttsProvider.baseUrl = directBase;
   }
   writeFileSync(dirs.configPath, `${JSON.stringify(overlay, null, 2)}\n`);
 
@@ -788,9 +812,13 @@ async function runDirectTask(
         // The honest per-task record: the verifier's own output plus the
         // rate-limit signature of the task's captured process output (a
         // post-run diagnostic that spends no supply quota — the direct
-        // arm's media tasks are NEVER retried once attempted).
+        // arm's media tasks are NEVER retried once attempted). The
+        // stdout/stderr tails ride along for diagnosis (the same
+        // disclosure the Zeck arm's corpus outcomes carry).
         checkOutput: verification.checkOutput,
         rateLimited,
+        stdoutTail: result.stdout.slice(-1200),
+        stderrTail: result.stderr.slice(-1200),
       },
       rateLimited,
     };

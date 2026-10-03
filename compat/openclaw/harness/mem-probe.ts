@@ -15,7 +15,7 @@
  *
  * Run: bun run compat/openclaw/harness/mem-probe.ts [preload|no-preload] [usr2_seconds] [kill_seconds]
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CORPUS_TASKS } from "../corpus/tasks";
