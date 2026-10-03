@@ -33,6 +33,7 @@ import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/o
 // PPR-021 demo-entry warning).
 import { createContinueDemoRunExecutor } from "../../compat/continue/runtime/continue-pinned-driver";
 import { createHermesDemoRunExecutor } from "../../compat/hermes-agent/runtime/hermes-pinned-driver";
+import { createOpenClawDemoRunExecutor } from "../../compat/openclaw/runtime/openclaw-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
@@ -6949,11 +6950,20 @@ export function createDashboardRoutes(
   // hermes-pinned-driver.ts (composed lazily on the first certified
   // run; every authorization gate stays the harness's own).
   const hermesDemoRunExecutor = createHermesDemoRunExecutor();
+  // PPR-023 Lead binding (the merge-time act the data-only worker
+  // demo-entry reserves for the Tech Lead): the certified OpenClaw
+  // pinned runtime registers through the same merged PPR-018A harness
+  // seam — createOpenClawDemoRunExecutor over the worker's certified
+  // proof environment in compat/openclaw/runtime/
+  // openclaw-pinned-driver.ts (composed lazily on the first certified
+  // run; every authorization gate stays the harness's own).
+  const openClawDemoRunExecutor = createOpenClawDemoRunExecutor();
   const demoRunExecutors = new Map<string, DemoRunExecutor>([
     ["compat/cline", clineDemoRunExecutor],
     ["compat/openhands", openHandsDemoRunExecutor],
     ["compat/continue", continueDemoRunExecutor],
     ["compat/hermes-agent", hermesDemoRunExecutor],
+    ["compat/openclaw", openClawDemoRunExecutor],
   ]);
   // The run-route executor: one object routing each entry to its own
   // bound certified runtime (the handler's authorization gates stay the
