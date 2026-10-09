@@ -1,0 +1,18 @@
+{
+  "demoId": "openwebui",
+  "evidenceRecordId": "ppr-025-openwebui-live-proof",
+  "representativeTask": {
+    "title": "Open WebUI RAG: upload a knowledge file and answer a grounded question through every delegated surface",
+    "description": "The pinned Open WebUI runtime (open-webui/open-webui, revision 8bd8b4fac5e059578ac0c74b3c18d11139f88b7d, v0.11.4, API-only standard profile) runs as its own uvicorn process over the exact checkout, configured entirely through its own documented environment surface: the OpenAI-compatible connections and the RAG embeddings engine at the local Zeck adapter, the Ollama local-inference rail at the adapter's Ollama-native surface, the image pipeline and both audio pipelines at the adapter. The representative task uploads the Harbor Operations Manual through the app's files API (the app embeds every chunk through the delegated embeddings edge — executed by the Zeck-side deterministic strategy over the recorded supply boundary), asks a grounded question with the file attached (the app embeds the query, retrieves through its own vector pipeline, answers grounded through the delegated chat edge), and the mechanical check verifies the answer quotes the document's distinctive gate code — with Zeck as the sole AI execution authority on every surface: chat, RAG embeddings, retrieval-augmented answering, image generation, speech recognition and speech generation, local rail included."
+  },
+  "runBinding": {
+    "kind": "pinned-runtime",
+    "runtime": "compat/openwebui"
+  },
+  "reproducibility": {
+    "instructions": "Prepare the pinned checkout: git clone https://github.com/open-webui/open-webui.git /home/z/openwebui-upstream && git -C /home/z/openwebui-upstream checkout 8bd8b4fac5e059578ac0c74b3c18d11139f88b7d (origin/main HEAD at proof-time clone; package version 0.11.4). Create the pinned runtime venv: uv venv --python 3.12 /home/z/ppr-025-venv then uv pip install --python /home/z/ppr-025-venv/bin/python -r /home/z/openwebui-upstream/backend/requirements-slim.txt plus the standard-profile pieces the certified configuration activates (chromadb==1.5.9, pydub==0.25.1, boto3==1.42.62, azure-identity==1.25.3, azure-storage-blob==12.29.0, google-cloud-storage==3.9.0, opentelemetry-api/sdk pinned back to 1.42.1 — the app's own requirements pins). The runtime serves API-only (the app's own first-class mode when the frontend build directory is absent). Then run the battery: bun run compat/openwebui/harness/run-battery.ts from the Zeck checkout (resumable; every step checkpoints to /tmp/ppr-025-battery/battery-state.json; a completed run terminates cleanly). The battery requires the sandbox's authorized GLM supply config (/etc/.z-ai-config) — platform-side BYOK material, read at composition time, never present in the Open WebUI runtime, the adapter process env, the repository or any evidence artifact — and composes the full certified plane in-process: the Zeck world + executions authority, the multi-surface GLM supply rail (chat text/vision + image + asr + tts; NO embeddings — probed 404, the Zeck-side deterministic embeddings executor covers the edge), the multi-protocol adapter (OpenAI /v1 + the Ollama-native local rail), and the scrubbed egress-deny environment (the positive control: direct provider egress must be BLOCKED).",
+    "pinnedUpstreamRevision": "8bd8b4fac5e059578ac0c74b3c18d11139f88b7d",
+    "integrationRevision": "1485ddd92202153f44c21f3eeb8b65f55322ac67"
+  },
+  "warnings": []
+}
