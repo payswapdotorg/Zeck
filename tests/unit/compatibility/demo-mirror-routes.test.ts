@@ -278,7 +278,17 @@ describe("the demo surface on the live server", () => {
     // two-plane graph (model rail + browser substrate) resolves through
     // Zeck: the worker's proof-time AI_EXECUTION_COMPLETE; certification
     // stays the Lead's gate.
+    // PPR-025: the Open WebUI demo joins the index the same way — its
+    // live-bound record (deploy/evidence/ppr-025.json) carries the
+    // top-level discoveredInventory and every declared edge of its
+    // six-edge multi-modal graph (the OpenAI-compatible chat rail, the
+    // Ollama-native LOCAL-INFERENCE rail, the deterministic-strategy
+    // embeddings edge, image generation, STT and TTS) resolves through
+    // Zeck: the worker's proof-time AI_EXECUTION_COMPLETE; certification
+    // stays the Lead's gate (the pinned-runtime run executor binding in
+    // apps/dashboard is the Lead's surface, never the worker's).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
