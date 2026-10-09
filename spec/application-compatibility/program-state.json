@@ -4,7 +4,7 @@
  "status": "wave-k-open",
  "architecture": "ACR-006 + ACR-007",
  "currentWave": [
-  "PPR-025"
+  "PPR-026"
  ],
  "maxConcurrentWorkers": 3,
  "advancementAuthority": "pre-authorized-tech-lead",

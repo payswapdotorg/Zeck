@@ -1,8 +1,8 @@
 {
  "schemaVersion": 1,
  "program": "zeck-post-release-public-productization",
- "status": "ppr-024-delivered",
- "currentBase": "6ffb0fddfc6ca4ba4f3b7a12b704f53c83cdb116",
+ "status": "ppr-025-delivered",
+ "currentBase": "eabb6b3eb402113ffbde8c473f94468ce2623b79",
  "delivered": [
   "PPR-001",
   "PPR-002",
@@ -30,7 +30,7 @@
   "PPR-024"
  ],
  "eligible": [
-  "PPR-025"
+  "PPR-026"
  ],
  "inFlight": [],
  "blocked": [
@@ -49,6 +49,7 @@
   "PPR-022",
   "PPR-023",
   "PPR-024",
+  "PPR-025",
   "PPR-025",
   "PPR-026",
   "PPR-027"
