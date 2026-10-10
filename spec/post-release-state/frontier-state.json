@@ -27,7 +27,8 @@
   "PPR-021",
   "PPR-022",
   "PPR-023",
-  "PPR-024"
+  "PPR-024",
+  "PPR-025"
  ],
  "eligible": [
   "PPR-026"
@@ -38,7 +39,7 @@
  ],
  "maxConcurrentWorkers": 3,
  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
- "context": "PPR-024 (Browser Use) delivered (PR #166, merge head 6ffb0fd, Lead-harvest provenance: worker chat 94491839 agents-tab dispatch, tarball sha256 6fd9787d... verified byte-exact, 108,086 bytes / 29 files; worker branch HEAD cc4407d, 31 commits; a capacity-crunch day with multiple turn-stall recoveries — all lossless). The Application Compatibility Proof Program now has seven bound proofs: Aider (018), Cline (019), OpenHands (020), Continue (021), Hermes-Agent (022), OpenClaw (023) and Browser Use (024) on the PPR-018A harness foundation. PPR-024 derived AI_EXECUTION_COMPLETE (5/5 rules) with the two-plane contract satisfied: 4/4 declared edges delegated live (15 edge executions, 12 substrate-plane — the browser actuation path does NOT bypass Zeck; custom BrowserSession/Tools at the app's constructor seams execute through Zeck executions by the Zeck-side substrate driver over the pinned runtime's real BrowserSession → cdp-use → Chromium). Corpus 3/3 live over the loopback fixture (0 FAIL/0 BYPASS); egress canary positive control passing; 15 credential facts absent; vision COMPLETED on glm-4.5v; cloud surfaces BLOCKED/NOT-RUN with owners (operator-provider boundary); loopback-only corpus disclosed as the egress-design boundary. PPR-025 (Open WebUI) is now eligible. PPR-016 remains operator-bound. Pre-authorized Tech Lead succession continues.",
+ "context": "PPR-025 (Open WebUI) delivered (PR #167, merge head eabb6b3, Lead-harvest provenance: worker chat dcb554ac, tarball sha256 38c2fc69... verified byte-exact, 265,646 bytes / 26 files; worker branch HEAD 2cd2c8b7; a mid-run platform stream death recovered losslessly through the queued-continuation doctrine). The Application Compatibility Proof Program now has eight bound proofs: Aider (018), Cline (019), OpenHands (020), Continue (021), Hermes-Agent (022), OpenClaw (023), Browser Use (024) and Open WebUI (025) on the PPR-018A harness foundation. PPR-025 derived AI_EXECUTION_COMPLETE (5/5 rules) with a 6-edge multi-modal graph (chat openai-rail + LOCAL Ollama-native rail, rag.embeddings, images, stt, tts; 6 declared = 6 discovered, 10 dormant seams disclosed), corpus 8/8 through Zeck with zero BYPASS_DETECTED, 15/15 executions correlated, egress canary OBSERVED BLOCKED (positive control), and 0 provider credentials on the erasure audit. The pinned Open WebUI 8bd8b4fa (v0.11.4) runtime runs in the API-only standard profile with a deterministic embeddings executor over the recorded supply-404 boundary. PPR-026 (AnythingLLM) is now eligible. PPR-016 remains operator-bound. Pre-authorized Tech Lead succession continues.",
  "authorizedQueue": [
   "PPR-017",
   "PPR-018A",
@@ -49,7 +50,6 @@
   "PPR-022",
   "PPR-023",
   "PPR-024",
-  "PPR-025",
   "PPR-025",
   "PPR-026",
   "PPR-027"
