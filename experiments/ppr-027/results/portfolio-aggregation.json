@@ -1,0 +1,703 @@
+{
+  "records": [
+    {
+      "workOrder": "PPR-018",
+      "subjectId": "aider",
+      "title": "Aider Zeck-complete application proof (compat/aider)",
+      "date": "2026-09-27T18:10:09.943Z",
+      "recordId": "ppr-018-aider-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "integrationRevision": "ac2002b129e85476363ba23ee253b76ec880a016",
+      "declaredEdges": 3,
+      "delegatedEdges": 3,
+      "notRunEdges": 0,
+      "totalExecutionIds": 20,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": null,
+      "corpusOutcomes": {
+        "attempts": 5,
+        "successes": 5
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "same-supply-direct-arm",
+          "basis": "measured",
+          "statement": "Same-supply direct (non-Zeck) arm — the same pinned Aider calling the same GLM supply endpoint directly with no Zeck mediation (the application holds the endpoint credential, by definition of a direct baseline): 2/5 corpus tasks resolved, 172.5s mean per resolved outcome vs the Zeck arm's 24.8s; the direct arm's latency includes supply-side rate-limit retry backoff observed during the run (disclos"
+        },
+        {
+          "baseline": "direct-baseline",
+          "basis": "not-measured",
+          "statement": "The direct non-Zeck EXTERNAL-provider baseline (Aider → OpenRouter/Anthropic/…) is NOT RUN in this sandbox (no external provider credentials; owner: Lead). The same-supply direct arm above is the measured substitute available in this environment."
+        },
+        {
+          "baseline": "optimized-baseline",
+          "basis": "not-measured",
+          "statement": "The strong manually-optimized non-Zeck baseline is NOT RUN in this sandbox (owner: Lead)."
+        }
+      ],
+      "dormantEdgeDisclosures": 5,
+      "nonAiOperations": 5,
+      "limitations": 5,
+      "notRunCauses": 3,
+      "discoveredInventoryEdges": null,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 0,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-019",
+      "subjectId": "cline",
+      "title": "Cline Zeck-complete application proof (compat/cline)",
+      "date": "2026-09-29T00:18:08.385Z",
+      "recordId": "ppr-019-cline-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "252082b9e93b4f91253876391e35b4c13326f5e6",
+      "integrationRevision": "51fdd3d56fb2091bead0e3ba094ae9008d221422",
+      "declaredEdges": 5,
+      "delegatedEdges": 5,
+      "notRunEdges": 0,
+      "totalExecutionIds": 48,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "COMPLETE — BOUND through the merged PPR-018A harness (PR #160, merge head 0bddee1)",
+      "corpusOutcomes": {
+        "attempts": 5,
+        "successes": 5
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "same-supply-direct-arm",
+          "basis": "measured",
+          "statement": "Same-supply direct (non-Zeck) arm — the same pinned Cline CLI calling the same GLM supply endpoint directly with no Zeck mediation (the application holds the endpoint credential, by definition of a direct baseline): 4/4 tasks resolved vs the Zeck arm's 5/5; mean 51.7s per resolved direct outcome vs 51.0s per resolved Zeck outcome; direct-arm provider egress to the supply endpoint observed in the d"
+        },
+        {
+          "baseline": "strong-optimized-external",
+          "basis": "not-measured",
+          "statement": "Strong optimized non-Zeck baseline (external commercial providers via OpenRouter or first-party endpoints) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+        },
+        {
+          "baseline": "cost-per-resolved-outcome",
+          "basis": "not-measured",
+          "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 27442 in / 651 out tokens per resolved outcome; direct arm tokens in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+        }
+      ],
+      "dormantEdgeDisclosures": 5,
+      "nonAiOperations": 5,
+      "limitations": 4,
+      "notRunCauses": 1,
+      "discoveredInventoryEdges": 5,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 0,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-020",
+      "subjectId": "openhands",
+      "title": "OpenHands Zeck-complete application proof (compat/openhands)",
+      "date": "2026-09-29T19:16:51.786Z",
+      "recordId": "ppr-020-openhands-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "fcc102a697874d54a357e36004e02c95040dbdc0",
+      "integrationRevision": "cf4bb49daf38d6aa9884283a55885c96af24efda",
+      "declaredEdges": 5,
+      "delegatedEdges": 5,
+      "notRunEdges": 0,
+      "totalExecutionIds": 49,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "COMPLETE — BOUND through the merged PPR-018A harness (PR #160, merge head 0bddee1)",
+      "corpusOutcomes": {
+        "attempts": 5,
+        "successes": 5
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "same-supply-direct-arm",
+          "basis": "measured",
+          "statement": "Same-supply direct (non-Zeck) arm — the same pinned OpenHands agent SDK calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key and session headers through the LLM constructor's own api_key/extra_headers axes — by definition of a direct baseline): 1/4 text-reachable tasks resolved (the vision edge is outside "
+        },
+        {
+          "baseline": "strong-optimized-external",
+          "basis": "not-measured",
+          "statement": "Strong optimized non-Zeck baseline (external commercial providers via OpenRouter or first-party endpoints) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+        },
+        {
+          "baseline": "cost-per-resolved-outcome",
+          "basis": "not-measured",
+          "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 41619 in / 553 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+        }
+      ],
+      "dormantEdgeDisclosures": 13,
+      "nonAiOperations": 6,
+      "limitations": 5,
+      "notRunCauses": 1,
+      "discoveredInventoryEdges": 5,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 0,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-021",
+      "subjectId": "continue",
+      "title": "Continue Zeck-complete application proof (compat/continue)",
+      "date": "2026-09-30T17:25:00Z",
+      "recordId": "ppr-021-continue-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "5522c6f44ca0ac3528b37244818fbfa39b5af470",
+      "integrationRevision": "241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d",
+      "declaredEdges": 7,
+      "delegatedEdges": 6,
+      "notRunEdges": 1,
+      "totalExecutionIds": 28,
+      "derivedStatus": "PARTIAL",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": false
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": false
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": false
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 7,
+        "successes": 5
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "direct-same-supply",
+          "basis": "live",
+          "statement": "Agent-edit resolves on both arms (11.1s mediated vs 7.6s direct chat-only); edit-inline, apply-fast, autocomplete and rerank resolve ONLY through Zeck (the direct arm's surface probes return 404 for those surfaces) — the delegated mediation is the value-add, not a pass-through."
+        }
+      ],
+      "dormantEdgeDisclosures": 9,
+      "nonAiOperations": 5,
+      "limitations": 3,
+      "notRunCauses": 2,
+      "discoveredInventoryEdges": 7,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 0,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-022",
+      "subjectId": "hermes-agent",
+      "title": "Hermes-Agent Zeck-complete application proof (compat/hermes-agent)",
+      "date": "2026-10-01T23:08:05.939Z",
+      "recordId": "ppr-022-hermes-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "77e2992020eafded09e0c344e687ae53e52e6eab",
+      "integrationRevision": "241f162b24bcdd0e4a1b1c724425f7ccc39ccc4d",
+      "declaredEdges": 7,
+      "delegatedEdges": 7,
+      "notRunEdges": 0,
+      "totalExecutionIds": 31,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 6,
+        "successes": 6
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "same-supply-direct-arm",
+          "basis": "measured",
+          "statement": "Same-supply direct (non-Zeck) arm — the same pinned Hermes-Agent runtime calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key through the app's own environment axes (OPENAI_API_KEY et al.) and its model/tts/stt config keys, the session headers through its model.default_headers axis — by definition of a dir"
+        },
+        {
+          "baseline": "strong-optimized-external",
+          "basis": "not-measured",
+          "statement": "Strong optimized non-Zeck baseline (external commercial providers via OpenRouter or first-party endpoints) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+        },
+        {
+          "baseline": "cost-per-resolved-outcome",
+          "basis": "not-measured",
+          "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 27642 in / 547 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+        }
+      ],
+      "dormantEdgeDisclosures": 16,
+      "nonAiOperations": 8,
+      "limitations": 4,
+      "notRunCauses": 1,
+      "discoveredInventoryEdges": 7,
+      "gapClassificationCounts": {
+        "implementationGap": 2,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 0,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-023",
+      "subjectId": "openclaw",
+      "title": "OpenClaw Zeck-complete application proof (compat/openclaw)",
+      "date": "2026-10-03T03:30:05.064Z",
+      "recordId": "ppr-023-openclaw-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "f6883b3771c0a40d7bd62fcb99815dcbbb2e24f3",
+      "integrationRevision": "df6304521e74ea848f1a3691f34c381b42d45e2b",
+      "declaredEdges": 5,
+      "delegatedEdges": 5,
+      "notRunEdges": 0,
+      "totalExecutionIds": 18,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 6,
+        "successes": 6
+      },
+      "measurementsBlock": false,
+      "measuredDimensions": [],
+      "comparisonEntries": [
+        {
+          "baseline": "same-supply-direct-arm",
+          "basis": "measured",
+          "statement": "Same-supply direct (non-Zeck) arm — the same pinned OpenClaw runtime calling the same GLM supply endpoint directly with no Zeck mediation (the application runtime holds the endpoint credential — the real supply key through the app's own models.providers.<id>.apiKey and tts.providers.openai.apiKey config axes, the session headers through its models.providers.<id>.headers axis — by definition of a d"
+        },
+        {
+          "baseline": "strong-optimized-external",
+          "basis": "not-measured",
+          "statement": "Strong optimized non-Zeck baseline (external commercial providers via first-party endpoints or aggregators) NOT RUN: this sandbox has no external provider credentials; owner: Lead."
+        },
+        {
+          "baseline": "cost-per-resolved-outcome",
+          "basis": "not-measured",
+          "statement": "The sandbox's GLM supply endpoint does not report USD prices; token usage per resolved outcome is measured and recorded (Zeck arm: 28218 in / 210 out tokens per resolved outcome; direct arm durations in the battery section), micro-USD settlement is not (the budgets authority's reservation estimate is recorded on each execution's dispatch)."
+        }
+      ],
+      "dormantEdgeDisclosures": 6,
+      "nonAiOperations": 9,
+      "limitations": 5,
+      "notRunCauses": 1,
+      "discoveredInventoryEdges": 5,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 7,
+        "architectureGapCandidate": 0
+      },
+      "notes": [
+        "corpus outcomes derived from the battery corpus entries (the record predates the 13-dimension measurement schema)"
+      ]
+    },
+    {
+      "workOrder": "PPR-024",
+      "subjectId": "browser-use",
+      "title": "Browser Use Zeck-complete application proof — two planes (model + browser actuation)",
+      "date": "2026-10-03T06:20:32.417Z",
+      "recordId": "ppr-024-browser-use-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "7be96ed8bafa8dfe1eef228b59cf5c884b8b2431",
+      "integrationRevision": "d51b5a59d53ef7824074acc4fce6726f065fcec5",
+      "declaredEdges": 4,
+      "delegatedEdges": 4,
+      "notRunEdges": 0,
+      "totalExecutionIds": 15,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 3,
+        "successes": 3
+      },
+      "measurementsBlock": true,
+      "measuredDimensions": [
+        "outcome-success",
+        "quality-verification",
+        "latency-tail",
+        "usage-cost",
+        "failure-retry",
+        "determinism-reuse",
+        "provider-portability",
+        "customization-coverage",
+        "engineering-surface-removed",
+        "capability-discovery-avoidance",
+        "telemetry-explainability",
+        "diagnosis-recovery",
+        "reproducibility"
+      ],
+      "comparisonEntries": [
+        {
+          "baseline": "direct-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (direct-baseline, stack: Browser Use 0.13.10 stock (in-process BrowserSession + Chromium) with ChatOpenAI direct to the sandbox GLM supply endpoint (no Zeck; max_retries=0; text-only state turns)) — 2/3 task(s) resolved, cost not carried. Methodology: the same three corpus tasks, the same mechanical verification, the same fixture page; the model calls go directly from the application proc"
+        },
+        {
+          "baseline": "optimized-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (optimized-baseline, stack: Browser Use 0.13.10 strong-optimized non-Zeck arm (in-process BrowserSession + Chromium, ChatOpenAI direct to the GLM supply with max_retries=3 transport retries and the app-owned markdown-fence response-shape normalization shim — the strongest realistic direct configuration; vision-input routing against this supply's separate vision endpoint is engineering sur"
+        }
+      ],
+      "dormantEdgeDisclosures": 7,
+      "nonAiOperations": 6,
+      "limitations": 5,
+      "notRunCauses": 3,
+      "discoveredInventoryEdges": 4,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 7,
+        "architectureGapCandidate": 0
+      },
+      "notes": []
+    },
+    {
+      "workOrder": "PPR-025",
+      "subjectId": "openwebui",
+      "title": "PPR-025 — Open WebUI Zeck-complete application proof (live)",
+      "date": "2026-10-09T20:29:09.006Z",
+      "recordId": "ppr-025-openwebui-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "8bd8b4fac5e059578ac0c74b3c18d11139f88b7d",
+      "integrationRevision": "1485ddd92202153f44c21f3eeb8b65f55322ac67",
+      "declaredEdges": 6,
+      "delegatedEdges": 6,
+      "notRunEdges": 0,
+      "totalExecutionIds": 15,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 8,
+        "successes": 8
+      },
+      "measurementsBlock": true,
+      "measuredDimensions": [
+        "outcome-success",
+        "quality-verification",
+        "latency-tail",
+        "usage-cost",
+        "failure-retry",
+        "determinism-reuse",
+        "provider-portability",
+        "customization-coverage",
+        "engineering-surface-removed",
+        "capability-discovery-avoidance",
+        "telemetry-explainability",
+        "diagnosis-recovery",
+        "reproducibility"
+      ],
+      "comparisonEntries": [
+        {
+          "baseline": "direct-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (direct-baseline, stack: Open WebUI 0.11.4 (pinned 8bd8b4f) stock configuration pointed DIRECTLY at the sandbox's authorized GLM supply endpoint (no Zeck; the app's own connection axes; stock defaults — the supply serves no model-listing endpoint, so the stock arm cannot enumerate models)) — 0/8 task(s) resolved, cost not carried. Methodology: the same eight corpus tasks, the same mechani"
+        },
+        {
+          "baseline": "optimized-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (optimized-baseline, stack: Open WebUI 0.11.4 (pinned 8bd8b4f) strong-optimized non-Zeck arm (the app's own optimization axes fully tuned: the manual model_ids connection list over the supply's native model ids — the documented operator workaround for providers without model listing — plus per-surface engine selection, tuned image size and client timeout — still no Zeck and no new infrast"
+        }
+      ],
+      "dormantEdgeDisclosures": 10,
+      "nonAiOperations": 7,
+      "limitations": 3,
+      "notRunCauses": null,
+      "discoveredInventoryEdges": 6,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 5,
+        "architectureGapCandidate": 0
+      },
+      "notes": []
+    },
+    {
+      "workOrder": "PPR-026",
+      "subjectId": "anythingllm",
+      "title": "PPR-026 — AnythingLLM Zeck-complete application proof (live)",
+      "date": "2026-10-10T10:32:55.413Z",
+      "recordId": "ppr-026-anythingllm-live-proof",
+      "recordBasis": "live-proof",
+      "upstreamRevision": "fa7ec877f005a21ede94888b3b8618b700343857",
+      "integrationRevision": "a8ffc9e2c93b38e60c3fa5cec8591a22dfc5be86",
+      "declaredEdges": 5,
+      "delegatedEdges": 5,
+      "notRunEdges": 0,
+      "totalExecutionIds": 9,
+      "derivedStatus": "AI_EXECUTION_COMPLETE",
+      "ruleResults": [
+        {
+          "ruleId": "EVERY_DECLARED_EDGE_DELEGATED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "DIRECT_EGRESS_ABSENT_OR_BLOCKED",
+          "satisfied": true
+        },
+        {
+          "ruleId": "CORPUS_FUNCTIONALLY_USABLE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "ZECK_EVIDENCE_FOR_EVERY_DELEGATED_EDGE",
+          "satisfied": true
+        },
+        {
+          "ruleId": "NO_FIXTURE_COUNTED_AS_EXTERNAL_PASS",
+          "satisfied": true
+        }
+      ],
+      "finalCertification": "PENDING",
+      "corpusOutcomes": {
+        "attempts": 6,
+        "successes": 6
+      },
+      "measurementsBlock": true,
+      "measuredDimensions": [
+        "outcome-success",
+        "quality-verification",
+        "latency-tail",
+        "usage-cost",
+        "failure-retry",
+        "determinism-reuse",
+        "provider-portability",
+        "customization-coverage",
+        "engineering-surface-removed",
+        "capability-discovery-avoidance",
+        "telemetry-explainability",
+        "diagnosis-recovery",
+        "reproducibility"
+      ],
+      "comparisonEntries": [
+        {
+          "baseline": "direct-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (direct-baseline, stack: AnythingLLM v1.17.0 (pinned fa7ec877) stock configuration pointed DIRECTLY at the sandbox's authorized GLM supply endpoint (no Zeck; the app's own generic-openai connection axes; stock settings — a plain Bearer-only client receives 401/403 from the machine-level endpoint, the identical boundary PPR-025 recorded live)) — 0/6 task(s) resolved, cost not carried. Meth"
+        },
+        {
+          "baseline": "optimized-baseline",
+          "basis": "measured",
+          "statement": "BASELINE (optimized-baseline, stack: AnythingLLM v1.17.0 (pinned fa7ec877) strong-optimized non-Zeck arm (the app's own optimization axes fully tuned: the generic-openai connector's documented custom-headers axis carrying the supply's required platform-session headers, the supply's native model id, tuned token limits — still no Zeck and no new infrastructure)) — 1/6 task(s) resolved, cost not carr"
+        }
+      ],
+      "dormantEdgeDisclosures": 11,
+      "nonAiOperations": 7,
+      "limitations": 4,
+      "notRunCauses": null,
+      "discoveredInventoryEdges": 5,
+      "gapClassificationCounts": {
+        "implementationGap": 0,
+        "publicContractGap": 0,
+        "operatorProviderBoundary": 6,
+        "architectureGapCandidate": 0
+      },
+      "notes": []
+    }
+  ],
+  "tallies": {
+    "aiExecutionComplete": 8,
+    "partial": 1,
+    "blocked": 0,
+    "bypassDetected": 0,
+    "gapClassifications": {
+      "implementationGap": 2,
+      "publicContractGap": 0,
+      "operatorProviderBoundary": 25,
+      "architectureGapCandidate": 0
+    },
+    "recordsWithMeasurementsBlock": 3
+  }
+}

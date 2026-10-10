@@ -1,0 +1,67 @@
+{
+  "probes": [
+    {
+      "subjectId": "aider",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 100,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "cline",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 155,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "openhands",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 191,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "continue",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 203,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "hermes-agent",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 247,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "openclaw",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 157,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "browser-use",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 22,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "openwebui",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 27,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    },
+    {
+      "subjectId": "anythingllm",
+      "switchedWithoutAppChanges": true,
+      "changedApplicationFiles": 0,
+      "switchTimeMs": 28,
+      "note": "the platform side was re-composed from the single- to the multi-provider configuration; the driver/workload code is provider-blind (no provider identifier appears in any task payload) — the certified records' own portability probes remain the application-level facts"
+    }
+  ]
+}

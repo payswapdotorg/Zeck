@@ -1,0 +1,427 @@
+{
+  "audits": [
+    {
+      "subjectId": "aider",
+      "adapterFiles": [
+        {
+          "path": "compat/aider/adapter/edges.ts",
+          "lines": 56,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/aider/adapter/server.ts",
+          "lines": 369,
+          "createExecutionCallSites": [187],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "idempotency-key-cache",
+              "line": 124,
+              "evidence": "/home/z/my-project/Zeck/compat/aider/adapter/server.ts:124: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            },
+            {
+              "kind": "terminal-polling-loop",
+              "line": 354,
+              "evidence": "/home/z/my-project/Zeck/compat/aider/adapter/server.ts:354: for (;;) {"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 425,
+      "delegationCallSites": 1,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "idempotency-key-cache",
+          "line": 124,
+          "evidence": "/home/z/my-project/Zeck/compat/aider/adapter/server.ts:124: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        },
+        {
+          "kind": "terminal-polling-loop",
+          "line": 354,
+          "evidence": "/home/z/my-project/Zeck/compat/aider/adapter/server.ts:354: for (;;) {"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (425 lines); every provider-facing outcome flows through 1 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "cline",
+      "adapterFiles": [
+        {
+          "path": "compat/cline/adapter/edges.ts",
+          "lines": 130,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/cline/adapter/server.ts",
+          "lines": 454,
+          "createExecutionCallSites": [261],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 151,
+              "evidence": "/home/z/my-project/Zeck/compat/cline/adapter/server.ts:151: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 172,
+              "evidence": "/home/z/my-project/Zeck/compat/cline/adapter/server.ts:172: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 584,
+      "delegationCallSites": 1,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 151,
+          "evidence": "/home/z/my-project/Zeck/compat/cline/adapter/server.ts:151: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 172,
+          "evidence": "/home/z/my-project/Zeck/compat/cline/adapter/server.ts:172: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (584 lines); every provider-facing outcome flows through 1 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "openhands",
+      "adapterFiles": [
+        {
+          "path": "compat/openhands/adapter/edges.ts",
+          "lines": 149,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/openhands/adapter/server.ts",
+          "lines": 462,
+          "createExecutionCallSites": [269],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 157,
+              "evidence": "/home/z/my-project/Zeck/compat/openhands/adapter/server.ts:157: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 178,
+              "evidence": "/home/z/my-project/Zeck/compat/openhands/adapter/server.ts:178: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 611,
+      "delegationCallSites": 1,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 157,
+          "evidence": "/home/z/my-project/Zeck/compat/openhands/adapter/server.ts:157: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 178,
+          "evidence": "/home/z/my-project/Zeck/compat/openhands/adapter/server.ts:178: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (611 lines); every provider-facing outcome flows through 1 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "continue",
+      "adapterFiles": [
+        {
+          "path": "compat/continue/adapter/edges.ts",
+          "lines": 119,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/continue/adapter/server.ts",
+          "lines": 693,
+          "createExecutionCallSites": [408],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 202,
+              "evidence": "/home/z/my-project/Zeck/compat/continue/adapter/server.ts:202: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 240,
+              "evidence": "/home/z/my-project/Zeck/compat/continue/adapter/server.ts:240: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 812,
+      "delegationCallSites": 1,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 202,
+          "evidence": "/home/z/my-project/Zeck/compat/continue/adapter/server.ts:202: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 240,
+          "evidence": "/home/z/my-project/Zeck/compat/continue/adapter/server.ts:240: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (812 lines); every provider-facing outcome flows through 1 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "hermes-agent",
+      "adapterFiles": [
+        {
+          "path": "compat/hermes-agent/adapter/edges.ts",
+          "lines": 149,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/hermes-agent/adapter/server.ts",
+          "lines": 1008,
+          "createExecutionCallSites": [437, 640, 778, 900],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 247,
+              "evidence": "/home/z/my-project/Zeck/compat/hermes-agent/adapter/server.ts:247: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 317,
+              "evidence": "/home/z/my-project/Zeck/compat/hermes-agent/adapter/server.ts:317: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 1157,
+      "delegationCallSites": 4,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 247,
+          "evidence": "/home/z/my-project/Zeck/compat/hermes-agent/adapter/server.ts:247: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 317,
+          "evidence": "/home/z/my-project/Zeck/compat/hermes-agent/adapter/server.ts:317: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (1157 lines); every provider-facing outcome flows through 4 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "openclaw",
+      "adapterFiles": [
+        {
+          "path": "compat/openclaw/adapter/edges.ts",
+          "lines": 140,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/openclaw/adapter/server.ts",
+          "lines": 1015,
+          "createExecutionCallSites": [444, 647, 785, 907],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 252,
+              "evidence": "/home/z/my-project/Zeck/compat/openclaw/adapter/server.ts:252: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 322,
+              "evidence": "/home/z/my-project/Zeck/compat/openclaw/adapter/server.ts:322: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 1155,
+      "delegationCallSites": 4,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 252,
+          "evidence": "/home/z/my-project/Zeck/compat/openclaw/adapter/server.ts:252: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 322,
+          "evidence": "/home/z/my-project/Zeck/compat/openclaw/adapter/server.ts:322: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (1155 lines); every provider-facing outcome flows through 4 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "browser-use",
+      "adapterFiles": [
+        {
+          "path": "compat/browser-use/adapter/edges.ts",
+          "lines": 94,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/browser-use/adapter/server.ts",
+          "lines": 742,
+          "createExecutionCallSites": [375, 624],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 208,
+              "evidence": "/home/z/my-project/Zeck/compat/browser-use/adapter/server.ts:208: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 232,
+              "evidence": "/home/z/my-project/Zeck/compat/browser-use/adapter/server.ts:232: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 836,
+      "delegationCallSites": 2,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 208,
+          "evidence": "/home/z/my-project/Zeck/compat/browser-use/adapter/server.ts:208: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 232,
+          "evidence": "/home/z/my-project/Zeck/compat/browser-use/adapter/server.ts:232: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (836 lines); every provider-facing outcome flows through 2 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "openwebui",
+      "adapterFiles": [
+        {
+          "path": "compat/openwebui/adapter/edges.ts",
+          "lines": 156,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/openwebui/adapter/server.ts",
+          "lines": 1287,
+          "createExecutionCallSites": [496, 687, 813, 938, 1072, 1181],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 293,
+              "evidence": "/home/z/my-project/Zeck/compat/openwebui/adapter/server.ts:293: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 316,
+              "evidence": "/home/z/my-project/Zeck/compat/openwebui/adapter/server.ts:316: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 1443,
+      "delegationCallSites": 6,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 293,
+          "evidence": "/home/z/my-project/Zeck/compat/openwebui/adapter/server.ts:293: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 316,
+          "evidence": "/home/z/my-project/Zeck/compat/openwebui/adapter/server.ts:316: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (1443 lines); every provider-facing outcome flows through 6 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    },
+    {
+      "subjectId": "anythingllm",
+      "adapterFiles": [
+        {
+          "path": "compat/anythingllm/adapter/edges.ts",
+          "lines": 110,
+          "createExecutionCallSites": [],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": []
+        },
+        {
+          "path": "compat/anythingllm/adapter/server.ts",
+          "lines": 1206,
+          "createExecutionCallSites": [526, 729, 853, 991, 1100],
+          "forbiddenFindings": [],
+          "disclosedMechanisms": [
+            {
+              "kind": "terminal-polling-loop",
+              "line": 300,
+              "evidence": "/home/z/my-project/Zeck/compat/anythingllm/adapter/server.ts:300: for (;;) {"
+            },
+            {
+              "kind": "idempotency-key-cache",
+              "line": 323,
+              "evidence": "/home/z/my-project/Zeck/compat/anythingllm/adapter/server.ts:323: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+            }
+          ]
+        }
+      ],
+      "adapterLinesTotal": 1316,
+      "delegationCallSites": 5,
+      "forbiddenFindings": [],
+      "disclosedMechanisms": [
+        {
+          "kind": "terminal-polling-loop",
+          "line": 300,
+          "evidence": "/home/z/my-project/Zeck/compat/anythingllm/adapter/server.ts:300: for (;;) {"
+        },
+        {
+          "kind": "idempotency-key-cache",
+          "line": 323,
+          "evidence": "/home/z/my-project/Zeck/compat/anythingllm/adapter/server.ts:323: const keyState = new Map<string, { key: string; failed: boolean; attempts: number }>();"
+        }
+      ],
+      "verdict": "thin",
+      "verdictBasis": "no forbidden authority mechanism found in 2 adapter file(s) (1316 lines); every provider-facing outcome flows through 5 createExecution delegation call site(s) to the public Zeck boundary; the 2 disclosed non-thin mechanism(s) are the transport-polling loop and the idempotency-key cache the certified disclosures document (stateful translation concerns, not authorities)"
+    }
+  ]
+}

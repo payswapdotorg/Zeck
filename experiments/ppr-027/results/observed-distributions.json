@@ -1,0 +1,726 @@
+{
+  "version": 1,
+  "cells": 102,
+  "overall": {
+    "zeck": {
+      "attempts": 1134,
+      "resolved": 1075,
+      "resolvedRate": 0.9479717813051146,
+      "providerFaults": 449,
+      "retries": 380,
+      "nanoCost": 25551162,
+      "microPerResolved": 23.768522790697673
+    },
+    "direct": {
+      "attempts": 1134,
+      "resolved": 763,
+      "resolvedRate": 0.6728395061728395,
+      "providerFaults": 622,
+      "retries": 0,
+      "nanoCost": 53329191,
+      "microPerResolved": 69.89409043250328
+    },
+    "optimized": {
+      "attempts": 1134,
+      "resolved": 1111,
+      "resolvedRate": 0.9797178130511464,
+      "providerFaults": 322,
+      "retries": 322,
+      "nanoCost": 25316767,
+      "microPerResolved": 22.78736903690369
+    }
+  },
+  "reuse": {
+    "requests": 5950,
+    "replays": 3353,
+    "replayRate": 0.5635294117647058
+  },
+  "telemetry": {
+    "traces": 5950,
+    "correlated": 5950,
+    "reconstructible": 5881
+  },
+  "canary": {
+    "cells": 102,
+    "blocked": 102
+  },
+  "byVolume": [
+    {
+      "label": "volume S",
+      "cells": 34,
+      "zeck": {
+        "attempts": 162,
+        "resolved": 143,
+        "resolvedRate": 0.8827160493827161,
+        "providerFaults": 148,
+        "retries": 126,
+        "nanoCost": 8310294,
+        "microPerResolved": 58.11394405594405
+      },
+      "direct": {
+        "attempts": 162,
+        "resolved": 111,
+        "resolvedRate": 0.6851851851851852,
+        "providerFaults": 82,
+        "retries": 0,
+        "nanoCost": 7310505,
+        "microPerResolved": 65.8604054054054
+      },
+      "optimized": {
+        "attempts": 162,
+        "resolved": 155,
+        "resolvedRate": 0.9567901234567902,
+        "providerFaults": 98,
+        "retries": 98,
+        "nanoCost": 8400970,
+        "microPerResolved": 54.1998064516129
+      },
+      "zeckMicroMedian": 39,
+      "directMicroMedian": 48,
+      "optimizedMicroMedian": 39
+    },
+    {
+      "label": "volume M",
+      "cells": 34,
+      "zeck": {
+        "attempts": 324,
+        "resolved": 306,
+        "resolvedRate": 0.9444444444444444,
+        "providerFaults": 155,
+        "retries": 134,
+        "nanoCost": 8482758,
+        "microPerResolved": 27.72143137254902
+      },
+      "direct": {
+        "attempts": 324,
+        "resolved": 214,
+        "resolvedRate": 0.6604938271604939,
+        "providerFaults": 173,
+        "retries": 0,
+        "nanoCost": 15395925,
+        "microPerResolved": 71.94357476635514
+      },
+      "optimized": {
+        "attempts": 324,
+        "resolved": 314,
+        "resolvedRate": 0.9691358024691358,
+        "providerFaults": 111,
+        "retries": 111,
+        "nanoCost": 8410307,
+        "microPerResolved": 26.784417197452232
+      },
+      "zeckMicroMedian": 19,
+      "directMicroMedian": 51,
+      "optimizedMicroMedian": 19
+    },
+    {
+      "label": "volume L",
+      "cells": 34,
+      "zeck": {
+        "attempts": 648,
+        "resolved": 626,
+        "resolvedRate": 0.9660493827160493,
+        "providerFaults": 146,
+        "retries": 120,
+        "nanoCost": 8758110,
+        "microPerResolved": 13.9905910543131
+      },
+      "direct": {
+        "attempts": 648,
+        "resolved": 438,
+        "resolvedRate": 0.6759259259259259,
+        "providerFaults": 367,
+        "retries": 0,
+        "nanoCost": 30622761,
+        "microPerResolved": 69.9149794520548
+      },
+      "optimized": {
+        "attempts": 648,
+        "resolved": 642,
+        "resolvedRate": 0.9907407407407407,
+        "providerFaults": 113,
+        "retries": 113,
+        "nanoCost": 8505490,
+        "microPerResolved": 13.248426791277259
+      },
+      "zeckMicroMedian": 9,
+      "directMicroMedian": 43,
+      "optimizedMicroMedian": 9
+    }
+  ],
+  "byProviderConfig": [
+    {
+      "label": "providerConfig single",
+      "cells": 51,
+      "zeck": {
+        "attempts": 567,
+        "resolved": 551,
+        "resolvedRate": 0.9717813051146384,
+        "providerFaults": 139,
+        "retries": 122,
+        "nanoCost": 12583355,
+        "microPerResolved": 22.837304900181486
+      },
+      "direct": {
+        "attempts": 567,
+        "resolved": 378,
+        "resolvedRate": 0.6666666666666666,
+        "providerFaults": 305,
+        "retries": 0,
+        "nanoCost": 26895383,
+        "microPerResolved": 71.15180687830689
+      },
+      "optimized": {
+        "attempts": 567,
+        "resolved": 563,
+        "resolvedRate": 0.9929453262786596,
+        "providerFaults": 139,
+        "retries": 139,
+        "nanoCost": 12635672,
+        "microPerResolved": 22.443467140319715
+      },
+      "zeckMicroMedian": 17,
+      "directMicroMedian": 48,
+      "optimizedMicroMedian": 17
+    },
+    {
+      "label": "providerConfig multi",
+      "cells": 51,
+      "zeck": {
+        "attempts": 567,
+        "resolved": 524,
+        "resolvedRate": 0.9241622574955908,
+        "providerFaults": 310,
+        "retries": 258,
+        "nanoCost": 12967807,
+        "microPerResolved": 24.74772328244275
+      },
+      "direct": {
+        "attempts": 567,
+        "resolved": 385,
+        "resolvedRate": 0.6790123456790124,
+        "providerFaults": 317,
+        "retries": 0,
+        "nanoCost": 26433808,
+        "microPerResolved": 68.65924155844156
+      },
+      "optimized": {
+        "attempts": 567,
+        "resolved": 548,
+        "resolvedRate": 0.9664902998236331,
+        "providerFaults": 183,
+        "retries": 183,
+        "nanoCost": 12681095,
+        "microPerResolved": 23.14068430656934
+      },
+      "zeckMicroMedian": 19,
+      "directMicroMedian": 39,
+      "optimizedMicroMedian": 16
+    }
+  ],
+  "byModality": [
+    {
+      "label": "modality mono",
+      "cells": 54,
+      "zeck": {
+        "attempts": 490,
+        "resolved": 462,
+        "resolvedRate": 0.9428571428571428,
+        "providerFaults": 219,
+        "retries": 189,
+        "nanoCost": 9735320,
+        "microPerResolved": 21.07212121212121
+      },
+      "direct": {
+        "attempts": 490,
+        "resolved": 311,
+        "resolvedRate": 0.6346938775510204,
+        "providerFaults": 301,
+        "retries": 0,
+        "nanoCost": 20385288,
+        "microPerResolved": 65.5475498392283
+      },
+      "optimized": {
+        "attempts": 490,
+        "resolved": 478,
+        "resolvedRate": 0.9755102040816327,
+        "providerFaults": 161,
+        "retries": 161,
+        "nanoCost": 9754778,
+        "microPerResolved": 20.407485355648536
+      },
+      "zeckMicroMedian": 17,
+      "directMicroMedian": 26,
+      "optimizedMicroMedian": 14
+    },
+    {
+      "label": "modality full",
+      "cells": 48,
+      "zeck": {
+        "attempts": 644,
+        "resolved": 613,
+        "resolvedRate": 0.9518633540372671,
+        "providerFaults": 230,
+        "retries": 191,
+        "nanoCost": 15815842,
+        "microPerResolved": 25.800721044045677
+      },
+      "direct": {
+        "attempts": 644,
+        "resolved": 452,
+        "resolvedRate": 0.7018633540372671,
+        "providerFaults": 321,
+        "retries": 0,
+        "nanoCost": 32943903,
+        "microPerResolved": 72.88474115044248
+      },
+      "optimized": {
+        "attempts": 644,
+        "resolved": 633,
+        "resolvedRate": 0.9829192546583851,
+        "providerFaults": 161,
+        "retries": 161,
+        "nanoCost": 15561989,
+        "microPerResolved": 24.584500789889415
+      },
+      "zeckMicroMedian": 23,
+      "directMicroMedian": 67,
+      "optimizedMicroMedian": 21
+    }
+  ],
+  "maturityView": [
+    {
+      "label": "early",
+      "cells": 9,
+      "zeck": {
+        "attempts": 35,
+        "resolved": 33,
+        "resolvedRate": 0.9428571428571428,
+        "providerFaults": 19,
+        "retries": 17,
+        "nanoCost": 1596248,
+        "microPerResolved": 48.37115151515152
+      },
+      "direct": {
+        "attempts": 35,
+        "resolved": 21,
+        "resolvedRate": 0.6,
+        "providerFaults": 20,
+        "retries": 0,
+        "nanoCost": 1460282,
+        "microPerResolved": 69.5372380952381
+      },
+      "optimized": {
+        "attempts": 35,
+        "resolved": 34,
+        "resolvedRate": 0.9714285714285714,
+        "providerFaults": 22,
+        "retries": 22,
+        "nanoCost": 1610146,
+        "microPerResolved": 47.35723529411764
+      },
+      "zeckMicroMedian": 20,
+      "directMicroMedian": 26,
+      "optimizedMicroMedian": 18
+    },
+    {
+      "label": "growing",
+      "cells": 8,
+      "zeck": {
+        "attempts": 92,
+        "resolved": 83,
+        "resolvedRate": 0.9021739130434783,
+        "providerFaults": 62,
+        "retries": 51,
+        "nanoCost": 2648153,
+        "microPerResolved": 31.9054578313253
+      },
+      "direct": {
+        "attempts": 92,
+        "resolved": 64,
+        "resolvedRate": 0.6956521739130435,
+        "providerFaults": 42,
+        "retries": 0,
+        "nanoCost": 4789216,
+        "microPerResolved": 74.8315
+      },
+      "optimized": {
+        "attempts": 92,
+        "resolved": 88,
+        "resolvedRate": 0.9565217391304348,
+        "providerFaults": 30,
+        "retries": 30,
+        "nanoCost": 2583371,
+        "microPerResolved": 29.356488636363636
+      },
+      "zeckMicroMedian": 46,
+      "directMicroMedian": 90,
+      "optimizedMicroMedian": 33
+    },
+    {
+      "label": "mature",
+      "cells": 8,
+      "zeck": {
+        "attempts": 184,
+        "resolved": 175,
+        "resolvedRate": 0.9510869565217391,
+        "providerFaults": 47,
+        "retries": 35,
+        "nanoCost": 2897711,
+        "microPerResolved": 16.55834857142857
+      },
+      "direct": {
+        "attempts": 184,
+        "resolved": 132,
+        "resolvedRate": 0.717391304347826,
+        "providerFaults": 92,
+        "retries": 0,
+        "nanoCost": 9503991,
+        "microPerResolved": 71.99993181818182
+      },
+      "optimized": {
+        "attempts": 184,
+        "resolved": 182,
+        "resolvedRate": 0.9891304347826086,
+        "providerFaults": 23,
+        "retries": 23,
+        "nanoCost": 2600171,
+        "microPerResolved": 14.286653846153845
+      },
+      "zeckMicroMedian": 15,
+      "directMicroMedian": 83,
+      "optimizedMicroMedian": 16
+    }
+  ],
+  "perSubject": [
+    {
+      "subjectId": "aider",
+      "cells": 6,
+      "zeck": {
+        "attempts": 70,
+        "resolved": 66,
+        "resolvedRate": 0.9428571428571428,
+        "providerFaults": 26,
+        "retries": 22,
+        "nanoCost": 501448,
+        "microPerResolved": 7.597696969696969
+      },
+      "direct": {
+        "attempts": 70,
+        "resolved": 46,
+        "resolvedRate": 0.6571428571428571,
+        "providerFaults": 28,
+        "retries": 0,
+        "nanoCost": 1056518,
+        "microPerResolved": 22.967782608695654
+      },
+      "optimized": {
+        "attempts": 70,
+        "resolved": 70,
+        "resolvedRate": 1,
+        "providerFaults": 15,
+        "retries": 15,
+        "nanoCost": 509908,
+        "microPerResolved": 7.284400000000001
+      },
+      "zeckMicroMedian": 8
+    },
+    {
+      "subjectId": "anythingllm",
+      "cells": 12,
+      "zeck": {
+        "attempts": 140,
+        "resolved": 135,
+        "resolvedRate": 0.9642857142857143,
+        "providerFaults": 16,
+        "retries": 11,
+        "nanoCost": 402014,
+        "microPerResolved": 2.9778814814814814
+      },
+      "direct": {
+        "attempts": 140,
+        "resolved": 125,
+        "resolvedRate": 0.8928571428571429,
+        "providerFaults": 16,
+        "retries": 0,
+        "nanoCost": 854544,
+        "microPerResolved": 6.836352
+      },
+      "optimized": {
+        "attempts": 140,
+        "resolved": 139,
+        "resolvedRate": 0.9928571428571429,
+        "providerFaults": 9,
+        "retries": 9,
+        "nanoCost": 401926,
+        "microPerResolved": 2.891553956834532
+      },
+      "zeckMicroMedian": 2
+    },
+    {
+      "subjectId": "browser-use",
+      "cells": 12,
+      "zeck": {
+        "attempts": 70,
+        "resolved": 70,
+        "resolvedRate": 1,
+        "providerFaults": 11,
+        "retries": 11,
+        "nanoCost": 455784,
+        "microPerResolved": 6.5112
+      },
+      "direct": {
+        "attempts": 70,
+        "resolved": 45,
+        "resolvedRate": 0.6428571428571429,
+        "providerFaults": 31,
+        "retries": 0,
+        "nanoCost": 936614,
+        "microPerResolved": 20.813644444444446
+      },
+      "optimized": {
+        "attempts": 70,
+        "resolved": 70,
+        "resolvedRate": 1,
+        "providerFaults": 9,
+        "retries": 9,
+        "nanoCost": 455784,
+        "microPerResolved": 6.5112
+      },
+      "zeckMicroMedian": 8
+    },
+    {
+      "subjectId": "cline",
+      "cells": 12,
+      "zeck": {
+        "attempts": 126,
+        "resolved": 112,
+        "resolvedRate": 0.8888888888888888,
+        "providerFaults": 104,
+        "retries": 87,
+        "nanoCost": 3604214,
+        "microPerResolved": 32.180482142857144
+      },
+      "direct": {
+        "attempts": 126,
+        "resolved": 77,
+        "resolvedRate": 0.6111111111111112,
+        "providerFaults": 138,
+        "retries": 0,
+        "nanoCost": 7537016,
+        "microPerResolved": 97.88332467532467
+      },
+      "optimized": {
+        "attempts": 126,
+        "resolved": 120,
+        "resolvedRate": 0.9523809523809523,
+        "providerFaults": 80,
+        "retries": 80,
+        "nanoCost": 3599160,
+        "microPerResolved": 29.993
+      },
+      "zeckMicroMedian": 46
+    },
+    {
+      "subjectId": "continue",
+      "cells": 12,
+      "zeck": {
+        "attempts": 168,
+        "resolved": 164,
+        "resolvedRate": 0.9761904761904762,
+        "providerFaults": 44,
+        "retries": 39,
+        "nanoCost": 859780,
+        "microPerResolved": 5.242560975609756
+      },
+      "direct": {
+        "attempts": 168,
+        "resolved": 119,
+        "resolvedRate": 0.7083333333333334,
+        "providerFaults": 62,
+        "retries": 0,
+        "nanoCost": 1799520,
+        "microPerResolved": 15.122016806722689
+      },
+      "optimized": {
+        "attempts": 168,
+        "resolved": 168,
+        "resolvedRate": 1,
+        "providerFaults": 26,
+        "retries": 26,
+        "nanoCost": 866980,
+        "microPerResolved": 5.1605952380952385
+      },
+      "zeckMicroMedian": 7
+    },
+    {
+      "subjectId": "hermes-agent",
+      "cells": 12,
+      "zeck": {
+        "attempts": 154,
+        "resolved": 137,
+        "resolvedRate": 0.8896103896103896,
+        "providerFaults": 105,
+        "retries": 84,
+        "nanoCost": 6446710,
+        "microPerResolved": 47.05627737226278
+      },
+      "direct": {
+        "attempts": 154,
+        "resolved": 64,
+        "resolvedRate": 0.4155844155844156,
+        "providerFaults": 139,
+        "retries": 0,
+        "nanoCost": 12986502,
+        "microPerResolved": 202.91409375
+      },
+      "optimized": {
+        "attempts": 154,
+        "resolved": 146,
+        "resolvedRate": 0.948051948051948,
+        "providerFaults": 90,
+        "retries": 90,
+        "nanoCost": 6126920,
+        "microPerResolved": 41.96520547945205
+      },
+      "zeckMicroMedian": 60
+    },
+    {
+      "subjectId": "openclaw",
+      "cells": 12,
+      "zeck": {
+        "attempts": 112,
+        "resolved": 109,
+        "resolvedRate": 0.9732142857142857,
+        "providerFaults": 30,
+        "retries": 27,
+        "nanoCost": 6086532,
+        "microPerResolved": 55.83974311926605
+      },
+      "direct": {
+        "attempts": 112,
+        "resolved": 77,
+        "resolvedRate": 0.6875,
+        "providerFaults": 48,
+        "retries": 0,
+        "nanoCost": 12960164,
+        "microPerResolved": 168.3138181818182
+      },
+      "optimized": {
+        "attempts": 112,
+        "resolved": 110,
+        "resolvedRate": 0.9821428571428571,
+        "providerFaults": 16,
+        "retries": 16,
+        "nanoCost": 6141416,
+        "microPerResolved": 55.83105454545455
+      },
+      "zeckMicroMedian": 86
+    },
+    {
+      "subjectId": "openhands",
+      "cells": 12,
+      "zeck": {
+        "attempts": 126,
+        "resolved": 114,
+        "resolvedRate": 0.9047619047619048,
+        "providerFaults": 96,
+        "retries": 82,
+        "nanoCost": 5286260,
+        "microPerResolved": 46.37070175438597
+      },
+      "direct": {
+        "attempts": 126,
+        "resolved": 64,
+        "resolvedRate": 0.5079365079365079,
+        "providerFaults": 131,
+        "retries": 0,
+        "nanoCost": 11155146,
+        "microPerResolved": 174.29915625
+      },
+      "optimized": {
+        "attempts": 126,
+        "resolved": 120,
+        "resolvedRate": 0.9523809523809523,
+        "providerFaults": 65,
+        "retries": 65,
+        "nanoCost": 5306208,
+        "microPerResolved": 44.218399999999995
+      },
+      "zeckMicroMedian": 62
+    },
+    {
+      "subjectId": "openwebui",
+      "cells": 12,
+      "zeck": {
+        "attempts": 168,
+        "resolved": 168,
+        "resolvedRate": 1,
+        "providerFaults": 17,
+        "retries": 17,
+        "nanoCost": 1908420,
+        "microPerResolved": 11.359642857142857
+      },
+      "direct": {
+        "attempts": 168,
+        "resolved": 146,
+        "resolvedRate": 0.8690476190476191,
+        "providerFaults": 29,
+        "retries": 0,
+        "nanoCost": 4043167,
+        "microPerResolved": 27.692924657534245
+      },
+      "optimized": {
+        "attempts": 168,
+        "resolved": 168,
+        "resolvedRate": 1,
+        "providerFaults": 12,
+        "retries": 12,
+        "nanoCost": 1908465,
+        "microPerResolved": 11.359910714285714
+      },
+      "zeckMicroMedian": 9
+    }
+  ],
+  "honestWeaknesses": {
+    "cellsWithZeckTaskFailures": 39,
+    "cellsWhereABaselineResolvedMore": 33,
+    "cellsWhereDirectResolvedMore": 1,
+    "zeckVsOptimizedResolutionGap": 36,
+    "cellIdsWhereABaselineResolvedMore": [
+      "aider-L-single-mono",
+      "aider-S-multi-mono",
+      "aider-S-single-mono",
+      "anythingllm-L-multi-full",
+      "anythingllm-M-multi-mono",
+      "anythingllm-S-single-full",
+      "cline-L-multi-mono",
+      "cline-L-single-full",
+      "cline-L-single-mono",
+      "cline-M-multi-full",
+      "cline-M-multi-mono",
+      "cline-S-multi-full",
+      "cline-S-multi-mono",
+      "continue-L-multi-full",
+      "continue-S-multi-full",
+      "continue-S-multi-mono",
+      "hermes-agent-L-multi-full",
+      "hermes-agent-L-multi-mono",
+      "hermes-agent-L-single-full",
+      "hermes-agent-M-multi-full",
+      "hermes-agent-M-single-full",
+      "hermes-agent-M-single-mono",
+      "hermes-agent-S-multi-mono",
+      "openclaw-L-multi-full",
+      "openclaw-M-single-mono",
+      "openclaw-S-single-full",
+      "openhands-L-multi-full",
+      "openhands-L-multi-mono",
+      "openhands-L-single-full",
+      "openhands-L-single-mono",
+      "openhands-M-multi-full",
+      "openhands-M-multi-mono",
+      "openhands-S-multi-mono"
+    ]
+  }
+}
