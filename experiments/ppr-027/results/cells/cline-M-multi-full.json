@@ -1,0 +1,206 @@
+{
+  "cellId": "cline-M-multi-full",
+  "subject": "cline",
+  "dimensions": {
+    "volume": "M",
+    "repetitions": 2,
+    "providerConfig": "multi",
+    "modality": "full",
+    "modalityDegenerate": false
+  },
+  "corpus": {
+    "tasks": 10,
+    "requests": 96
+  },
+  "zeck": {
+    "outcomes": {
+      "attempts": 10,
+      "successes": 7,
+      "failures": 3,
+      "notRun": 0,
+      "bypass": 0
+    },
+    "latency": {
+      "samples": 7,
+      "medianMs": 23,
+      "p95Ms": 129,
+      "meanMs": 46
+    },
+    "inputTokens": 260608,
+    "outputTokens": 6170,
+    "nanoCost": 325494,
+    "microPerResolved": 46,
+    "requestFailures": 5,
+    "policyRetries": 15,
+    "providerFaults": 20,
+    "reuse": {
+      "requests": 96,
+      "replays": 43
+    },
+    "telemetry": {
+      "traces": 96,
+      "correlated": 96,
+      "reconstructible": 91
+    },
+    "measurements": {
+      "entries": [
+        {
+          "dimension": "outcome-success",
+          "basis": "measured",
+          "statement": "7/10 corpus task(s) resolved the declared success check (3 FAIL, 0 NOT-RUN/BLOCKED, 0 BYPASS_DETECTED).",
+          "attempts": 10,
+          "successes": 7,
+          "failures": 3,
+          "notRun": 0
+        },
+        {
+          "dimension": "quality-verification",
+          "basis": "measured",
+          "statement": "7/10 task success checks passed (the corpus's own declared definition); 182/187 Zeck verification results PASS over 96 correlated execution(s).",
+          "taskChecksPassed": 7,
+          "taskChecksTotal": 10,
+          "zeckVerificationsPassed": 182,
+          "zeckVerificationsTotal": 187
+        },
+        {
+          "dimension": "latency-tail",
+          "basis": "measured",
+          "statement": "Successful-outcome end-to-end task latency over 7 resolved task(s) (milliseconds; nearest-rank percentiles).",
+          "samplesMs": [88, 22, 23, 1, 56, 1, 129],
+          "sampleCount": 7,
+          "medianMs": 23,
+          "p95Ms": 129,
+          "p99Ms": 129,
+          "maxMs": 129
+        },
+        {
+          "dimension": "usage-cost",
+          "basis": "measured",
+          "statement": "260608 input / 6170 output token(s) reported over 96 edge execution(s); settled cost 302 micro-USD (43 micro-USD per successfully resolved outcome).",
+          "inputTokens": 260608,
+          "outputTokens": 6170,
+          "totalCostMicroUsd": "302",
+          "costPerSuccessMicroUsd": "43"
+        },
+        {
+          "dimension": "failure-retry",
+          "basis": "measured",
+          "statement": "5 failure(s) and 0 retry(ies) recorded across 10 task run(s).",
+          "failureCount": 5,
+          "retryCount": 0,
+          "duplicateCount": null,
+          "timeoutCount": null
+        },
+        {
+          "dimension": "determinism-reuse",
+          "basis": "measured",
+          "statement": "43/96 delegated request(s) replayed durably (zero provider exposure on corpus repetition); 0 deterministic-substrate execution(s) (modelCalls 0, verified by mechanical recomputation).",
+          "deterministicExecutionCount": 0,
+          "reuseCount": 43,
+          "verifiedComputationSubstitutions": 0
+        },
+        {
+          "dimension": "provider-portability",
+          "basis": "not-measured",
+          "statement": "Provider portability and change-effort facts are not measured in this run — no fabricated value is offered; the work order's own measured facts replace this entry when available.",
+          "providerSwitchTimeMs": null,
+          "changedApplicationFiles": null,
+          "regressionCount": null
+        },
+        {
+          "dimension": "customization-coverage",
+          "basis": "not-measured",
+          "statement": "Customization coverage facts are not measured in this run — no fabricated value is offered; the work order's own measured facts replace this entry when available.",
+          "customizationAxesRetained": null,
+          "customizationAxesTotal": null
+        },
+        {
+          "dimension": "engineering-surface-removed",
+          "basis": "not-measured",
+          "statement": "Engineering-surface-removed facts are not measured in this run — no fabricated value is offered; the work order's own measured facts replace this entry when available.",
+          "removedFiles": null,
+          "removedLines": null
+        },
+        {
+          "dimension": "capability-discovery-avoidance",
+          "basis": "not-measured",
+          "statement": "Capability-discovery avoidance facts are not measured in this run — no fabricated value is offered; the work order's own measured facts replace this entry when available.",
+          "capabilitiesAdoptedFromZeck": null,
+          "avoidedBespokeImplementations": null
+        },
+        {
+          "dimension": "telemetry-explainability",
+          "basis": "measured",
+          "statement": "91/96 delegated execution(s) are reconstructible end-to-end through the executions public surface (ledger events + verification + route/cost/usage facts).",
+          "reconstructibleExecutions": 91,
+          "executionsTotal": 96
+        },
+        {
+          "dimension": "diagnosis-recovery",
+          "basis": "measured",
+          "statement": "20 provider-fault incident(s) exercised; 15 recovered in-mediation by the platform failover policy (mean 31ms end-to-end per recovered request); 5 request failure(s) diagnosable at terminal (mean 55ms to the public failure cause).",
+          "diagnosisTimeMs": 55,
+          "recoveryTimeMs": 31,
+          "incidentsExercised": 20
+        },
+        {
+          "dimension": "reproducibility",
+          "basis": "measured",
+          "statement": "96/96 delegated execution(s) correlate durably (ledger events + verification results) — the run's Zeck evidence is reproducible through the executions public surface at the exact pinned revisions.",
+          "rerunsAttempted": 96,
+          "rerunsAgreed": 96
+        }
+      ]
+    }
+  },
+  "baselines": {
+    "direct": {
+      "kind": "direct-baseline",
+      "label": "BASELINE direct-baseline (never Zeck evidence)",
+      "tasksResolved": 6,
+      "tasksTotal": 10,
+      "latency": {
+        "samples": 6,
+        "medianMs": 52,
+        "p95Ms": 89,
+        "meanMs": 45
+      },
+      "inputTokens": 251918,
+      "outputTokens": 5937,
+      "nanoCost": 541362,
+      "microPerResolved": 90,
+      "appOwnedRetries": 0,
+      "providerFaults": 10,
+      "cacheHits": null
+    },
+    "optimized": {
+      "kind": "optimized-baseline",
+      "label": "BASELINE optimized-baseline (never Zeck evidence)",
+      "tasksResolved": 9,
+      "tasksTotal": 10,
+      "latency": {
+        "samples": 9,
+        "medianMs": 13,
+        "p95Ms": 77,
+        "meanMs": 24
+      },
+      "inputTokens": 142445,
+      "outputTokens": 3254,
+      "nanoCost": 305366,
+      "microPerResolved": 33,
+      "appOwnedRetries": 7,
+      "providerFaults": 7,
+      "cacheHits": 47
+    }
+  },
+  "canary": {
+    "host": "api.openai.com",
+    "blocked": true,
+    "observed": true
+  },
+  "wallMs": 4422,
+  "notes": [
+    "cost figures are derived from the declared synthetic price schedule (experiment configuration — never provider invoices)",
+    "latency figures include the injected synthetic supply latency profile; cross-arm deltas are the mediation structure, not live provider latency"
+  ]
+}

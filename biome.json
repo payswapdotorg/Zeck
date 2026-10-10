@@ -17,6 +17,7 @@
       "examples/**",
       "api/**",
       "tests/**",
+      "experiments/**",
       "server.ts",
       "vitest.config.ts",
       "package.json",
