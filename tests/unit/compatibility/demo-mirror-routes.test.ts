@@ -287,7 +287,19 @@ describe("the demo surface on the live server", () => {
     // Zeck: the worker's proof-time AI_EXECUTION_COMPLETE; certification
     // stays the Lead's gate (the pinned-runtime run executor binding in
     // apps/dashboard is the Lead's surface, never the worker's).
+    // PPR-026: the AnythingLLM demo joins the index the same way — its
+    // live-bound record (deploy/evidence/ppr-026.json) carries the
+    // top-level discoveredInventory and every declared edge of its
+    // five-edge multi-modal graph (the generic-openai remote chat rail,
+    // the Ollama-native LOCAL-INFERENCE rail selected per-workspace
+    // through the app's own chatProvider/chatModel override, the
+    // deterministic-strategy embeddings edge exercised in both RAG
+    // directions, STT and TTS) resolves through Zeck: the worker's
+    // proof-time AI_EXECUTION_COMPLETE; certification stays the Lead's
+    // gate (the pinned-runtime run executor binding in apps/dashboard is
+    // the Lead's surface, never the worker's).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",

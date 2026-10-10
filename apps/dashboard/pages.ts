@@ -36,6 +36,7 @@ import { createHermesDemoRunExecutor } from "../../compat/hermes-agent/runtime/h
 import { createOpenClawDemoRunExecutor } from "../../compat/openclaw/runtime/openclaw-pinned-driver";
 import { createBrowserUseDemoRunExecutor } from "../../compat/browser-use/runtime/browser-use-pinned-driver";
 import { createOpenWebUiDemoRunExecutor } from "../../compat/openwebui/runtime/openwebui-pinned-driver";
+import { createAnythingLlmDemoRunExecutor } from "../../compat/anythingllm/runtime/anythingllm-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
@@ -6976,6 +6977,14 @@ export function createDashboardRoutes(
   // openwebui-pinned-driver.ts (composed lazily on the first certified
   // run; every authorization gate stays the harness's own).
   const openWebUiDemoRunExecutor = createOpenWebUiDemoRunExecutor();
+  // PPR-026 Lead binding (the merge-time act the data-only worker
+  // demo-entry reserves for the Tech Lead): the certified AnythingLLM
+  // pinned runtime registers through the same merged PPR-018A harness
+  // seam — createAnythingLlmDemoRunExecutor over the worker's certified
+  // five-edge multi-modal proof environment in compat/anythingllm/runtime/
+  // anythingllm-pinned-driver.ts (composed lazily on the first certified
+  // run; every authorization gate stays the harness's own).
+  const anythingLlmDemoRunExecutor = createAnythingLlmDemoRunExecutor();
   const demoRunExecutors = new Map<string, DemoRunExecutor>([
     ["compat/cline", clineDemoRunExecutor],
     ["compat/openhands", openHandsDemoRunExecutor],
@@ -6984,6 +6993,7 @@ export function createDashboardRoutes(
     ["compat/openclaw", openClawDemoRunExecutor],
     ["compat/browser-use", browserUseDemoRunExecutor],
     ["compat/openwebui", openWebUiDemoRunExecutor],
+    ["compat/anythingllm", anythingLlmDemoRunExecutor],
   ]);
   // The run-route executor: one object routing each entry to its own
   // bound certified runtime (the handler's authorization gates stay the
