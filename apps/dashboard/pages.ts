@@ -17,16 +17,13 @@
  * (AC10).
  */
 
+import { createAnythingLlmDemoRunExecutor } from "../../compat/anythingllm/runtime/anythingllm-pinned-driver";
+import { createBrowserUseDemoRunExecutor } from "../../compat/browser-use/runtime/browser-use-pinned-driver";
 // PPR-019 Lead binding (provenance-disclosed): the certified Cline
 // pinned-runtime driver, composed from the worker's own proof pieces
 // (compat/cline — the worker surface never touches apps/dashboard; this
 // import is the Tech Lead's merge-time act, class-precedent PR #159).
 import { createClineDemoRunExecutor } from "../../compat/cline/runtime/cline-pinned-driver";
-// PPR-020 Lead binding (provenance-disclosed, same class): the certified
-// OpenHands pinned-runtime driver, composed from the worker's own proof
-// pieces (compat/openhands — the worker surface never touches
-// apps/dashboard; this import is the Tech Lead's merge-time act).
-import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/openhands-pinned-driver";
 // Continue pinned-runtime driver, composed from the worker's own proof
 // pieces (compat/continue — the worker surface never touches
 // apps/dashboard; this Lead binding reserves for the Tech Lead — see the
@@ -34,9 +31,12 @@ import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/o
 import { createContinueDemoRunExecutor } from "../../compat/continue/runtime/continue-pinned-driver";
 import { createHermesDemoRunExecutor } from "../../compat/hermes-agent/runtime/hermes-pinned-driver";
 import { createOpenClawDemoRunExecutor } from "../../compat/openclaw/runtime/openclaw-pinned-driver";
-import { createBrowserUseDemoRunExecutor } from "../../compat/browser-use/runtime/browser-use-pinned-driver";
+// PPR-020 Lead binding (provenance-disclosed, same class): the certified
+// OpenHands pinned-runtime driver, composed from the worker's own proof
+// pieces (compat/openhands — the worker surface never touches
+// apps/dashboard; this import is the Tech Lead's merge-time act).
+import { createOpenHandsDemoRunExecutor } from "../../compat/openhands/runtime/openhands-pinned-driver";
 import { createOpenWebUiDemoRunExecutor } from "../../compat/openwebui/runtime/openwebui-pinned-driver";
-import { createAnythingLlmDemoRunExecutor } from "../../compat/anythingllm/runtime/anythingllm-pinned-driver";
 import {
   type AgentSummary,
   type ArtifactReference,
