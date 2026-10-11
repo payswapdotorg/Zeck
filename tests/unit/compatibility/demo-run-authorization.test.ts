@@ -16,14 +16,22 @@
  * plug-in path every PPR-020..027 work order takes.
  */
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { PROVIDER_CREDENTIAL_ENV_NAMES } from "../../../compat/aider/harness/corpus-runner";
+import {
+  aiderDemoTraceSource,
+  aiderEnvironmentFacts,
+  createAiderDemoRunExecutor,
+} from "../../../compat/aider/runtime/aider-pinned-driver";
 import {
   type CompatibilityEvidenceRecord,
   createDemoRunService,
   createRuntimeRegistry,
+  type DemoMirrorEntry,
   type DemoRunExecutor,
   EXAMPLE_CODING_ASSISTANT_RECORD,
   EXAMPLE_RAG_KNOWLEDGE_APP_RECORD,
@@ -521,5 +529,118 @@ describe("the public Demo Mirror route/run regression (the real file-source comp
     );
     expect(result.status).toBe(303);
     expect(redirects[0]?.location).toBe("/console/demos?error=unknown-demo");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PPR-028A: the Aider executor binding (no bypass, no credential leakage)
+// ---------------------------------------------------------------------------
+
+const AIDER_REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
+/** The REAL Aider demo entry (compat/aider/demo/demo-entry.json — REPO-absolute: Part 2 chdirs to a temp tree). */
+function realAiderDemoEntry(): DemoMirrorEntry {
+  return JSON.parse(
+    readFileSync(join(AIDER_REPOSITORY_ROOT, "compat", "aider", "demo", "demo-entry.json"), "utf8"),
+  ) as DemoMirrorEntry;
+}
+
+describe("the Aider executor binding (PPR-028A — Worker A's registration seam)", () => {
+  test("IMPOSSIBILITY (no bypass): the Aider executor routes through the harness's own authorization — an uncertified record is refused before ANY runtime", async () => {
+    // The bound executor is exactly the harness composition
+    // (createRuntimeRegistry + createDemoRunService) — the same
+    // authorization gates every other bound demo runs. An uncertified
+    // record is refused by the SERVICE (derived status first), never
+    // by driver-side self-authorization: the executor cannot bypass
+    // the harness even though the worker shipped it.
+    const executor = createAiderDemoRunExecutor();
+    const result = await executor.run(realAiderDemoEntry(), EXAMPLE_CODING_ASSISTANT_RECORD);
+    expect(result.ran).toBe(false);
+    expect(result.reason).toContain("never runs an uncertified integration path");
+    expect(result.reason).toContain("UNASSESSED");
+    // And a PARTIAL record identically (the fixture-basis refusal).
+    const partial = await executor.run(realAiderDemoEntry(), EXAMPLE_RAG_KNOWLEDGE_APP_RECORD);
+    expect(partial.ran).toBe(false);
+    expect(partial.reason).toContain("PARTIAL");
+  });
+
+  test("the executor factory runs NOTHING at construction time (lazy composition — plain in-memory objects only)", () => {
+    // Creating the executor builds the registry and the demo-run
+    // service only: no proof stack, no adapter server, no egress
+    // proxy, no Aider process. The environment singleton stays null
+    // until the first certified start.
+    const before = Date.now();
+    const executor = createAiderDemoRunExecutor();
+    expect(Date.now() - before).toBeLessThan(2_000);
+    // The executor's OWN enumerable surface is the run function alone
+    // (everything else is closed over — nothing runtime-shaped leaks).
+    expect(Object.keys(executor)).toEqual(["run"]);
+    expect(typeof executor.run).toBe("function");
+  });
+
+  test("the driver's environment facts are NAMES + booleans ONLY (a credential VALUE can never appear — the leak is unrepresentable)", () => {
+    // Inject actual secret-shaped values: the facts must serialize to
+    // env-var names and presence booleans only. The secret value has
+    // nowhere to appear — the type has no field for it.
+    const facts = aiderEnvironmentFacts({
+      OPENAI_API_KEY: "sk-never-appears-0123456789abcdef",
+      ANTHROPIC_API_KEY: "sk-ant-never-appears",
+      SOMETHING_ELSE: "not-a-tracked-name",
+    });
+    const serialized = JSON.stringify(facts);
+    for (const fact of facts) {
+      expect(Object.keys(fact).sort()).toEqual(["envVarName", "present"]);
+      expect(typeof fact.envVarName).toBe("string");
+      expect(typeof fact.present).toBe("boolean");
+    }
+    // The tracked credential names are exactly the harness's own list.
+    expect(facts.map((fact) => fact.envVarName)).toEqual(PROVIDER_CREDENTIAL_ENV_NAMES);
+    // The injected VALUES never appear anywhere in the serialization.
+    expect(serialized).not.toContain("sk-never-appears");
+    expect(serialized).not.toContain("sk-ant-never-appears");
+    expect(serialized).not.toMatch(/sk-[A-Za-z0-9]{20,}/);
+    // Untracked variables are not reported at all (names only, tracked only).
+    expect(serialized).not.toContain("SOMETHING_ELSE");
+    // Presence is honest per variable (present vs absent).
+    expect(facts.find((fact) => fact.envVarName === "OPENAI_API_KEY")?.present).toBe(true);
+    expect(facts.find((fact) => fact.envVarName === "ANTHROPIC_API_KEY")?.present).toBe(true);
+    const absentFacts = aiderEnvironmentFacts({});
+    expect(absentFacts.every((fact) => fact.present === false)).toBe(true);
+  });
+
+  test("the REAL demo entry carries the binding's warning that the driver refuses honestly (the data-only warning is replaced by the bound disclosure)", () => {
+    const entry = realAiderDemoEntry();
+    // The entry no longer says DATA ONLY — it says BOUND, and its
+    // warnings disclose the binding + the honest-refusal contract.
+    const warnings = entry.warnings.join("\n");
+    expect(warnings).not.toContain("DATA ONLY");
+    expect(warnings).not.toContain("NOT ACTIVATED");
+    expect(warnings).toContain("BOUND at the deployment seam");
+    expect(warnings).toContain("refuses honestly");
+    // The entry still cannot assert a status of its own (the derived
+    // status is the record's, re-derived on every run).
+    const entryKeys = Object.keys(entry as unknown as Record<string, unknown>);
+    for (const forbidden of ["status", "compatibilityStatus", "verdict", "certified"]) {
+      expect(entryKeys, forbidden).not.toContain(forbidden);
+    }
+    // The entry's runBinding names the registered runtime id.
+    expect(entry.runBinding).toEqual({ kind: "pinned-runtime", runtime: "compat/aider" });
+  });
+
+  test("the driver's trace source is READ-ONLY and honestly empty before the first certified start", async () => {
+    // Before any certified run composes the proof environment, every
+    // trace read is the honest not-found read — never a fabricated
+    // trace (there is nothing to correlate yet, and the source says so).
+    const source = aiderDemoTraceSource();
+    const read = await source.readExecutionTrace(
+      "00000000-0000-7000-8000-00000000b001",
+      "00000000-0000-7000-8000-00000000fff",
+    );
+    expect(read.execution).toBe(null);
+    expect(read.events).toEqual([]);
+    expect(read.verification).toEqual([]);
+    expect(read.route).toBe(null);
+    expect(read.costMicroUsd).toBe(null);
+    expect(read.usage).toBe(null);
   });
 });

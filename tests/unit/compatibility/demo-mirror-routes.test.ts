@@ -198,6 +198,13 @@ describe("the demo surface on the live server", () => {
     // file-sourced record + entry, bound through the same harness seam)
     // carries the COMPLETE chip too — and its own demo id renders.
     expect(html).toContain("openhands-software-agent");
+    // PPR-028A Worker A binding: the REAL certified Aider demo (the
+    // file-sourced record deploy/evidence/ppr-018.json + the entry
+    // compat/aider/demo/demo-entry.json, bound through the same merged
+    // PPR-018A harness seam — the PPR-028 Section B repair of the
+    // missing Demo Mirror activation) carries the COMPLETE chip too —
+    // and its own demo id renders with the derived status.
+    expect(html).toContain("aider-coding-assistant");
     // The fixture disclosure is visible on the index.
     expect(html).toContain("FIXTURE");
   });
@@ -238,6 +245,41 @@ describe("the demo surface on the live server", () => {
     ]) {
       expect(html).toContain(rule);
     }
+  });
+
+  test("the REAL certified Aider demo renders its detail page with the derived status, the bound pinned runtime and its correlated Zeck traces", async () => {
+    // PPR-028A Worker A: the Aider demo detail page (the file-sourced
+    // record + entry through the real source) — the derived status
+    // renders (never an entry-asserted one), the run control is live
+    // (the record derives AI_EXECUTION_COMPLETE), the pinned-runtime
+    // binding names compat/aider, and the record's own correlated Zeck
+    // traces render in the timeline.
+    const detail = await get("/console/demos/aider-coding-assistant");
+    expect(detail.status).toBe(200);
+    const html = await detail.text();
+    expect(html).toContain('data-compat-status="AI_EXECUTION_COMPLETE"');
+    expect(html).toContain("Zeck execution timeline");
+    // The evidence + bindings section names the bound record file and
+    // the pinned runtime (the entry's runBinding, rendered).
+    expect(html).toContain("Evidence &amp; bindings");
+    expect(html).toContain("ppr-018.json");
+    expect(html).toContain("compat/aider");
+    // The machine twin carries the SAME derived status and the exact
+    // binding (no drift between the two projections).
+    const facts = (await (
+      await get("/console/demos/aider-coding-assistant/facts.json")
+    ).json()) as {
+      projection: { status: string; runAvailability: { available: boolean } };
+      runBinding: { kind: string; runtime: string };
+      evidenceSourceFile: string | null;
+      zeckTraces: { correlated: boolean }[];
+    };
+    expect(facts.projection.status).toBe("AI_EXECUTION_COMPLETE");
+    expect(facts.projection.runAvailability.available).toBe(true);
+    expect(facts.runBinding).toEqual({ kind: "pinned-runtime", runtime: "compat/aider" });
+    expect(facts.evidenceSourceFile).toContain("ppr-018.json");
+    expect(facts.zeckTraces.length).toBeGreaterThan(0);
+    expect(facts.zeckTraces.every((trace) => trace.correlated)).toBe(true);
   });
 
   test("the machine twins carry the SAME derived statuses as the HTML (no drift between the two projections)", async () => {
@@ -298,7 +340,20 @@ describe("the demo surface on the live server", () => {
     // proof-time AI_EXECUTION_COMPLETE; certification stays the Lead's
     // gate (the pinned-runtime run executor binding in apps/dashboard is
     // the Lead's surface, never the worker's).
+    // PPR-028A: the Aider demo joins the index the same way — its
+    // live-bound record (deploy/evidence/ppr-018.json) now carries the
+    // top-level discoveredInventory (the reconciliation input the
+    // admission evaluation requires — the exact PPR-025/PPR-026
+    // delivery shape) and every declared edge of its three-edge coding
+    // graph (the main completion, the weak-model commit messages and the
+    // chat-history summarizer) resolves through Zeck: the PPR-028
+    // Section B binding (the worker-shipped driver + executor factory,
+    // the Lead-authorized registration seam) repairs the missing Demo
+    // Mirror activation PPR-018's data-only warning disclosed; the
+    // finalCertification stays the Tech-Lead's gate (the worker
+    // recommends, never certifies).
     expect(index.demos.map((demo) => demo.status).sort()).toEqual([
+      "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",
       "AI_EXECUTION_COMPLETE",

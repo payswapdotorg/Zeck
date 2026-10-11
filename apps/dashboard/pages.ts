@@ -17,6 +17,13 @@
  * (AC10).
  */
 
+// PPR-028A Worker A binding (provenance-disclosed, the PPR-020..026
+// worker-shipped pattern): the certified Aider pinned-runtime driver,
+// composed from the worker's own PPR-018 proof pieces (compat/aider —
+// the worker surface never touches apps/dashboard beyond this
+// Lead-authorized registration seam; final certification stays the
+// Tech Lead's gate).
+import { createAiderDemoRunExecutor } from "../../compat/aider/runtime/aider-pinned-driver";
 import { createAnythingLlmDemoRunExecutor } from "../../compat/anythingllm/runtime/anythingllm-pinned-driver";
 import { createBrowserUseDemoRunExecutor } from "../../compat/browser-use/runtime/browser-use-pinned-driver";
 // PPR-019 Lead binding (provenance-disclosed): the certified Cline
@@ -6985,6 +6992,21 @@ export function createDashboardRoutes(
   // anythingllm-pinned-driver.ts (composed lazily on the first certified
   // run; every authorization gate stays the harness's own).
   const anythingLlmDemoRunExecutor = createAnythingLlmDemoRunExecutor();
+  // PPR-028A Worker A binding (provenance-disclosed; the merge-time act
+  // PPR-018's data-only demo-entry warning reserved for the Lead,
+  // authorized by the PPR-028 closure work order Section B — repair
+  // Aider's missing Demo Mirror activation): the certified Aider
+  // pinned runtime registers through the same merged PPR-018A harness
+  // seam — createAiderDemoRunExecutor over the worker's certified
+  // proof environment in compat/aider/runtime/aider-pinned-driver.ts
+  // (the in-process Zeck public API, the chat-completions-wire Zeck
+  // adapter the pinned Aider's unmodified LiteLLM layer points at, the
+  // default-deny egress proxy and the exact-revision-verified pinned
+  // Aider venv — composed lazily on the first certified run, never at
+  // construction; every authorization gate stays the harness's own,
+  // and the driver refuses honestly when the pinned runtime is absent
+  // or revision-mismatched — never a synthetic response).
+  const aiderDemoRunExecutor = createAiderDemoRunExecutor();
   const demoRunExecutors = new Map<string, DemoRunExecutor>([
     ["compat/cline", clineDemoRunExecutor],
     ["compat/openhands", openHandsDemoRunExecutor],
@@ -6994,6 +7016,7 @@ export function createDashboardRoutes(
     ["compat/browser-use", browserUseDemoRunExecutor],
     ["compat/openwebui", openWebUiDemoRunExecutor],
     ["compat/anythingllm", anythingLlmDemoRunExecutor],
+    ["compat/aider", aiderDemoRunExecutor],
   ]);
   // The run-route executor: one object routing each entry to its own
   // bound certified runtime (the handler's authorization gates stay the

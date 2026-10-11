@@ -7,16 +7,16 @@
   },
   "runBinding": {
     "kind": "pinned-runtime",
-    "runtime": "compat/aider (bun run compat/aider/harness/run-battery.ts composes the pinned Aider runtime, the Zeck adapter, the egress-deny proof environment and the in-process Zeck execution plane)"
+    "runtime": "compat/aider"
   },
   "reproducibility": {
-    "instructions": "From the Zeck repository root: (1) install pinned Aider verbatim: python3 -m venv /home/z/my-project/.venv-aider && /home/z/my-project/.venv-aider/bin/pip install -e /path/to/aider@5dc9490bb35f9729ef2c95d00a19ccd30c26339c; (2) run the battery: bun run compat/aider/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter on a loopback port, runs pinned Aider over the 5-task corpus under the scrubbed environment and the default-deny egress proxy, and writes deploy/evidence/ppr-018.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config).",
+    "instructions": "From the Zeck repository root: (1) install pinned Aider verbatim into the dedicated venv: python3 -m venv /home/z/my-project/.venv-aider && /home/z/my-project/.venv-aider/bin/pip install -e \"git+https://github.com/Aider-AI/aider.git@5dc9490bb35f9729ef2c95d00a19ccd30c26339c#egg=aider-chat\" (verify with /home/z/my-project/.venv-aider/bin/aider --version — the output must carry the exact-commit build tag +g5dc9490bb); (2) run the battery: bun run compat/aider/harness/run-battery.ts — it composes the Zeck public API in-process, serves the OpenAI-compatible Zeck adapter on a loopback port, runs pinned Aider over the 5-task corpus under the scrubbed environment and the default-deny egress proxy, and writes deploy/evidence/ppr-018.json with every execution's Zeck trace. The model supply is the sandbox's authorized GLM endpoint (platform-side BYOK material at /etc/.z-ai-config). The website's certified demo run executes the same pinned composition through the PPR-018A harness (the Aider pinned-runtime driver registered at the deployment seam — compat/aider/runtime/aider-pinned-driver.ts).",
     "pinnedUpstreamRevision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
-    "integrationRevision": "work/PPR-018-aider-proof HEAD (see deploy/evidence/ppr-018.json evidenceRecord.pinnedApplication.pin.integrationRevision)"
+    "integrationRevision": "ac2002b129e85476363ba23ee253b76ec880a016"
   },
   "warnings": [
-    "This demo entry is DATA ONLY — NOT ACTIVATED. Binding it into the Demo Mirror registry requires wiring the evidence-record source (apps/dashboard/demo-mirror.ts currently resolves the PPR-017 fixture records; the sibling-consumer extension point is recorded in the PPR-017 delivery). The Lead binds this entry at merge time; a worker never activates their own demo.",
-    "The demo may only be offered as runnable when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the registry enforces this; the entry can never assert a status).",
+    "PPR-028A Worker A binding (provenance-disclosed): this entry is now BOUND at the deployment seam — the runBinding names the registry id of the Aider pinned-runtime driver (compat/aider/runtime/aider-pinned-driver.ts) registered through the merged PPR-018A harness (createRuntimeRegistry + createDemoRunService at the Demo Mirror run route in apps/dashboard/pages.ts). The binding is the PPR-028 closure work order's Section B authorization of the act PPR-018's original data-only warning reserved for the Lead; final certification remains the Tech Lead's gate (see deploy/evidence/ppr-018.json finalCertification).",
+    "The demo runs only when the bound record's DERIVED assessment is AI_EXECUTION_COMPLETE (the harness re-derives the status from the bound record on every run — the entry can never assert one) and the registered driver's pins exactly match the record's pins. The driver verifies the pinned venv's exact revision (the +g5dc9490bb build tag) before every run and refuses honestly when the runtime is absent or mismatched — never a fixture success.",
     "The proof's model supply is the sandbox's authorized GLM endpoint — not an external commercial provider (disclosed in the record's limitations)."
   ]
 }

@@ -740,6 +740,13 @@
     "findings": [],
     "staticFindings": []
   },
+  "finalCertification": {
+    "status": "PENDING — Worker A binding delivered (PPR-028 Section B); the Tech-Lead certifies",
+    "owner": "Tech-Lead",
+    "bindingStep": "The missing Demo Mirror activation this record's own data-only demo-entry warning disclosed is repaired by the PPR-028 closure work order (Section B): the Aider pinned-runtime driver (compat/aider/runtime/aider-pinned-driver.ts — a lazy, fail-closed PinnedRuntimeDriver over the worker's existing PPR-018 proof pieces: composeProofStack, the OpenAI-compatible Zeck adapter, the default-deny egress proxy, the real pinned corpus runner and the SDK trace source; no second execution plane, no synthetic-response route) is registered at the deployment seam through the merged PPR-018A harness (createAiderDemoRunExecutor wired as the compat/aider executor in apps/dashboard/pages.ts), and the demo entry (compat/aider/demo/demo-entry.json) now names that binding with its pins re-pinned to this record's exact pins. The driver verifies the pinned venv's exact revision (the +g5dc9490bb exact-commit build tag) before every run and refuses honestly (a named NOT-RUN with owner) when the runtime is absent or mismatched. Worker A (this delivery) recommends COMPLETE/BOUND; the worker never self-certifies — the Tech-Lead resolves this field against the exact merged tree (class precedent: the PPR-019 binding's finalCertification resolution through the same harness seam).",
+    "recommendedBy": "Worker A (PPR-028A, 2026-10-11)",
+    "recommendation": "COMPLETE — BOUND through the merged PPR-018A harness: the record derives AI_EXECUTION_COMPLETE (all five admission rules PASS, re-derived by the Demo Mirror projection on this exact tree), the executor is bound at the deployment seam, and the exact-revision tests pin the runtime's pins to this record's pins. The Lead's independent verification battery on the exact merged tree (typecheck, lint byte-identical to base, the Demo Mirror suites including the Aider no-upgrade/no-synthetic-result tests, architecture, integration) closes the certification."
+  },
   "battery": {
     "batterySteps": [
       {
@@ -1044,5 +1051,34 @@
   ],
   "durations": {
     "totalMs": 529363
+  },
+  "discoveredInventory": {
+    "source": "static call-site scan of Aider 5dc9490bb35f9729ef2c95d00a19ccd30c26339c (every litellm import and completion/transcription call site: aider/models.py:1036, aider/coders/base_coder.py:1373+2037, aider/repo.py:361, aider/history.py:116, aider/commands.py:206, aider/voice.py, aider/main.py:32), reachability-restricted to the declared corpus configuration (batch coding runs; auto-commits on; --no-analytics --no-check-update --no-stream; no voice/image/editor/web commands; no --cache-keepalive)",
+    "edges": [
+      {
+        "edgeId": "aider.main-completion",
+        "component": "aider/coders/base_coder.py:send (main coding loop)",
+        "surface": "text-generation",
+        "transport": "litellm.completion via Model.send_completion (aider/models.py:1036) over the openai/ LiteLLM provider pointed at the Zeck adapter",
+        "externalExecution": "Zeck execution (coding-assistant completion) through the adapter's public API client",
+        "materiality": "The primary coding edge: every user turn produces a chat completion that decides the code edits Aider applies. Undelegated, Aider would invoke a direct external AI provider here."
+      },
+      {
+        "edgeId": "aider.commit-message",
+        "component": "aider/repo.py:get_commit_message (weak model)",
+        "surface": "text-generation",
+        "transport": "Model.simple_send_with_retries → Model.send_completion (aider/models.py:1036) over the same openai/ LiteLLM provider",
+        "externalExecution": "Zeck execution (coding-assistant completion, weak role) through the adapter's public API client",
+        "materiality": "Auxiliary weak-model edge: with auto-commits enabled (the declared corpus configuration) Aider generates every automatic commit message with this model call. An auxiliary model path bypassing Zeck would break edge coverage exactly as ACR-006's completeness rule describes."
+      },
+      {
+        "edgeId": "aider.summarizer",
+        "component": "aider/history.py:summarize_all (chat-history summarization)",
+        "surface": "text-generation",
+        "transport": "Model.simple_send_with_retries → Model.send_completion (aider/models.py:1036) over the same openai/ LiteLLM provider",
+        "externalExecution": "Zeck execution (coding-assistant completion, summarizer role) through the adapter's public API client",
+        "materiality": "Auxiliary summarization edge: when accumulated chat history exceeds max_chat_history_tokens (1024 for the declared models — aider/models.py:339), Aider compresses history with this model call. The multi-turn corpus task drives it; it is an actually-active AI path under the declared corpus."
+      }
+    ]
   }
 }
