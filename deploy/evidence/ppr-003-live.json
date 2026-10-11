@@ -576,9 +576,7 @@
       "gatedBy": null,
       "availability": "live-proven over the openrouter rail (meta-llama/llama-3.3-70b-instruct, OPENROUTER_API_KEY).",
       "examplePath": "examples/text-summarization.ts",
-      "capabilityRequirements": [
-        "model:text"
-      ],
+      "capabilityRequirements": ["model:text"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/text",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -595,10 +593,7 @@
       "gatedBy": null,
       "availability": "deterministic rows proven with byte-exact comparison oracles.",
       "examplePath": "examples/structured-invoice-extraction.ts",
-      "capabilityRequirements": [
-        "model:text",
-        "algorithm:json-schema-validation"
-      ],
+      "capabilityRequirements": ["model:text", "algorithm:json-schema-validation"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/structured",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -615,10 +610,7 @@
       "gatedBy": null,
       "availability": "retrieval is a seeded deterministic tool capability; family proven in the validation program.",
       "examplePath": "examples/rag-grounded-answers.ts",
-      "capabilityRequirements": [
-        "model:text",
-        "tool:document-retrieval"
-      ],
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/rag",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -635,9 +627,7 @@
       "gatedBy": null,
       "availability": "tool-agent family live-proven over the openrouter rail.",
       "examplePath": "examples/tool-augmented-lookup.ts",
-      "capabilityRequirements": [
-        "model:text"
-      ],
+      "capabilityRequirements": ["model:text"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/tools",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -654,9 +644,7 @@
       "gatedBy": null,
       "availability": "durable orchestration proven over the transport (Cloudflare Workflows protocol suite).",
       "examplePath": "examples/workflow-orchestration.ts",
-      "capabilityRequirements": [
-        "model:text"
-      ],
+      "capabilityRequirements": ["model:text"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/workflow",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -673,9 +661,7 @@
       "gatedBy": null,
       "availability": "checkpoint/resume semantics proven over REAL PostgreSQL (integration suites).",
       "examplePath": "examples/long-running-batch.ts",
-      "capabilityRequirements": [
-        "runtime:process-sandbox"
-      ],
+      "capabilityRequirements": ["runtime:process-sandbox"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/long-running",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -692,9 +678,7 @@
       "gatedBy": "QWEN_API_KEY",
       "availability": "ASR/TTS live-proven over the qwen dashscope-international rail (qwen3-asr-flash/qwen3-tts-flash); the openai candidate is region-blocked (HTTP 403).",
       "examplePath": "examples/voice-transcription.ts",
-      "capabilityRequirements": [
-        "model:asr"
-      ],
+      "capabilityRequirements": ["model:asr"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/voice",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -711,9 +695,7 @@
       "gatedBy": null,
       "availability": "NOT RUN — no authorized WebSocket voice-session API in the provider set (QWEN_API_KEY covers ASR/TTS legs only).",
       "examplePath": "examples/realtime-voice-session.ts",
-      "capabilityRequirements": [
-        "model:realtime-voice"
-      ],
+      "capabilityRequirements": ["model:realtime-voice"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/realtime-voice",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -730,9 +712,7 @@
       "gatedBy": "QWEN_API_KEY",
       "availability": "live-proven over the qwen rail (qwen-image-2.0); the openai candidate is region-blocked (403).",
       "examplePath": "examples/image-generation.ts",
-      "capabilityRequirements": [
-        "model:image-generation"
-      ],
+      "capabilityRequirements": ["model:image-generation"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/image-generation",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -749,9 +729,7 @@
       "gatedBy": "QWEN_API_KEY",
       "availability": "three live generations proven (wan2.2-t2v-plus, ~88 s each); further live rows NOT RUN — free-tier quota exhausted (AllocationQuota.FreeTierOnly); ark/seedance candidates DNS-failed.",
       "examplePath": "examples/video-generation.ts",
-      "capabilityRequirements": [
-        "model:video-generation"
-      ],
+      "capabilityRequirements": ["model:video-generation"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/video-media",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -768,9 +746,7 @@
       "gatedBy": "OPENROUTER_API_KEY",
       "availability": "vision candidates: openrouter (live-proven) and openai (region-blocked 403).",
       "examplePath": "examples/image-recognition.ts",
-      "capabilityRequirements": [
-        "model:vision"
-      ],
+      "capabilityRequirements": ["model:vision"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/image-recognition",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -787,9 +763,7 @@
       "gatedBy": "OPENROUTER_API_KEY",
       "availability": "VLM candidates: openrouter (live-proven) and openai (region-blocked 403).",
       "examplePath": "examples/vlm-image-qa.ts",
-      "capabilityRequirements": [
-        "model:vlm"
-      ],
+      "capabilityRequirements": ["model:vlm"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/vlm",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -806,9 +780,7 @@
       "gatedBy": "OPENAI_API_KEY",
       "availability": "NOT RUN — the only authorized audio-input candidate (openai) is region-blocked (HTTP 403 unsupported_country_region_territory).",
       "examplePath": "examples/audio-understanding.ts",
-      "capabilityRequirements": [
-        "model:audio-understanding"
-      ],
+      "capabilityRequirements": ["model:audio-understanding"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/audio-understanding",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -825,10 +797,7 @@
       "gatedBy": "OPENROUTER_API_KEY",
       "availability": "chained rows live-proven (vision over openrouter, derived raster over qwen-image-2.0); one honest FAILED row (corrupted source, chain-abort).",
       "examplePath": "examples/multimodal-transformation.ts",
-      "capabilityRequirements": [
-        "model:vlm",
-        "model:image-generation"
-      ],
+      "capabilityRequirements": ["model:vlm", "model:image-generation"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/multimodal",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -845,9 +814,7 @@
       "gatedBy": "ZECK_3D_API_KEY",
       "availability": "NOT RUN — no 3D-generation-capable provider in the authorized set (model:three-d candidates: []).",
       "examplePath": "examples/three-d-generation.ts",
-      "capabilityRequirements": [
-        "model:three-d"
-      ],
+      "capabilityRequirements": ["model:three-d"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/three-d",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -864,9 +831,7 @@
       "gatedBy": null,
       "availability": "triage is deterministic over pinned ticket fixtures; reply generation follows the text rail.",
       "examplePath": "examples/customer-service-triage.ts",
-      "capabilityRequirements": [
-        "model:text"
-      ],
+      "capabilityRequirements": ["model:text"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/customer-service",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -883,9 +848,7 @@
       "gatedBy": null,
       "availability": "fixture-proven (in-memory shop page graph; exact-total checkouts; secret-flow refusal row FAILING as designed); LIVE web rail NOT RUN — no operator-authorized browser rail.",
       "examplePath": "examples/browser-use-agent.ts",
-      "capabilityRequirements": [
-        "agent:browser"
-      ],
+      "capabilityRequirements": ["agent:browser"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/browser-use",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -902,9 +865,7 @@
       "gatedBy": null,
       "availability": "fixture-proven (in-memory workspace; exact final-tree evidence; /etc/passwd data-boundary refusal FAILING as designed); LIVE desktop rail NOT RUN — no operator-authorized rail.",
       "examplePath": "examples/computer-use-agent.ts",
-      "capabilityRequirements": [
-        "agent:computer-use"
-      ],
+      "capabilityRequirements": ["agent:computer-use"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/computer-use",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -921,10 +882,7 @@
       "gatedBy": null,
       "availability": "retrieval is deterministic; synthesis follows the live-proven text rail.",
       "examplePath": "examples/research-synthesis.ts",
-      "capabilityRequirements": [
-        "model:text",
-        "tool:document-retrieval"
-      ],
+      "capabilityRequirements": ["model:text", "tool:document-retrieval"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/research",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -941,9 +899,7 @@
       "gatedBy": null,
       "availability": "family exercised by the validation program over pinned function specs.",
       "examplePath": "examples/coding-assistant.ts",
-      "capabilityRequirements": [
-        "model:text"
-      ],
+      "capabilityRequirements": ["model:text"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/coding",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -960,9 +916,7 @@
       "gatedBy": null,
       "availability": "runbook steps are deterministic tool invocations over pinned operational fixtures.",
       "examplePath": "examples/operations-runbook.ts",
-      "capabilityRequirements": [
-        "tool:document-retrieval"
-      ],
+      "capabilityRequirements": ["tool:document-retrieval"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/operations",
         "machineManifest": "docs/developer/machine/capability-manifest.json"
@@ -979,9 +933,7 @@
       "gatedBy": null,
       "availability": "gate discipline is deterministic (approval-before-action event ordering is the oracle).",
       "examplePath": "examples/human-review-gate.ts",
-      "capabilityRequirements": [
-        "human:human-review"
-      ],
+      "capabilityRequirements": ["human:human-review"],
       "discoveryLocation": {
         "consoleRoute": "/console/playground/hitl",
         "machineManifest": "docs/developer/machine/capability-manifest.json"

@@ -42,13 +42,34 @@
   ],
   "leadIndependentBattery": [
     { "proof": "typecheck", "result": "0 errors (tsc --noEmit) after the completion corrections" },
-    { "proof": "lint", "result": "the base's exact 2 errors + 68 warnings + 8 infos — zero new (biome check; the 2 errors are the pre-existing evidence-JSON format diffs)" },
-    { "proof": "the conformance suites re-run on the final tree", "result": "24/24 green (11 simulated + 13 livekit over the real local livekit-server booted by the suite on 127.0.0.1:7891, --dev public keypair, SIGSTOP/SIGCONT refusal injection included)" },
-    { "proof": "unit", "result": "361 files / 6347 tests — 0 failed (6322 base + 25 adapter proofs)" },
-    { "proof": "architecture (PG rail 127.0.0.1:55432)", "result": "140 files / 2240 tests — 0 failed (the provider-sdk/realtime boundary pins now active for livekit-server-sdk)" },
-    { "proof": "integration (PG rail)", "result": "175 files + 1 skipped / 1297 tests + 26 skipped — 0 failed" },
-    { "proof": "the FULL suite (the binding merge gate; PG rail, single inline run)", "result": "EXIT 0 — 678 files + 1 skipped (679) / 9908 tests + 26 skipped (9934) / 0 failed / 545.77s" },
-    { "proof": "governance + deploy:validate", "result": "Governance OK (60 Work Orders, 110 requirements, inFlight=[], frontier=[]); deploy:validate valid=true, environments=4, variables=94 (89→94 — the LiveKit manifest extension)" }
+    {
+      "proof": "lint",
+      "result": "the base's exact 2 errors + 68 warnings + 8 infos — zero new (biome check; the 2 errors are the pre-existing evidence-JSON format diffs)"
+    },
+    {
+      "proof": "the conformance suites re-run on the final tree",
+      "result": "24/24 green (11 simulated + 13 livekit over the real local livekit-server booted by the suite on 127.0.0.1:7891, --dev public keypair, SIGSTOP/SIGCONT refusal injection included)"
+    },
+    {
+      "proof": "unit",
+      "result": "361 files / 6347 tests — 0 failed (6322 base + 25 adapter proofs)"
+    },
+    {
+      "proof": "architecture (PG rail 127.0.0.1:55432)",
+      "result": "140 files / 2240 tests — 0 failed (the provider-sdk/realtime boundary pins now active for livekit-server-sdk)"
+    },
+    {
+      "proof": "integration (PG rail)",
+      "result": "175 files + 1 skipped / 1297 tests + 26 skipped — 0 failed"
+    },
+    {
+      "proof": "the FULL suite (the binding merge gate; PG rail, single inline run)",
+      "result": "EXIT 0 — 678 files + 1 skipped (679) / 9908 tests + 26 skipped (9934) / 0 failed / 545.77s"
+    },
+    {
+      "proof": "governance + deploy:validate",
+      "result": "Governance OK (60 Work Orders, 110 requirements, inFlight=[], frontier=[]); deploy:validate valid=true, environments=4, variables=94 (89→94 — the LiveKit manifest extension)"
+    }
   ],
   "notRun": [
     {
