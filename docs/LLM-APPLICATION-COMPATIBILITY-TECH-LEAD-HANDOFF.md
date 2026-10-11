@@ -6,6 +6,24 @@
 **Architecture:** v1.0 + D1.0 + E1.0 + E1.1 + ACR-006 + ACR-007
 **Program:** Zeck Application Compatibility Proof Program
 
+## Current closure directive — PPR-028 (2026-10-11)
+
+The original application-compatibility delivery sequence PPR-018A and PPR-018 through PPR-027 is delivered as a Work Order portfolio. Before treating the portfolio as formally closed, execute the authorized post-capstone closure Work Order:
+
+- `spec/post-release-work-orders/PPR-028.md` — canonical closure order and three-worker dispatch plan (Worker A: Aider binding; Worker B: PPR-019–026 evidence reconciliation; Worker C: PPR-027 capstone audit; Tech Lead retains final certification and state authority).
+- Current global frontier: `spec/post-release-state/frontier-state.json`
+- Evidence-driven architecture proposal: `docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md`
+
+Initial audit findings that PPR-028 must reconcile against exact merged `main`:
+
+1. `compat/aider/demo/demo-entry.json` still says NOT ACTIVATED and `apps/dashboard/pages.ts` has no Aider pinned-runtime executor registration. Do not mark PPR-018 COMPLETE/BOUND until a real, fail-closed binding and the required checks exist.
+2. Evidence records PPR-022 through PPR-026 derive `AI_EXECUTION_COMPLETE`, but currently have `finalCertification.status=PENDING` even though their PRs describe merge-time bindings. Verify code, evidence and exact revisions before resolving each status.
+3. PPR-021 must remain derived `PARTIAL` unless new valid evidence resolves the child-session and embeddings gaps. A formal acceptance of PARTIAL is not an `AI_EXECUTION_COMPLETE` pass.
+4. PPR-027's record currently says `STUDY-COMPLETE (self-assessed)` with final certification pending. Any acceptance must explicitly preserve synthetic-supply/synthetic-price caveats, no external provider baseline, no pinned-app rerun inside the capstone, and developer preference NOT RUN.
+5. Do not change statuses just to match the portfolio aggregate. If the real pinned runtime or a credentialed check cannot run, record NOT RUN/BLOCKED, owner, and next action.
+
+PPR-028 is a bounded reconciliation order; it does not reopen the completed application sequence or authorize a new execution/capability/verification/evidence authority. PPR-016 remains operator-bound separately.
+
 ## 1. Mission
 
 The north star is an empirical demonstration that independent applications in materially different AI categories can erase their direct AI-provider execution infrastructure and delegate their material AI execution to Zeck through one stable provider-neutral boundary, while retaining their own domain logic and UX.

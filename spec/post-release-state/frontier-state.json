@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "ppr-027-delivered",
+  "status": "ppr-028-authorized",
   "currentBase": "93970a2ec42b5930fd78cb1fff441536d3cbb909",
   "delivered": [
     "PPR-001",
@@ -32,14 +32,16 @@
     "PPR-026",
     "PPR-027"
   ],
-  "eligible": [],
+  "eligible": [
+    "PPR-028"
+  ],
   "inFlight": [],
   "blocked": [
     "PPR-016"
   ],
   "maxConcurrentWorkers": 3,
-  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
-  "context": "PPR-027 (capstone: cross-application longitudinal economics and developer-adoption evidence) delivered (PR #169, merge head 93970a2, Lead-harvest provenance: worker chat 99ad0320, tarball sha256 d2fe17b15bf0e4d23ec816a97e6b4c0f31ffb8809313c72d9dc5292e66ff21f5 byte-verified; 127 files / 29,090 insertions; Lead battery: typecheck 0, biome byte-identical 76/76, full suite 558 files / 9228 passed / 241 skipped) \u2014 the roadmap is COMPLETE: 27/27 work orders delivered (PPR-016 remains operator-bound by design).",
+  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. PPR-028 is a single coordinated closure pass after PPR-027; PPR-020..PPR-027 application proof successors are already delivered. PPR-016 remains separately operator-bound.",
+  "context": "PPR-027 (capstone) delivered by PR #169; the application-compatibility sequence has 27/27 work orders delivered. Architect audit on 2026-10-11 found post-capstone evidence-closure drift: Aider's data-only demo entry is still explicitly NOT ACTIVATED and lacks a registered pinned-runtime executor; PPR-022..026 and PPR-027 retain finalCertification=PENDING; PPR-021 remains derived PARTIAL. PPR-028 is authorized to repair/bind Aider where prerequisites permit, reconcile evidence against exact merged code, formally disposition PARTIAL and accept/defer the capstone without status inflation. PPR-016 remains operator-bound.",
   "authorizedQueue": [
     "PPR-017",
     "PPR-018A",
@@ -52,7 +54,8 @@
     "PPR-024",
     "PPR-025",
     "PPR-026",
-    "PPR-027"
+    "PPR-027",
+    "PPR-028"
   ],
-  "advancementRule": "The Architect has pre-authorized the application-compatibility sequence PPR-017, PPR-018A, PPR-018, PPR-019 and PPR-020..PPR-027. The Tech Lead may activate dependency-complete successors without routine Architect re-authorization after exact-merge/evidence/governance finalization. Architect authority remains required for architecture changes, new authorities, frozen-invariant changes, breaking public-contract changes, and merge acceptance."
+  "advancementRule": "The Architect has pre-authorized PPR-028 as the post-capstone evidence-closure work order. The Tech Lead must start from exact current main, reconcile every certification against code/evidence/tests, preserve honest PARTIAL/BLOCKED/NOT-RUN states, and update this frontier only after exact-merge/evidence/governance finalization. PPR-016 remains a separate operator-bound program. Architect authority remains required for architecture changes, new authorities, frozen-invariant changes, breaking public-contract changes, and merge acceptance."
 }
