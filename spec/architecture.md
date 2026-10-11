@@ -432,3 +432,19 @@ Compatibility proofs compare three things: the declared application execution gr
 ACR-006's AI_EXECUTION_COMPLETE definition is unchanged. The compatibility surface taxonomy remains observational and additive to the 22-family capability manifest; it may expose a missing capability or public-contract gap, but it cannot lower or rewrite capability truth.
 
 See docs/architecture-changes/ACR-007-universal-application-delegation-boundary.md.
+
+# 24. ACR-008 — Policy-bounded recovery plans and measured-evidence failover
+
+ACR-008 evolves the platform failure-recovery plane (WORK-055 / E1.1) from single-decision recovery strategy selection to policy-bounded recovery PLANS, and admits measured-evidence failover inputs into the existing selection.
+
+A recovery plan is a bounded, typed, deterministic sequence of governed recovery moves. Every move is selected by the existing strategy-selection machinery under the existing economics-bounded admissibility (quality floors inviolable, hard budget/latency ceilings binding, policy route restrictions applying). The plan composes decisions; it never bypasses, replaces or parallelizes authority.
+
+The move catalog extends fail-closed: a provider-failover re-route dimension (capability-equal alternate supply route consumed through the supply plane's own typed selection verdict), a context-repair move (bounded reconstruction directive for attributed context-corruption failures), and a verifier-escalation move (stronger verification depth through the existing verification authority's escalation seam). Every new move carries an explicit-basis cost claim through the shared admissibility machinery.
+
+Measured-evidence facts are optional typed inputs to strategy selection — observed per-provider/per-route reliability with explicit basis. They may reorder candidate preferences but can never lower a quality floor, raise a budget ceiling, bypass a policy restriction or admit an otherwise-inadmissible move. Absence of measured facts selects byte-identically to declared-facts-only selection. Learning pipelines may produce these facts; their admission, the plan bounds and every authority decision remain governed policy (invariant 13).
+
+Hedged execution of a recovery step is architecture-admitted only for declared side-effect-safe idempotent tasks with budget-authorized hedging and verification-checked winners; actuation and tool tasks are never hedged. Hedging is not authorized for implementation by the initial P1 work orders — it is gated on the replay-evaluation evidence verdict.
+
+The plan composer is wired into the governed execution/supply path behind the bounded recovery configuration with plan mode default OFF: the current retry posture is the byte-preserved default, and promotion is an evidence-gated evaluation configuration, not a code path change.
+
+ACR-008 adds no second router, capability registry, budget, execution state machine, verification service or evidence authority. All twenty frozen invariants are preserved. See docs/architecture-changes/ACR-008-policy-bounded-recovery-plans.md and the zeck-competitiveness-p1 program work orders (PCR-001..PCR-004).

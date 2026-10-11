@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "authority": "architecture-governance-delegations",
+  "records": [
+    {
+      "delegationId": "DEL-2026-10-11-P1",
+      "date": "2026-10-11",
+      "grantor": "operator (session instruction, quoted verbatim): \"As TL assume the responsibility of authorizing P1\"",
+      "grantee": "Tech Lead (Z.ai Code lead session)",
+      "scope": {
+        "program": "zeck-competitiveness-p1",
+        "roadmapItem": "P1 — close the measured reliability/failover gap (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
+        "rightsExercised": [
+          "approve-architecture-change",
+          "approve-work-order"
+        ],
+        "architectureVehicle": "ACR-008 (docs/architecture-changes/ACR-008-policy-bounded-recovery-plans.md, PR #175)"
+      },
+      "rightsNotDelegated": [
+        "change-governing-architecture",
+        "weaken-frozen-invariant",
+        "bypass-verification",
+        "bypass-required-review",
+        "bypass-merge-gate"
+      ],
+      "basis": "spec/governance/architect.json lists approve-architecture-change and approve-work-order among the architect's delegation-able decision rights; the operator instruction of 2026-10-11 exercises that delegation for the P1 program only. The architect principal record (@pectoraux) is not rewritten; this additive record is the auditable delegation trail (invariant 17).",
+      "boundaries": [
+        "P2-P5 of the competitiveness roadmap remain proposals requiring separate authorization.",
+        "ACR-008 preserves all twenty frozen invariants of spec/architecture-lock.md.",
+        "Worker protocol unchanged: workers cannot merge their own PRs; the Lead merges per the established governance pattern.",
+        "Live credentialed validation remains an operator-era obligation; synthetic results are never relabeled (the exact-revision rule stands)."
+      ],
+      "expiresOn": "program completion of zeck-competitiveness-p1 (frontier status terminal) or earlier operator revocation"
+    }
+  ]
+}

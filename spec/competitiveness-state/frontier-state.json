@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-competitiveness-p1",
+  "status": "pcr-001-eligible",
+  "currentBase": "0b5d6e12a37317fd893b600fe499b267666bd972",
+  "delivered": [],
+  "eligible": [
+    "PCR-001"
+  ],
+  "inFlight": [],
+  "dependencyGated": {
+    "PCR-002": [
+      "PCR-001"
+    ],
+    "PCR-003": [
+      "PCR-002"
+    ],
+    "PCR-004": [
+      "PCR-003 + threshold-report eligibility statement"
+    ]
+  },
+  "voidConditions": {
+    "PCR-004": "PCR-003's report shows sequential plans reach the resolution threshold on side-effect-safe idempotent cells \u2014 hedging not needed; record with the evidence citation"
+  },
+  "maxConcurrentWorkers": 1,
+  "rule": "eligible means an authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. The P1 program is authorized under the operator delegation DEL-2026-10-11-P1 (spec/governance/authority-delegations.json): the Tech Lead exercises the Architect's delegation-able approve-architecture-change and approve-work-order rights for this program only, per the operator instruction of 2026-10-11 ('As TL assume the responsibility of authorizing P1'). Non-delegable rights remain with the Architect principal @pectoraux. ACR-008 (PR #175) is the governing architecture evolution; the frozen invariants and the worker protocol are unchanged.",
+  "context": "P1 closes the measured reliability/failover gap from the PPR-027 capstone (mediated 94.8% vs strong-optimized 98.0% resolution; multi-provider cells 92.4% vs single-provider 97.2%; tested policy one failover retry vs the baseline three-attempt ladder; 23.77 vs 22.79 micro-USD failure-adjusted \u2014 synthetic-supply/synthetic-cost labels preserved). The failure-recovery plane (WORK-055/E1.1) is built, typed and tested but unwired; P1 composes it into policy-bounded recovery plans (ACR-008), wires it default-off, and evaluates three fresh arms at one exact revision with explicit thresholds. Live credentialed validation remains the operator-era obligation (never backfilled). Program registered 2026-10-11: ACR-008 via PR #175 (merge head 0b5d6e12); spec/architecture.md section 24; authority-delegations.json; work orders PCR-001..PCR-004.",
+  "authorizedQueue": [
+    "PCR-001",
+    "PCR-002",
+    "PCR-003",
+    "PCR-004"
+  ],
+  "advancementRule": "The Tech Lead (holding DEL-2026-10-11-P1) dispatches from exact current main, harvests with triple-verified reports + byte-exact tarballs, runs the independent Lead battery, merges, and advances this frontier only after exact-merge/evidence finalization. PCR-002/003 unlock on their dependencies' delivery; PCR-004 additionally requires the PCR-003 eligibility statement. The one-active-task platform regime serializes dispatch in practice. P2-P5 of the competitiveness roadmap remain proposals requiring separate authorization."
+}
