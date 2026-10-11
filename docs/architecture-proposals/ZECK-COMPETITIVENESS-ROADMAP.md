@@ -1,6 +1,6 @@
 # Zeck Competitiveness Roadmap — Evidence-Driven Architecture Proposals
 
-Status: PROPOSAL / NOT AN APPROVED ARCHITECTURE CHANGE  
+Status: PROPOSAL / NOT AN APPROVED ARCHITECTURE CHANGE — except P1, authorized 2026-10-11 via ACR-008 (`docs/architecture-changes/ACR-008-policy-bounded-recovery-plans.md`; operator-delegated Tech-Lead authorization for the P1 program only, recorded in `spec/governance/authority-delegations.json`). P2–P5 remain proposals requiring separate authorization.  
 Date: 2026-10-11  
 Source evidence: PPR-025 through PPR-027, especially `docs/APPLICATION-COMPATIBILITY-OBSERVED-EVIDENCE.md`  
 Compatibility boundary: ACR-006 + ACR-007  
