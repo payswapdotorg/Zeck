@@ -10,7 +10,7 @@
 
 The original application-compatibility delivery sequence PPR-018A and PPR-018 through PPR-027 is delivered as a Work Order portfolio. Before treating the portfolio as formally closed, execute the authorized post-capstone closure Work Order:
 
-- `spec/post-release-work-orders/PPR-028.md`
+- `spec/post-release-work-orders/PPR-028.md` — canonical closure order and three-worker dispatch plan (Worker A: Aider binding; Worker B: PPR-019–026 evidence reconciliation; Worker C: PPR-027 capstone audit; Tech Lead retains final certification and state authority).
 - Current global frontier: `spec/post-release-state/frontier-state.json`
 - Evidence-driven architecture proposal: `docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md`
 
