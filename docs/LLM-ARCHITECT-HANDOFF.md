@@ -18,10 +18,10 @@
 - E1.1 implementation WORK-048 through WORK-056: **complete**.
 - Validation program VAL-001 through VAL-052: **complete**.
 - Developer Platform DEP-001 through DEP-044: **complete**.
-- PPR-001 through PPR-017: **delivered**.
+- PPR-001 through PPR-027: **delivered** (the application-compatibility sequence is complete as a delivery program).
 - ACR-006 and ACR-007: **approved forward architecture extensions**.
-- The active successor program is the **Zeck Application Compatibility Proof Program**.
-- Current executable wave: **PPR-018A + PPR-018 + PPR-019**, three conflict-partitioned workers.
+- Application compatibility portfolio: **8 derived AI_EXECUTION_COMPLETE + 1 PARTIAL (Continue)**, according to the capstone aggregation; do not confuse work-order delivery with final certification.
+- **PPR-028 — Post-Capstone Evidence Closure and Certification Reconciliation** is the current authorized frontier.
 - PPR-016 remains a separate operator-bound capability/environment program.
 - Exact current main SHA must always be fetched at recovery time.
 
@@ -41,11 +41,11 @@ Current canonical documents:
 - docs/APPLICATION-COMPATIBILITY-TARGET-MATRIX.md
 - docs/LLM-APPLICATION-COMPATIBILITY-TECH-LEAD-HANDOFF.md
 - docs/TRADRL-ZECK-INTEGRATION-BOUNDARY.md — approved future TradRL interoperability profile; not a current PPR authorization.
+- docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md — evidence-driven recommendations (proposal only; not an approved architecture change).
+- spec/post-release-work-orders/PPR-028.md — authorized closure pass for Aider binding, application certification reconciliation, Continue PARTIAL disposition and PPR-027 capstone acceptance.
 
-Current executable Work Orders:
-- PPR-018A — reusable real runner/baseline/Demo Mirror activation harness
-- PPR-018 — Aider
-- PPR-019 — Cline
+Current executable Work Order:
+- PPR-028 — post-capstone evidence closure and certification reconciliation. The audit found Aider's data-only entry still says NOT ACTIVATED and has no pinned-runtime executor registered in apps/dashboard/pages.ts; PPR-022..026 and PPR-027 still have finalCertification=PENDING fields; PPR-021 remains PARTIAL. PPR-028 must reconcile these against exact main code, run evidence, and honest environment limits.
 
 The north star is a portfolio of real, runnable application demonstrations. A demo is evidence only when the real pinned application runtime is AI_EXECUTION_COMPLETE. A proxy, model-only path, fixture, mock or partial graph cannot pass.
 
@@ -148,9 +148,9 @@ The compiler may jointly consider:
 The objective is expected successful-resolution cost, subject to hard quality, reliability, safety, policy and verification constraints.
 
 
-### Current architect directive — PPR-015
+### Historical productization directive — PPR-015
 
-The next executable Work Order is **PPR-015: Real-user browser audit and public productization correction**.
+PPR-015 was the real-user browser audit and public productization correction. The section below is retained as a historical delivery record; it does not override the current PPR-028 frontier.
 
 It is triggered by live user navigation against `https://zeck-preview-main.vercel.app/`. The repository contains the intended discovery-first Home implementation — including the outcome explanation and 22-family discovery — but the public navigation currently lands Home on `/console`, so those product promises are not actually being received by the user.
 
