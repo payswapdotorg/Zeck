@@ -40,7 +40,7 @@
     "PPR-016"
   ],
   "maxConcurrentWorkers": 3,
-  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete, whose change surfaces are conflict-safe, and whose dispatch starts from the current governed main head. PPR-018A, PPR-018 and PPR-019 form the current three-worker wave; PPR-020..PPR-027 are pre-authorized successors in spec/application-compatibility/program-state.json.",
+  "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. PPR-028 is a single coordinated closure pass after PPR-027; PPR-020..PPR-027 application proof successors are already delivered. PPR-016 remains separately operator-bound.",
   "context": "PPR-027 (capstone) delivered by PR #169; the application-compatibility sequence has 27/27 work orders delivered. Architect audit on 2026-10-11 found post-capstone evidence-closure drift: Aider's data-only demo entry is still explicitly NOT ACTIVATED and lacks a registered pinned-runtime executor; PPR-022..026 and PPR-027 retain finalCertification=PENDING; PPR-021 remains derived PARTIAL. PPR-028 is authorized to repair/bind Aider where prerequisites permit, reconcile evidence against exact merged code, formally disposition PARTIAL and accept/defer the capstone without status inflation. PPR-016 remains operator-bound.",
   "authorizedQueue": [
     "PPR-017",
