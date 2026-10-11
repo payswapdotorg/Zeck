@@ -26,7 +26,7 @@ Eight of nine. Aider (018), Cline (019), OpenHands (020), Hermes-Agent (022), Op
 
 ### 3. Which gaps were implementation, public-contract, architecture or operator/provider boundaries?
 
-From the nine records' own vocabulary, summed: **25 operator/provider boundary** classifications (the dominant class — disclosed supply-side boundaries the non-Zeck arms also hit), **2 implementation gaps**, **0 public-contract gaps**, **0 architecture-gap candidates**. No gap class escalated into an architecture change request across the entire program.
+From the nine records' own vocabulary, summed: **25 operator/provider boundary** classifications (the dominant class — disclosed supply-side boundaries the non-Zeck arms also hit), **2 implementation-gap occurrences** (the aggregation counts phrase occurrences of the records' own gap vocabulary across their sections, so one underlying gap restated in two sections counts twice — hermes-agent's single video-plugin translation gap is the 2), **0 public-contract gaps**, **0 architecture-gap candidates**. No gap class escalated into an architecture change request across the entire program.
 
 ### 4. How did successful-outcome economics change at comparable quality/reliability/safety/latency?
 
@@ -62,11 +62,11 @@ The counterfactual is measured too: the strong-optimized baseline's ladder/fallb
 
 ### 7. How useful was central telemetry/evidence for diagnosis and reproduction?
 
-**5950/5950** delegated executions correlated through the public SDK wire reads (ledger events + verification results); **5881/5950 (98.8%)** reconstructible end-to-end — route, cost and usage projectable from the public surface alone (the 69-execution residue is the substrate plane's usage-free facts, by design). Failures are diagnosable at terminal through public cause records (per-cell `diagnosis-recovery` entries: mean time-to-terminal-cause and mean failover-recovery latency). The sweep is reproducible by hash-draw construction, and the resumable runner re-verified all 102 checkpoints. The portfolio aggregation itself was assembled from the records' public fields alone.
+**5950/5950** delegated executions correlated through the public SDK wire reads (ledger events + verification results); **5881/5950 (98.8%)** reconstructible end-to-end — route, cost and usage projectable from the public surface alone (the 69-execution residue is the failed-request executions: a failed request carries no completion fact, so route/cost/usage read null; the substrate plane's deterministic facts are themselves reconstructible). Failures are diagnosable at terminal through public cause records (per-cell `diagnosis-recovery` entries: mean time-to-terminal-cause and mean failover-recovery latency). The sweep is reproducible by hash-draw construction, and the resumable runner re-verified all 102 checkpoints. The portfolio aggregation itself was assembled from the records' public fields alone.
 
 ### 8. How much customization remained available?
 
-The full declared surface: provider/model/rail selection via platform connections (the portability probes switched single→multi with **zero application-side changes, 0 changed files, 24–245 ms**, all 9/9), per-execution constraints and metadata, and the applications' own tuned optimization axes (reproduced in the strong-optimized arms). No axis the certified records disclosed was removed or blocked by mediation in any cell.
+The full declared surface: provider/model/rail selection via platform connections (the portability probes switched single→multi with **zero application-side changes, 0 changed files, 22–247 ms**, all 9/9), per-execution constraints and metadata, and the applications' own tuned optimization axes (reproduced in the strong-optimized arms). No axis the certified records disclosed was removed or blocked by mediation in any cell.
 
 ### 9. How did developer preference change with sustained use and application scale?
 
@@ -127,7 +127,7 @@ Additionally, the workload provenance was reconciled exactly: every subject's pe
 |---|---|
 | `bun install` | no changes (143 installs / 192 packages) |
 | `bun run typecheck` | **0 errors** |
-| `bun run lint` | 7 errors / 68 warnings — **all pre-existing** in `tests/unit/validation/val-047..049` and `benchmarks/validation` files untouched by this branch (`git diff 86e7106..HEAD -- tests/ benchmarks/` is empty); `experiments/ppr-027` checks clean |
+| `bun run lint` | 7 errors / 68 warnings / 8 infos — **all pre-existing** at the study base: the 7 errors are an organize-imports assist in `apps/dashboard/pages.ts` and six format diffs in `deploy/evidence/*.json` (repaired by the Lead in PR #171 before the PPR-028 dispatch); the 68 warnings + 8 infos live in `tests/**`, `benchmarks/validation/**` and `src/**` files untouched by this branch (`git diff 86e7106..HEAD -- tests/ benchmarks/` is empty); `experiments/ppr-027` checks clean |
 | `bun run test:unit` | **380 files / 6572 tests passed**, 0 failed, 0 skipped |
 | `bun run test:architecture` | 139 files passed / 1 skipped; **2230 tests passed / 4 skipped** |
 | `bun run test:integration` | 31 files passed / 148 skipped (179); **334 tests passed / 205 skipped** — PG suite skips cleanly without `ZECK_PG_TEST_URL` (skip count recorded) |
