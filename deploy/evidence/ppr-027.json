@@ -19,7 +19,7 @@
     "laws": [
       "honest-measurement law: observed distributions come only from this sandbox's real runs; unmeasurable dimensions are honest NOT RUN with owner and required track; the prior scenario percentages are never extrapolated as observations",
       "checkpoint law: every cell persisted atomically before the next (resumable sweep); the run survived two platform stream deaths with zero lost work",
-      "pre-gate ref synchronization and pre-existing lint evidence: gates run against the exact committed tree; the 7 pre-existing biome errors live in tests/unit/validation/val-047..049 and benchmarks/validation files untouched by this branch (git diff 86e7106..HEAD -- tests/ benchmarks/ is empty)"
+      "pre-gate ref synchronization and pre-existing lint evidence: gates run against the exact committed tree; the 7 pre-existing biome errors are an assist/source/organizeImports diagnostic in apps/dashboard/pages.ts and six format diffs in deploy/evidence/*.json (untouched by this branch); the 68 warnings and 8 infos live in tests/**, benchmarks/validation/** and src/** files untouched by this branch (git diff 86e7106..HEAD -- tests/ benchmarks/ is empty)"
     ]
   },
   "evidenceRecord": {
@@ -222,7 +222,7 @@
     },
     "portabilityProbes": {
       "source": "experiments/ppr-027/results/portability-probes.json",
-      "result": "9/9 subjects switched from the single- to the multi-provider configuration with ZERO application-side changes (changedApplicationFiles=0), 24-245 ms per switch (re-composition + one representative task through the same provider-blind driver)",
+      "result": "9/9 subjects switched from the single- to the multi-provider configuration with ZERO application-side changes (changedApplicationFiles=0), 22-247 ms per switch (re-composition + one representative task through the same provider-blind driver)",
       "caveat": "this probe measures the platform-side switch through the study's driver code; the certified records' own application-level portability facts remain the application-level evidence"
     },
     "thinAdapterAudit": {
@@ -323,7 +323,7 @@
       {
         "dimension": "provider-portability",
         "basis": "measured",
-        "statement": "9/9 subjects switched single -> multi provider with ZERO application-side changes (0 changed files, 24-245 ms re-composition) — provider multiplicity lives in platform connections, never in application code. Application-level portability facts remain the certified records' own probes."
+        "statement": "9/9 subjects switched single -> multi provider with ZERO application-side changes (0 changed files, 22-247 ms re-composition) — provider multiplicity lives in platform connections, never in application code. Application-level portability facts remain the certified records' own probes."
       },
       {
         "dimension": "customization-coverage",
@@ -343,7 +343,7 @@
       {
         "dimension": "telemetry-explainability",
         "basis": "measured",
-        "statement": "5950/5950 delegated executions correlated durably through the SDK-wire public reads (ledger events + verification results); 5881/5950 (98.8%) reconstructible end-to-end with route/cost/usage facts projectable from the public surface alone. The residue (69) is the substrate plane's facts (route=deterministic, no token usage by design)."
+        "statement": "5950/5950 delegated executions correlated durably through the SDK-wire public reads (ledger events + verification results); 5881/5950 (98.8%) reconstructible end-to-end with route/cost/usage facts projectable from the public surface alone. The residue (69) is the failed-request executions — a failed request carries no completion fact, so route/cost/usage read null under the public surface; the substrate plane's deterministic facts are themselves reconstructible (route=deterministic)."
       },
       {
         "dimension": "diagnosis-recovery",
@@ -360,7 +360,7 @@
   "battery": {
     "bunInstall": "no changes (143 installs checked across 192 packages)",
     "typecheck": "0 errors (bun run typecheck, root tsconfig includes experiments/**/*)",
-    "lint": "biome check: 7 pre-existing errors / 68 warnings — ALL in tests/unit/validation/val-047..049 and benchmarks/validation files untouched by this branch (git diff 86e7106..HEAD -- tests/ benchmarks/ is empty); experiments/ppr-027 checks CLEAN (0 errors, 0 warnings) after biome --write; the nested experiments/ppr-027/biome.json mistake from checkpoint 1 was removed and experiments/** added to the root includes",
+    "lint": "biome check: 7 pre-existing errors / 68 warnings / 8 infos — the 7 errors are an assist/source/organizeImports diagnostic in apps/dashboard/pages.ts and six format diffs in deploy/evidence/{ppr-003-live,ppr-006,ppr-009,ppr-015,ppr-021,wave-g-redeploy}.json (none introduced by this branch; repaired by the Lead in PR #171 before the PPR-028 dispatch); the 68 warnings and 8 infos live in tests/**, benchmarks/validation/** and src/** files untouched by this branch (git diff 86e7106..HEAD -- tests/ benchmarks/ is empty); experiments/ppr-027 checks CLEAN (0 errors, 0 warnings) after biome --write; the nested experiments/ppr-027/biome.json mistake from checkpoint 1 was removed and experiments/** added to the root includes",
     "testUnit": "380 files / 6572 tests passed, 0 failed, 0 skipped",
     "testArchitecture": "139 files passed | 1 skipped; 2230 tests passed | 4 skipped (tests/architecture + tests/discrimination; the governance-gate discrimination suite passes — the study branch is a pristine tracked copy)",
     "testIntegration": "31 files passed | 148 skipped (179); 334 tests passed | 205 skipped (539) — the PG suite skips cleanly without ZECK_PG_TEST_URL, recorded here as the skip count",
@@ -380,7 +380,7 @@
     },
     {
       "question": "3. Which gaps were implementation, public-contract, architecture or operator/provider boundaries?",
-      "answer": "From the nine records' own vocabulary: 25 operator/provider boundary classifications (the disclosed supply-side boundaries the applications' non-Zeck arms also hit — the dominant gap class), 2 implementation gaps, 0 public-contract gaps, 0 architecture-gap candidates. No gap class grew into an architecture change request across the program — the boundary held.",
+      "answer": "From the nine records' own vocabulary: 25 operator/provider boundary classifications (the disclosed supply-side boundaries the applications' non-Zeck arms also hit — the dominant gap class), 2 implementation-gap occurrences (the aggregation counts phrase occurrences of the records' own gap vocabulary across their sections, so one underlying gap restated in two sections counts twice — hermes-agent's single video-plugin translation gap is the 2), 0 public-contract gaps, 0 architecture-gap candidates. No gap class grew into an architecture change request across the program — the boundary held.",
       "evidence": "portfolio-aggregation.json (gapClassificationCounts per record, summed)"
     },
     {
@@ -400,7 +400,7 @@
     },
     {
       "question": "7. How useful was central telemetry/evidence for diagnosis and reproduction?",
-      "answer": "5950/5950 executions correlated through the public SDK wire reads; 98.8% reconstructible end-to-end (route/cost/usage projectable from the public surface alone; the residue is the substrate plane's usage-free facts by design). Failures are diagnosable at terminal through public cause records (per-cell diagnosis-recovery entries). The sweep itself is reproducible by hash-draw construction, and the resumable runner re-verified all 102 checkpoints. The portfolio aggregation was assembled from the records' public fields alone — no privileged access needed.",
+      "answer": "5950/5950 executions correlated through the public SDK wire reads; 98.8% reconstructible end-to-end (route/cost/usage projectable from the public surface alone; the residue is the failed-request executions' completion-free facts — the substrate plane's route=deterministic facts are themselves reconstructible). Failures are diagnosable at terminal through public cause records (per-cell diagnosis-recovery entries). The sweep itself is reproducible by hash-draw construction, and the resumable runner re-verified all 102 checkpoints. The portfolio aggregation was assembled from the records' public fields alone — no privileged access needed.",
       "evidence": "observed-distributions.json (telemetry); per-cell measurements; run.ts sweep re-verification output"
     },
     {
@@ -440,6 +440,24 @@
   "finalCertification": {
     "status": "PENDING",
     "owner": "Tech-Lead",
-    "bindingStep": "This record is the worker's study-time self-assessment. Final certification — including the judgment call on Q10's conditional thesis verdict and the acceptance of the honest NOT RUNs — is the Tech Lead's gate. The observed-evidence companion document is docs/APPLICATION-COMPATIBILITY-OBSERVED-EVIDENCE.md."
+    "bindingStep": "This record is the worker's study-time self-assessment. Final certification — including the judgment call on Q10's conditional thesis verdict and the acceptance of the honest NOT RUNs — is the Tech Lead's gate. The observed-evidence companion document is docs/APPLICATION-COMPATIBILITY-OBSERVED-EVIDENCE.md.",
+    "capstoneAudit": {
+      "auditor": "PPR-028C Worker C (the PPR-028 Section D capstone audit)",
+      "date": "2026-10-11",
+      "baseRevision": "8119874b0d68db0b4fc3fcd6dcc2c0815e6ac3c7",
+      "auditBranch": "work/PPR-028c-capstone-audit",
+      "scope": "all 102 committed sweep cells reconciled cell-by-cell (coordinates, corpus shapes vs the declared workloads, measurement sets, baseline comparisons, PASS/FAIL classifications, canary blocks); the aggregation arithmetic independently recomputed from the cells without importing the capstone analysis; the 9-record portfolio statuses and gap tallies re-derived from the records; the trace/replay claims verified against the harness code paths; the five stated limitations checked at every restatement; a fresh verification battery on the exact tree (the hermetic suite, the six gates, and a from-scratch sweep regeneration compared against the committed cells)",
+      "cellReconciliation": "102/102 verified consistent; 0 corrected cells; 0 flagged cells",
+      "independentRecompute": "mediated 1075/1134 = 94.8% (raw 0.94797); direct 763/1134 = 67.3% (0.67284); strong-optimized 1111/1134 = 98.0% (0.97972); failure-adjusted synthetic micro-USD per resolved 23.769 vs 69.894 vs 22.787 (-66.0% vs direct; +4.3% mediated-over-optimized, i.e. the optimized arm ~4.1% cheaper); reuse 3353/5950 = 56.4%; telemetry 5881/5950 = 98.8%; latency cell medians 18.5/21.0/16.0 ms and p95 medians 135.5/97.5/143.0 ms; honest weaknesses 39/33/1/36 — every claimed value reproduced; zero discrepancies",
+      "findings": [
+        "MODERATE — the 69-execution reconstructibility residue was attributed to the substrate plane's usage-free facts; it is the failed-request executions (residue == requestFailures in 102/102 cells; browser-use, the only substrate subject, has 0 residue). Corrected in this record (measurements + Q7) and the observed-evidence doc §7.",
+        "MODERATE — battery.lint and doctrine.laws mis-located the 7 pre-existing biome errors (claimed tests/benchmarks; a fresh `bun run lint` at the study base 86e7106 shows them to be an organize-imports assist in apps/dashboard/pages.ts plus six deploy/evidence/*.json format diffs — the set the Lead repaired in PR #171 before the PPR-028 dispatch). Corrected in this record and the doc's battery table.",
+        "MINOR — the portability probe switch-time range was stated as 24-245 ms; the committed probes give 22-247 ms (min browser-use 22 ms, max hermes-agent 247 ms). Corrected in this record (x2) and the doc §8.",
+        "MINOR — the gap-taxonomy tallies are phrase-occurrence counts over the records' sections, so one underlying gap restated in two sections counts twice (hermes-agent's single video-plugin translation gap is the recorded '2 implementation gaps'). The basis is now stated explicitly in this record (Q3) and the doc §3; the numbers themselves are the aggregation's declared output and stand."
+      ],
+      "limitationsRestated": "the study's numbers hold ONLY under its declared conditions: deterministic injected supply behind the real rails (a declared provider-behavior profile, not live provider behavior), synthetic micro-USD under the declared price schedule (never provider invoices), no external-provider baseline (the same-supply direct arm is the measured substitute), no re-run of the pinned application runtimes (the workload is a corpus-shape model derived from the certified records), and no real developer-preference cohort (Q9 NOT RUN, owner: Lead). None of the observed distributions is a production measurement or a market claim. The adverse findings stand: the strong-optimized baseline resolves more tasks (98.0% vs 94.8%, a 36-task gap) at about 4% lower failure-adjusted cost, multi-provider mediated resolution degrades (92.4% vs 97.2% single), and developer preference is unmeasured.",
+      "recommendation": "STUDY-COMPLETE — ACCEPTED WITH LIMITATIONS",
+      "recommendationNote": "accepted as a study under its declared synthetic-supply/synthetic-cost conditions with the no-real-cohort boundary (Q9 NOT RUN, owner: Lead) — never as production or market measurement. The Tech Lead signs the actual disposition; this note is a recommendation, not a signature."
+    }
   }
 }
