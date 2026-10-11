@@ -22,6 +22,9 @@
  *    mirror never runs an uncertified integration path).
  */
 
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import {
   COMPATIBILITY_STATUS_PRESENTATION,
@@ -227,5 +230,93 @@ describe("demo status cannot upgrade evidence", () => {
     const cline = rows.find((row) => row.demoId === "cline-ide-agent");
     expect(cline?.status).toBe("AI_EXECUTION_COMPLETE");
     expect(cline?.runAvailable).toBe(true);
+    // PPR-028A Worker A binding: the REAL certified Aider demo derives
+    // AI_EXECUTION_COMPLETE through the SAME projection (no drift for
+    // the repaired binding either — the entry carried no status to
+    // upgrade it with; the record's own facts, reconciled against its
+    // discoveredInventory, are the only path to COMPLETE).
+    const aider = rows.find((row) => row.demoId === "aider-coding-assistant");
+    expect(aider?.status).toBe("AI_EXECUTION_COMPLETE");
+    expect(aider?.runAvailable).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PPR-028A: the REAL Aider entry + record (the repaired binding) — the
+// no-upgrade property restated on the real files
+// ---------------------------------------------------------------------------
+
+const NO_UPGRADE_REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+
+/** The REAL bound record (deploy/evidence/ppr-018.json, work-order wrapper). */
+const AIDER_RECORD_WRAPPER = JSON.parse(
+  readFileSync(join(NO_UPGRADE_REPO_ROOT, "deploy", "evidence", "ppr-018.json"), "utf8"),
+) as {
+  evidenceRecord: CompatibilityEvidenceRecord;
+  discoveredInventory: import("../../../src/integrations/compatibility/public").DiscoveredEdgeInventory;
+};
+const AIDER_RECORD = AIDER_RECORD_WRAPPER.evidenceRecord;
+
+/** The REAL demo entry (compat/aider/demo/demo-entry.json). */
+const AIDER_ENTRY_FILE = JSON.parse(
+  readFileSync(join(NO_UPGRADE_REPO_ROOT, "compat", "aider", "demo", "demo-entry.json"), "utf8"),
+) as DemoMirrorEntry;
+
+describe("the REAL Aider binding cannot upgrade evidence (PPR-028A)", () => {
+  test("the real entry file has NO status/verdict/completeness field (the upgrade is unrepresentable on the bound entry too)", () => {
+    const entry = AIDER_ENTRY_FILE as unknown as Record<string, unknown>;
+    for (const forbidden of [
+      "status",
+      "compatibilityStatus",
+      "verdict",
+      "complete",
+      "certified",
+      "assessment",
+    ]) {
+      expect(entry[forbidden], forbidden).toBeUndefined();
+    }
+  });
+
+  test("the real record's AI_EXECUTION_COMPLETE is DERIVED (reconciled against its discovered inventory), never asserted — without the inventory it stays unreconciled", () => {
+    // With its discovered inventory the record derives COMPLETE.
+    expect(
+      evaluateCompatibility(AIDER_RECORD, AIDER_RECORD_WRAPPER.discoveredInventory).status,
+    ).toBe("AI_EXECUTION_COMPLETE");
+    // WITHOUT the inventory the SAME record stays below COMPLETE
+    // (INVENTORY_MISSING forbids it — the coverage gate: the mirror
+    // can never upgrade a record whose edges are not reconciled).
+    expect(evaluateCompatibility(AIDER_RECORD).status).not.toBe("AI_EXECUTION_COMPLETE");
+  });
+
+  test("the run availability follows the record's own derivation — the entry cannot make an uncertified record runnable", () => {
+    // The real entry + the real record: available + runnable (the
+    // record's own derivation made it so).
+    const available = resolveDemoMirrorEntry(
+      AIDER_ENTRY_FILE,
+      AIDER_RECORD,
+      AIDER_RECORD_WRAPPER.discoveredInventory,
+    );
+    expect(available.kind).toBe("available");
+    if (available.kind === "available") {
+      expect(available.projection.status).toBe("AI_EXECUTION_COMPLETE");
+      expect(available.projection.runAvailability.available).toBe(true);
+    }
+    // The SAME entry over an uncertified record: the run control is
+    // dead (the entry is inert data — binding it to different evidence
+    // changes everything; nothing about the entry itself grants a run).
+    const uncertified = resolveDemoMirrorEntry(AIDER_ENTRY_FILE, EXAMPLE_CODING_ASSISTANT_RECORD);
+    if (uncertified.kind === "available") {
+      expect(uncertified.projection.status).toBe("UNASSESSED");
+      const { runAvailability } = uncertified.projection;
+      if (runAvailability.available) {
+        throw new Error("an uncertified record offered a run through the Aider entry — refused");
+      }
+      expect(runAvailability.reason).toContain("never");
+    } else {
+      // A revision-mismatch resolution is equally honest (the entry
+      // describes the Aider revision; the fixture record pins a
+      // different one) — never a rendered certified demo.
+      expect(uncertified.kind).toBe("revision-mismatch");
+    }
   });
 });
