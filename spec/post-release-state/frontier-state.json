@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "program": "zeck-post-release-public-productization",
-  "status": "ppr-028-authorized",
-  "currentBase": "641c125e7c7787932c38411bb4c8cdcbbad6c53d",
+  "status": "ppr-028-delivered",
+  "currentBase": "b6529e835414b8e89db687d0486db84b4e03eb5f",
   "delivered": [
     "PPR-001",
     "PPR-002",
@@ -30,18 +30,17 @@
     "PPR-024",
     "PPR-025",
     "PPR-026",
-    "PPR-027"
-  ],
-  "eligible": [
+    "PPR-027",
     "PPR-028"
   ],
+  "eligible": [],
   "inFlight": [],
   "blocked": [
     "PPR-016"
   ],
   "maxConcurrentWorkers": 3,
   "rule": "eligible means an Architect-authorized or pre-authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. PPR-028 is a single coordinated closure pass after PPR-027; PPR-020..PPR-027 application proof successors are already delivered. PPR-016 remains separately operator-bound.",
-  "context": "PPR-027 (capstone) delivered by PR #169; the application-compatibility sequence has 27/27 work orders delivered. Architect audit on 2026-10-11 found post-capstone evidence-closure drift: Aider's data-only demo entry is still explicitly NOT ACTIVATED and lacks a registered pinned-runtime executor; PPR-022..026 and PPR-027 retain finalCertification=PENDING; PPR-021 remains derived PARTIAL. PPR-028 is authorized to repair/bind Aider where prerequisites permit, reconcile evidence against exact merged code, formally disposition PARTIAL and accept/defer the capstone without status inflation. PPR-016 remains operator-bound. Authorization landed via PR #170 (merge head 641c125e, after the Lead's lint gate-repair PR #171 and the spec-channel restructure recorded in the work-order dispatch-gate note); this records push registers the frontier per the e11 C9 spec/ channel rule.",
+  "context": "PPR-028 (post-capstone evidence closure and certification reconciliation) delivered 2026-10-11: three conflict-partitioned workers at frozen base 8119874b — Worker A (Aider Demo Mirror runtime binding; PR #172, merge head 22e97fb6, tarball sha256 3ec703ce byte-verified), Worker B (PPR-019..026 evidence reconciliation + docs/PPR-028-APPLICATION-RECONCILIATION.md; PR #174, merge head b6529e83, tarball sha256 c1482aad), Worker C (PPR-027 capstone audit — 102/102 cells consistent, 4 factual corrections; PR #173, merge head 8c57dfe1, tarball sha256 940647da). Lead closure on the integrated tree b6529e83: final certifications recorded — Aider COMPLETE — BOUND (9th executor); Cline/OpenHands COMPLETE — BOUND re-verified; Continue PARTIAL — ACCEPTED FOR PROGRAM REPORTING (child-session + embeddings gaps stand, never relabeled); Hermes-Agent/OpenClaw/Browser-Use/Open-WebUI/AnythingLLM COMPLETE — BOUND; capstone STUDY-COMPLETE — ACCEPTED WITH LIMITATIONS (synthetic-supply/synthetic-cost boundaries and adverse findings retained). Authorization gate history: lint repaired via PR #171 (7 pre-existing biome errors, zero-semantic-change) and the spec/ channel restructure recorded in the work order. Battery on the integrated tree: typecheck 0, lint 0 errors/68w/8i byte-preserved, unit 6587, architecture 2230|4, integration 334|205, compatibility 175, capstone hermetic 65, governance OK, deploy:validate OK. The post-release closure program is COMPLETE; PPR-016 remains operator-bound by design.",
   "authorizedQueue": [
     "PPR-017",
     "PPR-018A",

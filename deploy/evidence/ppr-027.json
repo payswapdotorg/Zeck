@@ -202,8 +202,16 @@
           "microMediansZDO": [15, 83, 16]
         }
       ],
-      "reuse": { "requests": 5950, "durableReplays": 3353, "replayRate": 0.564 },
-      "telemetry": { "traces": 5950, "correlated": 5950, "reconstructibleEndToEnd": 5881 },
+      "reuse": {
+        "requests": 5950,
+        "durableReplays": 3353,
+        "replayRate": 0.564
+      },
+      "telemetry": {
+        "traces": 5950,
+        "correlated": 5950,
+        "reconstructibleEndToEnd": 5881
+      },
       "latencyCellMedians": {
         "mediatedMedianMs": 18.5,
         "directMedianMs": 21.0,
@@ -428,17 +436,38 @@
       "the workload provenance was reconciled exactly: every subject's per-request token volumes sum to its certified record's totals, asserted by hermetic tests against each record's declared anchor"
     ],
     "ruleResults": [
-      { "ruleId": "EVERY_OBSERVED_NUMBER_TRACES_TO_A_COMMITTED_RUN", "satisfied": true },
-      { "ruleId": "NO_SIMULATION_PERCENTAGE_EXTRAPOLATED_AS_OBSERVATION", "satisfied": true },
-      { "ruleId": "BASELINE_ARMS_LABELED_NEVER_ZECK_EVIDENCE", "satisfied": true },
-      { "ruleId": "EGRESS_POSITIVE_CONTROL_OBSERVED_BLOCKED_PER_CELL", "satisfied": true },
-      { "ruleId": "THIN_ADAPTER_AUDIT_DERIVED_NOT_ASSERTED", "satisfied": true },
-      { "ruleId": "APPLICATION_RECORDS_STATUSES_UNTOUCHED", "satisfied": true },
-      { "ruleId": "THESIS_JUDGMENT_REPORTS_BOTH_DIRECTIONS", "satisfied": true }
+      {
+        "ruleId": "EVERY_OBSERVED_NUMBER_TRACES_TO_A_COMMITTED_RUN",
+        "satisfied": true
+      },
+      {
+        "ruleId": "NO_SIMULATION_PERCENTAGE_EXTRAPOLATED_AS_OBSERVATION",
+        "satisfied": true
+      },
+      {
+        "ruleId": "BASELINE_ARMS_LABELED_NEVER_ZECK_EVIDENCE",
+        "satisfied": true
+      },
+      {
+        "ruleId": "EGRESS_POSITIVE_CONTROL_OBSERVED_BLOCKED_PER_CELL",
+        "satisfied": true
+      },
+      {
+        "ruleId": "THIN_ADAPTER_AUDIT_DERIVED_NOT_ASSERTED",
+        "satisfied": true
+      },
+      {
+        "ruleId": "APPLICATION_RECORDS_STATUSES_UNTOUCHED",
+        "satisfied": true
+      },
+      {
+        "ruleId": "THESIS_JUDGMENT_REPORTS_BOTH_DIRECTIONS",
+        "satisfied": true
+      }
     ]
   },
   "finalCertification": {
-    "status": "PENDING",
+    "status": "STUDY-COMPLETE — ACCEPTED WITH LIMITATIONS (Tech-Lead acceptance at PPR-028 closure, 2026-10-11)",
     "owner": "Tech-Lead",
     "bindingStep": "This record is the worker's study-time self-assessment. Final certification — including the judgment call on Q10's conditional thesis verdict and the acceptance of the honest NOT RUNs — is the Tech Lead's gate. The observed-evidence companion document is docs/APPLICATION-COMPATIBILITY-OBSERVED-EVIDENCE.md.",
     "capstoneAudit": {
@@ -458,6 +487,7 @@
       "limitationsRestated": "the study's numbers hold ONLY under its declared conditions: deterministic injected supply behind the real rails (a declared provider-behavior profile, not live provider behavior), synthetic micro-USD under the declared price schedule (never provider invoices), no external-provider baseline (the same-supply direct arm is the measured substitute), no re-run of the pinned application runtimes (the workload is a corpus-shape model derived from the certified records), and no real developer-preference cohort (Q9 NOT RUN, owner: Lead). None of the observed distributions is a production measurement or a market claim. The adverse findings stand: the strong-optimized baseline resolves more tasks (98.0% vs 94.8%, a 36-task gap) at about 4% lower failure-adjusted cost, multi-provider mediated resolution degrades (92.4% vs 97.2% single), and developer preference is unmeasured.",
       "recommendation": "STUDY-COMPLETE — ACCEPTED WITH LIMITATIONS",
       "recommendationNote": "accepted as a study under its declared synthetic-supply/synthetic-cost conditions with the no-real-cohort boundary (Q9 NOT RUN, owner: Lead) — never as production or market measurement. The Tech Lead signs the actual disposition; this note is a recommendation, not a signature."
-    }
+    },
+    "certifiedBy": "Tech-Lead: accepted as a study under its declared conditions — deterministic injected supply behind real rails, synthetic micro-USD under the declared price schedule, no external-provider baseline (the same-supply direct arm is the substitute), no re-run of pinned application runtimes during the capstone, and no real developer-preference cohort (Q9 NOT RUN). The adverse findings stand and are part of the acceptance: the strong-optimized baseline resolves 36 more tasks (98.0% vs 94.8%) at ~4% lower failure-adjusted cost; multi-provider mediated resolution degrades (92.42% vs 97.18% single-provider); developer preference is unmeasured. Never to be read as production or market measurement. Basis: the Worker C audit (PR #173, merge head 8c57dfe1) — 102/102 cells reconciled, independent recompute reproduced every headline, from-scratch regeneration byte-identical."
   }
 }
