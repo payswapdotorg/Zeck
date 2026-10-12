@@ -55,11 +55,39 @@
  * hook — the economic justification) AND the escalation path claim
  * passes the governing floors/ceilings.
  *
+ * THE ACR-008 §3 MOVE-CATALOG EXTENSION (fail-closed, composed into
+ * the SAME selection — never a second selection path):
+ *  - PROVIDER-FAILOVER RE-ROUTE: the re-route dimensions grow from
+ *    model | substrate to model | substrate | provider — a
+ *    capability-equal alternate SUPPLY route for the same selected
+ *    representation, consumed through the supply plane's OWN typed
+ *    selection verdict passed in by the caller (read-only facts,
+ *    exactly the model/substrate re-route discipline: a no-selection
+ *    outcome makes the dimension inadmissible with a typed reason,
+ *    never a silent default);
+ *  - CONTEXT-REPAIR: admissible only for attributed context-corruption
+ *    failure classes (the closed CONTEXT_REPAIRABLE_CLASSES table) AND
+ *    only when the caller supplies the typed repair-capability verdict
+ *    (a bounded reconstruction directive over the governed context
+ *    representation — this plane never edits context itself);
+ *  - VERIFIER-ESCALATION: admissible only for attributed
+ *    semantic-quality-suspect outcomes AND only when the caller
+ *    supplies the verification authority's typed escalation decision
+ *    through the existing verification escalation seam (assurance
+ *    depth may increase, never decrease — invariant 19); a
+ *    depth-reducing or depth-flat escalation verdict is a typed
+ *    rejection, never a silent default.
+ * Every new move carries an explicit-basis `CostClaim` through the
+ * shared admissibility machinery exactly like the existing candidates
+ * — a move without economic justification is inadmissible.
+ *
  * THE DETERMINISTIC ORDER: expected successful-resolution cost
  * ascending, ties broken by strategy rank (retry first — the least
  * disruptive representation-preserving path; then re-route; then
- * escalate-fresh), then by candidateId. Every tie resolves on
- * content: non-deterministic tie-breaks are impossible by
+ * context-repair — a bounded reconstruction of the corrupted context;
+ * then escalate-fresh; then verifier-escalation — the assurance-
+ * deepening terminal remedy), then by candidateId. Every tie resolves
+ * on content: non-deterministic tie-breaks are impossible by
  * construction (discrimination-tested).
  */
 
@@ -78,13 +106,20 @@ import type { FailureAttribution } from "./attribution";
 import { validateFailureAttribution } from "./attribution";
 import {
   boundedDetail,
+  COMPONENT_REF_PATTERN,
+  CONTEXT_REPAIRABLE_CLASSES,
   type FailureClass,
+  MAX_PLAN_STEPS,
   MAX_RETRY_ATTEMPTS,
   type RecoveryFailClosedCode,
   type RecoveryInadmissibleCode,
   type RecoveryStrategy,
   type RerouteDimension,
   reject,
+  SHA256_HEX_PATTERN,
+  VERIFICATION_DEPTH_RANK,
+  VERIFICATION_DEPTHS,
+  type VerificationDepth,
 } from "./catalog";
 
 // ---------------------------------------------------------------------------
@@ -93,8 +128,13 @@ import {
 
 /**
  * The bounded recovery configuration — EXPLICIT policy inputs (never
- * ambient, never self-raising): the retry attempt bound, and the
- * bounds the escalation/continuation constructors share.
+ * ambient, never self-raising): the retry attempt bound, the bounds
+ * the escalation/continuation constructors share, and (ACR-008 §2)
+ * the recovery-plan step bound. The plan bound is OPTIONAL here — the
+ * single-decision selection surface is preserved byte-for-byte for
+ * its existing callers — and MANDATORY at the plan-composition seam
+ * (`RecoveryPlanConfiguration` in `plan.ts` rejects its absence, so
+ * the bound can never be ambient or defaulted).
  */
 export interface RecoveryConfiguration {
   /** The maximum retry attempts the policy admits ([0, 10]). */
@@ -103,6 +143,8 @@ export interface RecoveryConfiguration {
   readonly escalationEvidenceBound: number;
   /** The step bound for continuation packages ([1, 256]). */
   readonly continuationStepBound: number;
+  /** The step bound for recovery plans ([1, 16]) — validated when present. */
+  readonly maxPlanSteps?: number;
 }
 
 /** Total, deterministic validation of the recovery configuration. */
@@ -136,6 +178,16 @@ export function validateRecoveryConfiguration(value: RecoveryConfiguration): Rec
     record.continuationStepBound > 256
   ) {
     reject("recovery-input-shape", "continuationStepBound must be an integer in [1, 256]");
+  }
+  if (record.maxPlanSteps !== undefined) {
+    if (
+      typeof record.maxPlanSteps !== "number" ||
+      !Number.isInteger(record.maxPlanSteps) ||
+      record.maxPlanSteps < 1 ||
+      record.maxPlanSteps > MAX_PLAN_STEPS
+    ) {
+      reject("recovery-input-shape", `maxPlanSteps must be an integer in [1, ${MAX_PLAN_STEPS}]`);
+    }
   }
   return value;
 }
@@ -228,12 +280,30 @@ export interface SubstrateRerouteFacts {
   readonly selection: SubstrateSelectionResult;
 }
 
-/** The re-route path's facts — the economics planes' typed results, read-only. */
+/**
+ * The provider-failover re-route facts (ACR-008 §3.1): the supply
+ * plane's OWN typed selection over its capability-equal alternate
+ * routes for the SAME selected representation, read-only — exactly the
+ * model re-route discipline (the claim derivation needs the selected
+ * candidate's own claim values; this plane never re-implements the
+ * supply plane's economics; a no-selection outcome makes the dimension
+ * inadmissible with a typed reason, never a silent default route).
+ */
+export interface ProviderRerouteFacts {
+  /** The supply plane's selection result over the provider-alternate corpus (read-only facts). */
+  readonly selection: ModelSelection;
+  /** The ORIGINAL declared provider-alternate candidates the selection ran on. */
+  readonly declaredCandidates: readonly ModelCandidate[];
+}
+
+/** The re-route path's facts — the economics/supply planes' typed results, read-only. */
 export interface RerouteFacts {
   /** Model re-selection facts, when a model re-route was offered. */
   readonly model: ModelRerouteFacts | null;
   /** Substrate re-selection facts, when a substrate re-route was offered. */
   readonly substrate: SubstrateRerouteFacts | null;
+  /** Provider-failover facts, when a provider re-route was offered (ACR-008 §3.1). */
+  readonly provider?: ProviderRerouteFacts | null;
 }
 
 /** The fresh-escalation path's facts. */
@@ -249,14 +319,85 @@ export interface EscalationFacts {
   readonly claim: CostClaim;
 }
 
+// ---------------------------------------------------------------------------
+// The ACR-008 §3 new moves' facts (typed verdicts the CALLER supplies)
+// ---------------------------------------------------------------------------
+
+/**
+ * A bounded context-repair reconstruction directive — DATA over the
+ * governed context representation, consumed by the caller's context
+ * authority at its own seam. This plane never edits context itself
+ * (ACR-008 §3.2): the directive names WHAT the context authority
+ * rebuilds, never how this plane would touch a context value.
+ */
+export interface ContextRepairDirective {
+  /** The bounded neutral repair-strategy slug (the context authority's own vocabulary, opaque here). */
+  readonly strategy: string;
+  /** The content-addressed anchor the reconstruction resumes from, when bound (sha256 hex). */
+  readonly anchorDigest?: string;
+}
+
+/**
+ * The caller's typed repair-capability verdict — the context
+ * authority's own decision whether a bounded reconstruction of the
+ * governed context is possible, passed in read-only. `repair-capable`
+ * requires its bounded reconstruction directive; any other outcome
+ * leaves the move inadmissible with the typed reason (never a silent
+ * default repair).
+ */
+export type ContextRepairCapability =
+  | { readonly kind: "repair-capable"; readonly directive: ContextRepairDirective }
+  | { readonly kind: "repair-not-capable" };
+
+/** The context-repair path's facts. */
+export interface ContextRepairFacts {
+  /** The caller's typed repair-capability verdict (read-only). */
+  readonly capability: ContextRepairCapability;
+  /** The repair path's explicit-basis claim (bounded, attributed). */
+  readonly claim: CostClaim;
+}
+
+/**
+ * The verification authority's typed verifier-escalation decision —
+ * the NEUTRAL consumed shape of the EXISTING verification escalation
+ * seam's verdict (the caller runs the authority's escalation decision
+ * and passes the result read-only; this plane never re-decides
+ * verification depth). The depth ladder is the closed
+ * VERIFICATION_DEPTHS mirror; escalation may only INCREASE depth
+ * (invariant 19 — a depth-reducing or depth-flat escalation verdict
+ * is a typed rejection, never a silent default).
+ */
+export interface VerifierEscalationDecision {
+  /** `escalate-verification` — the authority justified deeper verification; `verification-sufficient` — the incumbent depth stands; `no-admissible-evaluation` — neither depth is admissible (the honest typed outcome). */
+  readonly kind: "escalate-verification" | "verification-sufficient" | "no-admissible-evaluation";
+  /** The incumbent assurance depth (the floor the escalation starts from). */
+  readonly fromDepth: VerificationDepth;
+  /** The escalation target depth (must strictly exceed fromDepth when escalating). */
+  readonly toDepth: VerificationDepth;
+  /** The verification evidence identity binding (the suspect outcome's evaluation), when bound. */
+  readonly verificationId?: string;
+}
+
+/** The verifier-escalation path's facts. */
+export interface VerifierEscalationFacts {
+  /** The verification authority's typed escalation decision (read-only). */
+  readonly decision: VerifierEscalationDecision;
+  /** The verifier-escalation path's explicit-basis claim (bounded, attributed). */
+  readonly claim: CostClaim;
+}
+
 /** The economics facts of every recovery path. */
 export interface RecoveryFacts {
   /** The retry path's facts, when a retry is representable at all. */
   readonly retry: RetryFacts | null;
-  /** The re-route dimensions' facts (the economics planes, read-only). */
+  /** The re-route dimensions' facts (the economics/supply planes, read-only). */
   readonly reroute: RerouteFacts;
   /** The fresh-escalation path's facts, when representable. */
   readonly escalation: EscalationFacts | null;
+  /** The context-repair path's facts, when offered (ACR-008 §3.2). */
+  readonly contextRepair?: ContextRepairFacts | null;
+  /** The verifier-escalation path's facts, when offered (ACR-008 §3.3). */
+  readonly verifierEscalation?: VerifierEscalationFacts | null;
 }
 
 /** The strategy-selection input (everything, explicitly). */
@@ -320,7 +461,7 @@ export interface StrategyVerdict {
 
 /** The frozen selection-basis statement. */
 export const RECOVERY_SELECTION_BASIS =
-  "attribution-before-action;retry-requires-typed-retryable-class-and-transient-and-attempts-and-economics;reroute-consumes-economics-planes-facts;escalation-requires-fresh-escalation-hook-justification;quality-floors-inviolable;cost-ascending-then-strategy-rank-then-candidateId;fail-closed-when-none-admissible";
+  "attribution-before-action;retry-requires-typed-retryable-class-and-transient-and-attempts-and-economics;reroute-consumes-economics-planes-facts;escalation-requires-fresh-escalation-hook-justification;context-repair-requires-repairable-class-and-capability-verdict;verifier-escalation-requires-quality-suspect-outcome-and-authority-justification-and-depth-increase;quality-floors-inviolable;cost-ascending-then-strategy-rank-then-candidateId;fail-closed-when-none-admissible";
 
 /** The strategy-selection result. */
 export interface RecoverySelection {
@@ -362,12 +503,14 @@ export const RETRYABLE_CLASSES: readonly FailureClass[] = [
   "resource",
 ];
 
-/** The deterministic strategy rank (tie-break order). */
+/** The deterministic strategy rank (tie-break order — the disruption ladder). */
 export const STRATEGY_RANK: Readonly<Record<RecoveryStrategy, number>> = {
   retry: 0,
   "re-route": 1,
-  "escalate-fresh": 2,
-  fail: 3,
+  "context-repair": 2,
+  "escalate-fresh": 3,
+  "verifier-escalation": 4,
+  fail: 5,
 };
 
 const VERDICT_CLASS = "sufficient-model";
@@ -585,6 +728,98 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
     }
   }
 
+  // --- RE-ROUTE (provider): the supply plane's own failover verdict ------
+  if (facts.reroute.provider !== null && facts.reroute.provider !== undefined) {
+    const providerFacts = facts.reroute.provider;
+    const selected = providerFacts.selection.selected;
+    if (selected === null) {
+      // The no-selection outcome: inadmissible with the typed reason,
+      // never a silent default route (the ACR-008 §3.1 discipline).
+      structural.push({
+        candidateId: "reroute-provider",
+        strategy: "re-route",
+        attributionId: attribution.attributionId,
+        rerouteDimension: "provider",
+        representationClass: VERDICT_CLASS,
+        admissible: false,
+        inadmissibleCode: "no-provider-selection",
+        inadmissibleDetail:
+          "the supply selection found no admissible provider-failover route (or none was offered)",
+      });
+    } else if (
+      context.incumbentRoute !== undefined &&
+      selected.route.provider === context.incumbentRoute.provider &&
+      selected.route.model === context.incumbentRoute.model
+    ) {
+      structural.push({
+        candidateId: "reroute-provider",
+        strategy: "re-route",
+        attributionId: attribution.attributionId,
+        rerouteDimension: "provider",
+        representationClass: VERDICT_CLASS,
+        admissible: false,
+        inadmissibleCode: "no-alternative-provider",
+        inadmissibleDetail:
+          "the supply selection re-selected the incumbent provider route (no provider alternative exists)",
+      });
+    } else if (
+      context.incumbentRoute !== undefined &&
+      selected.route.model !== context.incumbentRoute.model
+    ) {
+      // A capability-EQUAL alternate for the SAME selected
+      // representation: a different model is the model dimension's
+      // move, never a provider failover (fail-closed on the dimension's
+      // own semantics — the misattributed move is unrepresentable).
+      structural.push({
+        candidateId: "reroute-provider",
+        strategy: "re-route",
+        attributionId: attribution.attributionId,
+        rerouteDimension: "provider",
+        representationClass: VERDICT_CLASS,
+        admissible: false,
+        inadmissibleCode: "provider-route-not-same-representation",
+        inadmissibleDetail:
+          "the selected alternate substitutes the representation (a different model) — the model dimension's move, never a provider failover",
+      });
+    } else {
+      // The claim derives from the supply plane's OWN selected verdict
+      // and its ORIGINAL declared candidate — never re-implemented
+      // economics (exactly the model re-route discipline).
+      const declared = providerFacts.declaredCandidates.find(
+        (candidate) => candidate.candidateId === selected.candidateId,
+      );
+      if (declared === undefined) {
+        reject(
+          "strategy-shape",
+          "the provider re-route facts lost the selected candidate's declared claim",
+          { selectedId: selected.candidateId },
+        );
+      }
+      candidates.push({
+        candidateId: "reroute-provider",
+        strategy: "re-route",
+        rerouteDimension: "provider",
+        claim: {
+          expectedCostMicroUsd: selected.evaluation.expectedSuccessfulResolutionCostMicroUsd,
+          expectedLatencyMs: declared.claim.expectedLatencyMs,
+          expectedQuality: declared.claim.expectedQuality,
+          expectedReliability: declared.claim.expectedReliability,
+          basis: {
+            basis: declared.claim.basis.basis,
+            source:
+              `model-economics;provider-failover=${selected.route.provider}/${selected.route.model}`.slice(
+                0,
+                200,
+              ),
+            ...(declared.claim.basis.evidenceDigest === undefined
+              ? {}
+              : { evidenceDigest: declared.claim.basis.evidenceDigest }),
+          },
+        },
+      });
+    }
+  }
+
   // --- ESCALATE-FRESH: evidence-driven, never self-authorizing -----------
   if (facts.escalation !== null && facts.escalation !== undefined) {
     const decision = facts.escalation.decision;
@@ -613,6 +848,98 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
         candidateId: "escalate-fresh",
         strategy: "escalate-fresh",
         claim: escalationClaim,
+      });
+    }
+  }
+
+  // --- CONTEXT-REPAIR: the caller's typed repair-capability verdict -------
+  if (facts.contextRepair !== null && facts.contextRepair !== undefined) {
+    const capability = validateContextRepairCapability(facts.contextRepair.capability);
+    const repairClaim = facts.contextRepair.claim;
+    let code: RecoveryInadmissibleCode | undefined;
+    let detail: string | undefined;
+    if (!CONTEXT_REPAIRABLE_CLASSES.includes(attribution.failureClass)) {
+      code = "class-not-repairable";
+      detail = `failure class ${attribution.failureClass} is not a context-corruption class (a bounded context repair is unrepresentable for it)`;
+    } else if (capability.kind !== "repair-capable") {
+      code = "repair-not-capable";
+      detail = `the repair-capability verdict decided ${capability.kind} (no bounded reconstruction directive exists)`;
+    }
+    const candidate: StrategyCandidate = {
+      candidateId: "context-repair",
+      strategy: "context-repair",
+      claim: repairClaim,
+    };
+    const evaluation = evaluateAdmissibility(
+      {
+        candidateId: candidate.candidateId,
+        representationClass: VERDICT_CLASS,
+        claim: repairClaim,
+      },
+      governing,
+    );
+    if (code === undefined && !evaluation.admissible) {
+      code = economicsCodeOf(evaluation.inadmissibleCode);
+      detail = `the context-repair claim failed the governing economics (${evaluation.inadmissibleCode ?? "unknown"})`;
+    }
+    if (code === undefined) {
+      candidates.push(candidate);
+    } else {
+      disciplineVerdicts.push({
+        candidateId: candidate.candidateId,
+        strategy: "context-repair",
+        attributionId: attribution.attributionId,
+        representationClass: VERDICT_CLASS,
+        admissible: false,
+        inadmissibleCode: code,
+        inadmissibleDetail: boundedDetail(detail ?? code),
+        evaluation: evaluation.evaluation,
+      });
+    }
+  }
+
+  // --- VERIFIER-ESCALATION: the existing verification escalation seam ------
+  if (facts.verifierEscalation !== null && facts.verifierEscalation !== undefined) {
+    const decision = validateVerifierEscalationDecision(facts.verifierEscalation.decision);
+    const verifierClaim = facts.verifierEscalation.claim;
+    let code: RecoveryInadmissibleCode | undefined;
+    let detail: string | undefined;
+    if (attribution.failureClass !== "intelligence") {
+      code = "outcome-not-quality-suspect";
+      detail = `verifier escalation requires an attributed semantic-quality-suspect outcome (class ${attribution.failureClass} is not)`;
+    } else if (decision.kind !== "escalate-verification") {
+      code = "verifier-escalation-not-justified";
+      detail = `the verification escalation decision was ${decision.kind} (no authority justification for deeper verification)`;
+    }
+    const candidate: StrategyCandidate = {
+      candidateId: "verifier-escalation",
+      strategy: "verifier-escalation",
+      claim: verifierClaim,
+    };
+    const evaluation = evaluateAdmissibility(
+      {
+        candidateId: candidate.candidateId,
+        representationClass: VERDICT_CLASS,
+        claim: verifierClaim,
+      },
+      governing,
+    );
+    if (code === undefined && !evaluation.admissible) {
+      code = economicsCodeOf(evaluation.inadmissibleCode);
+      detail = `the verifier-escalation claim failed the governing economics (${evaluation.inadmissibleCode ?? "unknown"})`;
+    }
+    if (code === undefined) {
+      candidates.push(candidate);
+    } else {
+      disciplineVerdicts.push({
+        candidateId: candidate.candidateId,
+        strategy: "verifier-escalation",
+        attributionId: attribution.attributionId,
+        representationClass: VERDICT_CLASS,
+        admissible: false,
+        inadmissibleCode: code,
+        inadmissibleDetail: boundedDetail(detail ?? code),
+        evaluation: evaluation.evaluation,
       });
     }
   }
@@ -699,9 +1026,10 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
 /**
  * Compare two ADMISSIBLE strategy verdicts by the deterministic total
  * order: expected successful-resolution cost ascending, ties by
- * strategy rank (retry < re-route < escalate-fresh), ties by
- * candidateId. Identical inputs can never produce a different order —
- * every tie resolves on content.
+ * strategy rank (retry < re-route < context-repair < escalate-fresh <
+ * verifier-escalation — the disruption ladder), ties by candidateId.
+ * Identical inputs can never produce a different order — every tie
+ * resolves on content.
  */
 export function compareStrategies(a: StrategyVerdict, b: StrategyVerdict): number {
   const costA = BigInt(a.evaluation?.expectedSuccessfulResolutionCostMicroUsd ?? "0");
@@ -744,4 +1072,121 @@ function economicsCodeOf(code: string | undefined): RecoveryInadmissibleCode {
         got: boundedDetail(String(code)),
       });
   }
+}
+
+/**
+ * Total, deterministic validation of a caller-supplied repair-
+ * capability verdict: the closed kind vocabulary, and the bounded
+ * reconstruction directive a `repair-capable` verdict must carry (a
+ * bounded neutral strategy slug; an optional sha256 anchor). A
+ * malformed verdict is a typed rejection — never a silent default
+ * repair (fail-closed on unmet preconditions).
+ */
+function validateContextRepairCapability(value: ContextRepairCapability): ContextRepairCapability {
+  if (typeof value !== "object" || value === null) {
+    reject("recovery-input-shape", "the context-repair facts require their capability verdict");
+  }
+  const record = value as Record<string, unknown>;
+  if (record.kind === "repair-not-capable") {
+    return { kind: "repair-not-capable" };
+  }
+  if (record.kind !== "repair-capable") {
+    reject("recovery-input-shape", "the repair-capability kind is outside the closed vocabulary", {
+      got: boundedDetail(String(record.kind)),
+    });
+  }
+  const directive = record.directive as ContextRepairDirective | undefined;
+  if (
+    typeof directive !== "object" ||
+    directive === null ||
+    typeof directive.strategy !== "string" ||
+    !COMPONENT_REF_PATTERN.test(directive.strategy)
+  ) {
+    reject(
+      "recovery-input-shape",
+      "a repair-capable verdict must carry its bounded reconstruction directive (a neutral strategy slug)",
+      { got: boundedDetail(String(record.directive)) },
+    );
+  }
+  if (
+    directive.anchorDigest !== undefined &&
+    (typeof directive.anchorDigest !== "string" || !SHA256_HEX_PATTERN.test(directive.anchorDigest))
+  ) {
+    reject(
+      "recovery-input-shape",
+      "the reconstruction directive's anchor digest must be sha256 hex",
+    );
+  }
+  return {
+    kind: "repair-capable",
+    directive: {
+      strategy: directive.strategy,
+      ...(directive.anchorDigest === undefined ? {} : { anchorDigest: directive.anchorDigest }),
+    },
+  };
+}
+
+/**
+ * Total, deterministic validation of a caller-supplied verifier-
+ * escalation decision: the closed kind vocabulary, the closed depth
+ * ladder, and invariant 19's never-decrease discipline — an
+ * `escalate-verification` verdict whose target depth does not
+ * STRICTLY exceed its incumbent depth is a typed rejection (a
+ * depth-flat or depth-reducing escalation is unrepresentable), never
+ * a silent default.
+ */
+function validateVerifierEscalationDecision(
+  value: VerifierEscalationDecision,
+): VerifierEscalationDecision {
+  if (typeof value !== "object" || value === null) {
+    reject("recovery-input-shape", "the verifier-escalation facts require their decision verdict");
+  }
+  const record = value as unknown as Record<string, unknown>;
+  if (
+    record.kind !== "escalate-verification" &&
+    record.kind !== "verification-sufficient" &&
+    record.kind !== "no-admissible-evaluation"
+  ) {
+    reject(
+      "recovery-input-shape",
+      "the verifier-escalation decision kind is outside the closed vocabulary",
+      {
+        got: boundedDetail(String(record.kind)),
+      },
+    );
+  }
+  if (
+    typeof record.fromDepth !== "string" ||
+    typeof record.toDepth !== "string" ||
+    !(VERIFICATION_DEPTHS as readonly string[]).includes(record.fromDepth) ||
+    !(VERIFICATION_DEPTHS as readonly string[]).includes(record.toDepth)
+  ) {
+    reject("recovery-input-shape", "the verifier-escalation depths are outside the closed ladder", {
+      fromDepth: boundedDetail(String(record.fromDepth)),
+      toDepth: boundedDetail(String(record.toDepth)),
+    });
+  }
+  if (record.verificationId !== undefined && typeof record.verificationId !== "string") {
+    reject("recovery-input-shape", "verificationId must be a string when present");
+  }
+  if (
+    record.kind === "escalate-verification" &&
+    VERIFICATION_DEPTH_RANK[record.toDepth as VerificationDepth] <=
+      VERIFICATION_DEPTH_RANK[record.fromDepth as VerificationDepth]
+  ) {
+    reject(
+      "recovery-input-shape",
+      "the verifier-escalation decision must strictly increase the assurance depth (invariant 19: never decrease, never stay flat)",
+      {
+        fromDepth: record.fromDepth,
+        toDepth: record.toDepth,
+      },
+    );
+  }
+  return {
+    kind: record.kind,
+    fromDepth: record.fromDepth as VerificationDepth,
+    toDepth: record.toDepth as VerificationDepth,
+    ...(record.verificationId === undefined ? {} : { verificationId: record.verificationId }),
+  };
 }

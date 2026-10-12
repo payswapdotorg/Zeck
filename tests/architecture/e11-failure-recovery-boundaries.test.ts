@@ -122,7 +122,7 @@ const EXECUTION_STATES = [
 
 describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
   test("C1 the plane depends ONLY on execution-ir, the declared dependency planes, local modules and node builtins", () => {
-    expect(PLANE_FILES).toHaveLength(8);
+    expect(PLANE_FILES).toHaveLength(9); // + plan.ts (ACR-008 §2 — PCR-001)
     for (const file of PLANE_FILES) {
       const specifiers = extractImportSpecifiers(read(file));
       for (const specifier of specifiers) {
@@ -283,6 +283,16 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
     expect(catalog).toContain("export const SIGNAL_CLASS_ADMISSIBILITY");
     // The recovery-strategy vocabulary is closed.
     expect(catalog).toContain("export const RECOVERY_STRATEGIES");
+    // The recovery-move vocabulary is closed (ACR-008 §2/§3).
+    expect(catalog).toContain("export const RECOVERY_MOVES");
+    // The re-route dimensions are closed (model | substrate | provider).
+    expect(catalog).toContain("export const REROUTE_DIMENSIONS");
+    // The context-repairable class table is closed (ACR-008 §3.2).
+    expect(catalog).toContain("export const CONTEXT_REPAIRABLE_CLASSES");
+    // The verification-depth ladder is closed (ACR-008 §3.3).
+    expect(catalog).toContain("export const VERIFICATION_DEPTHS");
+    // The plan step bound is declared (ACR-008 §2).
+    expect(catalog).toContain("export const MAX_PLAN_STEPS");
     // The inadmissibility reason codes are closed.
     expect(catalog).toContain("export const RECOVERY_INADMISSIBLE_CODES");
     // The fail-closed reason codes are closed.
@@ -298,6 +308,7 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
       "src/platform/failure-recovery/escalation.ts",
       "src/platform/failure-recovery/fingerprint.ts",
       "src/platform/failure-recovery/index.ts",
+      "src/platform/failure-recovery/plan.ts",
       "src/platform/failure-recovery/strategy.ts",
     ]);
   });
@@ -358,5 +369,34 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
       { cwd: REPO_ROOT, encoding: "utf8" },
     ).trim();
     expect(changed).toBe("");
+  });
+
+  test("C10 the recovery plan is DATA composed through the EXISTING selection seam (ACR-008 §2)", () => {
+    const planModule = read("src/platform/failure-recovery/plan.ts");
+    // The composer sequences through the EXISTING seam: it imports the
+    // single-decision selection and never re-implements any part of it
+    // (no second selection path, no second admissibility pass, no
+    // second comparator — the plan is data, never an engine).
+    expect(planModule).toContain("import {\n  selectRecoveryStrategy");
+    expect(planModule).not.toContain("evaluateAdmissibility(");
+    expect(planModule).not.toContain("governingFacts(");
+    expect(planModule).not.toContain("compareStrategies(");
+    expect(planModule).not.toContain('from "../model-economics/admissibility"');
+    // The plan bound rides the configuration — never ambient: no
+    // default bound, no environment read, no clock, no randomness
+    // (C7 covers the plane-wide scans; these pin the plan module's own
+    // composition inputs).
+    expect(planModule).not.toContain("maxPlanSteps =");
+    expect(planModule).not.toContain("process.env");
+    // The plan step bound is validated against the catalog's hard
+    // ceiling — the composer cannot be handed an unbounded policy.
+    expect(planModule).toContain("MAX_PLAN_STEPS");
+    // No durable surface: the plan module holds no store, no SQL, no
+    // execution-state vocabulary (C4's scans cover the whole plane —
+    // these pin the new module explicitly).
+    expect(planModule).not.toMatch(
+      /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE)\b/,
+    );
+    expect(planModule).not.toContain("transitionTable");
   });
 });

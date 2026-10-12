@@ -20,9 +20,13 @@
  *    transport can never become an intelligence failure — the
  *    misattribution ADR-0020 forbids is structurally unrepresentable);
  *  - the recovery strategy vocabulary is closed
- *    (retry / re-route / escalate-fresh / fail) — `fail` is the
- *    zero-recovery strategy, always representable (architecture
- *    invariant 7);
+ *    (retry / re-route / escalate-fresh / context-repair /
+ *    verifier-escalation / fail — ACR-008 §3 extends the catalog)
+ *    with `fail` the zero-recovery strategy, always representable
+ *    (architecture invariant 7); the re-route dimensions are closed
+ *    (model | substrate | provider — the provider-failover dimension
+ *    consumes the supply plane's OWN typed selection verdict,
+ *    exactly the model/substrate re-route discipline);
  *  - every bound (component refs, details, attempt counts, evidence
  *    entries) is explicit and total: unbounded values are typed
  *    rejections, never silent defaults.
@@ -115,17 +119,52 @@ export const SIGNAL_PROVIDER_ERROR_CLASS: Readonly<
 // ---------------------------------------------------------------------------
 
 /**
- * THE four recovery strategies (the Work Order's closed vocabulary).
- * `fail` is the zero-recovery strategy — always representable, always
- * honest (architecture invariant 7: fail-closed when no recovery
- * strategy is economically justified).
+ * THE six recovery strategies (the closed vocabulary; ACR-008 §3
+ * extends the original four with the context-repair and
+ * verifier-escalation moves). `fail` is the zero-recovery strategy —
+ * always representable, always honest (architecture invariant 7:
+ * fail-closed when no recovery strategy is economically justified).
  */
-export const RECOVERY_STRATEGIES = ["retry", "re-route", "escalate-fresh", "fail"] as const;
+export const RECOVERY_STRATEGIES = [
+  "retry",
+  "re-route",
+  "escalate-fresh",
+  "context-repair",
+  "verifier-escalation",
+  "fail",
+] as const;
 export type RecoveryStrategy = (typeof RECOVERY_STRATEGIES)[number];
 
-/** The closed re-route dimensions (the two declared economics planes). */
-export const REROUTE_DIMENSIONS = ["model", "substrate"] as const;
+/** The closed re-route dimensions (the declared economics + supply planes). */
+export const REROUTE_DIMENSIONS = ["model", "substrate", "provider"] as const;
 export type RerouteDimension = (typeof REROUTE_DIMENSIONS)[number];
+
+/**
+ * THE closed recovery-move vocabulary (ACR-008 §2/§3): the move a plan
+ * step instantiates — one move kind per strategy, the re-route move
+ * carrying its dimension. A move is DERIVED from the selected strategy
+ * verdict (never free-typed); a value outside this closed vocabulary
+ * is a typed rejection, never a guess (fail-closed on every unknown
+ * move kind).
+ */
+export const RECOVERY_MOVES = [
+  "retry",
+  "re-route",
+  "escalate-fresh",
+  "context-repair",
+  "verifier-escalation",
+  "fail",
+] as const;
+export type RecoveryMoveKind = (typeof RECOVERY_MOVES)[number];
+
+/** One typed recovery move: the strategy instantiated with its dimension. */
+export type RecoveryMove =
+  | { readonly kind: "retry" }
+  | { readonly kind: "re-route"; readonly dimension: RerouteDimension }
+  | { readonly kind: "escalate-fresh" }
+  | { readonly kind: "context-repair" }
+  | { readonly kind: "verifier-escalation" }
+  | { readonly kind: "fail" };
 
 /**
  * The closed reason-code vocabulary for strategy inadmissibility and
@@ -139,6 +178,13 @@ export const RECOVERY_INADMISSIBLE_CODES = [
   "budget-resource-not-retryable",
   "no-alternative-route",
   "no-substrate-selection",
+  "no-provider-selection",
+  "no-alternative-provider",
+  "provider-route-not-same-representation",
+  "class-not-repairable",
+  "repair-not-capable",
+  "outcome-not-quality-suspect",
+  "verifier-escalation-not-justified",
   "escalation-not-justified",
   "quality-below-hard-floor",
   "quality-below-assurance",
@@ -156,6 +202,46 @@ export const RECOVERY_FAIL_CLOSED_CODES = [
 export type RecoveryFailClosedCode = (typeof RECOVERY_FAIL_CLOSED_CODES)[number];
 
 // ---------------------------------------------------------------------------
+// ACR-008 §3: the extended move-catalog vocabularies (closed, typed)
+// ---------------------------------------------------------------------------
+
+/**
+ * The closed context-corruption failure classes: the attributed
+ * classes for which a bounded context-repair move is REPRESENTABLE at
+ * all (ACR-008 §3.2 — the necessary condition, never the sufficient
+ * one; the caller's typed repair-capability verdict is the
+ * admissibility gate). Intelligence (verification-failed /
+ * quality-below-expectation): a corrupted governed context produces
+ * suspect outcomes — the semantic-quality-suspect shape; tool
+ * (tool-invocation-error / tool-rejected): a context-mutating tool
+ * failure can leave the governed context corrupted (partial writes).
+ * Infrastructure, provider and resource failures never indicate
+ * context corruption (they are transport/supply/exhaustion shapes —
+ * retry, re-route and escalation territory, never repair).
+ */
+export const CONTEXT_REPAIRABLE_CLASSES: readonly FailureClass[] = ["intelligence", "tool"];
+
+/**
+ * The verification-depth ladder — the NEUTRAL MIRROR of the existing
+ * verification authority's own escalation order (deterministic
+ * evaluators, then model-judged semantic evaluation, then human-judged
+ * decision). Consumed READ-ONLY through the caller's typed verdict:
+ * this plane never re-decides verification depth (invariant 19:
+ * assurance depth may increase and never decrease — a depth-reducing
+ * or depth-flat escalation verdict is a typed rejection, never a
+ * silent default).
+ */
+export const VERIFICATION_DEPTHS = ["deterministic", "model-judged", "human-judged"] as const;
+export type VerificationDepth = (typeof VERIFICATION_DEPTHS)[number];
+
+/** The frozen ladder rank (higher = deeper assurance). */
+export const VERIFICATION_DEPTH_RANK: Readonly<Record<VerificationDepth, number>> = {
+  deterministic: 0,
+  "model-judged": 1,
+  "human-judged": 2,
+};
+
+// ---------------------------------------------------------------------------
 // Bounds (every value the plane admits is bounded)
 // ---------------------------------------------------------------------------
 
@@ -171,6 +257,12 @@ export const MAX_ESCALATION_EVIDENCE_ENTRIES = 64;
 export const MAX_CONTINUATION_STEPS = 256;
 /** The hard bound on environment fingerprint entries. */
 export const MAX_FINGERPRINT_ENTRIES = 128;
+/**
+ * The hard bound on recovery-plan steps the configuration may declare
+ * (ACR-008 §2: the plan step-count bound rides the configuration —
+ * explicit policy input, never ambient, never self-raising).
+ */
+export const MAX_PLAN_STEPS = 16;
 /** Bounded tool error codes (class evidence). */
 export const TOOL_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 /** sha256 hex digest shape (content addressing across the plane). */
@@ -214,7 +306,10 @@ export function boundedDetail(text: string): string {
  *  - `escalation-shape` — an escalation package failed its total
  *    validation (bounds, evidence coherence, continuation payload);
  *  - `decision-invalid` — a WORK-049 decision record failed its own
- *    total validation (fail closed — never emitted unvalidated).
+ *    total validation (fail closed — never emitted unvalidated);
+ *  - `plan-shape` — a recovery plan (or its composition input) failed
+ *    its total validation (bounds, step contiguity, move vocabulary,
+ *    terminal coherence, identity — ACR-008 §2).
  */
 export const FAILURE_RECOVERY_INVARIANT_CODES = [
   "observation-shape",
@@ -228,6 +323,7 @@ export const FAILURE_RECOVERY_INVARIANT_CODES = [
   "continuation-drift",
   "escalation-shape",
   "decision-invalid",
+  "plan-shape",
 ] as const;
 export type FailureRecoveryInvariantCode = (typeof FAILURE_RECOVERY_INVARIANT_CODES)[number];
 
