@@ -307,3 +307,85 @@ export function freshEscalationDecision(justified: boolean) {
     constraints: constraints(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// The ACR-008 §3 extension fixtures (PCR-001)
+// ---------------------------------------------------------------------------
+
+/** An attributed tool failure (a context-corruption class). */
+export function toolAttribution(): FailureAttribution {
+  return attributeFailure(
+    {
+      signal: "tool-invocation-error",
+      component: "tool-executor",
+      stepId: "fetch",
+      detail: "the context-mutating tool errored mid-write",
+      observedAt: OBSERVED_AT,
+      observationDigest: digest.sha256Hex("observation:tool-invocation-error:context"),
+    },
+    "tool",
+    { kind: "tool", toolErrorCode: "tool-timeout" },
+    digest,
+  );
+}
+
+/**
+ * The provider-alternate supply corpus: capability-equal alternate
+ * routes for the SAME selected representation (model-x via alternate
+ * providers — the provider-failover dimension's own corpus).
+ */
+export const PROVIDER_ALTERNATE_CANDIDATES: readonly ModelCandidate[] = [
+  {
+    candidateId: "rail-b-model-x",
+    route: { provider: "rail-b", model: "model-x" },
+    representationClass: "sufficient-model",
+    claim: claim("280", 1600, 0.9, 0.95, "model-economics:provider-alternate-table"),
+  },
+  {
+    candidateId: "rail-c-model-x",
+    route: { provider: "rail-c", model: "model-x" },
+    representationClass: "sufficient-model",
+    claim: claim("310", 1900, 0.91, 0.94, "model-economics:provider-alternate-table"),
+  },
+];
+
+/** The provider-failover re-route facts (the supply plane's own selection, read-only). */
+export function providerRerouteFacts(governing: readonly OptimizationConstraint[]) {
+  const selection = selectModelRepresentation({
+    ir: governedIr(),
+    stepId: "generate",
+    candidates: [...PROVIDER_ALTERNATE_CANDIDATES],
+    qualityFacts: { requiredQuality: 0.85 },
+    constraints: governing,
+  });
+  return { selection, declaredCandidates: [...PROVIDER_ALTERNATE_CANDIDATES] };
+}
+
+/** The caller's typed repair-capability verdict (capable / not capable). */
+export function contextRepairFacts(capable: boolean) {
+  return {
+    capability: capable
+      ? {
+          kind: "repair-capable" as const,
+          directive: {
+            strategy: "rebuild-from-checkpoint",
+            anchorDigest: digest.sha256Hex("context:checkpoint:1"),
+          },
+        }
+      : { kind: "repair-not-capable" as const },
+    claim: claim("500", 3000, 0.9, 0.93, "recovery:context-repair-path"),
+  };
+}
+
+/** The verification authority's typed verifier-escalation decision fixture. */
+export function verifierEscalationFacts(justified: boolean) {
+  return {
+    decision: {
+      kind: justified ? ("escalate-verification" as const) : ("verification-sufficient" as const),
+      fromDepth: "deterministic" as const,
+      toDepth: justified ? ("model-judged" as const) : ("deterministic" as const),
+      ...(justified ? { verificationId: "verif-1" } : {}),
+    },
+    claim: claim("250", 1500, 0.95, 0.97, "recovery:verifier-escalation-path"),
+  };
+}

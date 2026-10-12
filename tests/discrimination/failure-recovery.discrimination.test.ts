@@ -30,6 +30,14 @@
  *      policy-forbidden re-route route is not selectable through this
  *      plane's re-route facts (the economics planes' own admissibility
  *      governs, consumed not re-implemented).
+ *  D7  (PCR-001 / ACR-008 §2–§3) PLAN DETERMINISM AND THE EXTENDED
+ *      MOVE CATALOG — byte-identical plans on re-run; tie-break
+ *      totality over the extended catalog; unknown-move fail-closed;
+ *      bound enforcement; idempotent re-run prefix stability; the
+ *      provider-failover no-selection outcome is a typed
+ *      inadmissibility (never a silent default); context-repair and
+ *      verifier-escalation require their class + typed verdict gates;
+ *      a depth-reducing verification escalation is unrepresentable.
  */
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -46,16 +54,31 @@ import {
   attributeFailure,
   validateFailureAttribution,
 } from "../../src/platform/failure-recovery/attribution";
-import { FailureRecoveryError } from "../../src/platform/failure-recovery/catalog";
+import {
+  CONTEXT_REPAIRABLE_CLASSES,
+  FailureRecoveryError,
+  RECOVERY_MOVES,
+  RECOVERY_STRATEGIES,
+  REROUTE_DIMENSIONS,
+  VERIFICATION_DEPTH_RANK,
+} from "../../src/platform/failure-recovery/catalog";
 import {
   applyContinuationPackage,
   buildContinuationPackage,
 } from "../../src/platform/failure-recovery/continuation";
 import { buildRecoveryDecisionRecord } from "../../src/platform/failure-recovery/decisions";
 import { fingerprintOf } from "../../src/platform/failure-recovery/fingerprint";
+import {
+  composeRecoveryPlan,
+  type RecoveryPlanConfiguration,
+  type RecoveryPlanStepFrame,
+  recoveryMoveOf,
+  validateRecoveryPlan,
+} from "../../src/platform/failure-recovery/plan";
 import type { RecoveryFacts, StrategyVerdict } from "../../src/platform/failure-recovery/strategy";
 import {
   compareStrategies,
+  STRATEGY_RANK,
   selectRecoveryStrategy,
 } from "../../src/platform/failure-recovery/strategy";
 import { decideFreshEscalation } from "../../src/platform/model-economics/escalation-hooks";
@@ -427,7 +450,7 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
     const files = readdirSync(planeDir)
       .filter((name) => name.endsWith(".ts"))
       .map((name) => readFileSync(join(planeDir, name), "utf8"));
-    expect(files.length).toBe(8);
+    expect(files.length).toBe(9); // + plan.ts (ACR-008 §2 — PCR-001, the recovery-plan artifact)
     for (const content of files) {
       expect(content).not.toMatch(
         /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE)\b/,
@@ -713,5 +736,291 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
     expect(escalationVerdict?.admissible).toBe(false);
     expect(escalationVerdict?.inadmissibleCode).toBe("escalation-not-justified");
     expect(selection.kind).toBe("fail-closed");
+  });
+
+  // D7 — plan determinism and the extended move catalog (PCR-001) -----
+  const PLAN_CONFIGURATION: RecoveryPlanConfiguration = {
+    maxRetryAttempts: 3,
+    escalationEvidenceBound: 8,
+    continuationStepBound: 32,
+    maxPlanSteps: 3,
+  };
+
+  function retryOnlyFacts(): RecoveryFacts {
+    return {
+      retry: { nextAttempt: 1, claim: retryClaim() },
+      reroute: { model: null, substrate: null },
+      escalation: null,
+    };
+  }
+
+  function planFrame(
+    attribution: Parameters<typeof composeRecoveryPlan>[0]["frames"][number]["attribution"],
+    facts: RecoveryFacts,
+  ): RecoveryPlanStepFrame {
+    return {
+      attribution,
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts,
+    };
+  }
+
+  function composePlan(frames: readonly RecoveryPlanStepFrame[]) {
+    return composeRecoveryPlan({
+      frames,
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: PLAN_CONFIGURATION,
+      digest,
+    });
+  }
+
+  test("D7a byte-identical plans on re-run (determinism including tie-breaks)", () => {
+    const frames = [
+      planFrame(infraAttribution(), fullFacts()),
+      planFrame(infraAttribution(), retryOnlyFacts()),
+    ];
+    const first = composePlan(frames);
+    const second = composePlan(frames);
+    const third = composePlan([
+      planFrame(infraAttribution(), fullFacts()),
+      planFrame(infraAttribution(), retryOnlyFacts()),
+    ]);
+    expect(first.planId).toBe(second.planId);
+    expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+    expect(JSON.stringify(third)).toBe(JSON.stringify(first));
+    // A per-step tie inside the selection is resolved by the existing
+    // total order — the composed plan is stable regardless.
+    expect(first.steps[0]?.selection.selected?.candidateId).toBe("reroute-substrate");
+  });
+
+  test("D7b tie-break totality over the extended catalog (the ladder is total)", () => {
+    const verdict = (
+      candidateId: string,
+      strategy: StrategyVerdict["strategy"],
+    ): StrategyVerdict => ({
+      candidateId,
+      strategy,
+      attributionId: "0".repeat(64),
+      representationClass: "sufficient-model",
+      admissible: true,
+      evaluation: {
+        candidateId,
+        representationClass: "sufficient-model",
+        valid: true,
+        expectedSuccessfulResolutionCostMicroUsd: "100",
+        expectedLatencyMs: 0,
+        qualityExpectation: { expectedQuality: 0.9, threshold: 0.8, meetsThreshold: true },
+        basis: { basis: "estimated", source: "test:d7-tie" },
+      },
+    });
+    // Every pair of the six strategies resolves on the ladder.
+    const order = [...RECOVERY_STRATEGIES].sort((a, b) => STRATEGY_RANK[a] - STRATEGY_RANK[b]);
+    expect(order).toEqual([
+      "retry",
+      "re-route",
+      "context-repair",
+      "escalate-fresh",
+      "verifier-escalation",
+      "fail",
+    ]);
+    for (const a of order) {
+      for (const b of order) {
+        const compared = compareStrategies(verdict("same-id", a), verdict("same-id", b));
+        if (a === b) {
+          expect(compared).toBe(0);
+        } else {
+          // The comparator returns the rank delta; its SIGN is the
+          // ladder direction (total, antisymmetric, transitive).
+          expect(Math.sign(compared)).toBe(STRATEGY_RANK[a] < STRATEGY_RANK[b] ? -1 : 1);
+        }
+      }
+    }
+    // The move vocabulary mirrors the strategy vocabulary exactly.
+    expect([...RECOVERY_MOVES]).toEqual([...RECOVERY_STRATEGIES]);
+    expect([...REROUTE_DIMENSIONS]).toEqual(["model", "substrate", "provider"]);
+    expect([...CONTEXT_REPAIRABLE_CLASSES]).toEqual(["intelligence", "tool"]);
+  });
+
+  test("D7c unknown move kinds fail closed (never a guess)", () => {
+    expectTypedReject("plan-shape", () => recoveryMoveOf({ strategy: "hyperspace-jump" } as never));
+    expectTypedReject("plan-shape", () => recoveryMoveOf({ strategy: "re-route" } as never));
+    const plan = composePlan([planFrame(infraAttribution(), retryOnlyFacts())]);
+    const unknown = JSON.parse(JSON.stringify(plan));
+    unknown.steps[0].move = { kind: "warp-drive" };
+    expectTypedReject("plan-shape", () => validateRecoveryPlan(unknown, digest));
+  });
+
+  test("D7d bound enforcement: frames over the bound reject; the bound-reached terminal is typed", () => {
+    expectTypedReject("plan-shape", () =>
+      composePlan([
+        planFrame(infraAttribution(), retryOnlyFacts()),
+        planFrame(infraAttribution(), retryOnlyFacts()),
+        planFrame(infraAttribution(), retryOnlyFacts()),
+        planFrame(infraAttribution(), retryOnlyFacts()),
+      ]),
+    );
+    const atBound = composePlan([
+      planFrame(infraAttribution(), retryOnlyFacts()),
+      planFrame(infraAttribution(), retryOnlyFacts()),
+      planFrame(infraAttribution(), retryOnlyFacts()),
+    ]);
+    expect(atBound.steps).toHaveLength(3);
+    expect(atBound.terminal).toEqual({ kind: "bound-reached" });
+  });
+
+  test("D7e idempotent re-run prefix stability (drift-visible, never silently divergent)", () => {
+    const short = composePlan([planFrame(infraAttribution(), retryOnlyFacts())]);
+    const extended = composePlan([
+      planFrame(infraAttribution(), retryOnlyFacts()),
+      planFrame(infraAttribution(), retryOnlyFacts()),
+    ]);
+    expect(JSON.stringify(extended.steps[0])).toBe(JSON.stringify(short.steps[0]));
+    expect(extended.planId).not.toBe(short.planId);
+    // A mutated later frame changes the content address but never the
+    // shared prefix — divergence is visible, never silent.
+    const mutated = composePlan([
+      planFrame(infraAttribution(), retryOnlyFacts()),
+      planFrame(infraAttribution(), {
+        retry: { nextAttempt: 1, claim: retryClaim("999") },
+        reroute: { model: null, substrate: null },
+        escalation: null,
+      }),
+    ]);
+    expect(mutated.steps[0]).toEqual(extended.steps[0]);
+    expect(mutated.planId).not.toBe(extended.planId);
+  });
+
+  test("D7f the provider-failover no-selection outcome is a typed inadmissibility (never a silent default)", () => {
+    const noSelection = selectModelRepresentation({
+      ir: governedIr(),
+      stepId: "generate",
+      candidates: [
+        {
+          candidateId: "rail-b-model-y",
+          route: { provider: "rail-b", model: "model-y" },
+          representationClass: "sufficient-model" as const,
+          claim: {
+            expectedCostMicroUsd: "300",
+            expectedLatencyMs: 1800,
+            expectedQuality: 0.5,
+            expectedReliability: 0.95,
+            basis: { basis: "estimated" as const, source: "model-economics:route-table" },
+          },
+        },
+      ],
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+    });
+    expect(noSelection.kind).toBe("no-admissible-candidate");
+    const selection = selectWith(infraAttribution(), {
+      retry: null,
+      reroute: {
+        model: null,
+        substrate: null,
+        provider: { selection: noSelection, declaredCandidates: [] },
+      },
+      escalation: null,
+    });
+    expect(selection.kind).toBe("fail-closed");
+    const providerVerdict = selection.verdicts.find((v) => v.candidateId === "reroute-provider");
+    expect(providerVerdict?.inadmissibleCode).toBe("no-provider-selection");
+  });
+
+  test("D7g context-repair and verifier-escalation demand their class + typed verdict gates", () => {
+    // An infrastructure failure with a capable repair verdict: the
+    // class gate rejects (never a silent repair of a non-corruption).
+    const repairOutsideClass = selectWith(infraAttribution(), {
+      retry: null,
+      reroute: { model: null, substrate: null },
+      escalation: null,
+      contextRepair: {
+        capability: { kind: "repair-capable", directive: { strategy: "rebuild" } },
+        claim: retryClaim("500"),
+      },
+    });
+    expect(repairOutsideClass.kind).toBe("fail-closed");
+    expect(
+      repairOutsideClass.verdicts.find((v) => v.candidateId === "context-repair")?.inadmissibleCode,
+    ).toBe("class-not-repairable");
+    // A semantic-quality-suspect outcome without the authority's
+    // escalation decision: inadmissible (never a self-authorized
+    // deeper verification).
+    const unjustifiedEscalation = selectWith(intelligenceAttribution(), {
+      retry: null,
+      reroute: { model: null, substrate: null },
+      escalation: null,
+      verifierEscalation: {
+        decision: {
+          kind: "verification-sufficient",
+          fromDepth: "deterministic",
+          toDepth: "deterministic",
+        },
+        claim: retryClaim("250"),
+      },
+    });
+    expect(unjustifiedEscalation.kind).toBe("fail-closed");
+    expect(
+      unjustifiedEscalation.verdicts.find((v) => v.candidateId === "verifier-escalation")
+        ?.inadmissibleCode,
+    ).toBe("verifier-escalation-not-justified");
+    // A non-suspect outcome cannot escalate verification at all.
+    const notSuspect = selectWith(infraAttribution(), {
+      retry: null,
+      reroute: { model: null, substrate: null },
+      escalation: null,
+      verifierEscalation: {
+        decision: {
+          kind: "escalate-verification",
+          fromDepth: "deterministic",
+          toDepth: "human-judged",
+        },
+        claim: retryClaim("250"),
+      },
+    });
+    expect(
+      notSuspect.verdicts.find((v) => v.candidateId === "verifier-escalation")?.inadmissibleCode,
+    ).toBe("outcome-not-quality-suspect");
+  });
+
+  test("D7h assurance depth may increase and never decrease (invariant 19)", () => {
+    expect(VERIFICATION_DEPTH_RANK.deterministic).toBeLessThan(
+      VERIFICATION_DEPTH_RANK["model-judged"],
+    );
+    expect(VERIFICATION_DEPTH_RANK["model-judged"]).toBeLessThan(
+      VERIFICATION_DEPTH_RANK["human-judged"],
+    );
+    // A depth-flat escalation verdict is unrepresentable: the typed
+    // rejection fires before any strategy exists.
+    expectTypedReject("recovery-input-shape", () =>
+      selectWith(intelligenceAttribution(), {
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        verifierEscalation: {
+          decision: {
+            kind: "escalate-verification",
+            fromDepth: "model-judged",
+            toDepth: "model-judged",
+          },
+          claim: retryClaim("250"),
+        },
+      }),
+    );
+    expectTypedReject("recovery-input-shape", () =>
+      selectWith(intelligenceAttribution(), {
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        verifierEscalation: {
+          decision: {
+            kind: "escalate-verification",
+            fromDepth: "human-judged",
+            toDepth: "deterministic",
+          },
+          claim: retryClaim("250"),
+        },
+      }),
+    );
   });
 });

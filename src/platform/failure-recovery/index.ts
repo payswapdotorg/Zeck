@@ -7,8 +7,9 @@
  *
  *  - `catalog.ts`      — the closed vocabularies (the five failure
  *                        classes, the observation-signal → class
- *                        admissibility table, the recovery strategies,
- *                        the reason codes), typed errors and bounds;
+ *                        admissibility table, the recovery strategies
+ *                        and moves, the re-route dimensions, the
+ *                        reason codes), typed errors and bounds;
  *  - `attribution.ts`  — the unified failure attribution (typed,
  *                        evidence-bound, content-addressed; the
  *                        ADR-0020 intelligence-vs-environment
@@ -18,8 +19,17 @@
  *                        economics facts and configuration; retry
  *                        discipline; re-route through the merged
  *                        economics planes' facts, read-only;
- *                        evidence-driven escalation; the fail-closed
+ *                        evidence-driven escalation; the ACR-008 §3
+ *                        move-catalog extension — provider-failover
+ *                        re-route, context-repair and
+ *                        verifier-escalation; the fail-closed
  *                        zero-recovery outcome);
+ *  - `plan.ts`         — the policy-bounded recovery plans (ACR-008
+ *                        §2: bounded, typed, content-addressed move
+ *                        sequences composed per-step through the
+ *                        EXISTING selection seam; honest typed
+ *                        terminal failure; idempotent, prefix-stable
+ *                        composition);
  *  - `escalation.ts`   — the bounded, typed fresh-escalation packages
  *                        (attributed failure + accumulated evidence +
  *                        continuation payload, content-addressed);
@@ -47,4 +57,5 @@ export * from "./continuation";
 export * from "./decisions";
 export * from "./escalation";
 export * from "./fingerprint";
+export * from "./plan";
 export * from "./strategy";

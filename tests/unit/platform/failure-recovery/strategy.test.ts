@@ -10,6 +10,12 @@
 import { describe, expect, test } from "vitest";
 import type { CandidateEvaluation } from "../../../../src/platform/execution-ir/cost-model";
 import { attributeFailure } from "../../../../src/platform/failure-recovery/attribution";
+import {
+  CONTEXT_REPAIRABLE_CLASSES,
+  RECOVERY_STRATEGIES,
+  REROUTE_DIMENSIONS,
+  VERIFICATION_DEPTHS,
+} from "../../../../src/platform/failure-recovery/catalog";
 import type {
   RecoveryFacts,
   StrategyVerdict,
@@ -24,6 +30,7 @@ import {
   budgetAttribution,
   claim,
   constraints,
+  contextRepairFacts,
   digest,
   freshEscalationDecision,
   governedIr,
@@ -31,7 +38,10 @@ import {
   intelligenceAttribution,
   modelRerouteFacts,
   providerAttribution,
+  providerRerouteFacts,
   substrateRerouteFacts,
+  toolAttribution,
+  verifierEscalationFacts,
 } from "./world";
 
 const CONFIGURATION = {
@@ -429,5 +439,411 @@ describe("recovery strategy selection (WORK-055)", () => {
     });
     const selection = select(providerAttribution(), factsOf());
     expect(["recover", "fail-closed"]).toContain(selection.kind);
+  });
+});
+
+describe("recovery strategy selection — the ACR-008 §3 move-catalog extension (PCR-001)", () => {
+  test("the extended catalog is closed: six strategies, three re-route dimensions, one ranked ladder", () => {
+    expect([...RECOVERY_STRATEGIES]).toEqual([
+      "retry",
+      "re-route",
+      "escalate-fresh",
+      "context-repair",
+      "verifier-escalation",
+      "fail",
+    ]);
+    expect([...REROUTE_DIMENSIONS]).toEqual(["model", "substrate", "provider"]);
+    // The existing relative orders are preserved byte-for-byte...
+    expect(STRATEGY_RANK.retry).toBeLessThan(STRATEGY_RANK["re-route"]);
+    expect(STRATEGY_RANK["re-route"]).toBeLessThan(STRATEGY_RANK["escalate-fresh"]);
+    expect(STRATEGY_RANK["escalate-fresh"]).toBeLessThan(STRATEGY_RANK.fail);
+    // ...and the new moves interleave on the disruption ladder.
+    expect(STRATEGY_RANK["re-route"]).toBeLessThan(STRATEGY_RANK["context-repair"]);
+    expect(STRATEGY_RANK["context-repair"]).toBeLessThan(STRATEGY_RANK["escalate-fresh"]);
+    expect(STRATEGY_RANK["escalate-fresh"]).toBeLessThan(STRATEGY_RANK["verifier-escalation"]);
+    expect(STRATEGY_RANK["verifier-escalation"]).toBeLessThan(STRATEGY_RANK.fail);
+    // The closed class/depth tables.
+    expect([...CONTEXT_REPAIRABLE_CLASSES]).toEqual(["intelligence", "tool"]);
+    expect([...VERIFICATION_DEPTHS]).toEqual(["deterministic", "model-judged", "human-judged"]);
+  });
+
+  // --- PROVIDER-FAILOVER RE-ROUTE (ACR-008 §3.1) -------------------------
+  test("provider-failover re-route is admissible through the supply plane's own selection", () => {
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null, provider: providerRerouteFacts(constraints()) },
+        escalation: null,
+      }),
+    );
+    expect(selection.kind).toBe("recover");
+    expect(selection.selected?.strategy).toBe("re-route");
+    expect(selection.selected?.rerouteDimension).toBe("provider");
+    expect(selection.selected?.candidateId).toBe("reroute-provider");
+    // The claim derives from the supply plane's OWN verdict: the selected
+    // alternative is the capability-equal same-model route (rail-b/model-x).
+    expect(selection.selected?.evaluation?.basis.source).toBe(
+      "model-economics;provider-failover=rail-b/model-x",
+    );
+    // The economics re-evaluate through the shared admissibility
+    // (ceil(295 / 0.95) over the supply plane's own 295).
+    expect(selection.selected?.evaluation?.expectedSuccessfulResolutionCostMicroUsd).toBe("311");
+  });
+
+  test("a no-selection supply verdict makes the provider dimension inadmissible (typed reason)", () => {
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: {
+          model: null,
+          substrate: null,
+          provider: {
+            selection: {
+              ...providerRerouteFacts(constraints()).selection,
+              selected: null,
+              kind: "no-admissible-candidate",
+            },
+            declaredCandidates: [],
+          },
+        },
+        escalation: null,
+      }),
+    );
+    expect(selection.kind).toBe("fail-closed");
+    const providerVerdict = selection.verdicts.find((v) => v.candidateId === "reroute-provider");
+    expect(providerVerdict?.admissible).toBe(false);
+    expect(providerVerdict?.inadmissibleCode).toBe("no-provider-selection");
+  });
+
+  test("re-selecting the incumbent provider route is inadmissible (no hidden retry)", () => {
+    const incumbentOnly = selectModelRepresentation({
+      ir: governedIr(),
+      stepId: "generate",
+      candidates: [
+        {
+          candidateId: "rail-a-model-x",
+          route: { provider: "rail-a", model: "model-x" },
+          representationClass: "sufficient-model" as const,
+          claim: claim("300", 1800, 0.9, 0.95, "model-economics:route-table"),
+        },
+      ],
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+    });
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: {
+          model: null,
+          substrate: null,
+          provider: {
+            selection: incumbentOnly,
+            declaredCandidates: [
+              {
+                candidateId: "rail-a-model-x",
+                route: { provider: "rail-a", model: "model-x" },
+                representationClass: "sufficient-model" as const,
+                claim: claim("300", 1800, 0.9, 0.95, "model-economics:route-table"),
+              },
+            ],
+          },
+        },
+        escalation: null,
+      }),
+    );
+    const providerVerdict = selection.verdicts.find((v) => v.candidateId === "reroute-provider");
+    expect(providerVerdict?.admissible).toBe(false);
+    expect(providerVerdict?.inadmissibleCode).toBe("no-alternative-provider");
+    expect(selection.kind).toBe("fail-closed");
+  });
+
+  test("a different-model alternate is the model dimension's move, never provider failover", () => {
+    const differentModel = selectModelRepresentation({
+      ir: governedIr(),
+      stepId: "generate",
+      candidates: [
+        {
+          candidateId: "rail-b-model-y",
+          route: { provider: "rail-b", model: "model-y" },
+          representationClass: "sufficient-model" as const,
+          claim: claim("300", 1800, 0.9, 0.95, "model-economics:route-table"),
+        },
+      ],
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+    });
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: {
+          model: null,
+          substrate: null,
+          provider: {
+            selection: differentModel,
+            declaredCandidates: [
+              {
+                candidateId: "rail-b-model-y",
+                route: { provider: "rail-b", model: "model-y" },
+                representationClass: "sufficient-model" as const,
+                claim: claim("300", 1800, 0.9, 0.95, "model-economics:route-table"),
+              },
+            ],
+          },
+        },
+        escalation: null,
+      }),
+    );
+    const providerVerdict = selection.verdicts.find((v) => v.candidateId === "reroute-provider");
+    expect(providerVerdict?.admissible).toBe(false);
+    expect(providerVerdict?.inadmissibleCode).toBe("provider-route-not-same-representation");
+  });
+
+  // --- CONTEXT-REPAIR (ACR-008 §3.2) --------------------------------------
+  test("context-repair is admissible for a context-corruption class with the capability verdict", () => {
+    const selection = select(
+      intelligenceAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        contextRepair: contextRepairFacts(true),
+      }),
+    );
+    expect(selection.kind).toBe("recover");
+    expect(selection.selected?.strategy).toBe("context-repair");
+    expect(selection.selected?.candidateId).toBe("context-repair");
+    // The move carries its explicit-basis claim through the shared machinery.
+    expect(selection.selected?.evaluation?.basis.source).toBe("recovery:context-repair-path");
+    // The tool class is repairable too (the closed table).
+    const toolSelection = select(
+      toolAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        contextRepair: contextRepairFacts(true),
+      }),
+    );
+    expect(toolSelection.kind).toBe("recover");
+    expect(toolSelection.selected?.strategy).toBe("context-repair");
+  });
+
+  test("context-repair is inadmissible outside the closed repairable classes", () => {
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        contextRepair: contextRepairFacts(true),
+      }),
+    );
+    const repairVerdict = selection.verdicts.find((v) => v.candidateId === "context-repair");
+    expect(repairVerdict?.admissible).toBe(false);
+    expect(repairVerdict?.inadmissibleCode).toBe("class-not-repairable");
+    expect(selection.kind).toBe("fail-closed");
+  });
+
+  test("context-repair is inadmissible when the capability verdict says not capable", () => {
+    const selection = select(
+      toolAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        contextRepair: contextRepairFacts(false),
+      }),
+    );
+    const repairVerdict = selection.verdicts.find((v) => v.candidateId === "context-repair");
+    expect(repairVerdict?.admissible).toBe(false);
+    expect(repairVerdict?.inadmissibleCode).toBe("repair-not-capable");
+  });
+
+  test("a malformed repair-capability verdict fails closed (never a silent default repair)", () => {
+    expect(() =>
+      select(
+        toolAttribution(),
+        factsOf({
+          retry: null,
+          reroute: { model: null, substrate: null },
+          escalation: null,
+          contextRepair: {
+            capability: { kind: "maybe-repairable" } as never,
+            claim: claim("500", 3000, 0.9, 0.93, "recovery:context-repair-path"),
+          },
+        }),
+      ),
+    ).toThrowError(/closed vocabulary/);
+    expect(() =>
+      select(
+        toolAttribution(),
+        factsOf({
+          retry: null,
+          reroute: { model: null, substrate: null },
+          escalation: null,
+          contextRepair: {
+            capability: { kind: "repair-capable", directive: { strategy: "NOT A SLUG" } } as never,
+            claim: claim("500", 3000, 0.9, 0.93, "recovery:context-repair-path"),
+          },
+        }),
+      ),
+    ).toThrowError(/reconstruction directive/);
+  });
+
+  // --- VERIFIER-ESCALATION (ACR-008 §3.3) ---------------------------------
+  test("verifier-escalation is admissible for a quality-suspect outcome with the authority decision", () => {
+    const selection = select(
+      intelligenceAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        verifierEscalation: verifierEscalationFacts(true),
+      }),
+    );
+    expect(selection.kind).toBe("recover");
+    expect(selection.selected?.strategy).toBe("verifier-escalation");
+    expect(selection.selected?.candidateId).toBe("verifier-escalation");
+    expect(selection.selected?.evaluation?.basis.source).toBe("recovery:verifier-escalation-path");
+  });
+
+  test("verifier-escalation is inadmissible for non-suspect outcomes (the class gate)", () => {
+    const selection = select(
+      infraAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        verifierEscalation: verifierEscalationFacts(true),
+      }),
+    );
+    const verifierVerdict = selection.verdicts.find((v) => v.candidateId === "verifier-escalation");
+    expect(verifierVerdict?.admissible).toBe(false);
+    expect(verifierVerdict?.inadmissibleCode).toBe("outcome-not-quality-suspect");
+  });
+
+  test("verifier-escalation is inadmissible without the authority's justification", () => {
+    const selection = select(
+      intelligenceAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        verifierEscalation: verifierEscalationFacts(false),
+      }),
+    );
+    const verifierVerdict = selection.verdicts.find((v) => v.candidateId === "verifier-escalation");
+    expect(verifierVerdict?.admissible).toBe(false);
+    expect(verifierVerdict?.inadmissibleCode).toBe("verifier-escalation-not-justified");
+  });
+
+  test("a depth-flat or depth-reducing escalation verdict is a typed rejection (invariant 19)", () => {
+    const flatDecision = {
+      ...verifierEscalationFacts(true).decision,
+      toDepth: "deterministic",
+    } as const;
+    expect(() =>
+      select(
+        intelligenceAttribution(),
+        factsOf({
+          retry: null,
+          reroute: { model: null, substrate: null },
+          escalation: null,
+          verifierEscalation: {
+            decision: flatDecision,
+            claim: claim("250", 1500, 0.95, 0.97, "recovery:verifier-escalation-path"),
+          },
+        }),
+      ),
+    ).toThrowError(/strictly increase the assurance depth/);
+    const reducing = {
+      ...verifierEscalationFacts(true).decision,
+      fromDepth: "human-judged",
+      toDepth: "model-judged",
+    } as const;
+    expect(() =>
+      select(
+        intelligenceAttribution(),
+        factsOf({
+          retry: null,
+          reroute: { model: null, substrate: null },
+          escalation: null,
+          verifierEscalation: {
+            decision: reducing,
+            claim: claim("250", 1500, 0.95, 0.97, "recovery:verifier-escalation-path"),
+          },
+        }),
+      ),
+    ).toThrowError(/strictly increase the assurance depth/);
+  });
+
+  // --- THE EXTENDED DETERMINISTIC ORDER ------------------------------------
+  test("equal-cost ties across the extended catalog resolve by the disruption ladder", () => {
+    const evaluation = (candidateId: string): CandidateEvaluation => ({
+      candidateId,
+      representationClass: "sufficient-model",
+      valid: true,
+      expectedSuccessfulResolutionCostMicroUsd: "100",
+      expectedLatencyMs: 0,
+      qualityExpectation: { expectedQuality: 0.9, threshold: 0.8, meetsThreshold: true },
+      basis: { basis: "estimated", source: "test:tie-break-extension" },
+    });
+    const verdict = (
+      candidateId: string,
+      strategy: StrategyVerdict["strategy"],
+    ): StrategyVerdict => ({
+      candidateId,
+      strategy,
+      attributionId: "0".repeat(64),
+      representationClass: "sufficient-model",
+      admissible: true,
+      evaluation: evaluation(candidateId),
+    });
+    // Full ladder: retry < re-route < context-repair < escalate-fresh < verifier-escalation.
+    expect(
+      compareStrategies(verdict("a", "verifier-escalation"), verdict("z", "retry")),
+    ).toBeGreaterThan(0);
+    expect(
+      compareStrategies(verdict("a", "escalate-fresh"), verdict("z", "context-repair")),
+    ).toBeGreaterThan(0);
+    expect(
+      compareStrategies(verdict("z", "context-repair"), verdict("a", "re-route")),
+    ).toBeGreaterThan(0);
+    expect(
+      compareStrategies(verdict("z", "verifier-escalation"), verdict("a", "escalate-fresh")),
+    ).toBeGreaterThan(0);
+    // The three re-route dimensions tie on rank: candidateId decides.
+    expect(
+      compareStrategies(
+        verdict("reroute-substrate", "re-route"),
+        verdict("reroute-model", "re-route"),
+      ),
+    ).toBe(1);
+  });
+
+  test("equal-cost context-repair and verifier-escalation prefer the repair (rank, then economics)", () => {
+    // Both moves admissible with identical claims: the tie resolves on
+    // the disruption ladder (context-repair ranks below
+    // verifier-escalation).
+    const tiedClaim = claim("300", 2000, 0.9, 0.95, "recovery:tied-path");
+    const selection = select(
+      intelligenceAttribution(),
+      factsOf({
+        retry: null,
+        reroute: { model: null, substrate: null },
+        escalation: null,
+        contextRepair: { capability: contextRepairFacts(true).capability, claim: tiedClaim },
+        verifierEscalation: {
+          decision: verifierEscalationFacts(true).decision,
+          claim: { ...tiedClaim, basis: { ...tiedClaim.basis, source: "recovery:tied-verifier" } },
+        },
+      }),
+    );
+    expect(selection.kind).toBe("recover");
+    expect(selection.selected?.strategy).toBe("context-repair");
   });
 });
