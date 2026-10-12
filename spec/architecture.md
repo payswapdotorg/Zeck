@@ -448,3 +448,11 @@ Hedged execution of a recovery step is architecture-admitted only for declared s
 The plan composer is wired into the governed execution/supply path behind the bounded recovery configuration with plan mode default OFF: the current retry posture is the byte-preserved default, and promotion is an evidence-gated evaluation configuration, not a code path change.
 
 ACR-008 adds no second router, capability registry, budget, execution state machine, verification service or evidence authority. All twenty frozen invariants are preserved. See docs/architecture-changes/ACR-008-policy-bounded-recovery-plans.md and the zeck-competitiveness-p1 program work orders (PCR-001..PCR-004).
+
+# 25. ACR-009 — Capability semantic fidelity: real capability vs deterministic substitute
+
+ACR-009 extends the existing capability/evidence model with typed semantic-fidelity facts so a real capability (semantic-model-backed) and a deterministic substitute (deterministic-substitute) are distinct, non-interchangeable typed facts, gates the planner's selection of deterministic substitutes on the task's declared quality contract, and discloses to the user which requirement is met and what remains unavailable.
+
+The fact block is closed, optional and absence-equivalent: every field is a closed enum or typed bounded value; unknown values fail closed; its absence selects and records byte-identically to today at every existing call site. A task declaring a semantic quality requirement makes a deterministic substitute inadmissible with a typed reason — a task requiring semantic retrieval must not pass merely because a deterministic vector is produced.
+
+ACR-009 adds no new capability registry, no new capability family, no second planner, router, verification service or evidence authority, and never silently broadens the existing capability-family truth by a similarly named substitute. All twenty frozen invariants are preserved. See docs/architecture-changes/ACR-009-capability-semantic-fidelity.md and the zeck-competitiveness-p2 program work orders (PCS-001..PCS-004).
