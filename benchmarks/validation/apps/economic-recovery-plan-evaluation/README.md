@@ -1,6 +1,6 @@
-# economic-recovery-plan-evaluation (VAL-048)
+# economic-recovery-plan-evaluation (PCR-003)
 
-The P1 program's three-arm replay evaluation with explicit outcome thresholds — the evidence work order (PCR-003, ACR-008 §7; this app extends the VAL-048 cross-workload competitive-benchmark evidence line — the console's work-order vocabulary has no PCR-program tag, so the parent evidence line carries it; the true work order is PCR-003): the un-retried direct, strong-optimized and **mediated-with-plan** arms re-run FRESH at ONE exact revision, targeting the multi-provider cell family where the PPR-027 capstone measured the mediated-resolution gap (92.4% multi vs 97.2% single-provider), with honest verdicts per threshold and the PCR-004 eligibility statement.
+The P1 program's three-arm replay evaluation with explicit outcome thresholds — the evidence work order (PCR-003, ACR-008 §7; this app extends the VAL-048 cross-workload competitive-benchmark evidence line): the un-retried direct, strong-optimized and **mediated-with-plan** arms re-run FRESH at ONE exact revision, targeting the multi-provider cell family where the PPR-027 capstone measured the mediated-resolution gap (92.4% multi vs 97.2% single-provider), with honest verdicts per threshold and the PCR-004 eligibility statement.
 
 **Every number this evaluation emits is a fresh synthetic measurement** — synthetic-supply (the declared deterministic fault/latency profiles), synthetic-cost (the declared price schedule), synthetic-latency (the drawn deterministic profile, never wall-clock). No live/credentialed provider runs, no market or production claims; a threshold miss with honest attribution is a VALID delivery (the program's truth discipline).
 

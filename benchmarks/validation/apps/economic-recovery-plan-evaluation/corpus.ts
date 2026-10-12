@@ -31,13 +31,13 @@
  */
 
 import { createHash } from "node:crypto";
-import type { ExperimentRecoveryPlanInputs } from "../../../../experiments/ppr-027/compose";
 import type {
+  ExperimentRecoveryPlanInputs,
   ModalityKind,
   SubjectDefinition,
   VolumeKind,
-} from "../../../../experiments/ppr-027/config";
-import { allSweepCells } from "../../../../experiments/ppr-027/sweep";
+} from "../shared/seam";
+import { allSweepCells } from "../shared/seam";
 import { canonicalJson } from "./canonical";
 
 /** The plan-governing configuration's type — the LAB's own interface type (never `src/**`). */

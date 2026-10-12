@@ -32,7 +32,7 @@
  */
 
 import { createHash } from "node:crypto";
-import type { ExperimentRecoveryPlanInputs } from "../../../../experiments/ppr-027/compose";
+import type { ExperimentRecoveryPlanInputs } from "../shared/seam";
 
 /**
  * The digest port the recovery seam consumes (the lab's own interface
