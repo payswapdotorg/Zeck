@@ -14,7 +14,10 @@
  *   - the validation stages       `docs/VALIDATION-ROADMAP.md` (the stage
  *     ranges block — the console never invents a stage);
  *   - the work-order objectives   `spec/validation-work-orders/VAL-*.md`
- *     (the `## Objective` section, verbatim);
+ *     and `spec/competitiveness-work-orders/PCR-*.md` / `PCS-*.md` (the
+ *     `## Objective` section, verbatim — the spec directory is the
+ *     authority for the competitiveness programs too: the console reads
+ *     their own `Status:`/`Program:` lines, never a console-local copy);
  *   - the historical evidence     `benchmarks/validation/evidence/VAL-001.md`
  *     and `docs/work-items/VAL-*.md` (served READ-ONLY — a rerun never
  *     mutates them; AC4);
@@ -45,7 +48,7 @@
  * never rendered) and is NEVER represented as PASS.
  */
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { CAPABILITY_MATRIX, PROVIDER_ACCESS } from "../../benchmarks/validation/capabilities";
 import { CORPUS_VERSION, GOLDEN_TASKS } from "../../benchmarks/validation/corpus";
@@ -178,14 +181,31 @@ const DEPENDENCY_STATE_URL = new URL(
 const ROADMAP_URL = new URL("../../docs/VALIDATION-ROADMAP.md", import.meta.url);
 const REPORT_URL = new URL("../../docs/VALIDATION-REPORT.md", import.meta.url);
 const APPS_URL = new URL("../../benchmarks/validation/apps/", import.meta.url);
+const COMPETITIVENESS_SPECS_URL = new URL(
+  "../../spec/competitiveness-work-orders/",
+  import.meta.url,
+);
+
+/** The governed program state, parsed once (the single read of the ONE authority). */
+const PROGRAM_STATE = JSON.parse(readFileSync(fileURLToPath(PROGRAM_STATE_URL), "utf8")) as {
+  program?: unknown;
+  workOrders?: unknown;
+};
+
+/** The validation program's own name, from the governed state itself (never re-typed). */
+const VALIDATION_PROGRAM_NAME: string = requireString(
+  PROGRAM_STATE.program,
+  "program-state program",
+);
 
 /** The governed work orders (the ONE authority — 46 complete at load). */
 const GOVERNED_WORK_ORDERS: readonly GovernedWorkOrder[] = narrowGovernedWorkOrders(
-  (
-    JSON.parse(readFileSync(fileURLToPath(PROGRAM_STATE_URL), "utf8")) as {
-      workOrders?: unknown;
-    }
-  ).workOrders,
+  PROGRAM_STATE.workOrders,
+);
+
+/** The governed validation work-order ids (the program state's own registry). */
+const GOVERNED_WORK_ORDER_IDS: Readonly<Set<string>> = new Set(
+  GOVERNED_WORK_ORDERS.map((order) => order.id),
 );
 
 /** The dependency graph, projected verbatim from the governed state. */
@@ -204,6 +224,163 @@ const DEPENDENCIES: Readonly<Record<string, readonly string[]>> = (() => {
   }
   return out;
 })();
+
+// ---------------------------------------------------------------------------
+// The work-order tag vocabulary + the program-aware spec resolution (PCS-001)
+//
+// The console reads the competitiveness programs' own vocabularies (PCR/PCS)
+// exactly as it has always read the validation program's (VAL): ONE closed
+// tag family, the same three positional variants, and a program-aware spec
+// directory per prefix. spec/ stays the authority — the console never
+// invents a work order, a program membership or a spec location.
+// ---------------------------------------------------------------------------
+
+/** The closed work-order tag family (one source, no open-ended admission). */
+const WORK_ORDER_TAG_SOURCE = "(?:VAL|PCR|PCS)-\\d{3}";
+const TRAILING_WORK_ORDER_TAG = new RegExp(`\\(?(${WORK_ORDER_TAG_SOURCE})\\)?\\s*$`);
+const LEADING_PARENTHESIZED_WORK_ORDER_TAG = new RegExp(`^#\\s+\\((${WORK_ORDER_TAG_SOURCE})\\)`);
+const LEADING_BARE_WORK_ORDER_TAG = new RegExp(`^#\\s+(${WORK_ORDER_TAG_SOURCE})\\b`);
+
+/**
+ * The work-order tag a README's first line carries, in the closed family
+ * (VAL/PCR/PCS) and the same three positional variants the lab has always
+ * read: trailing `(TAG)`, leading `(TAG)`, or bare `TAG` after the heading
+ * marker. Null when the line carries no tag of the family.
+ */
+export function workOrderTagOfFirstLine(firstLine: string): string | null {
+  const trimmed = firstLine.trim();
+  const match =
+    TRAILING_WORK_ORDER_TAG.exec(trimmed) ??
+    LEADING_PARENTHESIZED_WORK_ORDER_TAG.exec(trimmed) ??
+    LEADING_BARE_WORK_ORDER_TAG.exec(trimmed);
+  return match === null ? null : (match[1] ?? null);
+}
+
+/**
+ * The typed fail-closed error for a work-order tag whose spec file is
+ * absent: the app-to-work-order mapping NEVER silently skips a tag — the
+ * error names the tag and the searched path so the drift is loud.
+ */
+export class WorkOrderSpecResolutionError extends Error {
+  readonly workOrder: string;
+  readonly searchedPath: string;
+
+  constructor(workOrder: string, searchedPath: string) {
+    super(
+      `validation lab: work order ${workOrder} has no spec at ${searchedPath} — the app-to-work-order mapping drifted (fail-closed, never a silent skip)`,
+    );
+    this.name = "WorkOrderSpecResolutionError";
+    this.workOrder = workOrder;
+    this.searchedPath = searchedPath;
+  }
+}
+
+/**
+ * The program-aware spec-path mapping (closed): `VAL-*` resolves against
+ * the validation program's spec directory, `PCR-*`/`PCS-*` against the
+ * competitiveness program's. Anything else is outside the closed tag
+ * vocabulary and fails closed.
+ */
+export function specPathOfWorkOrder(workOrderId: string): string {
+  if (/^VAL-\d{3}$/.test(workOrderId)) {
+    return `spec/validation-work-orders/${workOrderId}.md`;
+  }
+  if (/^(PCR|PCS)-\d{3}$/.test(workOrderId)) {
+    return `spec/competitiveness-work-orders/${workOrderId}.md`;
+  }
+  throw new Error(
+    `validation lab: "${workOrderId}" is outside the closed work-order tag vocabulary (VAL/PCR/PCS) — the app-to-work-order mapping drifted`,
+  );
+}
+
+/**
+ * Resolve a work-order tag to its spec path and verify the spec EXISTS —
+ * the fail-closed gate of the app-to-work-order mapping: a tag whose spec
+ * file is absent is the typed error naming the tag and the searched path,
+ * never a silent skip.
+ */
+export function resolveWorkOrderSpec(workOrderId: string): string {
+  const specPath = specPathOfWorkOrder(workOrderId);
+  if (
+    !existsSync(fileURLToPath(new URL(specPath.replace(/^spec\//, "../../spec/"), import.meta.url)))
+  ) {
+    throw new WorkOrderSpecResolutionError(workOrderId, specPath);
+  }
+  return specPath;
+}
+
+// ---------------------------------------------------------------------------
+// The competitiveness work orders (PCR/PCS — the spec directory is the authority)
+// ---------------------------------------------------------------------------
+
+/** One competitiveness work order (PCR/PCS): the spec file is the authority —
+ * there is no JSON program state for the competitiveness programs, so the
+ * record is parsed verbatim from the spec's own heading, `Status:` and
+ * `Program:` lines and `## Objective` section (never re-typed, never
+ * invented). The apps are the applications whose READMEs carry this tag. */
+export interface CompetitivenessWorkOrder {
+  readonly id: string;
+  readonly program: string;
+  readonly status: string;
+  readonly title: string;
+  readonly objective: string;
+  readonly specPath: string;
+  readonly apps: readonly ValidationApp[];
+}
+
+/** A `Key: value` metadata line of a work-order spec (Status/Program), verbatim. */
+function parseSpecLine(spec: string, key: string, id: string): string {
+  const match = new RegExp(`^${key}:\\s*(.+)$`, "m").exec(spec);
+  const value = match === null ? "" : (match[1] ?? "").trim();
+  if (value.length === 0) {
+    throw new Error(`validation lab: work-order spec ${id} carries no ${key}: line`);
+  }
+  return value;
+}
+
+function scanCompetitivenessWorkOrders(): readonly Omit<CompetitivenessWorkOrder, "apps">[] {
+  const out: Omit<CompetitivenessWorkOrder, "apps">[] = [];
+  const entries = readdirSync(fileURLToPath(COMPETITIVENESS_SPECS_URL), { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
+  for (const name of entries) {
+    const idMatch = /^((?:PCR|PCS)-\d{3})\.md$/.exec(name);
+    if (idMatch === null) {
+      throw new Error(
+        `validation lab: unexpected file "${name}" under spec/competitiveness-work-orders — the work-order directory drifted`,
+      );
+    }
+    const id = idMatch[1] ?? "";
+    const specPath = `spec/competitiveness-work-orders/${name}`;
+    const spec = readFileSync(
+      fileURLToPath(new URL(specPath.replace(/^spec\//, "../../spec/"), import.meta.url)),
+      "utf8",
+    );
+    const titleMatch = new RegExp(`^#\\s+${id}\\s+—\\s+(.+)$`).exec(spec.split("\n", 1)[0] ?? "");
+    if (titleMatch === null || (titleMatch[1] ?? "").trim().length === 0) {
+      throw new Error(
+        `validation lab: work-order spec ${id} carries no "# ${id} — <title>" first heading — the spec format drifted`,
+      );
+    }
+    out.push({
+      id,
+      program: parseSpecLine(spec, "Program", id),
+      status: parseSpecLine(spec, "Status", id),
+      title: (titleMatch[1] ?? "").trim(),
+      objective: parseObjective(spec, id),
+      specPath,
+    });
+  }
+  if (out.length === 0) {
+    throw new Error("validation lab: no work orders found under spec/competitiveness-work-orders");
+  }
+  return out;
+}
+
+/** The competitiveness work orders' spec records (the directory census, pre-apps). */
+const COMPETITIVENESS_WORK_ORDER_SPECS: readonly Omit<CompetitivenessWorkOrder, "apps">[] =
+  scanCompetitivenessWorkOrders();
 
 /** The workload families of the corpus, in registry order. */
 const FAMILY_ORDER: Readonly<Record<string, number>> = (() => {
@@ -564,15 +741,16 @@ function scanApps(): readonly ValidationApp[] {
     const readmePath = fileURLToPath(new URL(`${dir}/README.md`, APPS_URL));
     const readme = readFileSync(readmePath, "utf8");
     const firstLine = readme.split("\n", 1)[0] ?? "";
-    const workOrderMatch =
-      /\(?(VAL-\d{3})\)?\s*$/.exec(firstLine.trim()) ??
-      /^#\s+\((VAL-\d{3})\)/.exec(firstLine.trim()) ??
-      /^#\s+(VAL-\d{3})\b/.exec(firstLine.trim());
-    if (workOrderMatch === null) {
+    const workOrder = workOrderTagOfFirstLine(firstLine);
+    if (workOrder === null) {
       throw new Error(
         `validation lab: apps/${dir}/README.md first line carries no work order tag — the app-to-work-order mapping drifted`,
       );
     }
+    // The fail-closed gate: a tag whose spec file is absent (per its
+    // program's spec directory) is a typed error naming the tag and the
+    // searched path — never a silent skip.
+    resolveWorkOrderSpec(workOrder);
     const scenarioIds = scenarioTokensOf(readme);
     const families = familiesOfApp(dir, readme);
     const config = narrowAppConfig(
@@ -581,12 +759,12 @@ function scanApps(): readonly ValidationApp[] {
     );
     const readmeTitle = firstLine
       .replace(/^#\s+/, "")
-      .replace(/^VAL-\d{3}\s*[—–:-]\s*/, "")
-      .replace(/\s*\(VAL-\d{3}\)\s*$/, "")
+      .replace(/^(?:VAL|PCR|PCS)-\d{3}\s*[—–:-]\s*/, "")
+      .replace(/\s*\((?:VAL|PCR|PCS)-\d{3}\)\s*$/, "")
       .trim();
     out.push({
       dir,
-      workOrder: workOrderMatch[1] ?? "",
+      workOrder,
       readmeTitle,
       scenarioIds,
       families,
@@ -607,6 +785,47 @@ function scanApps(): readonly ValidationApp[] {
 
 const VALIDATION_APPS: readonly ValidationApp[] = scanApps();
 
+/**
+ * Every app grouped under its work order. The admission set is the CLOSED
+ * union of the governed validation registry and the competitiveness spec
+ * directory; an app referencing a work order outside it fails closed
+ * (the same loud drift as before — the vocabulary widened, the discipline
+ * did not).
+ */
+const APPS_BY_WORK_ORDER: Readonly<Record<string, readonly ValidationApp[]>> = (() => {
+  const registered = new Set<string>([
+    ...GOVERNED_WORK_ORDER_IDS,
+    ...COMPETITIVENESS_WORK_ORDER_SPECS.map((order) => order.id),
+  ]);
+  const out: Record<string, ValidationApp[]> = {};
+  for (const app of VALIDATION_APPS) {
+    if (!registered.has(app.workOrder)) {
+      throw new Error(`validation lab: apps/${app.dir} references unregistered ${app.workOrder}`);
+    }
+    const existing = out[app.workOrder];
+    if (existing === undefined) {
+      out[app.workOrder] = [app];
+    } else {
+      existing.push(app);
+    }
+  }
+  for (const list of Object.values(out)) {
+    list.sort((a, b) => (a.dir < b.dir ? -1 : 1));
+  }
+  return out;
+})();
+
+/**
+ * The competitiveness work orders (PCR/PCS) with their apps attached — the
+ * same grouping the validation experiments ride, so an app carrying a
+ * competitiveness tag projects under its TRUE work order.
+ */
+const COMPETITIVENESS_WORK_ORDERS: readonly CompetitivenessWorkOrder[] =
+  COMPETITIVENESS_WORK_ORDER_SPECS.map((order) => ({
+    ...order,
+    apps: APPS_BY_WORK_ORDER[order.id] ?? [],
+  }));
+
 // ---------------------------------------------------------------------------
 // The experiment catalog (the DEP-025 AC1 projection)
 // ---------------------------------------------------------------------------
@@ -614,6 +833,8 @@ const VALIDATION_APPS: readonly ValidationApp[] = scanApps();
 /** One validation experiment — the console projection of a work order. */
 export interface ValidationExperiment {
   readonly id: string;
+  /** The program this work order belongs to (the program discriminator). */
+  readonly program: string;
   readonly title: string;
   readonly status: string;
   readonly stage: string;
@@ -643,22 +864,9 @@ function evidencePathOf(id: string): string {
 }
 
 function assembleCatalog(): readonly ValidationExperiment[] {
-  const governedIds = new Set(GOVERNED_WORK_ORDERS.map((order) => order.id));
   for (const id of Object.keys(DEPENDENCIES)) {
-    if (!governedIds.has(id)) {
+    if (!GOVERNED_WORK_ORDER_IDS.has(id)) {
       throw new Error(`validation lab: dependency-state references unregistered ${id}`);
-    }
-  }
-  const appsByWorkOrder: Record<string, ValidationApp[]> = {};
-  for (const app of VALIDATION_APPS) {
-    if (!governedIds.has(app.workOrder)) {
-      throw new Error(`validation lab: apps/${app.dir} references unregistered ${app.workOrder}`);
-    }
-    const existing = appsByWorkOrder[app.workOrder];
-    if (existing === undefined) {
-      appsByWorkOrder[app.workOrder] = [app];
-    } else {
-      existing.push(app);
     }
   }
   return GOVERNED_WORK_ORDERS.map((order) => {
@@ -666,7 +874,7 @@ function assembleCatalog(): readonly ValidationExperiment[] {
     if (stage === undefined) {
       throw new Error(`validation lab: the validation roadmap records no stage for ${order.id}`);
     }
-    const specPath = `spec/validation-work-orders/${order.id}.md`;
+    const specPath = specPathOfWorkOrder(order.id);
     const spec = readFileSync(
       fileURLToPath(new URL(specPath.replace(/^spec\//, "../../spec/"), import.meta.url)),
       "utf8",
@@ -678,7 +886,7 @@ function assembleCatalog(): readonly ValidationExperiment[] {
       ),
       "utf8",
     );
-    const apps = (appsByWorkOrder[order.id] ?? []).sort((a, b) => (a.dir < b.dir ? -1 : 1));
+    const apps = APPS_BY_WORK_ORDER[order.id] ?? [];
     const families = [...new Set(apps.flatMap((app) => app.families))].sort(
       (a, b) => (FAMILY_ORDER[a] ?? 0) - (FAMILY_ORDER[b] ?? 0),
     );
@@ -687,6 +895,7 @@ function assembleCatalog(): readonly ValidationExperiment[] {
       order.mergeCommit ?? order.implementationHead ?? order.baseRevision ?? "unrecorded";
     return {
       id: order.id,
+      program: VALIDATION_PROGRAM_NAME,
       title: order.title,
       status: order.status,
       stage,
@@ -752,6 +961,87 @@ export function experimentsByStage(): readonly {
     stage,
     experiments: EXPERIMENTS.filter((experiment) => experiment.stage === stage),
   }));
+}
+
+/**
+ * The competitiveness work orders (PCR/PCS), projected from their spec
+ * directory with their apps attached (the additive projection — the
+ * validation catalog above stays the governed validation census).
+ */
+export function competitivenessWorkOrders(): readonly CompetitivenessWorkOrder[] {
+  return COMPETITIVENESS_WORK_ORDERS;
+}
+
+/** One competitiveness work order by id, or null when no spec records it. */
+export function competitivenessWorkOrderOf(id: string): CompetitivenessWorkOrder | null {
+  return COMPETITIVENESS_WORK_ORDERS.find((order) => order.id === id) ?? null;
+}
+
+/**
+ * The program a work order belongs to (the program discriminator): the
+ * governed program state names the validation program; each competitiveness
+ * spec names its own program on its `Program:` line. A tag with no spec
+ * file fails closed with the typed error naming the tag and the searched
+ * path — never a guess, never a skip.
+ */
+export function programOfWorkOrder(workOrderId: string): string {
+  if (/^VAL-\d{3}$/.test(workOrderId)) {
+    if (!GOVERNED_WORK_ORDER_IDS.has(workOrderId)) {
+      throw new WorkOrderSpecResolutionError(workOrderId, specPathOfWorkOrder(workOrderId));
+    }
+    return VALIDATION_PROGRAM_NAME;
+  }
+  const competitiveness = COMPETITIVENESS_WORK_ORDERS.find((order) => order.id === workOrderId);
+  if (competitiveness !== undefined) {
+    return competitiveness.program;
+  }
+  throw new WorkOrderSpecResolutionError(workOrderId, specPathOfWorkOrder(workOrderId));
+}
+
+/**
+ * The work-order census per program — EXACT: the validation program's
+ * census is the governed program state (46 work orders, every VAL-tagged
+ * app); each competitiveness program's census is its spec directory.
+ * Every application projects under exactly one program (its work order's).
+ */
+export function workOrderCensusByProgram(): readonly {
+  readonly program: string;
+  readonly workOrders: readonly string[];
+  readonly apps: readonly string[];
+}[] {
+  const sections: {
+    program: string;
+    workOrders: readonly string[];
+    apps: readonly string[];
+  }[] = [
+    {
+      program: VALIDATION_PROGRAM_NAME,
+      workOrders: GOVERNED_WORK_ORDERS.map((order) => order.id),
+      apps: VALIDATION_APPS.filter((app) => GOVERNED_WORK_ORDER_IDS.has(app.workOrder))
+        .map((app) => app.dir)
+        .sort(),
+    },
+  ];
+  const byProgram = new Map<string, { workOrders: string[]; apps: string[] }>();
+  for (const order of COMPETITIVENESS_WORK_ORDERS) {
+    const section = byProgram.get(order.program) ?? { workOrders: [], apps: [] };
+    section.workOrders.push(order.id);
+    for (const app of order.apps) {
+      section.apps.push(app.dir);
+    }
+    byProgram.set(order.program, section);
+  }
+  for (const program of [...byProgram.keys()].sort()) {
+    const section = byProgram.get(program);
+    if (section !== undefined) {
+      sections.push({
+        program,
+        workOrders: section.workOrders,
+        apps: [...section.apps].sort(),
+      });
+    }
+  }
+  return sections;
 }
 
 /** The capability-matrix view (the By-capability projection source). */
@@ -1185,6 +1475,7 @@ function experimentCatalogEntry(experiment: ValidationExperiment): Record<string
   const defaultTask = defaultTaskOf(experiment);
   return {
     id: experiment.id,
+    program: experiment.program,
     title: experiment.title,
     status: experiment.status,
     stage: experiment.stage,

@@ -14,8 +14,8 @@
  * scan is deterministic and the hermetic cell's behavior is stable.
  */
 
-import type { SubjectDefinition, SubjectEdge } from "../../../../experiments/ppr-027/config";
-import { drawnFault, outcomeOf } from "../../../../experiments/ppr-027/transport";
+import type { SubjectDefinition, SubjectEdge } from "../shared/seam";
+import { drawnFault, outcomeOf } from "../shared/seam";
 import type { EvaluationCell } from "./corpus";
 
 /** The hermetic subject's single edge (the text plane). */

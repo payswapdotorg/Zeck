@@ -28,7 +28,7 @@
  * import from `src/**`.
  */
 
-import type { ExperimentRecoveryPlanInputs } from "../../../../experiments/ppr-027/compose";
+import type { ExperimentRecoveryPlanInputs } from "../shared/seam";
 
 /**
  * The pinned governed Execution IR (captured from the platform's own

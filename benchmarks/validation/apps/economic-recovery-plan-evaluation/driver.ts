@@ -53,23 +53,22 @@
 import { createHash } from "node:crypto";
 import { captureBaseline } from "../../../../compat/harness/baseline-runner";
 import { runCorpus } from "../../../../compat/harness/corpus-runner";
-import {
-  composeExperimentStack,
-  type ExperimentRecoveryPlanInputs,
-  type ExperimentStack,
-} from "../../../../experiments/ppr-027/compose";
-import type { SubjectEdge, WorkloadRequest } from "../../../../experiments/ppr-027/config";
-import { edgeOf } from "../../../../experiments/ppr-027/config";
+import type { SubjectEdge, WorkloadRequest } from "../shared/seam";
 import {
   baselineTasksOf,
   buildCellCorpus,
+  composeExperimentStack,
   createDirectBaselineExecutor,
   createExperimentDriver,
   createOptimizedBaselineExecutor,
+  createSyntheticSupply,
+  type ExperimentRecoveryPlanInputs,
+  type ExperimentStack,
+  edgeOf,
+  experimentTraceSource,
+  outcomeOf,
   type RequestRecord,
-} from "../../../../experiments/ppr-027/driver";
-import { experimentTraceSource } from "../../../../experiments/ppr-027/sweep";
-import { createSyntheticSupply, outcomeOf } from "../../../../experiments/ppr-027/transport";
+} from "../shared/seam";
 import { canonicalJson, createEvaluationDigestPort, type EvaluationDigestPort } from "./canonical";
 import {
   ARM_ATTEMPT_BOUNDS,
