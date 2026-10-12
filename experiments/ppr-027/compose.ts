@@ -61,6 +61,20 @@ import type {
   ModelProvider,
   ProviderDispatchContext,
 } from "../../src/modules/models/ports/model-provider";
+import type { OptimizationConstraint } from "../../src/platform/execution-ir/constraints";
+import type { CostClaim } from "../../src/platform/execution-ir/cost-model";
+import type { OptimizationDecisionRecord } from "../../src/platform/execution-ir/decision-record";
+import type { ExecutionIr, IrDigestPort } from "../../src/platform/execution-ir/ir";
+import { attributeFailure } from "../../src/platform/failure-recovery/attribution";
+import type { FailureClass, FailureSignal } from "../../src/platform/failure-recovery/catalog";
+import type {
+  RecoveryPlan,
+  RecoveryPlanConfiguration,
+  RecoveryPlanStepFrame,
+} from "../../src/platform/failure-recovery/plan";
+import { decideSupplyRetry } from "../../src/platform/failure-recovery/supply-retry";
+import { selectModelRepresentation } from "../../src/platform/model-economics/model-selection";
+import type { QualityFacts } from "../../src/platform/model-economics/vocabulary";
 import type { ApiWorld } from "../../tests/unit/api/world";
 import { ACTOR_ID, seedApiWorld } from "../../tests/unit/api/world";
 import {
@@ -114,6 +128,65 @@ export interface ComposeExperimentOptions {
   readonly retryCooldownMs?: number;
   /** The sleeper (injectable for hermetic tests). */
   readonly sleeper?: (ms: number) => Promise<void>;
+  /**
+   * PCR-002 (ACR-008 §6): the recovery wiring at THIS traced retry/
+   * failover seam — the plan-composition mode rides the
+   * `RecoveryConfiguration` with plan mode DEFAULT OFF. ABSENT (or
+   * `planMode: "off"`) preserves the traced one-failover-retry posture
+   * byte-for-byte; `planMode: "on"` is an evaluation/tenant
+   * configuration ONLY — no code path promotes it by default.
+   */
+  readonly recovery?: ExperimentRecoveryWiring;
+}
+
+/**
+ * The recovery wiring at the traced seam: the plan mode (DEFAULT OFF)
+ * plus — when plan mode is ON — the evaluation/tenant-supplied plan
+ * composition inputs. All inputs are EXPLICIT policy inputs (never
+ * ambient, never self-raising); plan mode ON without its plan inputs
+ * fails closed at the wiring's decision core.
+ */
+export interface ExperimentRecoveryWiring {
+  /** The plan mode — DEFAULT OFF (absent = off = the byte-preserved posture). */
+  readonly planMode?: "off" | "on";
+  /** The plan composition inputs — REQUIRED when planMode is "on". */
+  readonly plan?: ExperimentRecoveryPlanInputs;
+}
+
+/** The evaluation/tenant-supplied plan composition inputs (plan mode ON). */
+export interface ExperimentRecoveryPlanInputs {
+  /** The recovery-plan configuration (the step bound is REQUIRED — never ambient). */
+  readonly planConfiguration: RecoveryPlanConfiguration;
+  /** The governing quality facts (the assurance floor — inviolable). */
+  readonly qualityFacts: QualityFacts;
+  /** The governing constraint set (hard constraints enforced). */
+  readonly constraints: readonly OptimizationConstraint[];
+  /** The retry path's declared claim (the declared economics per retry attempt). */
+  readonly retryClaim: CostClaim;
+  /**
+   * The declared provider-failover alternates (capability-equal
+   * alternate SUPPLIES for the same selected representation — the
+   * claims are the evaluation's declared economics per alternate
+   * supply).
+   */
+  readonly providerAlternates: readonly {
+    readonly providerId: string;
+    readonly claim: CostClaim;
+  }[];
+  /** The governed Execution IR the recovery's decisions belong to. */
+  readonly ir: ExecutionIr;
+  /** The governed IR's model-selection step id (a generative step). */
+  readonly stepId: string;
+  /** The digest port (content addressing — injected, never ambient). */
+  readonly digest: IrDigestPort;
+  /** The observer of the composed plan (the evaluation's evidence hook). */
+  readonly onPlanComposed?: (plan: RecoveryPlan) => void;
+  /**
+   * The observer of the plan steps' WORK-049 decision records — the
+   * EXISTING seam's append-only VALUES (the caller appends them at its
+   * own seam; this wiring creates no new durable surface).
+   */
+  readonly onDecisionRecords?: (records: readonly OptimizationDecisionRecord[]) => void;
 }
 
 /** The synthetic model identity for one surface (neutral strings). */
@@ -486,6 +559,15 @@ export async function composeExperimentStack(
    * attempt 1 round-robins across the registered supplies; the ONE policy
    * retry fails over to the NEXT supply (multi cells) or re-addresses the
    * same supply (single cells). Both attempts are recorded honestly.
+   *
+   * PCR-002 (ACR-008 §6): the traced one-failover-retry posture is now
+   * the typed decision core of the failure-recovery plane
+   * (`decideSupplyRetry`), wired HERE behind the `RecoveryConfiguration`
+   * with plan mode DEFAULT OFF — the traced posture is byte-preserved
+   * (plan mode off = the exact dispatch sequence below); plan mode ON
+   * (an evaluation/tenant configuration only) composes the bounded
+   * recovery plan through the PCR-001 composer and executes its
+   * dispatch-representable steps instead.
    */
   let roundRobin = 0;
   const connectionForAttempt = (attempt: number): string => {
@@ -505,16 +587,89 @@ export async function composeExperimentStack(
   };
 
   /**
+   * PCR-002: the traced seam's recovery configuration — plan mode rides
+   * the configuration (DEFAULT OFF: absent = off; the byte-preserved
+   * one-failover-retry posture). The base policy numbers mirror the
+   * traced posture: ONE policy retry at the first attempt. Plan mode ON
+   * carries the evaluation's declared plan configuration wholesale (the
+   * plan step bound rides the configuration — never ambient).
+   */
+  const recoveryConfiguration =
+    options.recovery?.planMode === "on" && options.recovery.plan !== undefined
+      ? { ...options.recovery.plan.planConfiguration, planMode: "on" as const }
+      : {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+          planMode: options.recovery?.planMode ?? "off",
+        };
+
+  /**
+   * The failure-signal mapping of the synthetic supplies' closed fault
+   * vocabulary onto the failure-recovery plane's own closed observation
+   * signals (the CALLER-side mapping — the plane never imports a
+   * transport taxonomy; an unknown category fails closed).
+   */
+  const RECOVERY_SIGNAL_OF: Readonly<
+    Record<
+      string,
+      {
+        readonly signal: FailureSignal;
+        readonly failureClass: FailureClass;
+        readonly evidence:
+          | { readonly kind: "provider"; readonly providerErrorClass: "rate-limited" | "capacity" }
+          | { readonly kind: "infrastructure"; readonly transient: true };
+      }
+    >
+  > = {
+    "rate-limit": {
+      signal: "provider-rate-limited",
+      failureClass: "provider",
+      evidence: { kind: "provider", providerErrorClass: "rate-limited" },
+    },
+    timeout: {
+      signal: "transport-timeout",
+      failureClass: "infrastructure",
+      evidence: { kind: "infrastructure", transient: true },
+    },
+    "provider-unavailable": {
+      signal: "provider-capacity",
+      failureClass: "provider",
+      evidence: { kind: "provider", providerErrorClass: "capacity" },
+    },
+  };
+
+  /** The neutral outcome mirror the decision core consumes. */
+  const outcomeMirrorOf = (
+    outcome: ModelCallOutcome,
+  ): { readonly kind: "provider-success" | "provider-failure"; readonly retryable: boolean } => ({
+    kind: outcome.kind,
+    retryable: outcome.kind === "provider-failure" ? outcome.failure.retryable : false,
+  });
+
+  /**
    * The physical-dispatch occurrence: every REAL provider exposure draws
    * independently (the occurrence suffix), while the task payload stays
    * idempotency-stable — a repeated logical request with a durable
    * successful outcome REPLAYS (zero provider exposure); a re-dispatch
    * after a FAILED outcome (the fresh-key mechanism) draws fresh provider
    * behavior, exactly as a real re-issued request would.
+   *
+   * PCR-002: the retry decision runs through the failure-recovery plane's
+   * typed decision core (`decideSupplyRetry`) behind the
+   * `RecoveryConfiguration` — plan mode DEFAULT OFF byte-preserves the
+   * traced posture (one retry on a retryable provider failure of the
+   * first attempt, failing over to the next supply); plan mode ON (an
+   * evaluation/tenant configuration only) composes the bounded recovery
+   * plan through the PCR-001 composer over caller-supplied frames and
+   * executes its dispatch-representable steps, recording every plan
+   * step's decision through the EXISTING WORK-049 seam (append-only
+   * values at the caller's observer).
    */
   let dispatchOccurrence = 0;
   const dispatchWithPolicyRetry = async (
     envelope: RailEnvelope,
+    executionId: string,
   ): Promise<{ outcome: ModelCallOutcome; providerId: string; attempt: number }> => {
     dispatchOccurrence += 1;
     const occurrence = dispatchOccurrence;
@@ -529,7 +684,83 @@ export async function composeExperimentStack(
       firstConnection,
       buildModelRequest(dispatchEnvelope),
     );
-    if (first.outcome.kind === "provider-failure" && first.outcome.failure.retryable) {
+    const decision = decideSupplyRetry({
+      attemptsUsed: 1,
+      lastOutcome: outcomeMirrorOf(first.outcome),
+      configuration: recoveryConfiguration,
+      ...(options.recovery?.plan !== undefined && first.outcome.kind === "provider-failure"
+        ? {
+            plan: {
+              frames: planFramesOf(dispatchEnvelope, first.outcome, occurrence, executionId),
+              qualityFacts: options.recovery.plan.qualityFacts,
+              constraints: options.recovery.plan.constraints,
+              decision: {
+                ir: options.recovery.plan.ir,
+                scope: {
+                  applicationId: world.applicationId,
+                  tenantId: world.tenantId,
+                  executionId,
+                  recordedAt: new Date().toISOString(),
+                },
+              },
+              digest: options.recovery.plan.digest,
+            },
+          }
+        : {}),
+    });
+    if (decision.kind === "execute-plan") {
+      // PLAN MODE ON (an evaluation/tenant configuration ONLY): execute
+      // the composed plan's dispatch-representable steps — retry moves
+      // re-address the current supply, provider-failover re-routes
+      // dispatch on the step's OWN selected route. The plan's bounded
+      // step count IS the retry bound (plans never loop, never exceed
+      // their bound); a non-dispatch-representable move stops execution
+      // honestly (the seam returns the last outcome with the plan and
+      // its records already observed).
+      options.recovery?.plan?.onPlanComposed?.(decision.plan);
+      options.recovery?.plan?.onDecisionRecords?.(decision.decisionRecords);
+      let outcome = first.outcome;
+      let connectionId = firstConnection;
+      let attempt = 1;
+      for (const step of decision.plan.steps) {
+        let nextConnection = connectionId;
+        if (step.move.kind === "retry") {
+          nextConnection = connectionId;
+        } else if (step.move.kind === "re-route" && step.move.dimension === "provider") {
+          const selectedRoute = step.facts.reroute.provider?.selection.selected?.route;
+          if (selectedRoute === undefined || selectedRoute === null) {
+            break;
+          }
+          const connection = connections.find(
+            (candidate) =>
+              candidate.endpointUrl.replace("synthetic://", "") === selectedRoute.provider,
+          );
+          if (connection === undefined) {
+            break;
+          }
+          nextConnection = connection.connectionId;
+        } else {
+          // A move this supply seam cannot execute (model/substrate
+          // re-route, escalation, repair) — the honest stop.
+          break;
+        }
+        await sleep(retryCooldownMs);
+        attempt += 1;
+        connectionId = nextConnection;
+        const next = await gateway.complete(
+          PRINCIPAL,
+          world.applicationId,
+          connectionId,
+          buildModelRequest({ ...dispatchEnvelope, attempt }),
+        );
+        outcome = next.outcome;
+        if (next.outcome.kind === "provider-success") {
+          break;
+        }
+      }
+      return { outcome, providerId: supplyOfConnection(connectionId), attempt };
+    }
+    if (decision.kind === "retry-once-next-supply") {
       await sleep(retryCooldownMs);
       const secondConnection = connectionForAttempt(2);
       const second = await gateway.complete(
@@ -545,6 +776,99 @@ export async function composeExperimentStack(
       };
     }
     return { outcome: first.outcome, providerId: supplyOfConnection(firstConnection), attempt: 1 };
+  };
+
+  /**
+   * PCR-002 (plan mode ON): build the caller-supplied per-step frames —
+   * the driver-side projection of the then-current failure state as the
+   * bounded ladder is consumed: the SAME attributed root failure
+   * persists, the incumbent supply rotates through the registered
+   * failover ladder (the projected post-failover state), the retry
+   * attempt numbers stay coherent, and the provider-failover alternates
+   * exclude the projected incumbent (a capability-equal alternate for
+   * the SAME selected representation). The frames are the CALLER's
+   * declared projection (the pure plane never derives them) — one frame
+   * per step the configured plan bound admits.
+   */
+  const planFramesOf = (
+    envelope: RailEnvelope,
+    outcome: ModelCallOutcome,
+    occurrence: number,
+    executionId: string,
+  ): RecoveryPlanStepFrame[] => {
+    const plan = options.recovery?.plan;
+    if (plan === undefined || outcome.kind !== "provider-failure") {
+      throw new Error("plan frames require the plan inputs and a provider-failure outcome");
+    }
+    const mapping = RECOVERY_SIGNAL_OF[outcome.failure.category];
+    if (mapping === undefined) {
+      throw new Error(`unknown provider failure category ${outcome.failure.category}`);
+    }
+    const model = syntheticModelOf(envelope.surface);
+    const observedAt = new Date().toISOString();
+    const supplies = connections.map((candidate) =>
+      candidate.endpointUrl.replace("synthetic://", ""),
+    );
+    const attribution = attributeFailure(
+      {
+        signal: mapping.signal,
+        component: "model-rail",
+        stepId: plan.stepId,
+        routeRef: { provider: supplies[0] ?? "supply-a", model },
+        detail: `the synthetic supply failed with ${outcome.failure.category} (attempt 1, occurrence ${occurrence})`,
+        observedAt,
+        observationDigest: plan.digest.sha256Hex(
+          `ppr-027:fault:${outcome.failure.category}:${envelope.streamKey}:${occurrence}`,
+        ),
+      },
+      mapping.failureClass,
+      mapping.evidence,
+      plan.digest,
+    );
+    const maxPlanSteps = plan.planConfiguration.maxPlanSteps;
+    const frames: RecoveryPlanStepFrame[] = [];
+    for (let index = 0; index < maxPlanSteps; index += 1) {
+      const incumbentSupply = supplies[index % supplies.length] ?? "supply-a";
+      const alternates = plan.providerAlternates
+        .filter((alternate) => alternate.providerId !== incumbentSupply)
+        .map((alternate) => ({
+          candidateId: `${alternate.providerId}-${model}`,
+          route: { provider: alternate.providerId, model },
+          representationClass: "sufficient-model" as const,
+          claim: alternate.claim,
+        }));
+      frames.push({
+        attribution,
+        context: {
+          executionId,
+          stepId: plan.stepId,
+          attemptsUsed: 1 + index,
+          incumbentRoute: { provider: incumbentSupply, model },
+        },
+        facts: {
+          retry: { nextAttempt: 2 + index, claim: plan.retryClaim },
+          reroute: {
+            model: null,
+            substrate: null,
+            provider:
+              alternates.length === 0
+                ? null
+                : {
+                    selection: selectModelRepresentation({
+                      ir: plan.ir,
+                      stepId: plan.stepId,
+                      candidates: alternates,
+                      qualityFacts: plan.qualityFacts,
+                      constraints: plan.constraints,
+                    }),
+                    declaredCandidates: alternates,
+                  },
+          },
+          escalation: null,
+        },
+      });
+    }
+    return frames;
   };
 
   const executions = world.executions;
@@ -732,7 +1056,7 @@ export async function composeExperimentStack(
     // ----------------------------------------------------------------------
     let dispatch: { outcome: ModelCallOutcome; providerId: string; attempt: number };
     try {
-      dispatch = await dispatchWithPolicyRetry(envelope);
+      dispatch = await dispatchWithPolicyRetry(envelope, record.id);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await executions.recordStepEvent(

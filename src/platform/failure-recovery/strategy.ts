@@ -111,8 +111,10 @@ import {
   type FailureClass,
   MAX_PLAN_STEPS,
   MAX_RETRY_ATTEMPTS,
+  RECOVERY_PLAN_MODES,
   type RecoveryFailClosedCode,
   type RecoveryInadmissibleCode,
+  type RecoveryPlanMode,
   type RecoveryStrategy,
   type RerouteDimension,
   reject,
@@ -121,6 +123,12 @@ import {
   VERIFICATION_DEPTHS,
   type VerificationDepth,
 } from "./catalog";
+import {
+  measuredProvenanceOf,
+  type ObservedReliabilityFacts,
+  type ObservedRouteReliability,
+  validateObservedReliabilityFacts,
+} from "./measured";
 
 // ---------------------------------------------------------------------------
 // The selection input (typed, bounded, total)
@@ -145,6 +153,14 @@ export interface RecoveryConfiguration {
   readonly continuationStepBound: number;
   /** The step bound for recovery plans ([1, 16]) — validated when present. */
   readonly maxPlanSteps?: number;
+  /**
+   * The recovery-plan composition mode (ACR-008 §6; PCR-002) — DEFAULT
+   * OFF: an ABSENT planMode is `off` (the byte-preserved current
+   * posture at the wired seam). `on` is an evaluation/tenant
+   * configuration ONLY; the wiring fails closed without its explicit
+   * plan inputs — no code path promotes plan mode by default.
+   */
+  readonly planMode?: RecoveryPlanMode;
 }
 
 /** Total, deterministic validation of the recovery configuration. */
@@ -188,6 +204,14 @@ export function validateRecoveryConfiguration(value: RecoveryConfiguration): Rec
     ) {
       reject("recovery-input-shape", `maxPlanSteps must be an integer in [1, ${MAX_PLAN_STEPS}]`);
     }
+  }
+  if (
+    record.planMode !== undefined &&
+    !(RECOVERY_PLAN_MODES as readonly string[]).includes(record.planMode as string)
+  ) {
+    reject("recovery-input-shape", "planMode is outside the closed vocabulary", {
+      got: boundedDetail(String(record.planMode)),
+    });
   }
   return value;
 }
@@ -414,6 +438,15 @@ export interface RecoverySelectionInput {
   readonly constraints: readonly OptimizationConstraint[];
   /** The bounded recovery configuration (explicit policy inputs). */
   readonly configuration: RecoveryConfiguration;
+  /**
+   * The observed-reliability facts — the OPTIONAL measured-evidence
+   * input (ACR-008 §4; PCR-002). ABSENCE (undefined or null) is the
+   * default state and selects byte-identically to the declared-
+   * facts-only selection (the reorder pass never runs — discrimination-
+   * tested); PRESENCE may reorder candidate preferences among the
+   * ALREADY-admissible verdicts, never their admissibility.
+   */
+  readonly measured?: ObservedReliabilityFacts | null;
   /** The digest port (content addressing — injected, never ambient). */
   readonly digest: IrDigestPort;
 }
@@ -482,6 +515,13 @@ export interface RecoverySelection {
   readonly facts: GoverningFacts;
   /** The frozen, human-auditable selection basis. */
   readonly selectionBasis: string;
+  /**
+   * The measured-facts provenance (ACR-008 §4; PCR-002) — present IFF
+   * the selection consumed observed-reliability facts (the auditable
+   * which-observations/which-window statement). ABSENT when the
+   * selection ran declared-facts-only — the byte-identical default.
+   */
+  readonly measuredProvenance?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +581,12 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
   const candidates: StrategyCandidate[] = [];
   const structural: StrategyVerdict[] = [];
   const disciplineVerdicts: StrategyVerdict[] = [];
+  // The candidate route registry (ACR-008 §4; PCR-002): the measured-
+  // evidence preference pass resolves each candidate's route through
+  // this registry — populated during candidate assembly, consumed ONLY
+  // by the ordering of the already-admissible verdicts (never by the
+  // admissibility machinery — the invariant-13 boundary is structural).
+  const candidateRoutes = new Map<string, { provider: string; model: string }>();
 
   // --- RETRY: the typed retryability discipline -------------------------
   if (facts.retry !== null && facts.retry !== undefined) {
@@ -586,6 +632,9 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
       strategy: "retry",
       claim: retryClaim,
     };
+    if (context.incumbentRoute !== undefined) {
+      candidateRoutes.set(candidate.candidateId, { ...context.incumbentRoute });
+    }
     const evaluation = evaluateAdmissibility(
       {
         candidateId: candidate.candidateId,
@@ -686,6 +735,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
           },
         },
       });
+      candidateRoutes.set("reroute-model", { ...selected.route });
     }
   }
 
@@ -817,6 +867,7 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
           },
         },
       });
+      candidateRoutes.set("reroute-provider", { ...selected.route });
     }
   }
 
@@ -995,28 +1046,71 @@ export function selectRecoveryStrategy(input: RecoverySelectionInput): RecoveryS
   const admissibleVerdicts = verdicts
     .filter((verdict) => verdict.admissible)
     .sort(compareStrategies);
-  const ordered = [...admissibleVerdicts, ...verdicts.filter((verdict) => !verdict.admissible)];
-  const selected = admissibleVerdicts[0] ?? null;
+
+  // --- THE MEASURED-EVIDENCE PREFERENCE (ACR-008 §4; PCR-002) ------------
+  // OPTIONAL input: ABSENCE (undefined or null) never enters this block —
+  // the ordering, the selected verdict and the serialized selection are
+  // byte-identical to the declared-facts-only selection (discrimination-
+  // tested; the program's honesty anchor). PRESENCE validates the facts
+  // (fail-closed), derives the auditable provenance and re-orders the
+  // ALREADY-ADMISSIBLE verdicts' preferences — the invariant-13 boundary:
+  // the admissibility verdicts, their typed reason codes, the governing
+  // floors/ceilings and the policy restrictions were all computed ABOVE
+  // from the declared facts alone and are never revisited (measured
+  // facts can reorder preferences; they can never lower a quality floor,
+  // raise a budget ceiling, bypass a policy restriction or admit an
+  // otherwise-inadmissible move — the re-admission is unrepresentable
+  // because the reorder operates exclusively on the admissible list).
+  let measuredProvenance: string | undefined;
+  let preferred = admissibleVerdicts;
+  const measuredInput = input.measured ?? null;
+  if (measuredInput !== null) {
+    const measured = validateObservedReliabilityFacts(measuredInput);
+    measuredProvenance = measuredProvenanceOf(measured, input.digest);
+    preferred = measuredPreferenceOrder(admissibleVerdicts, measured, candidateRoutes);
+  }
+
+  const ordered = [...preferred, ...verdicts.filter((verdict) => !verdict.admissible)];
+  const selected = preferred[0] ?? null;
 
   if (selected === null) {
     // The zero-recovery outcome: ALWAYS representable, typed, honest
     // (architecture invariant 7 — fail-closed, never a silent default).
-    return {
-      kind: "fail-closed",
-      selected: null,
-      failClosedCode: "no-admissible-strategy",
-      verdicts: ordered,
-      facts: governing,
-      selectionBasis: RECOVERY_SELECTION_BASIS,
-    };
+    return measuredProvenance === undefined
+      ? {
+          kind: "fail-closed",
+          selected: null,
+          failClosedCode: "no-admissible-strategy",
+          verdicts: ordered,
+          facts: governing,
+          selectionBasis: RECOVERY_SELECTION_BASIS,
+        }
+      : {
+          kind: "fail-closed",
+          selected: null,
+          failClosedCode: "no-admissible-strategy",
+          verdicts: ordered,
+          facts: governing,
+          selectionBasis: RECOVERY_SELECTION_BASIS,
+          measuredProvenance,
+        };
   }
-  return {
-    kind: "recover",
-    selected,
-    verdicts: ordered,
-    facts: governing,
-    selectionBasis: RECOVERY_SELECTION_BASIS,
-  };
+  return measuredProvenance === undefined
+    ? {
+        kind: "recover",
+        selected,
+        verdicts: ordered,
+        facts: governing,
+        selectionBasis: RECOVERY_SELECTION_BASIS,
+      }
+    : {
+        kind: "recover",
+        selected,
+        verdicts: ordered,
+        facts: governing,
+        selectionBasis: RECOVERY_SELECTION_BASIS,
+        measuredProvenance,
+      };
 }
 
 // ---------------------------------------------------------------------------
@@ -1046,6 +1140,63 @@ export function compareStrategies(a: StrategyVerdict, b: StrategyVerdict): numbe
     return a.candidateId < b.candidateId ? -1 : 1;
   }
   return 0;
+}
+
+// ---------------------------------------------------------------------------
+// The measured-evidence preference order (ACR-008 §4; PCR-002)
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply the measured-evidence preference order to the ALREADY-admissible
+ * verdicts (the invariant-13 boundary's structural enforcement): the
+ * input list is the declared-facts-only deterministic order (cost
+ * ascending → strategy rank → candidateId — fully total), and the
+ * measured facts may ONLY re-arrange preferences within it:
+ *
+ *  - G1 — routes with a measured fact and NO active cooldown, ordered
+ *    by measured success rate DESCENDING (ties keep the declared
+ *    order — every tie resolves on content);
+ *  - G2 — routes without a measured fact, in their declared order
+ *    (the declared-only preference is preserved among unmeasured
+ *    candidates);
+ *  - G3 — routes with an ACTIVE measured cooldown, demoted to the
+ *    back in their declared order (the measured evidence that the
+ *    route is currently degrading).
+ *
+ * The partition and the rate ordering are pure functions of the verdict
+ * identities, the candidate routes and the measured facts — the same
+ * inputs always produce the byte-identical order (determinism including
+ * tie-breaks). No verdict's admissibility, reason code, evaluation or
+ * governing fact is read or written here — the reorder CANNOT admit an
+ * inadmissible move (it never sees one) and CANNOT touch a floor or a
+ * ceiling (it never recomputes admissibility).
+ */
+function measuredPreferenceOrder(
+  admissible: readonly StrategyVerdict[],
+  measured: ObservedReliabilityFacts,
+  candidateRoutes: ReadonlyMap<string, { provider: string; model: string }>,
+): StrategyVerdict[] {
+  const factOf = new Map<string, ObservedRouteReliability>();
+  for (const fact of measured.routes) {
+    factOf.set(`${fact.route.provider}/${fact.route.model}`, fact);
+  }
+  const indexed = admissible.map((verdict, index) => ({ verdict, index }));
+  const healthy: { verdict: StrategyVerdict; index: number; rate: number }[] = [];
+  const unmeasured: { verdict: StrategyVerdict; index: number }[] = [];
+  const cooldown: { verdict: StrategyVerdict; index: number }[] = [];
+  for (const entry of indexed) {
+    const route = candidateRoutes.get(entry.verdict.candidateId);
+    const fact = route === undefined ? undefined : factOf.get(`${route.provider}/${route.model}`);
+    if (fact === undefined) {
+      unmeasured.push(entry);
+    } else if (fact.cooldown.active) {
+      cooldown.push(entry);
+    } else {
+      healthy.push({ ...entry, rate: fact.measuredSuccessRate });
+    }
+  }
+  healthy.sort((a, b) => b.rate - a.rate || a.index - b.index);
+  return [...healthy, ...unmeasured, ...cooldown].map((entry) => entry.verdict);
 }
 
 // ---------------------------------------------------------------------------

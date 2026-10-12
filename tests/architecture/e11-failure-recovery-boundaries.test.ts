@@ -122,7 +122,7 @@ const EXECUTION_STATES = [
 
 describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
   test("C1 the plane depends ONLY on execution-ir, the declared dependency planes, local modules and node builtins", () => {
-    expect(PLANE_FILES).toHaveLength(9); // + plan.ts (ACR-008 §2 — PCR-001)
+    expect(PLANE_FILES).toHaveLength(11); // + plan.ts (ACR-008 §2 — PCR-001) + measured.ts, supply-retry.ts (ACR-008 §4/§6 — PCR-002)
     for (const file of PLANE_FILES) {
       const specifiers = extractImportSpecifiers(read(file));
       for (const specifier of specifiers) {
@@ -293,6 +293,10 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
     expect(catalog).toContain("export const VERIFICATION_DEPTHS");
     // The plan step bound is declared (ACR-008 §2).
     expect(catalog).toContain("export const MAX_PLAN_STEPS");
+    // The measured-evidence bounds are declared (ACR-008 §4 — PCR-002).
+    expect(catalog).toContain("export const MAX_MEASURED_ROUTE_FACTS");
+    // The plan-mode vocabulary is closed (ACR-008 §6 — PCR-002).
+    expect(catalog).toContain("export const RECOVERY_PLAN_MODES");
     // The inadmissibility reason codes are closed.
     expect(catalog).toContain("export const RECOVERY_INADMISSIBLE_CODES");
     // The fail-closed reason codes are closed.
@@ -308,8 +312,10 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
       "src/platform/failure-recovery/escalation.ts",
       "src/platform/failure-recovery/fingerprint.ts",
       "src/platform/failure-recovery/index.ts",
+      "src/platform/failure-recovery/measured.ts",
       "src/platform/failure-recovery/plan.ts",
       "src/platform/failure-recovery/strategy.ts",
+      "src/platform/failure-recovery/supply-retry.ts",
     ]);
   });
 
@@ -398,5 +404,56 @@ describe("E1.1 failure-recovery architecture boundaries (WORK-055)", () => {
       /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE)\b/,
     );
     expect(planModule).not.toContain("transitionTable");
+  });
+
+  test("C11 the measured-evidence facts and the supply-retry wiring hold no ambient facts, no new durable surface and no default-on plan mode (ACR-008 §4/§6; PCR-002)", () => {
+    const measuredModule = read("src/platform/failure-recovery/measured.ts");
+    const wiringModule = read("src/platform/failure-recovery/supply-retry.ts");
+    const strategyModule = read("src/platform/failure-recovery/strategy.ts");
+    // NO AMBIENT FACTS: the measured-evidence input is an explicit
+    // selection input — never an environment read, never module state,
+    // never a clock (C7 covers the plane-wide scans; these pin the new
+    // surfaces explicitly).
+    for (const module of [measuredModule, wiringModule, strategyModule]) {
+      expect(module).not.toContain("process.env");
+      expect(module).not.toContain("Date.now");
+      expect(module).not.toMatch(/new\s+Date\(/);
+      expect(module).not.toContain("Math.random");
+    }
+    // The measured facts are consumed ONLY by the preference ordering
+    // of the ALREADY-admissible verdicts (the invariant-13 boundary is
+    // structural): the strategy module's reorder pass never re-runs
+    // admissibility and the wiring module never re-implements selection.
+    expect(strategyModule).toContain("measuredPreferenceOrder(admissibleVerdicts");
+    expect(wiringModule).not.toContain("evaluateAdmissibility(");
+    expect(wiringModule).not.toContain("governingFacts(");
+    expect(wiringModule).not.toContain("compareStrategies(");
+    // REUSE, NEVER REBUILD: the wiring composes the EXISTING composer
+    // and records through the EXISTING WORK-049 seam — no second
+    // composition path, no second record builder.
+    expect(wiringModule).toContain("composeRecoveryPlan(");
+    expect(wiringModule).toContain("buildRecoveryDecisionRecord(");
+    expect(wiringModule).toContain("recoveryClaimsOf(");
+    // NO NEW DURABLE SURFACE: the wiring module holds no store, no SQL,
+    // no execution-state vocabulary — the decision records are VALUES
+    // appended by the caller through the EXISTING WORK-049 store.
+    expect(wiringModule).not.toMatch(
+      /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|SELECT\s+.*\s+FROM|CREATE\s+TABLE)\b/,
+    );
+    expect(wiringModule).not.toContain("DatabasePort");
+    expect(wiringModule).not.toContain("transitionTable");
+    for (const state of EXECUTION_STATES) {
+      expect(wiringModule).not.toContain(`"${state}"`);
+    }
+    // PLAN MODE IS NEVER PROMOTED BY DEFAULT: the only default in the
+    // plane is OFF (an absent planMode is `off`); no code path defaults
+    // the plan mode to `on` and the fail-closed branch requires the
+    // explicit plan inputs.
+    expect(wiringModule).toContain('configuration.planMode ?? "off"');
+    expect(wiringModule).not.toContain('?? "on"');
+    expect(wiringModule).toContain("plan mode on requires its plan composition input (fail closed");
+    // The migration count and the sole-decision-store proof of C4
+    // already cover the durable surface; this test pins the wiring's
+    // own module against introducing one.
   });
 });

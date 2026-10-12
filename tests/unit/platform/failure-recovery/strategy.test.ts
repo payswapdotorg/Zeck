@@ -12,6 +12,7 @@ import type { CandidateEvaluation } from "../../../../src/platform/execution-ir/
 import { attributeFailure } from "../../../../src/platform/failure-recovery/attribution";
 import {
   CONTEXT_REPAIRABLE_CLASSES,
+  FailureRecoveryError,
   RECOVERY_STRATEGIES,
   REROUTE_DIMENSIONS,
   VERIFICATION_DEPTHS,
@@ -845,5 +846,142 @@ describe("recovery strategy selection — the ACR-008 §3 move-catalog extension
     );
     expect(selection.kind).toBe("recover");
     expect(selection.selected?.strategy).toBe("context-repair");
+  });
+});
+
+describe("recovery strategy selection — the measured-evidence input (ACR-008 §4 — PCR-002)", () => {
+  test("the measured input is OPTIONAL: absence selects byte-identically to the declared-facts-only selection", () => {
+    const declaredOnly = select(infraAttribution(), factsOf());
+    const withNull = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: {
+        executionId: "00000000-0000-7000-8000-0000000000cc",
+        stepId: "generate",
+        attemptsUsed: 0,
+        incumbentRoute: { provider: "rail-a", model: "model-x" },
+      },
+      facts: factsOf(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: CONFIGURATION,
+      digest,
+      measured: null,
+    });
+    expect(JSON.stringify(withNull)).toBe(JSON.stringify(declaredOnly));
+    expect(declaredOnly.measuredProvenance).toBeUndefined();
+  });
+
+  test("a measured corpus naming the incumbent route reorders the retry preference ahead of the cheaper re-routes", () => {
+    // Declared-only: cost ascending selects the substrate re-route
+    // (242) over the model re-route (316) and retry (421). Measured
+    // facts for the incumbent route (0.99, not cooling) reorder the
+    // preference: the retry wins — the admissibility set is unchanged.
+    const declaredOnly = select(infraAttribution(), factsOf());
+    expect(declaredOnly.selected?.candidateId).not.toBe("retry-attempt-1");
+    const measured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: {
+        executionId: "00000000-0000-7000-8000-0000000000cc",
+        stepId: "generate",
+        attemptsUsed: 0,
+        incumbentRoute: { provider: "rail-a", model: "model-x" },
+      },
+      facts: factsOf(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: CONFIGURATION,
+      digest,
+      measured: {
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.99,
+            latencySummary: { p50Ms: 120, p95Ms: 400 },
+            cooldown: { active: false },
+            basis: {
+              sourceObservationId: "recovery-observer-1",
+              windowStart: "2026-10-01T00:00:00.000Z",
+              windowEnd: "2026-10-08T00:00:00.000Z",
+              sampleCount: 1000,
+            },
+          },
+        ],
+      },
+    });
+    expect(measured.selected?.candidateId).toBe("retry-attempt-1");
+    expect(measured.measuredProvenance).toMatch(/^measured;digest=[0-9a-f]{64}/);
+    // Every verdict's admissibility is unchanged (only preference moved).
+    expect(measured.verdicts.length).toBe(declaredOnly.verdicts.length);
+    for (const verdict of declaredOnly.verdicts) {
+      const counterpart = measured.verdicts.find(
+        (candidate) => candidate.candidateId === verdict.candidateId,
+      );
+      expect(counterpart?.admissible).toBe(verdict.admissible);
+    }
+  });
+
+  test("an active measured cooldown demotes the incumbent route's retry preference", () => {
+    const measured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: {
+        executionId: "00000000-0000-7000-8000-0000000000cc",
+        stepId: "generate",
+        attemptsUsed: 0,
+        incumbentRoute: { provider: "rail-a", model: "model-x" },
+      },
+      facts: factsOf(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: CONFIGURATION,
+      digest,
+      measured: {
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.99,
+            latencySummary: { p50Ms: 120, p95Ms: 400 },
+            cooldown: { active: true, remainingMs: 30_000 },
+            basis: {
+              sourceObservationId: "recovery-observer-1",
+              windowStart: "2026-10-01T00:00:00.000Z",
+              windowEnd: "2026-10-08T00:00:00.000Z",
+              sampleCount: 1000,
+            },
+          },
+        ],
+      },
+    });
+    expect(measured.selected?.candidateId).not.toBe("retry-attempt-1");
+    // The cooldown-demoted retry sorts AFTER the unmeasured candidates.
+    const order = measured.verdicts.filter((v) => v.admissible).map((v) => v.candidateId);
+    expect(order[order.length - 1]).toBe("retry-attempt-1");
+  });
+
+  test("the planMode configuration field is validated against the closed vocabulary", () => {
+    const attempt = (planMode: unknown) =>
+      selectRecoveryStrategy({
+        attribution: infraAttribution(),
+        context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+        facts: factsOf(),
+        qualityFacts: { requiredQuality: 0.85 },
+        constraints: constraints(),
+        configuration: {
+          maxRetryAttempts: 3,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+          planMode,
+        } as never,
+        digest,
+      });
+    try {
+      attempt("auto");
+      throw new Error("expected a typed rejection");
+    } catch (error) {
+      expect(error).toBeInstanceOf(FailureRecoveryError);
+      expect((error as FailureRecoveryError).invariant).toBe("recovery-input-shape");
+    }
+    // The legal values pass (off is the default; on is explicit).
+    expect(attempt("off").selected).toBeDefined();
+    expect(attempt("on").selected).toBeDefined();
   });
 });

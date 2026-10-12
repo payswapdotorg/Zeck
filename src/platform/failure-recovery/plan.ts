@@ -69,6 +69,7 @@ import {
   reject,
   SHA256_HEX_PATTERN,
 } from "./catalog";
+import type { ObservedReliabilityFacts } from "./measured";
 import type {
   RecoveryConfiguration,
   RecoveryContext,
@@ -141,6 +142,15 @@ export interface RecoveryPlanStepFrame {
   readonly context: RecoveryContext;
   /** The then-current economics facts (REQUIRED — the selection input). */
   readonly facts: RecoveryFacts;
+  /**
+   * The then-current observed-reliability facts — the OPTIONAL
+   * measured-evidence input (ACR-008 §4; PCR-002), threaded to the
+   * step's selection through the EXISTING seam. ABSENCE (undefined or
+   * null) composes byte-identically to the declared-facts-only plan
+   * (discrimination-tested); PRESENCE may reorder that step's
+   * admissible-candidate preferences (never their admissibility).
+   */
+  readonly measured?: ObservedReliabilityFacts | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -377,6 +387,7 @@ export function composeRecoveryPlan(input: RecoveryPlanInput): RecoveryPlan {
       constraints,
       configuration,
       digest: input.digest,
+      ...(frame.measured === undefined ? {} : { measured: frame.measured }),
     });
     if (selection.kind === "recover" && selection.selected !== null) {
       steps.push({

@@ -157,6 +157,17 @@ export const RECOVERY_MOVES = [
 ] as const;
 export type RecoveryMoveKind = (typeof RECOVERY_MOVES)[number];
 
+/**
+ * The closed plan-mode vocabulary (ACR-008 §6; PCR-002): the recovery
+ * configuration's plan-composition mode. `off` is the DEFAULT — an
+ * ABSENT planMode is `off` (the byte-preserved current posture at the
+ * wired seam); `on` is an evaluation/tenant configuration ONLY, never
+ * a code-path default anywhere (no production promotion — the wiring
+ * fails closed without its explicit plan inputs).
+ */
+export const RECOVERY_PLAN_MODES = ["off", "on"] as const;
+export type RecoveryPlanMode = (typeof RECOVERY_PLAN_MODES)[number];
+
 /** One typed recovery move: the strategy instantiated with its dimension. */
 export type RecoveryMove =
   | { readonly kind: "retry" }
@@ -263,6 +274,21 @@ export const MAX_FINGERPRINT_ENTRIES = 128;
  * explicit policy input, never ambient, never self-raising).
  */
 export const MAX_PLAN_STEPS = 16;
+/**
+ * The hard bound on observed-reliability route facts a measured-evidence
+ * input may carry (ACR-008 §4: measured facts are bounded typed evidence
+ * — an unbounded observation corpus is a typed rejection, never a silent
+ * truncation).
+ */
+export const MAX_MEASURED_ROUTE_FACTS = 32;
+/** The hard bound on a measured observation window's sample count. */
+export const MAX_MEASURED_SAMPLE_COUNT = 10_000_000;
+/** The hard bound on measured latency-summary percentiles (ms). */
+export const MAX_MEASURED_LATENCY_MS = 3_600_000;
+/** The hard bound on an active cooldown's remaining duration (ms). */
+export const MAX_MEASURED_COOLDOWN_MS = 3_600_000;
+/** The bound on a measured fact's source observation identity (slug). */
+export const MEASURED_OBSERVATION_ID_MAX = 128;
 /** Bounded tool error codes (class evidence). */
 export const TOOL_ERROR_CODE_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 /** sha256 hex digest shape (content addressing across the plane). */
@@ -309,7 +335,14 @@ export function boundedDetail(text: string): string {
  *    total validation (fail closed — never emitted unvalidated);
  *  - `plan-shape` — a recovery plan (or its composition input) failed
  *    its total validation (bounds, step contiguity, move vocabulary,
- *    terminal coherence, identity — ACR-008 §2).
+ *    terminal coherence, identity — ACR-008 §2);
+ *  - `measured-shape` — a measured-evidence fact value failed its total
+ *    validation (route shape, probability bounds, latency-summary
+ *    coherence, cooldown coherence, explicit basis, window order,
+ *    sample bounds — ACR-008 §4);
+ *  - `supply-retry-shape` — the mediated supply retry/failover wiring
+ *    input failed its total validation (attempt bounds, outcome-mirror
+ *    coherence, the plan-mode precondition — ACR-008 §6; PCR-002).
  */
 export const FAILURE_RECOVERY_INVARIANT_CODES = [
   "observation-shape",
@@ -324,6 +357,8 @@ export const FAILURE_RECOVERY_INVARIANT_CODES = [
   "escalation-shape",
   "decision-invalid",
   "plan-shape",
+  "measured-shape",
+  "supply-retry-shape",
 ] as const;
 export type FailureRecoveryInvariantCode = (typeof FAILURE_RECOVERY_INVARIANT_CODES)[number];
 

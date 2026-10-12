@@ -58,6 +58,7 @@ import {
   CONTEXT_REPAIRABLE_CLASSES,
   FailureRecoveryError,
   RECOVERY_MOVES,
+  RECOVERY_PLAN_MODES,
   RECOVERY_STRATEGIES,
   REROUTE_DIMENSIONS,
   VERIFICATION_DEPTH_RANK,
@@ -68,6 +69,7 @@ import {
 } from "../../src/platform/failure-recovery/continuation";
 import { buildRecoveryDecisionRecord } from "../../src/platform/failure-recovery/decisions";
 import { fingerprintOf } from "../../src/platform/failure-recovery/fingerprint";
+import type { ObservedReliabilityFacts } from "../../src/platform/failure-recovery/measured";
 import {
   composeRecoveryPlan,
   type RecoveryPlanConfiguration,
@@ -81,6 +83,7 @@ import {
   STRATEGY_RANK,
   selectRecoveryStrategy,
 } from "../../src/platform/failure-recovery/strategy";
+import { decideSupplyRetry } from "../../src/platform/failure-recovery/supply-retry";
 import { decideFreshEscalation } from "../../src/platform/model-economics/escalation-hooks";
 import { selectModelRepresentation } from "../../src/platform/model-economics/model-selection";
 import {
@@ -284,6 +287,32 @@ function selectWith(
   });
 }
 
+/** A measured-evidence fact fixture (explicit basis, bounded values). */
+function measuredFacts(
+  routes: readonly {
+    provider: string;
+    model: string;
+    rate: number;
+    cooldown: boolean;
+  }[],
+  latency: { p50: number; p95: number } = { p50: 120, p95: 400 },
+): ObservedReliabilityFacts {
+  return {
+    routes: routes.map((route, index) => ({
+      route: { provider: route.provider, model: route.model },
+      measuredSuccessRate: route.rate,
+      latencySummary: { p50Ms: latency.p50, p95Ms: latency.p95 },
+      cooldown: route.cooldown ? { active: true, remainingMs: 30_000 } : { active: false },
+      basis: {
+        sourceObservationId: `recovery-observer-${index + 1}`,
+        windowStart: "2026-10-01T00:00:00.000Z",
+        windowEnd: "2026-10-08T00:00:00.000Z",
+        sampleCount: 500 + index * 100,
+      },
+    })),
+  };
+}
+
 function expectTypedReject(invariant: string, fn: () => unknown): FailureRecoveryError {
   try {
     fn();
@@ -450,7 +479,7 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
     const files = readdirSync(planeDir)
       .filter((name) => name.endsWith(".ts"))
       .map((name) => readFileSync(join(planeDir, name), "utf8"));
-    expect(files.length).toBe(9); // + plan.ts (ACR-008 §2 — PCR-001, the recovery-plan artifact)
+    expect(files.length).toBe(11); // + plan.ts (ACR-008 §2 — PCR-001) + measured.ts, supply-retry.ts (ACR-008 §4/§6 — PCR-002)
     for (const content of files) {
       expect(content).not.toMatch(
         /\b(INSERT\s+INTO|UPDATE\s+\w+\s+SET|DELETE\s+FROM|CREATE\s+TABLE)\b/,
@@ -1019,6 +1048,505 @@ describe("failure-recovery discrimination battery (WORK-055)", () => {
             toDepth: "deterministic",
           },
           claim: retryClaim("250"),
+        },
+      }),
+    );
+  });
+
+  // D8 — measured-evidence facts (ACR-008 §4; PCR-002) ------------------
+  test("D8a MEASURED-FACTS ABSENCE BYTE-EQUIVALENCE (the honesty anchor): absence selects byte-identically to declared-facts-only selection", () => {
+    // The declared-facts-only selection (no measured field at all).
+    const declaredOnly = selectWith(infraAttribution(), fullFacts());
+    // Absence spellings: undefined and null.
+    const undefinedMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: undefined,
+    });
+    const nullMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: null,
+    });
+    expect(JSON.stringify(declaredOnly)).toBe(JSON.stringify(undefinedMeasured));
+    expect(JSON.stringify(declaredOnly)).toBe(JSON.stringify(nullMeasured));
+    // And the plan composes byte-identically too: frames without the
+    // measured field, with undefined and with null produce the same
+    // content address (planId).
+    const planConfiguration: RecoveryPlanConfiguration = {
+      maxRetryAttempts: 3,
+      escalationEvidenceBound: 8,
+      continuationStepBound: 32,
+      maxPlanSteps: 4,
+    };
+    const frame = (measured: unknown): RecoveryPlanStepFrame => ({
+      attribution: infraAttribution(),
+      context: {
+        executionId: "00000000-0000-7000-8000-0000000000cc",
+        stepId: "generate",
+        attemptsUsed: 0,
+        incumbentRoute: { provider: "rail-a", model: "model-x" },
+      },
+      facts: {
+        retry: { nextAttempt: 1, claim: retryClaim() },
+        reroute: { model: null, substrate: null },
+        escalation: null,
+      },
+      ...(measured === undefined ? {} : { measured: measured as ObservedReliabilityFacts | null }),
+    });
+    const planA = composeRecoveryPlan({
+      frames: [frame(undefined)],
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: planConfiguration,
+      digest,
+    });
+    const planB = composeRecoveryPlan({
+      frames: [frame(null)],
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: planConfiguration,
+      digest,
+    });
+    expect(planB.planId).toBe(planA.planId);
+    expect(JSON.stringify(planB)).toBe(JSON.stringify(planA));
+    // An explicitly EMPTY measured corpus is PRESENCE (not absence):
+    // the reorder runs (a no-op over no measured routes) and the
+    // provenance rides the selection — a DIFFERENT byte form, honestly.
+    const emptyMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: { routes: [] },
+    });
+    expect(JSON.stringify(emptyMeasured)).not.toBe(JSON.stringify(declaredOnly));
+    expect(emptyMeasured.measuredProvenance).toBeDefined();
+    // But the preference ORDER under an empty corpus is unchanged (no
+    // route is measured — nothing reorders).
+    expect(emptyMeasured.selected?.candidateId).toBe(declaredOnly.selected?.candidateId);
+    expect(emptyMeasured.verdicts.map((verdict) => verdict.candidateId)).toEqual(
+      declaredOnly.verdicts.map((verdict) => verdict.candidateId),
+    );
+  });
+
+  test("D8b the invariant-13 boundary: measured facts NEVER lower a floor, raise a ceiling, bypass a restriction or admit an inadmissible move", () => {
+    // An INADMISSIBLE candidate (the retry claim below the quality
+    // floor) stays inadmissible under measured facts naming its route
+    // with the best possible measured success rate — the measured
+    // evidence cannot lift the floor or admit the move.
+    const belowFloorClaim = { ...retryClaim("100"), expectedQuality: 0.1 };
+    const belowFloor: RecoveryFacts = {
+      retry: { nextAttempt: 1, claim: belowFloorClaim },
+      reroute: { model: null, substrate: null },
+      escalation: null,
+    };
+    const denied = selectWith(infraAttribution(), belowFloor);
+    expect(denied.selected).toBeNull();
+    const deniedVerdict = denied.verdicts.find((verdict) => verdict.strategy === "retry");
+    expect(deniedVerdict?.admissible).toBe(false);
+    expect(deniedVerdict?.inadmissibleCode).toBe("quality-below-hard-floor");
+    const deniedWithMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: belowFloor,
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([{ provider: "rail-a", model: "model-x", rate: 1, cooldown: false }]),
+    });
+    const retryVerdict = deniedWithMeasured.verdicts.find(
+      (verdict) => verdict.strategy === "retry",
+    );
+    expect(retryVerdict?.admissible).toBe(false);
+    expect(retryVerdict?.inadmissibleCode).toBe("quality-below-hard-floor");
+    // The GOVERNING facts (floors, ceilings) are byte-identical with and
+    // without measured inputs — the boundary values never moved.
+    const admitted = selectWith(infraAttribution(), fullFacts());
+    const admittedWithMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([
+        { provider: "rail-a", model: "model-x", rate: 0.01, cooldown: true },
+        { provider: "rail-b", model: "model-y", rate: 0.99, cooldown: false },
+      ]),
+    });
+    expect(JSON.stringify(admittedWithMeasured.facts)).toBe(JSON.stringify(admitted.facts));
+    // The admissible SET and every verdict's admissibility/code are
+    // unchanged under measured inputs (only the preference order moves).
+    expect(admittedWithMeasured.verdicts.length).toBe(admitted.verdicts.length);
+    for (const verdict of admitted.verdicts) {
+      const counterpart = admittedWithMeasured.verdicts.find(
+        (candidate) => candidate.candidateId === verdict.candidateId,
+      );
+      expect(counterpart).toBeDefined();
+      expect(counterpart?.admissible).toBe(verdict.admissible);
+      expect(counterpart?.inadmissibleCode).toBe(verdict.inadmissibleCode);
+      expect(JSON.stringify(counterpart?.evaluation)).toBe(JSON.stringify(verdict.evaluation));
+    }
+    // The intelligence retry discipline (the runaway-token trap) is
+    // equally immovable under measured facts for the incumbent route.
+    const intelligenceMeasured = selectRecoveryStrategy({
+      attribution: intelligenceAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: {
+        retry: { nextAttempt: 1, claim: retryClaim() },
+        reroute: { model: null, substrate: null },
+        escalation: null,
+      },
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([{ provider: "rail-a", model: "model-x", rate: 1, cooldown: false }]),
+    });
+    const intelligenceRetry = intelligenceMeasured.verdicts.find(
+      (verdict) => verdict.strategy === "retry",
+    );
+    expect(intelligenceRetry?.admissible).toBe(false);
+    expect(intelligenceRetry?.inadmissibleCode).toBe("class-not-retryable");
+  });
+
+  test("D8c measured facts reorder preferences deterministically (cooldown demotes; measured rate prefers; ties keep the declared order)", () => {
+    // Declared order (cost ascending): substrate (242) → model (316) →
+    // retry (421). Measured facts: the incumbent route (retry's route)
+    // measures 0.99 and is NOT cooling; the model re-route's route
+    // measures 0.10 — the measured-healthy group re-orders by measured
+    // rate DESCENDING, ahead of the unmeasured substrate.
+    const withMeasured = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([
+        { provider: "rail-a", model: "model-x", rate: 0.99, cooldown: false },
+        { provider: "rail-b", model: "model-y", rate: 0.1, cooldown: false },
+      ]),
+    });
+    expect(withMeasured.selected?.candidateId).toBe("retry-attempt-1");
+    expect(withMeasured.verdicts.map((verdict) => verdict.candidateId)).toEqual([
+      "retry-attempt-1",
+      "reroute-model",
+      "reroute-substrate",
+    ]);
+    // An ACTIVE cooldown on the incumbent demotes the retry behind the
+    // unmeasured substrate (the measured evidence that the route is
+    // currently degrading).
+    const cooldownDemoted = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([
+        { provider: "rail-a", model: "model-x", rate: 0.99, cooldown: true },
+        { provider: "rail-b", model: "model-y", rate: 0.1, cooldown: false },
+      ]),
+    });
+    expect(cooldownDemoted.selected?.candidateId).toBe("reroute-model");
+    expect(cooldownDemoted.verdicts.map((verdict) => verdict.candidateId)).toEqual([
+      "reroute-model",
+      "reroute-substrate",
+      "retry-attempt-1",
+    ]);
+    // Determinism: the same measured facts produce the byte-identical
+    // selection on re-run (idempotence including tie-breaks).
+    const rerun = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([
+        { provider: "rail-a", model: "model-x", rate: 0.99, cooldown: true },
+        { provider: "rail-b", model: "model-y", rate: 0.1, cooldown: false },
+      ]),
+    });
+    expect(JSON.stringify(rerun)).toBe(JSON.stringify(cooldownDemoted));
+    // The measured provenance is present, bounded and content-derived.
+    expect(withMeasured.measuredProvenance).toMatch(/^measured;digest=[0-9a-f]{64};/);
+    expect(withMeasured.measuredProvenance).toContain("routes=2");
+    // Equal measured rates keep the declared order WITHIN the measured
+    // group (content tie-break); the unmeasured substrate stays in its
+    // own group after it (group order is part of the closed rule).
+    const tied = selectRecoveryStrategy({
+      attribution: infraAttribution(),
+      context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+      facts: fullFacts(),
+      qualityFacts: { requiredQuality: 0.85 },
+      constraints: constraints(),
+      configuration: { maxRetryAttempts: 3, escalationEvidenceBound: 8, continuationStepBound: 32 },
+      digest,
+      measured: measuredFacts([
+        { provider: "rail-a", model: "model-x", rate: 0.5, cooldown: false },
+        { provider: "rail-b", model: "model-y", rate: 0.5, cooldown: false },
+      ]),
+    });
+    expect(tied.verdicts.map((verdict) => verdict.candidateId)).toEqual([
+      "reroute-model",
+      "retry-attempt-1",
+      "reroute-substrate",
+    ]);
+  });
+
+  test("D8d malformed measured facts fail closed (typed measured-shape rejections, never silent defaults)", () => {
+    const attempt = (measured: unknown) =>
+      selectRecoveryStrategy({
+        attribution: infraAttribution(),
+        context: { attemptsUsed: 0, incumbentRoute: { provider: "rail-a", model: "model-x" } },
+        facts: fullFacts(),
+        qualityFacts: { requiredQuality: 0.85 },
+        constraints: constraints(),
+        configuration: {
+          maxRetryAttempts: 3,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+        },
+        digest,
+        measured: measured as ObservedReliabilityFacts,
+      });
+    // A non-object value is a typed rejection.
+    expectTypedReject("measured-shape", () => attempt("not-facts"));
+    // A route fact without its explicit basis is unrepresentable.
+    expectTypedReject("measured-shape", () =>
+      attempt({
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.9,
+            latencySummary: { p50Ms: 100, p95Ms: 200 },
+            cooldown: { active: false },
+          },
+        ],
+      }),
+    );
+    // A sample count of zero carries no observation.
+    expectTypedReject("measured-shape", () =>
+      attempt({
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.9,
+            latencySummary: { p50Ms: 100, p95Ms: 200 },
+            cooldown: { active: false },
+            basis: {
+              sourceObservationId: "observer-1",
+              windowStart: "2026-10-01T00:00:00.000Z",
+              windowEnd: "2026-10-02T00:00:00.000Z",
+              sampleCount: 0,
+            },
+          },
+        ],
+      }),
+    );
+    // A window that ends before it starts is incoherent.
+    expectTypedReject("measured-shape", () =>
+      attempt({
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.9,
+            latencySummary: { p50Ms: 100, p95Ms: 200 },
+            cooldown: { active: false },
+            basis: {
+              sourceObservationId: "observer-1",
+              windowStart: "2026-10-02T00:00:00.000Z",
+              windowEnd: "2026-10-01T00:00:00.000Z",
+              sampleCount: 10,
+            },
+          },
+        ],
+      }),
+    );
+    // An inactive cooldown carrying a remaining duration is incoherent.
+    expectTypedReject("measured-shape", () =>
+      attempt({
+        routes: [
+          {
+            route: { provider: "rail-a", model: "model-x" },
+            measuredSuccessRate: 0.9,
+            latencySummary: { p50Ms: 100, p95Ms: 200 },
+            cooldown: { active: false, remainingMs: 500 },
+            basis: {
+              sourceObservationId: "observer-1",
+              windowStart: "2026-10-01T00:00:00.000Z",
+              windowEnd: "2026-10-02T00:00:00.000Z",
+              sampleCount: 10,
+            },
+          },
+        ],
+      }),
+    );
+    // A p95 below the p50 is incoherent.
+    expectTypedReject("measured-shape", () =>
+      attempt(
+        measuredFacts([{ provider: "rail-a", model: "model-x", rate: 0.9, cooldown: false }], {
+          p50: 500,
+          p95: 100,
+        }),
+      ),
+    );
+    // A success rate outside [0, 1] is not a probability.
+    expectTypedReject("measured-shape", () =>
+      attempt(
+        measuredFacts([{ provider: "rail-a", model: "model-x", rate: 1.5, cooldown: false }]),
+      ),
+    );
+    // A duplicate route fact is ambiguous evidence.
+    expectTypedReject("measured-shape", () =>
+      attempt(
+        measuredFacts([
+          { provider: "rail-a", model: "model-x", rate: 0.9, cooldown: false },
+          { provider: "rail-a", model: "model-x", rate: 0.8, cooldown: false },
+        ]),
+      ),
+    );
+  });
+
+  // D9 — the default-off supply-retry wiring (ACR-008 §6; PCR-002) ------
+  test("D9a DEFAULT-OFF BYTE-PRESERVATION at the traced seam's decision core: the absent planMode IS `off` and both are the traced posture", () => {
+    const tracedPosture = {
+      maxRetryAttempts: 1,
+      escalationEvidenceBound: 8,
+      continuationStepBound: 32,
+    };
+    const cases: {
+      attemptsUsed: number;
+      outcome: { kind: "provider-success" | "provider-failure"; retryable: boolean };
+    }[] = [
+      { attemptsUsed: 1, outcome: { kind: "provider-success", retryable: false } },
+      { attemptsUsed: 1, outcome: { kind: "provider-failure", retryable: true } },
+      { attemptsUsed: 1, outcome: { kind: "provider-failure", retryable: false } },
+      { attemptsUsed: 2, outcome: { kind: "provider-failure", retryable: true } },
+      { attemptsUsed: 2, outcome: { kind: "provider-failure", retryable: false } },
+    ];
+    for (const testCase of cases) {
+      const absent = decideSupplyRetry({
+        attemptsUsed: testCase.attemptsUsed,
+        lastOutcome: testCase.outcome,
+        configuration: tracedPosture,
+      });
+      const off = decideSupplyRetry({
+        attemptsUsed: testCase.attemptsUsed,
+        lastOutcome: testCase.outcome,
+        configuration: { ...tracedPosture, planMode: "off" },
+      });
+      // The absent planMode and the explicit `off` are byte-identical.
+      expect(JSON.stringify(off)).toBe(JSON.stringify(absent));
+      // And the decision IS the traced posture: one retry, only on a
+      // retryable provider failure of the FIRST attempt.
+      const expected =
+        testCase.attemptsUsed === 1 &&
+        testCase.outcome.kind === "provider-failure" &&
+        testCase.outcome.retryable
+          ? "retry-once-next-supply"
+          : "no-retry";
+      expect(absent.kind).toBe(expected);
+    }
+    // The plan-mode vocabulary is closed and off is the only default.
+    expect(RECOVERY_PLAN_MODES).toEqual(["off", "on"]);
+  });
+
+  test("D9b plan mode on fails closed without its explicit inputs (never a silent default posture, never an ambient bound)", () => {
+    const planModeOn = {
+      maxRetryAttempts: 1,
+      escalationEvidenceBound: 8,
+      continuationStepBound: 32,
+      planMode: "on" as const,
+    };
+    // Plan mode ON without the plan composition input: typed rejection.
+    expectTypedReject("supply-retry-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 1,
+        lastOutcome: { kind: "provider-failure", retryable: true },
+        configuration: planModeOn,
+      }),
+    );
+    // Plan mode ON without the plan step bound (maxPlanSteps): the
+    // bound can never be ambient or self-raised.
+    expectTypedReject("supply-retry-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 1,
+        lastOutcome: { kind: "provider-failure", retryable: true },
+        configuration: {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+          planMode: "on",
+        },
+      }),
+    );
+    // Malformed inputs fail closed: the outcome mirror is closed and
+    // coherent; the attempt count is bounded.
+    expectTypedReject("supply-retry-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 1,
+        lastOutcome: { kind: "unknown", retryable: false } as never,
+        configuration: {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+        },
+      }),
+    );
+    expectTypedReject("supply-retry-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 1,
+        lastOutcome: { kind: "provider-success", retryable: true },
+        configuration: {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+        },
+      }),
+    );
+    expectTypedReject("supply-retry-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 0,
+        lastOutcome: { kind: "provider-failure", retryable: true },
+        configuration: {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+        },
+      }),
+    );
+    // An unknown planMode value is a closed-vocabulary rejection.
+    expectTypedReject("recovery-input-shape", () =>
+      decideSupplyRetry({
+        attemptsUsed: 1,
+        lastOutcome: { kind: "provider-failure", retryable: true },
+        configuration: {
+          maxRetryAttempts: 1,
+          escalationEvidenceBound: 8,
+          continuationStepBound: 32,
+          planMode: "auto" as never,
         },
       }),
     );
