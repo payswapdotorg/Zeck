@@ -1,0 +1,720 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "run-time bound (the repository revision at run time)",
+  "corpusRevision": "pcr-003-recovery-plan-evaluation-v1",
+  "integrationSurface": "recovery-plan-evaluation:three-arm-fresh-replay",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "evaluation": {
+    "evaluationId": "economic-recovery-plan-evaluation",
+    "baseRevision": "ef86cf49972faf8ce102d2d9f5f53ce13e0d5d9a",
+    "corpusDigest": "10b048c27f7cbcadbe81d45e885ca4861f8abeaba2d64bdc415f8707f4ba6a78",
+    "arms": [
+      {
+        "armId": "un-retried-direct",
+        "label": "the un-retried direct arm — the same corpus-derived request stream dispatched straight to the primary synthetic supply, single attempt, no retry, no cache (BASELINE facts — never Zeck evidence)",
+        "attemptBound": 1
+      },
+      {
+        "armId": "strong-optimized",
+        "label": "the strong-optimized non-Zeck baseline — the app-owned reliability machinery: a 3-attempt retry ladder, an app-owned provider fallback chain, an app-owned content-addressed response cache and a response-shape normalization shim (BASELINE facts — never Zeck evidence; never a strawman)",
+        "attemptBound": 3
+      },
+      {
+        "armId": "mediated-with-plan",
+        "label": "the mediated-with-plan arm — the real Zeck public API stack (the PPR-027 composed experiment world: real gateway, rails, executions authority, ledger, idempotency) with plan mode ON through the PCR-002 evaluation configuration (ComposeExperimentOptions.recovery), composing the bounded recovery ladder [same-provider retry, alternate-provider failover] through the PCR-001 plan composer",
+        "attemptBound": 3
+      }
+    ],
+    "mediatedPlanWiring": {
+      "configuration": {
+        "maxRetryAttempts": 2,
+        "escalationEvidenceBound": 8,
+        "continuationStepBound": 32,
+        "maxPlanSteps": 2,
+        "planMode": "on"
+      },
+      "qualityFacts": {
+        "requiredQuality": 0.85
+      },
+      "constraints": [
+        {
+          "constraintId": "pcr003-quality-floor",
+          "kind": "quality",
+          "enforcement": "hard",
+          "source": {
+            "authority": "planning"
+          },
+          "payload": {
+            "minQuality": 0.8
+          }
+        },
+        {
+          "constraintId": "pcr003-budget-ceiling",
+          "kind": "budget",
+          "enforcement": "hard",
+          "source": {
+            "authority": "budget",
+            "budgetId": "pcr003-evaluation-budget",
+            "scopeKind": "per-execution"
+          },
+          "payload": {
+            "maxCostMicroUsd": "1000000"
+          }
+        }
+      ],
+      "retryClaim": {
+        "expectedCostMicroUsd": "300",
+        "expectedLatencyMs": 2000,
+        "expectedQuality": 0.92,
+        "expectedReliability": 0.95,
+        "basis": {
+          "basis": "estimated",
+          "source": "pcr-003:recovery:retry-path"
+        }
+      },
+      "providerAlternates": [
+        {
+          "providerId": "supply-a",
+          "claim": {
+            "expectedCostMicroUsd": "500",
+            "expectedLatencyMs": 2400,
+            "expectedQuality": 0.92,
+            "expectedReliability": 0.95,
+            "basis": {
+              "basis": "estimated",
+              "source": "pcr-003:model-economics:alternate-a"
+            }
+          }
+        },
+        {
+          "providerId": "supply-b",
+          "claim": {
+            "expectedCostMicroUsd": "410",
+            "expectedLatencyMs": 1600,
+            "expectedQuality": 0.92,
+            "expectedReliability": 0.95,
+            "basis": {
+              "basis": "estimated",
+              "source": "pcr-003:model-economics:alternate-b"
+            }
+          }
+        },
+        {
+          "providerId": "supply-c",
+          "claim": {
+            "expectedCostMicroUsd": "420",
+            "expectedLatencyMs": 1900,
+            "expectedQuality": 0.92,
+            "expectedReliability": 0.95,
+            "basis": {
+              "basis": "estimated",
+              "source": "pcr-003:model-economics:alternate-c"
+            }
+          }
+        }
+      ],
+      "stepId": "generate",
+      "expectedLadder": {
+        "steps": [
+          {
+            "move": {
+              "kind": "retry"
+            },
+            "attempt": 2,
+            "semantics": "same-provider retry (re-address the incumbent supply)"
+          },
+          {
+            "move": {
+              "kind": "re-route",
+              "dimension": "provider"
+            },
+            "attempt": 3,
+            "route": "supply-c",
+            "semantics": "alternate-provider failover (the capability-equal alternate supply)"
+          }
+        ],
+        "terminal": "bound-reached",
+        "totalAttemptBound": 3
+      }
+    },
+    "thresholds": {
+      "resolution": "equal-or-better-vs-fresh-strong-optimized",
+      "cost": "improved-or-documented-tradeoff",
+      "violationsCeiling": 0,
+      "latencyTails": "explicit-p95-p99-tradeoff-accounting"
+    },
+    "labels": {
+      "supply": "synthetic-supply (the declared deterministic fault/latency profiles — never a live provider)",
+      "cost": "synthetic-cost (the declared price schedule — never a provider invoice)",
+      "latency": "synthetic-latency (the drawn deterministic supply profile — never wall-clock, never live latency)"
+    },
+    "costBasisNote": "cost figures are the synthetic supply's charge for every physical dispatch the arm made (the declared price schedule: full price on success, input-only partial on timeout, zero on rate-limit/unavailable; the mediated arm's deterministic substrate executions make zero supply dispatches — the PPR-024 plane, a disclosed structural difference; the baselines route substrate requests through the supply at the per-call schedule price) — experiment configuration, never provider invoices",
+    "latencyBasisNote": "latency figures are the drawn deterministic supply latencies summed over each logical request's physical attempts (the declared profiles; cross-arm deltas are the mediation structure, not live provider latency)"
+  },
+  "tasks": [
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-aider-S-multi-mono",
+      "capstoneCellId": "aider-S-multi-mono",
+      "subjectId": "aider",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-aider-M-multi-mono",
+      "capstoneCellId": "aider-M-multi-mono",
+      "subjectId": "aider",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-aider-L-multi-mono",
+      "capstoneCellId": "aider-L-multi-mono",
+      "subjectId": "aider",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-S-multi-mono",
+      "capstoneCellId": "cline-S-multi-mono",
+      "subjectId": "cline",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-S-multi-full",
+      "capstoneCellId": "cline-S-multi-full",
+      "subjectId": "cline",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-M-multi-mono",
+      "capstoneCellId": "cline-M-multi-mono",
+      "subjectId": "cline",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-M-multi-full",
+      "capstoneCellId": "cline-M-multi-full",
+      "subjectId": "cline",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-L-multi-mono",
+      "capstoneCellId": "cline-L-multi-mono",
+      "subjectId": "cline",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-cline-L-multi-full",
+      "capstoneCellId": "cline-L-multi-full",
+      "subjectId": "cline",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-S-multi-mono",
+      "capstoneCellId": "openhands-S-multi-mono",
+      "subjectId": "openhands",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-S-multi-full",
+      "capstoneCellId": "openhands-S-multi-full",
+      "subjectId": "openhands",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-M-multi-mono",
+      "capstoneCellId": "openhands-M-multi-mono",
+      "subjectId": "openhands",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-M-multi-full",
+      "capstoneCellId": "openhands-M-multi-full",
+      "subjectId": "openhands",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-L-multi-mono",
+      "capstoneCellId": "openhands-L-multi-mono",
+      "subjectId": "openhands",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openhands-L-multi-full",
+      "capstoneCellId": "openhands-L-multi-full",
+      "subjectId": "openhands",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-S-multi-mono",
+      "capstoneCellId": "continue-S-multi-mono",
+      "subjectId": "continue",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-S-multi-full",
+      "capstoneCellId": "continue-S-multi-full",
+      "subjectId": "continue",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-M-multi-mono",
+      "capstoneCellId": "continue-M-multi-mono",
+      "subjectId": "continue",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-M-multi-full",
+      "capstoneCellId": "continue-M-multi-full",
+      "subjectId": "continue",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-L-multi-mono",
+      "capstoneCellId": "continue-L-multi-mono",
+      "subjectId": "continue",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-continue-L-multi-full",
+      "capstoneCellId": "continue-L-multi-full",
+      "subjectId": "continue",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-S-multi-mono",
+      "capstoneCellId": "hermes-agent-S-multi-mono",
+      "subjectId": "hermes-agent",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-S-multi-full",
+      "capstoneCellId": "hermes-agent-S-multi-full",
+      "subjectId": "hermes-agent",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-M-multi-mono",
+      "capstoneCellId": "hermes-agent-M-multi-mono",
+      "subjectId": "hermes-agent",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-M-multi-full",
+      "capstoneCellId": "hermes-agent-M-multi-full",
+      "subjectId": "hermes-agent",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-L-multi-mono",
+      "capstoneCellId": "hermes-agent-L-multi-mono",
+      "subjectId": "hermes-agent",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-hermes-agent-L-multi-full",
+      "capstoneCellId": "hermes-agent-L-multi-full",
+      "subjectId": "hermes-agent",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-S-multi-mono",
+      "capstoneCellId": "openclaw-S-multi-mono",
+      "subjectId": "openclaw",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-S-multi-full",
+      "capstoneCellId": "openclaw-S-multi-full",
+      "subjectId": "openclaw",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-M-multi-mono",
+      "capstoneCellId": "openclaw-M-multi-mono",
+      "subjectId": "openclaw",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-M-multi-full",
+      "capstoneCellId": "openclaw-M-multi-full",
+      "subjectId": "openclaw",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-L-multi-mono",
+      "capstoneCellId": "openclaw-L-multi-mono",
+      "subjectId": "openclaw",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openclaw-L-multi-full",
+      "capstoneCellId": "openclaw-L-multi-full",
+      "subjectId": "openclaw",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-S-multi-mono",
+      "capstoneCellId": "browser-use-S-multi-mono",
+      "subjectId": "browser-use",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-S-multi-full",
+      "capstoneCellId": "browser-use-S-multi-full",
+      "subjectId": "browser-use",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-M-multi-mono",
+      "capstoneCellId": "browser-use-M-multi-mono",
+      "subjectId": "browser-use",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-M-multi-full",
+      "capstoneCellId": "browser-use-M-multi-full",
+      "subjectId": "browser-use",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-L-multi-mono",
+      "capstoneCellId": "browser-use-L-multi-mono",
+      "subjectId": "browser-use",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-browser-use-L-multi-full",
+      "capstoneCellId": "browser-use-L-multi-full",
+      "subjectId": "browser-use",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-S-multi-mono",
+      "capstoneCellId": "openwebui-S-multi-mono",
+      "subjectId": "openwebui",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-S-multi-full",
+      "capstoneCellId": "openwebui-S-multi-full",
+      "subjectId": "openwebui",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-M-multi-mono",
+      "capstoneCellId": "openwebui-M-multi-mono",
+      "subjectId": "openwebui",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-M-multi-full",
+      "capstoneCellId": "openwebui-M-multi-full",
+      "subjectId": "openwebui",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-L-multi-mono",
+      "capstoneCellId": "openwebui-L-multi-mono",
+      "subjectId": "openwebui",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-openwebui-L-multi-full",
+      "capstoneCellId": "openwebui-L-multi-full",
+      "subjectId": "openwebui",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-S-multi-mono",
+      "capstoneCellId": "anythingllm-S-multi-mono",
+      "subjectId": "anythingllm",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-S-multi-full",
+      "capstoneCellId": "anythingllm-S-multi-full",
+      "subjectId": "anythingllm",
+      "volume": "S",
+      "repetitions": 1,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-M-multi-mono",
+      "capstoneCellId": "anythingllm-M-multi-mono",
+      "subjectId": "anythingllm",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-M-multi-full",
+      "capstoneCellId": "anythingllm-M-multi-full",
+      "subjectId": "anythingllm",
+      "volume": "M",
+      "repetitions": 2,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-L-multi-mono",
+      "capstoneCellId": "anythingllm-L-multi-mono",
+      "subjectId": "anythingllm",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "mono",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    },
+    {
+      "kind": "economic-recovery-plan-evaluation.experiment.v1",
+      "cellId": "pcr003-anythingllm-L-multi-full",
+      "capstoneCellId": "anythingllm-L-multi-full",
+      "subjectId": "anythingllm",
+      "volume": "L",
+      "repetitions": 4,
+      "providerConfig": "multi",
+      "modality": "full",
+      "arms": ["un-retried-direct", "strong-optimized", "mediated-with-plan"]
+    }
+  ]
+}
