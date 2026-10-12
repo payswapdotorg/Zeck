@@ -57,7 +57,7 @@ import { buildOptimizationDecision } from "../execution-ir/decision-record";
 import type { ExecutionIr, IrDigestPort } from "../execution-ir/ir";
 import type { FailureAttribution } from "./attribution";
 import { boundedDetail, reject } from "./catalog";
-import type { RecoverySelection, StrategyVerdict } from "./strategy";
+import type { RecoveryFacts, RecoverySelection, StrategyVerdict } from "./strategy";
 
 // ---------------------------------------------------------------------------
 // The shared scope and provenance discipline
@@ -74,6 +74,114 @@ export interface RecoveryDecisionScope {
 
 /** The bounded provenance-detail ceiling (the foundation's own rule). */
 const DETAIL_MAX = 500;
+
+// ---------------------------------------------------------------------------
+// The canonical claims derivation (the corpus the selection ran on)
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive the canonical per-candidate claims map from the recovery
+ * facts — EXACTLY the claim assembly `selectRecoveryStrategy` runs on
+ * (the retry/escalation/repair claims as supplied; the re-route claims
+ * derived from the economics/supply planes' OWN selected verdicts, the
+ * same derivations the selection performs). This is the shared,
+ * single derivation for every caller that records a selection's
+ * decision through the WORK-049 seam — the plan-composition wiring
+ * (PCR-002) and any tenant/evaluation driver consume it so the
+ * recorded corpus provably corresponds to the selection's evaluated
+ * verdicts (no second, drifting derivation).
+ */
+export function recoveryClaimsOf(facts: RecoveryFacts): ReadonlyMap<string, CostClaim> {
+  const claims = new Map<string, CostClaim>();
+  if (facts.retry !== null && facts.retry !== undefined) {
+    claims.set(`retry-attempt-${facts.retry.nextAttempt}`, facts.retry.claim);
+  }
+  const model = facts.reroute?.model;
+  if (model !== null && model !== undefined) {
+    const selected = model.selection.selected;
+    if (selected !== null) {
+      const declared = model.declaredCandidates.find(
+        (candidate) => candidate.candidateId === selected.candidateId,
+      );
+      if (declared !== undefined) {
+        claims.set("reroute-model", {
+          expectedCostMicroUsd: selected.evaluation.expectedSuccessfulResolutionCostMicroUsd,
+          expectedLatencyMs: declared.claim.expectedLatencyMs,
+          expectedQuality: declared.claim.expectedQuality,
+          expectedReliability: declared.claim.expectedReliability,
+          basis: {
+            basis: declared.claim.basis.basis,
+            source:
+              `model-economics;route=${selected.route.provider}/${selected.route.model}`.slice(
+                0,
+                200,
+              ),
+            ...(declared.claim.basis.evidenceDigest === undefined
+              ? {}
+              : { evidenceDigest: declared.claim.basis.evidenceDigest }),
+          },
+        });
+      }
+    }
+  }
+  const substrate = facts.reroute?.substrate;
+  if (substrate !== null && substrate !== undefined) {
+    const selectedSubstrate = substrate.selection.selected;
+    if (selectedSubstrate !== null) {
+      claims.set("reroute-substrate", {
+        expectedCostMicroUsd: selectedSubstrate.economics.expectedSuccessfulResolutionCostMicroUsd,
+        expectedLatencyMs: selectedSubstrate.economics.totalLatencyMs,
+        expectedQuality: selectedSubstrate.economics.execution.expectedQuality,
+        expectedReliability: selectedSubstrate.economics.execution.expectedReliability,
+        basis: {
+          basis: selectedSubstrate.economics.execution.basis.basis,
+          source: `substrate-economics:${substrate.selection.record.selectionId}`.slice(0, 200),
+          ...(selectedSubstrate.economics.execution.basis.evidenceDigest === undefined
+            ? {}
+            : { evidenceDigest: selectedSubstrate.economics.execution.basis.evidenceDigest }),
+        },
+      });
+    }
+  }
+  const provider = facts.reroute?.provider;
+  if (provider !== null && provider !== undefined) {
+    const selected = provider.selection.selected;
+    if (selected !== null) {
+      const declared = provider.declaredCandidates.find(
+        (candidate) => candidate.candidateId === selected.candidateId,
+      );
+      if (declared !== undefined) {
+        claims.set("reroute-provider", {
+          expectedCostMicroUsd: selected.evaluation.expectedSuccessfulResolutionCostMicroUsd,
+          expectedLatencyMs: declared.claim.expectedLatencyMs,
+          expectedQuality: declared.claim.expectedQuality,
+          expectedReliability: declared.claim.expectedReliability,
+          basis: {
+            basis: declared.claim.basis.basis,
+            source:
+              `model-economics;provider-failover=${selected.route.provider}/${selected.route.model}`.slice(
+                0,
+                200,
+              ),
+            ...(declared.claim.basis.evidenceDigest === undefined
+              ? {}
+              : { evidenceDigest: declared.claim.basis.evidenceDigest }),
+          },
+        });
+      }
+    }
+  }
+  if (facts.escalation !== null && facts.escalation !== undefined) {
+    claims.set("escalate-fresh", facts.escalation.claim);
+  }
+  if (facts.contextRepair !== null && facts.contextRepair !== undefined) {
+    claims.set("context-repair", facts.contextRepair.claim);
+  }
+  if (facts.verifierEscalation !== null && facts.verifierEscalation !== undefined) {
+    claims.set("verifier-escalation", facts.verifierEscalation.claim);
+  }
+  return claims;
+}
 
 // ---------------------------------------------------------------------------
 // The recovery decision-record builder
@@ -98,6 +206,15 @@ export interface RecoveryDecisionRecordInput {
   readonly constraints: readonly OptimizationConstraint[];
   /** The decision-record scope + the explicit recorded-at instant. */
   readonly scope: RecoveryDecisionScope;
+  /**
+   * The measured-facts provenance (ACR-008 §4; PCR-002) — the
+   * selection's own `measuredProvenance`, carried onto the record so
+   * every decision that consumed measured facts is explicitly and
+   * auditably provenance-stamped (which observations, which window).
+   * ABSENT when the selection ran declared-facts-only — the record is
+   * byte-identical to the declared-only form.
+   */
+  readonly measuredProvenance?: string;
   readonly digest: IrDigestPort;
 }
 
@@ -182,12 +299,14 @@ export function buildRecoveryDecisionRecord(
     });
   }
   const attribution = input.attribution;
-  const detail =
+  const detail = (
     `failure-recovery;feature=strategy-selection;` +
     `attribution=${attribution.attributionId};class=${attribution.failureClass};` +
     `signal=${attribution.observation.signal};strategy=${selected.strategy};` +
     `candidate=${selected.candidateId};floor=${input.selection.facts.qualityFloor};` +
-    `verdicts=${input.selection.verdicts.length}`.slice(0, DETAIL_MAX);
+    `verdicts=${input.selection.verdicts.length}` +
+    (input.measuredProvenance === undefined ? "" : `;measured=${input.measuredProvenance}`)
+  ).slice(0, DETAIL_MAX);
 
   try {
     return buildOptimizationDecision(
