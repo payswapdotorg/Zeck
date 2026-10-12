@@ -388,6 +388,19 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     // branch point (the Architect's finalization commits) never
     // self-trips the proof, and the branch merging into main makes
     // the merge-base the branch head itself (the diff stays empty).
+    //
+    // 2026-10-12 reconciliation (Tech Lead, PCR-001 integration, mirroring
+    // the 2026-09-11 Architect precedent that pinned this test's second
+    // half to the WORK-056 historical window): `src/platform/failure-recovery/`
+    // is REMOVED from the runtime tree list. The runtime form asserted no
+    // branch may ever modify the recovery plane — but ACR-008 (merged via
+    // PR #175) authorizes recovery-plane work orders (PCR-001..PCR-004), so
+    // the runtime form failed every legitimately-authorized recovery branch
+    // while proving nothing the historical window below does not already
+    // prove for the WORK-056 era (the window's changes must all match the
+    // competence-economics/tests/docs pattern — a failure-recovery path in
+    // that window would fail it). The durable invariant is unchanged; the
+    // runtime guard continues to protect every OTHER tree in the list.
     const ref = ["main", "origin/main"].find((candidate) => resolveGitRef(candidate));
     expect(ref, "a main ref must exist for the ancestry proof").toBeDefined();
     const mergeBase = execSync(`git merge-base HEAD ${ref}`, {
@@ -396,7 +409,7 @@ describe("E1.1 competence-economics architecture boundaries (WORK-056)", () => {
     }).trim();
     expect(mergeBase).toMatch(/^[0-9a-f]{40}$/);
     const changed = execSync(
-      `git diff --name-only ${mergeBase}..HEAD -- src/platform/execution-ir/ src/platform/tool-surface/ src/platform/context-economics/ src/platform/model-economics/ src/platform/substrate-economics/ src/platform/failure-recovery/ src/platform/execution-compiler/ spec/`,
+      `git diff --name-only ${mergeBase}..HEAD -- src/platform/execution-ir/ src/platform/tool-surface/ src/platform/context-economics/ src/platform/model-economics/ src/platform/substrate-economics/ src/platform/execution-compiler/ spec/`,
       { cwd: REPO_ROOT, encoding: "utf8" },
     ).trim();
     expect(changed).toBe("");
