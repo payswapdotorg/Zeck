@@ -18,17 +18,21 @@
  *    locale-dependent ordering (the canonical order is code-unit).
  *  - A4 THE CLOSED VOCABULARIES: every vocabulary is pinned exactly —
  *    widening is a reviewed change, never silent.
- *  - A5 NO WIRING INTO RUNTIME EXECUTION SEAMS: no code surface
- *    outside the executions module's ONE declared artifact and the
- *    tests references the outcome-latency vocabulary — the
- *    riding/wiring is PCL-002's (behind the existing seams,
- *    default-off), the evaluation is PCL-003's.
+ *  - A5 THE CONFINEMENT (as amended by the PCL-002 wiring — the
+ *    amendment this test's own comments anticipated): no code surface
+ *    OUTSIDE the executions module and the tests references the
+ *    outcome-latency vocabulary; inside the module it appears in
+ *    exactly the declared artifact set — the PCL-01 artifact plus the
+ *    two PCL-002 declared surfaces (the declarative pacing
+ *    configuration consuming the vocabularies read-only, and the
+ *    pacing seam adapter). The evaluation is PCL-003's.
  *  - A6 THE MODULE FILE CENSUS: the executions module's
- *    application/ports/adapters/internal layers are exactly the
- *    pre-change file sets; the domain layer is the pre-change set plus
- *    the ONE declared artifact (outcome-latency-facts.ts) — no second
- *    authority, no new module surface, no public.ts re-export (the
- *    exports stay domain-local until PCL-002 wires them).
+ *    application/ports/adapters/internal layers are the pre-change
+ *    file sets plus the ONE declared PCL-002 wiring seam
+ *    (adapters/tail-pacing.ts); the domain layer is the pre-change set
+ *    plus the PCL-01 artifact and the PCL-002 configuration artifact —
+ *    no second authority, no new module surface, no public.ts
+ *    re-export.
  *  - A7 DRIFT-IMMUNE OWNERSHIP PIN: the dynamic merge-base diff of
  *    this branch against main touches NOTHING outside the executions
  *    module and the tests (the e11 C9 pattern — main advancing past
@@ -155,7 +159,7 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     expect(MAX_VERIFICATION_RESULT_REFS).toBe(100);
   });
 
-  test("A5 no wiring into runtime execution seams: the vocabulary is confined to the ONE declared artifact and the tests", () => {
+  test("A5 no wiring into runtime execution seams beyond the DECLARED PCL-002 surfaces: the vocabulary is confined to the executions module and the tests", () => {
     const vocabularyPattern = /outcome[-_]?latency|outcomeLatency/i;
     const offenders: string[] = [];
     const scan = (relPath: string): void => {
@@ -211,18 +215,34 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     ]) {
       scan(surface);
     }
-    // PCL-002 owns the riding/wiring, PCL-003 owns the evaluation —
-    // NEITHER has landed: the vocabulary is wired into NOTHING.
+    // The OUTSIDE-executions confinement stays ABSOLUTE (the PCL-002
+    // wiring landed inside the executions module only — A7 proves it
+    // mechanically over the branch diff).
     expect(offenders).toEqual([]);
     // Inside the executions module the vocabulary appears in EXACTLY
-    // the one declared artifact (no second surface, no re-export).
+    // the declared artifact set. [PCL-002 wiring amendment, documented
+    // in the PCL-002 delivery: the riding/wiring this test anticipated
+    // ("the riding/wiring is PCL-002's, behind the existing seams,
+    // default-off") LANDED as (a) the declarative tail-pacing
+    // configuration — the domain artifact that consumes the PCL-01
+    // vocabularies READ-ONLY (types + taxonomy, keyed for the cooldown
+    // rules and the retryable set), and (b) the tail-pacing seam
+    // adapter — the executions module's single pacing-reading point,
+    // which projects the applied mechanics into the PCL-01 facts
+    // shapes. No other executions-module surface references the
+    // vocabulary; no re-export exists (domain files are imported
+    // directly — the module's own convention).]
     const homeOffenders: string[] = [];
     for (const file of listFiles("src/modules/executions")) {
       if (vocabularyPattern.test(read(file))) {
         homeOffenders.push(file);
       }
     }
-    expect(homeOffenders).toEqual([OUTCOME_MODULE_PATH]);
+    expect(homeOffenders).toEqual([
+      "src/modules/executions/adapters/tail-pacing.ts",
+      "src/modules/executions/domain/outcome-latency-facts.ts",
+      "src/modules/executions/domain/tail-pacing-configuration.ts",
+    ]);
   });
 
   test("A6 the module file census: one declared new file, no second authority, no new module surface", () => {
@@ -242,6 +262,11 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
       "src/modules/executions/ports/long-running-store.ts",
       "src/modules/executions/ports/resume-admission.ts",
     ]);
+    // The adapters layer: the pre-change set plus the PCL-002 declared
+    // wiring seam (tail-pacing.ts — the executions module's single
+    // pacing-reading point over the domain configuration; no new
+    // service, no new port, no public-surface change). [PCL-002 wiring
+    // amendment, documented in the delivery.]
     expect(listFiles("src/modules/executions/adapters")).toEqual([
       "src/modules/executions/adapters/evacuation-seam.ts",
       "src/modules/executions/adapters/in-memory-long-running-store.ts",
@@ -252,6 +277,7 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
       "src/modules/executions/adapters/recovery-invariants.ts",
       "src/modules/executions/adapters/sql-execution-store.ts",
       "src/modules/executions/adapters/sql-long-running-store.ts",
+      "src/modules/executions/adapters/tail-pacing.ts",
       "src/modules/executions/adapters/transport-effect.ts",
       "src/modules/executions/adapters/worker-fabric.ts",
       "src/modules/executions/adapters/workflow-effect.ts",
@@ -260,9 +286,14 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
       "src/modules/executions/internal/index.ts",
     ]);
     // The domain layer is the pre-change set plus the ONE declared
-    // artifact (outcome-latency-facts.ts) — the module's own
-    // convention (no barrel registration; domain files are imported
-    // directly, re-exported only when PCL-002 wires the surface).
+    // artifact (outcome-latency-facts.ts) and, since the PCL-002
+    // wiring, the declarative pacing configuration artifact
+    // (tail-pacing-configuration.ts) — the module's own convention (no
+    // barrel registration; domain files are imported directly).
+    // [PCL-002 wiring amendment, documented in the delivery: the
+    // configuration artifact is the PCL-002 work order's declared
+    // domain surface — the typed, closed, versioned pacing DATA that
+    // consumes this module's vocabularies read-only.]
     expect(listFiles("src/modules/executions/domain")).toEqual([
       "src/modules/executions/domain/checkpoint.ts",
       "src/modules/executions/domain/event.ts",
@@ -272,6 +303,7 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
       "src/modules/executions/domain/longrunning.ts",
       "src/modules/executions/domain/outcome-latency-facts.ts",
       "src/modules/executions/domain/state-machine.ts",
+      "src/modules/executions/domain/tail-pacing-configuration.ts",
       "src/modules/executions/domain/verification.ts",
       "src/modules/executions/domain/wakeup.ts",
     ]);
