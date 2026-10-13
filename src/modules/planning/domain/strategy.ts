@@ -47,7 +47,23 @@ export type InadmissibleReasonCode =
   | "policy-cost-ceiling"
   | "policy-latency-ceiling"
   | "policy-quality-floor"
-  | "no-route-available";
+  | "no-route-available"
+  /**
+   * PCS-003 (ACR-009 §3): the task's declared semantic quality contract
+   * (e.g. `requires-semantic-retrieval-quality`) makes a
+   * `deterministic-substitute` representation inadmissible for that
+   * task's satisfaction — composed exactly like the policy reasons
+   * above: a typed verdict on the candidate, recorded on the decision
+   * record, never "tried anyway".
+   */
+  | "semantic-quality-contract-forbids-substitute"
+  /**
+   * PCS-003 (ACR-009 §3): an unknown or malformed quality contract is
+   * INADMISSIBLE, never a permissive default — the fail-closed spelling
+   * of the quality-contract dimension (defense in depth behind the
+   * profile derivation's own fail-closed rejection).
+   */
+  | "semantic-quality-contract-malformed";
 
 export type RouteRationaleCode =
   | "deterministic-sufficient"

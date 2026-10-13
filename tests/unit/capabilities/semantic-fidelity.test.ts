@@ -886,7 +886,14 @@ describe("semantic fidelity — the optional riding on published facts", () => {
     expect(claims[0]?.semanticFidelity?.representationKind).toBe("semantic-model-backed");
   });
 
-  test("profile resolution output is unchanged by the block (satisfactions carry no fidelity)", async () => {
+  test("the satisfaction carries the claim's block exactly when present (PCS-003's read path); absence adds no key", async () => {
+    // [PCS-003 evolution of the PCS-002 pin: the planner's
+    // quality-contract gating consumes the arbitrated facts READ-ONLY
+    // through the resolution satisfactions — the one sanctioned read
+    // path (no second registry, no direct catalog access). A claim's
+    // block rides its satisfaction EXACTLY when the claim declares
+    // one; a claim without a block leaves the satisfaction bytes
+    // IDENTICAL to the pre-PCS-002 spelling (absence-equivalence).]
     const registry = await createCapabilityRegistry({ store: createInMemoryCatalogStore() });
     await registry.publish(fact({ semanticFidelity: modelBackedFacts }));
     const resolution = await registry.resolve({
@@ -895,6 +902,19 @@ describe("semantic fidelity — the optional riding on published facts", () => {
     expect(resolution.satisfied).toBe(true);
     if (resolution.satisfied) {
       expect(JSON.stringify(resolution.satisfactions[0])).toBe(
+        '{"requirementId":"probe-claim","claimId":"probe-claim","claimKind":"model","claimVersion":"1.0.0","evidenceKind":"adapter-declared","evidenceReference":"probe:ref","publisher":"probe","semanticFidelity":{"representationKind":"semantic-model-backed","modality":"text","dimensionality":768,"normalization":"l2","similaritySemantics":"cosine","qualityContract":{"kind":"absent"},"compatibilityConstraints":["dimensionality-match","normalization-match","similarity-semantics-match"],"basis":{"executionId":"exec-000123","capabilityId":"semantic-embeddings"}}}',
+      );
+    }
+    // Absence: a claim WITHOUT a block resolves to the EXACT pre-change
+    // satisfaction bytes (no semanticFidelity key anywhere).
+    const bare = await createCapabilityRegistry({ store: createInMemoryCatalogStore() });
+    await bare.publish(fact());
+    const bareResolution = await bare.resolve({
+      requirements: [{ id: "probe-claim", kind: "model" }],
+    });
+    expect(bareResolution.satisfied).toBe(true);
+    if (bareResolution.satisfied) {
+      expect(JSON.stringify(bareResolution.satisfactions[0])).toBe(
         '{"requirementId":"probe-claim","claimId":"probe-claim","claimKind":"model","claimVersion":"1.0.0","evidenceKind":"adapter-declared","evidenceReference":"probe:ref","publisher":"probe"}',
       );
     }

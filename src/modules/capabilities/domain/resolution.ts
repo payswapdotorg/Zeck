@@ -64,6 +64,12 @@ export function resolveProfile(
       evidenceKind: best.evidence.kind,
       evidenceReference: best.evidence.reference,
       publisher: best.provenance.publisher,
+      // OPTIONAL pass-through (ACR-009 §2/§3; PCS-003): the satisfying
+      // claim's arbitrated semantic-fidelity block rides the satisfaction
+      // EXACTLY when the claim declares one. ABSENT = no block — the
+      // byte-identical-today resolution output (absence-equivalence;
+      // spread-when-present so the absent spelling adds no key).
+      ...(best.semanticFidelity === undefined ? {} : { semanticFidelity: best.semanticFidelity }),
     });
   }
 

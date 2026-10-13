@@ -19,9 +19,10 @@
  *  - A4 THE CLOSED VOCABULARIES: every semantic vocabulary is pinned
  *    exactly — widening is a reviewed change, never silent.
  *  - A5 NO WIRING INTO RUNTIME EXECUTION SEAMS: no code surface
- *    outside the capabilities module and the tests references the
- *    semantic-fidelity vocabulary — the planner gating and disclosure
- *    wiring are PCS-003's, the evaluation is PCS-004's.
+ *    outside the capabilities module, the planning module and the
+ *    tests references the semantic-fidelity vocabulary — the planner
+ *    gating + disclosure wiring is PCS-003's (DELIVERED: the planning
+ *    module is now a wired home), the evaluation is PCS-004's.
  *  - A6 THE MODULE FILE CENSUS: the capabilities module's
  *    application/ports/adapters/internal layers are exactly the
  *    pre-change file sets; the domain layer is the pre-change set plus
@@ -29,8 +30,11 @@
  *    registry, no new module surface.
  *  - A7 DRIFT-IMMUNE OWNERSHIP PIN: the dynamic merge-base diff of
  *    this branch against main touches NOTHING outside the capabilities
- *    module and the tests (the e11 C9 pattern — main advancing past
- *    the branch point never trips it; after merge the diff is empty).
+ *    module, the planning module (PCS-003's declared wiring surfaces)
+ *    and the tests (the e11 C9 pattern — main advancing past the
+ *    branch point never trips it; after merge the diff is empty and
+ *    the ownership claim holds trivially, the e11 reconciliation
+ *    discipline).
  */
 
 import { execSync } from "node:child_process";
@@ -186,11 +190,10 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     ]);
   });
 
-  test("A5 no wiring into runtime execution seams: the vocabulary is confined to the capabilities module and the tests", () => {
+  test("A5 no wiring into runtime execution seams: the vocabulary is confined to the capabilities module, the planning module and the tests", () => {
     const codeSurfaces = [
       "src/api",
       "src/platform",
-      "src/modules/planning",
       "src/modules/models",
       "src/modules/executions",
       "src/integrations",
@@ -232,10 +235,12 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     for (const surface of codeSurfaces) {
       scan(surface);
     }
-    // PCS-003 owns the planner gating + disclosure wiring; PCS-004 owns
-    // the evaluation. The pure plane touches NONE of the runtime
-    // execution seams — the vocabulary is confined to the capabilities
-    // module (where the fact block rides) and the tests.
+    // PCS-003 owns the planner gating + disclosure wiring — DELIVERED:
+    // the planning module (src/modules/planning) is now a wired home
+    // for the vocabulary (the ACR-009 §3/§4 wiring this test originally
+    // anticipated). PCS-004 owns the evaluation wiring — the evaluation
+    // surfaces (benchmarks, experiments) stay forbidden until then.
+    // Every OTHER runtime surface stays clean.
     expect(offenders).toEqual([]);
   });
 
@@ -275,11 +280,17 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     ]);
   });
 
-  test("A7 the drift-immune ownership pin: this branch touches nothing outside the capabilities module and the tests", () => {
+  test("A7 the drift-immune ownership pin: this branch touches nothing outside the capabilities module, the planning module and the tests", () => {
     // The e11 C9 pattern: compute the merge-base of this checkout and
     // main AT RUNTIME (a stale pin would self-trip when main advances;
     // the dynamic merge-base can only ever name THIS checkout's own
-    // changes, and after merge the diff is empty).
+    // changes, and after merge the diff is empty). The empty-diff state
+    // (a fresh main checkout, or this branch merged into main) is a
+    // PASS — the ownership claim holds trivially — per the e11
+    // reconciliation discipline. [PCS-003 correction: the original pin
+    // asserted a non-empty changed set, which is false on a fresh
+    // main checkout — the pre-existing base-state failure PCS-003
+    // root-caused and fixed with the e11 pattern.]
     const mainRef = ["main", "origin/main"].find((candidate) => {
       try {
         execSync(`git rev-parse --verify --quiet ${candidate}`, {
@@ -304,12 +315,17 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
-    // The work order's owned surfaces: the capability plane's files and
-    // the test files beside the existing suites. NOTHING else.
+    // The work order's owned surfaces: the capabilities module's fact
+    // plane (PCS-002), the planning module's gating + disclosure wiring
+    // (PCS-003 — the anticipated extension of this pin) and the test
+    // files beside the existing suites. NOTHING else. The empty diff
+    // (post-merge / fresh main) satisfies the claim trivially.
     const outsideOwnership = changed.filter(
-      (file) => !file.startsWith("src/modules/capabilities/") && !file.startsWith("tests/"),
+      (file) =>
+        !file.startsWith("src/modules/capabilities/") &&
+        !file.startsWith("src/modules/planning/") &&
+        !file.startsWith("tests/"),
     );
     expect(outsideOwnership).toEqual([]);
-    expect(changed.length).toBeGreaterThan(0);
   });
 });

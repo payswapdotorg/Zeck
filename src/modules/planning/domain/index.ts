@@ -107,6 +107,24 @@ export {
   STRATEGY_CLASSES,
 } from "./plan";
 export type {
+  SemanticDisclosure,
+  SemanticDisclosureEntry,
+  SemanticDisclosureStatus,
+  SemanticQualityContractClassification,
+  SemanticRepresentationSummary,
+  SemanticSubstitutionCapture,
+  SemanticSubstitutionFact,
+} from "./semantic-quality-gating";
+export {
+  applySemanticQualityGating,
+  buildSemanticSubstitutionCapture,
+  classifySemanticQualityContract,
+  projectSemanticDisclosure,
+  SEMANTIC_QUALITY_REQUIREMENT_VOCABULARY,
+  semanticRepresentationsOf,
+  validateSemanticSubstitutionCapture,
+} from "./semantic-quality-gating";
+export type {
   CandidateStrategy,
   InadmissibleReasonCode,
   RouteRationale,

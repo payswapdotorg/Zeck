@@ -30,6 +30,8 @@ import { validateLearningConsultation } from "./learning-consultation";
 import type { OpportunityConsultation } from "./opportunity-consultation";
 import { validateOpportunityConsultation } from "./opportunity-consultation";
 import type { ExecutionPlan } from "./plan";
+import type { SemanticSubstitutionCapture } from "./semantic-quality-gating";
+import { validateSemanticSubstitutionCapture } from "./semantic-quality-gating";
 import type { CandidateStrategy, RouteRationale } from "./strategy";
 import type { SubgraphObservation } from "./subgraph-evidence";
 import type { SubstrateSelection } from "./substrate-selection";
@@ -145,6 +147,19 @@ export interface PlanningDecisionRecord {
    * existing execution paths under the existing admission chains.
    */
   readonly substrateSelection?: SubstrateSelection;
+  /**
+   * OPTIONAL semantic-substitution capture (ACR-009 §3/§4; PCS-003):
+   * the typed substitution fact recorded exactly when the capability
+   * resolution carried semantic-fidelity facts — the governing
+   * quality-contract spelling, the per-requirement representation facts
+   * consulted (kind + provenance), and the substitute representations
+   * the SELECTED plan carries. Absent when no facts exist (the
+   * byte-identical-today record — absence-equivalence); present iff a
+   * capability declared its fidelity facts (the disclosure projects
+   * only where facts exist). Append-only VALUES on the EXISTING
+   * decision record — no new durable surface (the WORK-049 seam).
+   */
+  readonly semanticSubstitution?: SemanticSubstitutionCapture;
   /** Prior decision this one replaces (verification-triggered replanning). */
   readonly replanOf?: string;
   readonly recordedAt: string;
@@ -298,6 +313,13 @@ export function validatePlanningDecision(value: unknown): asserts value is Plann
     // shape — validated (the CSX-003 ordering evidence + the closed
     // candidate vocabulary) whenever present.
     validateSubstrateSelection(record.substrateSelection);
+  }
+  if (record.semanticSubstitution !== undefined) {
+    // PCS-003 (ACR-009 §3/§4): the substitution capture is part of the
+    // closed shape — validated (the governing contract spelling, the
+    // typed representation facts, the full provenance basis on every
+    // substitution) whenever present.
+    validateSemanticSubstitutionCapture(record.semanticSubstitution);
   }
   requireString(record, "recordedAt", "recordedAt");
   requireString(record, "recordDigest", "recordDigest");

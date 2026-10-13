@@ -25,7 +25,8 @@
  */
 
 import { PlatformError } from "../../../shared/errors";
-import type { CapabilityRequirement } from "../../capabilities/public";
+import type { CapabilityRequirement, SemanticQualityContract } from "../../capabilities/public";
+import { classifySemanticQualityContract } from "./semantic-quality-gating";
 
 /** Frozen task-kind vocabulary (ADR-0007 examples → typed kinds). */
 export const TASK_KINDS = [
@@ -106,6 +107,19 @@ export interface TaskProfile {
   readonly requiresSemanticReasoning: boolean;
   /** Capability requirements resolved BEFORE any route selection (INT-002). */
   readonly capabilityRequirements: readonly CapabilityRequirement[];
+  /**
+   * OPTIONAL (ACR-009 §3; PCS-003): the task-authored semantic quality
+   * contract — a DECLARED requirement (with the task's own bounded
+   * acceptance basis) or its EXPLICIT absence ({kind: "absent"} —
+   * substitutes explicitly permitted). ABSENT (no key) = undeclared —
+   * the byte-identical-today profile (absence-equivalence: the field,
+   * its digest contribution and every downstream record are identical
+   * until a task authors a contract). Validated fail-closed at
+   * derivation: an unknown requirement, an incoherent shape or an
+   * unbounded acceptance basis rejects the profile typed (never a
+   * permissive default).
+   */
+  readonly semanticQualityContract?: SemanticQualityContract;
 }
 
 /** Task constraints as accepted by the profiler (executions-shaped). */
@@ -335,6 +349,28 @@ export function deriveTaskProfile(
     }
   }
 
+  // Semantic quality contract (ACR-009 §3; PCS-003): task-authored,
+  // closed-vocabulary, fail-closed. ABSENT/undeclared adds NO key (the
+  // byte-identical-today profile); a malformed declaration rejects the
+  // profile typed — the task-authoring error boundary.
+  const declaredContract = task.semanticQualityContract;
+  const contractClassification = classifySemanticQualityContract(declaredContract);
+  if (contractClassification.kind === "malformed") {
+    reject(
+      `task.semanticQualityContract is malformed (fail closed): ${contractClassification.reason}`,
+    );
+  }
+  const semanticQualityContract: SemanticQualityContract | undefined =
+    contractClassification.kind === "undeclared"
+      ? undefined
+      : contractClassification.kind === "absent"
+        ? { kind: "absent" }
+        : {
+            kind: "declared",
+            requirement: contractClassification.requirement,
+            acceptanceBasis: contractClassification.acceptanceBasis,
+          };
+
   const profile: Omit<TaskProfile, "profileDigest"> = {
     kind,
     input: taskInput as Readonly<Record<string, unknown>>,
@@ -345,6 +381,7 @@ export function deriveTaskProfile(
     ...(maxLatencyMs === undefined ? {} : { maxLatencyMs }),
     requiresSemanticReasoning,
     capabilityRequirements,
+    ...(semanticQualityContract === undefined ? {} : { semanticQualityContract }),
   };
 
   return {
@@ -360,6 +397,10 @@ export function deriveTaskProfile(
       maxLatencyMs: maxLatencyMs ?? null,
       requiresSemanticReasoning,
       capabilityRequirements,
+      // The contract contributes to the profile identity ONLY when
+      // declared — an undeclared contract leaves the digest input
+      // byte-identical to the pre-change spelling (absence-equivalence).
+      ...(semanticQualityContract === undefined ? {} : { semanticQualityContract }),
     }),
   };
 }
