@@ -229,10 +229,13 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     expect(p1.workOrders).toEqual(["PCR-001", "PCR-002", "PCR-003", "PCR-004"]);
     expect(p1.apps).toEqual(["economic-recovery-plan-evaluation"]);
     expect(p2.workOrders).toEqual(["PCS-001", "PCS-002", "PCS-003", "PCS-004"]);
-    expect(p2.apps).toEqual([]);
-    // Every app projects under exactly one program: 51 + 1 = the 52 app dirs.
+    // PCS-004's evaluation app registered under its TRUE tag: the P2
+    // program's app census advances from none to the
+    // semantic-fidelity-evaluation app.
+    expect(p2.apps).toEqual(["semantic-fidelity-evaluation"]);
+    // Every app projects under exactly one program: 51 + 1 + 1 = the 53 app dirs.
     const total = validation.apps.length + p1.apps.length + p2.apps.length;
-    expect(total).toBe(52);
+    expect(total).toBe(53);
   });
 
   test("the validation catalog is byte-identical in behavior (the extension is additive)", () => {

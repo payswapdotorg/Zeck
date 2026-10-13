@@ -210,9 +210,15 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     }
     // PCS-003 owns the planner gating + disclosure wiring (the planning
     // module) over the capabilities fact plane (PCS-002); PCS-004 owns
-    // the evaluation (benchmarks/experiments stay forbidden until it
-    // wires them). Every other runtime surface stays clean.
-    expect(offenders).toEqual([]);
+    // the evaluation — DELIVERED: the evaluation app
+    // (benchmarks/validation/apps/semantic-fidelity-evaluation) is the
+    // declared evaluation home (exactly that one directory); every
+    // other runtime surface stays clean.
+    const pcs004EvaluationHome = offenders.filter((path) =>
+      path.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/"),
+    );
+    expect(pcs004EvaluationHome.length).toBeGreaterThan(0);
+    expect(offenders).toEqual([...pcs004EvaluationHome]);
   });
 
   test("B5 the drift-immune ownership pin: this branch touches nothing outside planning, capabilities and the tests", () => {
@@ -250,12 +256,15 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
       .filter((line) => line.length > 0);
     // The work order's owned surfaces: the planning module's gating +
     // disclosure wiring, the capabilities module's additive satisfaction
-    // pass-through, and the test files beside the existing suites.
-    // NOTHING else.
+    // pass-through, the PCS-004 evaluation app under
+    // benchmarks/validation/apps/semantic-fidelity-evaluation (the
+    // declared evaluation home — this test's own B4 anticipated it), and
+    // the test files beside the existing suites. NOTHING else.
     const outsideOwnership = changed.filter(
       (file) =>
         !file.startsWith("src/modules/planning/") &&
         !file.startsWith("src/modules/capabilities/") &&
+        !file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") &&
         !file.startsWith("tests/"),
     );
     expect(outsideOwnership).toEqual([]);

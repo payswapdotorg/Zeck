@@ -1,0 +1,46 @@
+{
+  "applicationId": "run-time bound (the served world provisions it)",
+  "baseUrl": "run-time bound (the served API address)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "run-time bound (the repository revision at run time)",
+  "corpusRevision": "pcs-004-semantic-fidelity-evaluation-v1",
+  "integrationSurface": "semantic-fidelity-evaluation:quality-fixtures-negative-controls-differentiated-evidence-replay",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "evaluation": {
+    "evaluationId": "semantic-fidelity-evaluation",
+    "baseRevision": "086e0399942ff2666dc7fd2888d153a671051922",
+    "corpusDigest": "f9c7698ea031a09a9b5ad985390e1ee9137d77f89f6e9ecbf4f49758ff9b2c3b",
+    "arms": [
+      {
+        "armId": "deterministic-substitute",
+        "label": "the deterministic lexical/hash substitute — the REAL PPR-025 Zeck-side executor (compat/openwebui/harness/embeddings.ts, imported read-only): the era's recorded execution representation (synthetic-supply — never a model rail)"
+      },
+      {
+        "armId": "synthetic-semantic-supply",
+        "label": "the synthetic semantic supply — concept normalization through the committed curated dictionaries + the SAME feature-hash arithmetic as the substitute: the declared upper bound of model-backed semantic retrieval ON THIS CURATED CORPUS (synthetic-semantic-supply — never a live model measurement)"
+      }
+    ],
+    "fixtureGroups": [
+      "paraphrase-synonym-retrieval",
+      "cross-lingual-nearest-neighbor",
+      "polysemy-discrimination"
+    ],
+    "fixtures": 18,
+    "controls": { "hard-gate": 6, "discriminating": 8 },
+    "replayLines": 3,
+    "thresholds": {
+      "t1aSemanticTop1PerGroup": 1,
+      "t1bSubstituteStrictlyBelowPerGroup": true,
+      "t2HardGateFailClosedFraction": 1,
+      "t3DiscriminatorCoverageFraction": 1,
+      "t4ReplayLinesAllHold": true,
+      "t5ReRunDigestIdentical": true
+    },
+    "labels": {
+      "supply": "synthetic-supply (the deterministic executors and the committed curated dictionaries — never a live provider)",
+      "semanticSupply": "synthetic-semantic-supply (the curated-knowledge upper bound on this corpus — never a live model measurement; live credentialed semantic-quality validation is the operator-era obligation, never backfilled)",
+      "measurement": "no cost and no latency measurements (this evaluation measures retrieval quality distinctions and gating verdicts, nothing else)"
+    }
+  }
+}
