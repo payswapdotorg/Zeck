@@ -328,13 +328,28 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     // declared evaluation home — this test's own A5 anticipated it) and
     // the test files beside the existing suites. NOTHING else. The
     // empty diff (post-merge / fresh main) satisfies the claim trivially.
-    const outsideOwnership = changed.filter(
-      (file) =>
-        !file.startsWith("src/modules/capabilities/") &&
-        !file.startsWith("src/modules/planning/") &&
-        !file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") &&
-        !file.startsWith("tests/"),
-    );
+    // [ACR-010 records-channel correction, 2026-10-13: the pin as written
+    // tripped on every pure records-channel branch — an ACR PR touches
+    // docs/architecture-changes/ only, and CI must run on those branches
+    // (ACR-009's PR predated this pin; ACR-010's PR exposed the defect).
+    // The records channel (docs/, spec/) is Lead-owned governance surface,
+    // never a worker surface — files there are EXCLUDED from the worker
+    // ownership claim (a pure records branch touches no worker surface at
+    // all; a mixed branch still has every worker-surface file checked). The
+    // e11 C9 discipline's own treatment of spec/ records commits is the
+    // precedent. Worker boundaries remain enforced by the work-order
+    // protocol, the Lead review and the e11 checks.]
+    const recordsChannel = (file: string) =>
+      file.startsWith("docs/") || file.startsWith("spec/");
+    const outsideOwnership = changed
+      .filter((file) => !recordsChannel(file))
+      .filter(
+        (file) =>
+          !file.startsWith("src/modules/capabilities/") &&
+          !file.startsWith("src/modules/planning/") &&
+          !file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") &&
+          !file.startsWith("tests/"),
+      );
     expect(outsideOwnership).toEqual([]);
   });
 });
