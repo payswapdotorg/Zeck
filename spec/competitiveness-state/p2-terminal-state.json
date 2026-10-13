@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "program": "zeck-competitiveness-p2",
+  "status": "p2-complete",
+  "currentBase": "aab3d8d8c39020378764ca1381a7181a8764dae9",
+  "delivered": [
+    "PCS-001",
+    "PCS-002",
+    "PCS-003",
+    "PCS-004"
+  ],
+  "eligible": [],
+  "inFlight": [],
+  "dependencyGated": {
+    "PCS-003": [
+      "PCS-002"
+    ],
+    "PCS-004": [
+      "PCS-003"
+    ]
+  },
+  "voidConditions": {},
+  "maxConcurrentWorkers": 1,
+  "rule": "eligible means an authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. The P2 program was authorized under the operator delegation DEL-2026-10-12-P2 (spec/governance/authority-delegations.json): the Tech Lead exercised the Architect's delegation-able approve-architecture-change and approve-work-order rights for this program only, per the operator standing directive of 2026-10-12 ('continuous resident watch from here on: monitor -> harvest -> review -> approve/require-changes -> dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap'). Non-delegable rights remained with the Architect principal @pectoraux. ACR-009 (PR #179) was the governing architecture evolution.",
+  "context": "P2 closed the capability-semantics gap disclosed by the application-compatibility program: PPR-025/PPR-026 executed RAG embeddings edges through deterministic Zeck-side substitutes where the authorized supply exposes no /embeddings surface, proving the delegation path but not semantic-embedding quality; the substitution lived as prose instead of a typed fact. ACR-009 typed the distinction, gated planner substitute selection on the task-authored quality contract (fail-closed, absence-equivalent, never lowering a quality floor), and added the mechanical user-facing disclosure. ALL FOUR work orders delivered: PCS-001 (PR #181, 7e0548b8 \u2014 program enablement, the two TL-owned PCR-003 findings: console vocabulary + lab seam re-exports), PCS-002 (PR #182, da091cea \u2014 the SemanticFidelityFacts pure plane: closed vocabularies, provenance, pure boundary checking, determinism + content addressing), PCS-003 (PR #183, 99afeaff \u2014 the wiring: typed admissibility dimension in the existing planner, substitution fact on the existing ledger event, mechanical disclosure, real-wired-stack absence-equivalence), PCS-004 (PR #184, aab3d8d8 \u2014 the evaluation: 18 quality fixtures semantic 18/18 vs substitute 0/18 top-1 against the REAL PPR-025 executor, 6/6 hard-gate negative controls fail-closed with the typed reason and 0 admitted, 54/54 differentiated records separated by the mechanical discriminator, 3/3 PPR-025/026 lines honestly replayed under both contract spellings with era labels preserved verbatim, thresholds T1a-T5 ALL MET, evaluation digest 3e8956f82ad82cec8d26d9417d6a4ec7b9b576b394626a97421e57fc3df101be re-run byte-identical). Program completion assessment: the P2 success gates hold \u2014 a task requiring semantic retrieval no longer passes merely because a deterministic vector is produced (the hard gate is mechanically asserted against the real planner gate); evidence differentiates semantic-embeddings from deterministic-vectorization mechanically (typed facts only, no prose); the PPR-025/026 lines replay honestly under the gated configuration with no relabeling. Honest boundary carried forward: live credentialed semantic-quality validation remains the operator-era obligation (never backfilled from synthetic runs); every evaluation number carries its synthetic-supply/synthetic-semantic-supply label. Lead battery reproduced every number exactly on all four deliveries; every tarball triple-verified (8368683b/50,083B; a79fac25/26,913B; a4c05b30/61,267B; 0a444dca/73,580B).",
+  "authorizedQueue": [
+    "PCS-001",
+    "PCS-002",
+    "PCS-003",
+    "PCS-004"
+  ],
+  "advancementRule": "The Tech Lead (holding DEL-2026-10-12-P2) dispatched from exact current main, harvested with triple-verified reports + byte-exact tarballs, ran the independent Lead battery, merged, and advanced the frontier only after exact-merge/evidence finalization. The program is now TERMINAL: all four authorized work orders delivered and merged; no lanes remain. The successor proposal is the roadmap's P3 (latency-tail and recovery economics), which requires its own ACR + delegation record under the operator's standing directive before any dispatch."
+}
