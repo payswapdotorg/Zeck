@@ -9,7 +9,7 @@
       "grantee": "Tech Lead (Z.ai Code lead session)",
       "scope": {
         "program": "zeck-competitiveness-p1",
-        "roadmapItem": "P1 — close the measured reliability/failover gap (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
+        "roadmapItem": "P1 \u2014 close the measured reliability/failover gap (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
         "rightsExercised": [
           "approve-architecture-change",
           "approve-work-order"
@@ -35,11 +35,11 @@
     {
       "delegationId": "DEL-2026-10-12-P2",
       "date": "2026-10-12",
-      "grantor": "operator (standing directive, quoted verbatim): \"continuous resident watch from here on: monitor → harvest → review → approve/require-changes → dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap\"",
+      "grantor": "operator (standing directive, quoted verbatim): \"continuous resident watch from here on: monitor \u2192 harvest \u2192 review \u2192 approve/require-changes \u2192 dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap\"",
       "grantee": "Tech Lead (Z.ai Code lead session)",
       "scope": {
         "program": "zeck-competitiveness-p2",
-        "roadmapItem": "P2 — preserve capability semantics: real capability vs deterministic substitute (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
+        "roadmapItem": "P2 \u2014 preserve capability semantics: real capability vs deterministic substitute (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
         "rightsExercised": [
           "approve-architecture-change",
           "approve-work-order"
@@ -61,6 +61,36 @@
         "Live credentialed validation of real semantic quality remains an operator-era obligation; synthetic results are never relabeled (the exact-revision rule stands)."
       ],
       "expiresOn": "program completion of zeck-competitiveness-p2 (frontier status terminal) or earlier operator revocation"
+    },
+    {
+      "delegationId": "DEL-2026-10-13-P3",
+      "date": "2026-10-13",
+      "grantor": "operator (standing directive, quoted verbatim): \"continuous resident watch from here on: monitor \u2192 harvest \u2192 review \u2192 approve/require-changes \u2192 dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap\"",
+      "grantee": "Tech Lead (Z.ai Code lead session)",
+      "scope": {
+        "program": "zeck-competitiveness-p3",
+        "roadmapItem": "P3 \u2014 improve latency-tail and recovery economics (docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md)",
+        "rightsExercised": [
+          "approve-architecture-change",
+          "approve-work-order"
+        ],
+        "architectureVehicle": "ACR-010 (docs/architecture-changes/ACR-010-latency-tail-recovery-economics.md, PR #185)"
+      },
+      "rightsNotDelegated": [
+        "change-governing-architecture",
+        "weaken-frozen-invariant",
+        "bypass-verification",
+        "bypass-required-review",
+        "bypass-merge-gate"
+      ],
+      "basis": "spec/governance/architect.json lists approve-architecture-change and approve-work-order among the architect's delegation-able decision rights; the operator standing directive of 2026-10-12 exercises that delegation per roadmap phase. The architect principal record (@pectoraux) is not rewritten; this additive record is the auditable delegation trail (invariant 17). Predecessor programs: DEL-2026-10-11-P1 (terminal), DEL-2026-10-12-P2 (terminal at p2-terminal-state.json).",
+      "boundaries": [
+        "P4-P5 of the competitiveness roadmap remain proposals requiring separate authorization.",
+        "ACR-010 preserves all twenty frozen invariants of spec/architecture-lock.md; hedged requests remain out of scope (the PCR-004 void stands).",
+        "Worker protocol unchanged: workers cannot merge their own PRs; the Lead merges per the established governance pattern.",
+        "Live credentialed latency validation under real load remains an operator-era obligation; synthetic results are never relabeled (the exact-revision rule stands)."
+      ],
+      "expiresOn": "program completion of zeck-competitiveness-p3 (frontier status terminal) or earlier operator revocation"
     }
   ]
 }

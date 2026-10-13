@@ -456,3 +456,13 @@ ACR-009 extends the existing capability/evidence model with typed semantic-fidel
 The fact block is closed, optional and absence-equivalent: every field is a closed enum or typed bounded value; unknown values fail closed; its absence selects and records byte-identically to today at every existing call site. A task declaring a semantic quality requirement makes a deterministic substitute inadmissible with a typed reason — a task requiring semantic retrieval must not pass merely because a deterministic vector is produced.
 
 ACR-009 adds no new capability registry, no new capability family, no second planner, router, verification service or evidence authority, and never silently broadens the existing capability-family truth by a similarly named substitute. All twenty frozen invariants are preserved. See docs/architecture-changes/ACR-009-capability-semantic-fidelity.md and the zeck-competitiveness-p2 program work orders (PCS-001..PCS-004).
+
+# 26. ACR-010 — Latency-tail and recovery economics: per-failure-class outcome latency, tail mechanics, honest promotion gates
+
+ACR-010 extends the existing execution/evidence model with typed outcome-latency facts — per-failure-class, per-route latency and cost measurements on outcome records — and makes the tail mechanics (retry pacing, provider cooldowns, event-vs-polled progress delivery) declaratively configured quantities, with explicit timeout and terminal-failure behavior preserved as a fail-closed configuration gate.
+
+The fact block is closed, optional and absence-equivalent: every field is a closed enum or typed bounded value; unknown values fail closed; its absence records byte-identically to today at every existing call site. Every latency/cost number is a real measurement of a real execution at a recorded revision — never simulated, projected or backfilled; the outcome census reconciles exactly (dropped or reclassified failures are an automatic void).
+
+Promotion of any tuned configuration is gated on the honest evaluation contract: per-failure-class p50/p95/p99, total cost including duplicate attempts, resolution rate and verification cost — a configuration is promoted only on tail percentile improvement AND no resolution regression AND cost within the declared budget delta AND preserved timeout/terminal-failure behavior. Median latency alone promotes nothing.
+
+ACR-010 adds no new router, no second planner, no new verification service or evidence authority, and no hedged requests (the PCR-004 void record stands — ACR-008 §5's precondition evidence does not exist). All twenty frozen invariants are preserved. See docs/architecture-changes/ACR-010-latency-tail-recovery-economics.md and the zeck-competitiveness-p3 program work orders (PCL-001..PCL-003).
