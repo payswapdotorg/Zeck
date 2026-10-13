@@ -339,8 +339,7 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     // e11 C9 discipline's own treatment of spec/ records commits is the
     // precedent. Worker boundaries remain enforced by the work-order
     // protocol, the Lead review and the e11 checks.]
-    const recordsChannel = (file: string) =>
-      file.startsWith("docs/") || file.startsWith("spec/");
+    const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
     const outsideOwnership = changed
       .filter((file) => !recordsChannel(file))
       .filter(
