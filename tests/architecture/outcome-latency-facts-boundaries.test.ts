@@ -319,9 +319,24 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     // empty diff (post-merge / fresh main) satisfies the claim
     // trivially.
     const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
-    const outsideOwnership = changed
-      .filter((file) => !recordsChannel(file))
-      .filter((file) => !file.startsWith("src/modules/executions/") && !file.startsWith("tests/"));
-    expect(outsideOwnership).toEqual([]);
+    // [Lead governance-fitness amendment, 2026-10-13 (PR body documents it):
+    // the same two refinements the PCS-002/PCS-003 pins received this cycle —
+    // (a) the TRIGGER is the work order's SUBSTANTIVE surface (the executions
+    // module); tests/ alone never triggers (the boundary tests are shared
+    // governance-maintenance surface); (b) a branch touching none of the
+    // substantive surfaces (another program's delivery) makes the claim
+    // vacuous — post-merge the diff is empty per the e11 reconciliation
+    // discipline. A rogue file beside a substantive touch is caught exactly
+    // as before.]
+    const substantiveSurface = (file: string) => file.startsWith("src/modules/executions/");
+    const touchesThisWorkOrder = changed.some(
+      (file) => !recordsChannel(file) && substantiveSurface(file),
+    );
+    if (touchesThisWorkOrder) {
+      const outsideOwnership = changed
+        .filter((file) => !recordsChannel(file))
+        .filter((file) => !file.startsWith("src/modules/executions/") && !file.startsWith("tests/"));
+      expect(outsideOwnership).toEqual([]);
+    }
   });
 });
