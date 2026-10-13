@@ -335,7 +335,9 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     if (touchesThisWorkOrder) {
       const outsideOwnership = changed
         .filter((file) => !recordsChannel(file))
-        .filter((file) => !file.startsWith("src/modules/executions/") && !file.startsWith("tests/"));
+        .filter(
+          (file) => !file.startsWith("src/modules/executions/") && !file.startsWith("tests/"),
+        );
       expect(outsideOwnership).toEqual([]);
     }
   });
