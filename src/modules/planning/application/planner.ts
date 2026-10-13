@@ -47,13 +47,16 @@ import type {
   TaskProfile,
 } from "../domain";
 import {
+  applySemanticQualityGating,
   buildCompositionConsultation,
   buildDeterministicizationConsultation,
   buildLearnedPolicyConsultation,
   buildLearningConsultation,
   buildOpportunityConsultation,
   buildPlan,
+  buildSemanticSubstitutionCapture,
   canonicalJson,
+  classifySemanticQualityContract,
   decisionRecordDigest,
   deriveTaskProfile,
   emitSubgraphEvidence,
@@ -62,6 +65,7 @@ import {
   learnedOrderingSubjects,
   PLANNER_VERSION,
   selectStrategy,
+  semanticRepresentationsOf,
   validatePlanningDecision,
 } from "../domain";
 import type { SubstrateSelection } from "../domain/substrate-selection";
@@ -273,6 +277,19 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       };
       const resolution = await deps.capabilityAuthority.resolve(capabilityProfile);
 
+      // 3.5 (PCS-003 / ACR-009 §3): the per-requirement semantic
+      //     representation facts, consumed READ-ONLY from the capability
+      //     resolution (PCS-002's arbitrated fact blocks riding the
+      //     satisfactions), plus the task's classified quality contract.
+      //     Both are PURE derivations — no ambient input of any kind; an
+      //     empty array (no capability declared fidelity facts) and an
+      //     undeclared contract are exactly today's spelling
+      //     (absence-equivalence: nothing downstream changes).
+      const semanticRepresentations = semanticRepresentationsOf(resolution);
+      const semanticContractClassification = classifySemanticQualityContract(
+        profile.semanticQualityContract,
+      );
+
       // 4. Deterministic sufficiency — the explicit ADR-0007 decision.
       const catalog = await deps.deterministicCatalog.list();
       const sufficiency = sufficiencyEvaluator({
@@ -308,17 +325,33 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         filterAdmissibility(candidate, effective),
       );
 
+      // 6.1 (PCS-003 / ACR-009 §3): the typed quality-contract dimension
+      //     of the admissibility evaluation — composed AFTER the hard
+      //     policy filter, exactly like the policy reasons it extends
+      //     (the InadmissibleReasonCode family). A declared
+      //     `requires-semantic-retrieval-quality` contract makes a
+      //     `deterministic-substitute` representation INADMISSIBLE with
+      //     the typed reason; a malformed contract fails closed
+      //     (inadmissible, never permissive); no contract declared (or
+      //     substitutes explicitly permitted) returns the candidate
+      //     UNCHANGED — byte-identical to the pre-change verdicts. The
+      //     gating never touches an already-inadmissible candidate: it
+      //     can only ADD inadmissibility, never lower a quality floor,
+      //     raise a budget ceiling or bypass policy (invariant 13).
+      const gatedCandidates = admissibleCandidates.map((candidate) =>
+        applySemanticQualityGating(candidate, {
+          contract: semanticContractClassification,
+          representations: semanticRepresentations,
+        }),
+      );
+
       // 6.2 The learning-free governed selection (the audit anchor):
       //     computed WITHOUT any learned-policy ordering — the
       //     WORK-020 consultation below may refine the cascade
       //     ordering, and this anchor records exactly what the
       //     refinement changed (appliedToSelection is honest by
       //     construction: it compares against THIS selection).
-      const governedSelection = selectStrategy(
-        admissibleCandidates,
-        sufficiency,
-        profile.qualityTarget,
-      );
+      const governedSelection = selectStrategy(gatedCandidates, sufficiency, profile.qualityTarget);
 
       // 6.3 OPTIONAL learned-policy consultation (WORK-020 / LRN-002)
       //     — READ ONLY, AFTER every hard authority has spoken: the
@@ -364,27 +397,56 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       }
 
       const selection = selectStrategy(
-        admissibleCandidates,
+        gatedCandidates,
         sufficiency,
         profile.qualityTarget,
         learnedOrdering,
       );
       if (selection.kind === "none") {
+        // The unmet-and-blocked disclosure rides the typed error
+        // details (no decision record exists on a failed selection —
+        // the existing fail-closed contract): the declared contract
+        // and the consulted representations are carried mechanically
+        // whenever semantic facts were in play (ACR-009 §4).
+        const semanticQualityGatingDetail =
+          semanticContractClassification.kind === "undeclared" &&
+          semanticRepresentations.length === 0
+            ? undefined
+            : {
+                qualityContract: semanticContractClassification,
+                representations: semanticRepresentations,
+              };
         throw new PlatformError({
           code: "NO_ELIGIBLE_ROUTE",
           message:
             "no admissible execution strategy satisfies the task under the effective policy (deterministic sufficiency was not achieved and/or every generative route is policy-inadmissible)",
           details: {
             sufficiency: sufficiency.outcome,
-            candidates: admissibleCandidates.map((candidate) => ({
+            candidates: gatedCandidates.map((candidate) => ({
               strategyId: candidate.strategyId,
               admissible: candidate.admissible,
               inadmissibleReason: candidate.inadmissibleReason ?? null,
             })),
+            ...(semanticQualityGatingDetail === undefined
+              ? {}
+              : { semanticQualityGating: semanticQualityGatingDetail }),
           },
         });
       }
       const selected = selection.selected;
+
+      // 6.45 (PCS-003 / ACR-009 §3): the SUBSTITUTION FACT on the decision
+      //      record (the existing WORK-049 seam — append-only values, no
+      //      new durable surface). Built exactly when the capability
+      //      resolution carried semantic-fidelity facts: the governing
+      //      contract spelling, the consulted representation facts, and
+      //      the substitute representations the SELECTED plan carries.
+      //      No facts → no capture → the byte-identical-today record.
+      const semanticSubstitution = buildSemanticSubstitutionCapture({
+        contract: profile.semanticQualityContract,
+        representations: semanticRepresentations,
+        selected,
+      });
 
       // 6.4 Build the learned-policy consultation capture (WORK-020) —
       //     the recorded evidence: the consulted policy with its full
@@ -398,7 +460,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       let learnedPolicyConsultation: LearnedPolicyConsultation | undefined;
       if (consultedPolicy !== undefined && governedSelection.kind === "selected") {
         learnedPolicyConsultation = buildLearnedPolicyConsultation({
-          candidates: admissibleCandidates,
+          candidates: gatedCandidates,
           consultedPolicy,
           taskClass: profile.kind,
           policy: effective,
@@ -433,7 +495,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
       if (deps.learningSignals !== undefined) {
         const subjectKeys = [
           ...new Set(
-            admissibleCandidates.flatMap((candidate) =>
+            gatedCandidates.flatMap((candidate) =>
               candidate.plan.steps.flatMap((step) =>
                 step.routeRef === undefined
                   ? []
@@ -452,7 +514,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
                 subjectKeys,
               });
         learningConsultation = buildLearningConsultation({
-          candidates: admissibleCandidates,
+          candidates: gatedCandidates,
           signals: consultedSignals,
           selectedStrategyId: selected.strategyId,
           consultedAt: iso(),
@@ -481,7 +543,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
           taskClass: profile.kind,
         });
         compositionConsultation = buildCompositionConsultation({
-          candidates: admissibleCandidates,
+          candidates: gatedCandidates,
           recommendations: consultedRecommendations,
           policy: policy.effective ?? {},
           selectedStrategyId: selected.strategyId,
@@ -624,7 +686,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
           tenantId: input.tenantId,
         });
         opportunityConsultation = buildOpportunityConsultation({
-          candidates: admissibleCandidates,
+          candidates: gatedCandidates,
           findings: consultedFindings,
           selectedStrategyId: selected.strategyId,
           consultedAt: iso(),
@@ -650,7 +712,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
           tenantId: input.tenantId,
         });
         deterministicizationConsultation = buildDeterministicizationConsultation({
-          candidates: admissibleCandidates,
+          candidates: gatedCandidates,
           signals: consultedCandidates,
           selectedStrategyId: selected.strategyId,
           consultedAt: iso(),
@@ -703,7 +765,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
             : resolution.unmet.map((unmet) => unmet.requirementId),
         },
         deterministicSufficiency: sufficiency,
-        candidates: admissibleCandidates,
+        candidates: gatedCandidates,
         selectedStrategyId: selected.strategyId,
         selectionRationale: selection.rationale,
         subgraphEvidence,
@@ -715,6 +777,7 @@ export function createPlannerService(deps: PlannerServiceDeps): PlannerService {
         ...(deterministicizationConsultation === undefined
           ? {}
           : { deterministicizationConsultation }),
+        ...(semanticSubstitution === undefined ? {} : { semanticSubstitution }),
         ...(input.replanOf === undefined ? {} : { replanOf: input.replanOf }),
         recordedAt: iso(),
       };

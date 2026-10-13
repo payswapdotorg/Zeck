@@ -128,6 +128,17 @@ export interface ClaimSatisfaction {
   readonly evidenceKind: CapabilityEvidenceKind;
   readonly evidenceReference: string;
   readonly publisher: string;
+  /**
+   * OPTIONAL (ACR-009 §2/§3; PCS-003 — consumed read-only by the
+   * planner's quality-contract gating): the satisfying claim's
+   * semantic-fidelity fact block, carried exactly when the arbitrated
+   * claim declares one. ABSENT = the claim carried no block — the
+   * byte-identical-today resolution output (absence-equivalence). The
+   * block is a PASS-THROUGH of the registry's own arbitrated facts
+   * (already validated fail-closed at the publish boundary); this
+   * projection re-validates nothing and invents nothing.
+   */
+  readonly semanticFidelity?: SemanticFidelityFacts;
 }
 
 export type UnmetReason = "unknown-capability" | "version-unavailable" | "invalid-requirement";
