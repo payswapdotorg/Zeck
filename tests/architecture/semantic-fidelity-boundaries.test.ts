@@ -238,10 +238,16 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     // PCS-003 owns the planner gating + disclosure wiring — DELIVERED:
     // the planning module (src/modules/planning) is now a wired home
     // for the vocabulary (the ACR-009 §3/§4 wiring this test originally
-    // anticipated). PCS-004 owns the evaluation wiring — the evaluation
-    // surfaces (benchmarks, experiments) stay forbidden until then.
-    // Every OTHER runtime surface stays clean.
-    expect(offenders).toEqual([]);
+    // anticipated). PCS-004 owns the evaluation wiring — DELIVERED:
+    // the evaluation app (benchmarks/validation/apps/
+    // semantic-fidelity-evaluation) is the declared evaluation home;
+    // every OTHER benchmarks/experiments surface stays forbidden (the
+    // exemption is exactly the one declared directory, never the tree).
+    const pcs004EvaluationHome = offenders.filter((path) =>
+      path.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/"),
+    );
+    expect(pcs004EvaluationHome.length).toBeGreaterThan(0);
+    expect(offenders).toEqual([...pcs004EvaluationHome]);
   });
 
   test("A6 the module file census: one declared new file, no second registry, no new module surface", () => {
@@ -317,13 +323,16 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
       .filter((line) => line.length > 0);
     // The work order's owned surfaces: the capabilities module's fact
     // plane (PCS-002), the planning module's gating + disclosure wiring
-    // (PCS-003 — the anticipated extension of this pin) and the test
-    // files beside the existing suites. NOTHING else. The empty diff
-    // (post-merge / fresh main) satisfies the claim trivially.
+    // (PCS-003), the PCS-004 evaluation app under
+    // benchmarks/validation/apps/semantic-fidelity-evaluation (the
+    // declared evaluation home — this test's own A5 anticipated it) and
+    // the test files beside the existing suites. NOTHING else. The
+    // empty diff (post-merge / fresh main) satisfies the claim trivially.
     const outsideOwnership = changed.filter(
       (file) =>
         !file.startsWith("src/modules/capabilities/") &&
         !file.startsWith("src/modules/planning/") &&
+        !file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") &&
         !file.startsWith("tests/"),
     );
     expect(outsideOwnership).toEqual([]);

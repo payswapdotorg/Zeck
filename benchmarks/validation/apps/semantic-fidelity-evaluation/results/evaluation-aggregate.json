@@ -1,0 +1,2493 @@
+{
+  "evaluationId": "semantic-fidelity-evaluation",
+  "corpusDigest": "f9c7698ea031a09a9b5ad985390e1ee9137d77f89f6e9ecbf4f49758ff9b2c3b",
+  "digest": "3e8956f82ad82cec8d26d9417d6a4ec7b9b576b394626a97421e57fc3df101be",
+  "aggregate": {
+    "fixtures": {
+      "perGroup": {
+        "paraphrase-synonym-retrieval": {
+          "total": 6,
+          "substituteTop1": 0,
+          "semanticTop1": 6
+        },
+        "cross-lingual-nearest-neighbor": {
+          "total": 6,
+          "substituteTop1": 0,
+          "semanticTop1": 6
+        },
+        "polysemy-discrimination": {
+          "total": 6,
+          "substituteTop1": 0,
+          "semanticTop1": 6
+        }
+      },
+      "overall": {
+        "total": 18,
+        "substituteTop1": 0,
+        "semanticTop1": 18
+      }
+    },
+    "controls": {
+      "hardGateTotal": 6,
+      "hardGateFailedClosedWithTypedReason": 6,
+      "hardGateAdmitted": 0,
+      "discriminatingTotal": 8,
+      "discriminatingAsExpected": 8
+    },
+    "replay": {
+      "lines": 3,
+      "eraTargetRankedFirst": 3,
+      "gatedFailClosed": 3
+    },
+    "discrimination": {
+      "recordsWithRepresentations": 54,
+      "separated": 54,
+      "semanticModelBacked": 20,
+      "deterministicSubstitute": 34,
+      "rejected": 0
+    },
+    "verdicts": {
+      "t1aSemanticTop1PerGroup": {
+        "verdict": "met"
+      },
+      "t1bSubstituteStrictlyBelowPerGroup": {
+        "verdict": "met"
+      },
+      "t2HardGateFailClosed": {
+        "verdict": "met"
+      },
+      "t3DiscriminatorCoverage": {
+        "verdict": "met"
+      },
+      "t4ReplayLinesAllHold": {
+        "verdict": "met"
+      }
+    }
+  },
+  "records": {
+    "fixtureRecords": [
+      {
+        "recordId": "fixture:pcs004-p1:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p1",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p1",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p1-distractor",
+              "similarity": 0.159734,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p1-target",
+              "similarity": 0.111096,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p1-distractor",
+          "groundTruthId": "pcs004-p1-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p1:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p1",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p1-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p1-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p1-distractor",
+              "similarity": 0.471405,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p1-target",
+          "groundTruthId": "pcs004-p1-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p2:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p2",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p2",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p2-distractor",
+              "similarity": 0.242327,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p2-target",
+              "similarity": 0.105356,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p2-distractor",
+          "groundTruthId": "pcs004-p2-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p2:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p2",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p2-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p2-target",
+              "similarity": 0.6,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p2-distractor",
+              "similarity": 0.223607,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p2-target",
+          "groundTruthId": "pcs004-p2-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p3:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p3",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p3",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p3-distractor",
+              "similarity": 0.146254,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p3-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p3-distractor",
+          "groundTruthId": "pcs004-p3-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p3:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p3",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p3-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p3-target",
+              "similarity": 0.894427,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p3-distractor",
+              "similarity": 0.377964,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p3-target",
+          "groundTruthId": "pcs004-p3-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p4:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p4",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p4",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p4-distractor",
+              "similarity": 0.133333,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p4-target",
+              "similarity": 0.062622,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p4-distractor",
+          "groundTruthId": "pcs004-p4-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p4:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p4",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p4-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p4-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p4-distractor",
+              "similarity": 0.288675,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p4-target",
+          "groundTruthId": "pcs004-p4-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p5:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p5",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p5",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p5-distractor",
+              "similarity": 0.307692,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p5-target",
+              "similarity": 0.159734,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p5-distractor",
+          "groundTruthId": "pcs004-p5-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p5:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p5",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p5-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p5-target",
+              "similarity": 0.944911,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p5-distractor",
+              "similarity": 0.866025,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p5-target",
+          "groundTruthId": "pcs004-p5-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p6:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p6",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p6",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p6-distractor",
+              "similarity": 0.292031,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p6-target",
+              "similarity": 0.105356,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p6-distractor",
+          "groundTruthId": "pcs004-p6-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-p6:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-p6",
+        "group": "paraphrase-synonym-retrieval",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-p6-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-p6-target",
+              "similarity": 0.816497,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-p6-distractor",
+              "similarity": 0.447214,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-p6-target",
+          "groundTruthId": "pcs004-p6-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c1:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c1",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c1",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c1-distractor",
+              "similarity": 0.250873,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c1-target",
+              "similarity": 0.090909,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c1-distractor",
+          "groundTruthId": "pcs004-c1-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c1:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c1",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c1-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c1-target",
+              "similarity": 0.288675,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c1-distractor",
+              "similarity": 0.204124,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c1-target",
+          "groundTruthId": "pcs004-c1-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c2:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c2",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c2",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c2-distractor",
+              "similarity": 0.214834,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c2-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c2-distractor",
+          "groundTruthId": "pcs004-c2-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c2:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c2",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c2-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c2-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c2-distractor",
+              "similarity": 0.338062,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c2-target",
+          "groundTruthId": "pcs004-c2-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c3:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c3",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c3",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c3-distractor",
+              "similarity": 0.25049,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c3-target",
+              "similarity": 0.067267,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c3-distractor",
+          "groundTruthId": "pcs004-c3-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c3:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c3",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c3-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c3-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c3-distractor",
+              "similarity": 0.365148,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c3-target",
+          "groundTruthId": "pcs004-c3-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c4:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c4",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c4",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c4-distractor",
+              "similarity": 0.275066,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c4-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c4-distractor",
+          "groundTruthId": "pcs004-c4-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c4:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c4",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c4-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c4-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c4-distractor",
+              "similarity": 0.223607,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c4-target",
+          "groundTruthId": "pcs004-c4-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c5:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c5",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c5",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c5-distractor",
+              "similarity": 0.373558,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c5-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c5-distractor",
+          "groundTruthId": "pcs004-c5-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c5:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c5",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c5-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c5-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c5-distractor",
+              "similarity": 0.4,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c5-target",
+          "groundTruthId": "pcs004-c5-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c6:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c6",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c6",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c6-distractor",
+              "similarity": 0.3114,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c6-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c6-distractor",
+          "groundTruthId": "pcs004-c6-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-c6:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-c6",
+        "group": "cross-lingual-nearest-neighbor",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-c6-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-c6-target",
+              "similarity": 1,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-c6-distractor",
+              "similarity": 0.204124,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-c6-target",
+          "groundTruthId": "pcs004-c6-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y1:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y1",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y1",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y1-distractor",
+              "similarity": 0.382787,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y1-target",
+              "similarity": 0.103425,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y1-distractor",
+          "groundTruthId": "pcs004-y1-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y1:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y1",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y1-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y1-target",
+              "similarity": 0.668153,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y1-distractor",
+              "similarity": 0.086711,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y1-target",
+          "groundTruthId": "pcs004-y1-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y2:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y2",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y2",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y2-distractor",
+              "similarity": 0.201802,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y2-target",
+              "similarity": 0.067267,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y2-distractor",
+          "groundTruthId": "pcs004-y2-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y2:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y2",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y2-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y2-target",
+              "similarity": 0.790569,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y2-distractor",
+              "similarity": 0.149071,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y2-target",
+          "groundTruthId": "pcs004-y2-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y3:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y3",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y3",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y3-distractor",
+              "similarity": 0.464758,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y3-target",
+              "similarity": 0.152302,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y3-distractor",
+          "groundTruthId": "pcs004-y3-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y3:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y3",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y3-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y3-target",
+              "similarity": 0.667424,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y3-distractor",
+              "similarity": 0.636364,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y3-target",
+          "groundTruthId": "pcs004-y3-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y4:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y4",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y4",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y4-distractor",
+              "similarity": 0.269069,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y4-target",
+              "similarity": 0.076923,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y4-distractor",
+          "groundTruthId": "pcs004-y4-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y4:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y4",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y4-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y4-target",
+              "similarity": 0.843274,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y4-distractor",
+              "similarity": 0.125988,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y4-target",
+          "groundTruthId": "pcs004-y4-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y5:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y5",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y5",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y5-distractor",
+              "similarity": 0.16398,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y5-target",
+              "similarity": 0.103092,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y5-distractor",
+          "groundTruthId": "pcs004-y5-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y5:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y5",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y5-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y5-target",
+              "similarity": 0.327327,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y5-distractor",
+              "similarity": 0.113961,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y5-target",
+          "groundTruthId": "pcs004-y5-target",
+          "resolved": true
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y6:deterministic-substitute",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y6",
+        "group": "polysemy-discrimination",
+        "arm": "deterministic-substitute",
+        "representation": {
+          "representationKind": "deterministic-substitute",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "hash-proximity",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y6",
+            "capabilityId": "rag-embeddings",
+            "substituteId": "ppr-025-deterministic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y6-distractor",
+              "similarity": 0.160452,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y6-target",
+              "similarity": 0,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y6-distractor",
+          "groundTruthId": "pcs004-y6-target",
+          "resolved": false
+        }
+      },
+      {
+        "recordId": "fixture:pcs004-y6:synthetic-semantic-supply",
+        "line": "quality-fixture",
+        "fixtureId": "pcs004-y6",
+        "group": "polysemy-discrimination",
+        "arm": "synthetic-semantic-supply",
+        "representation": {
+          "representationKind": "semantic-model-backed",
+          "modality": "text",
+          "dimensionality": 512,
+          "normalization": "l2",
+          "similaritySemantics": "cosine",
+          "qualityContract": {
+            "kind": "absent"
+          },
+          "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+          "basis": {
+            "executionId": "pcs004-fixture-pcs004-y6-synthetic-semantic-supply",
+            "capabilityId": "semantic-embeddings"
+          }
+        },
+        "retrieval": {
+          "ranked": [
+            {
+              "id": "pcs004-y6-target",
+              "similarity": 0.57735,
+              "rank": 1
+            },
+            {
+              "id": "pcs004-y6-distractor",
+              "similarity": 0.111111,
+              "rank": 2
+            }
+          ],
+          "top1Id": "pcs004-y6-target",
+          "groundTruthId": "pcs004-y6-target",
+          "resolved": true
+        }
+      }
+    ],
+    "controlRecords": [
+      {
+        "recordId": "control:task:paraphrase-retrieval",
+        "line": "negative-control",
+        "controlTaskId": "task:paraphrase-retrieval",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:task:cross-lingual-retrieval",
+        "line": "negative-control",
+        "controlTaskId": "task:cross-lingual-retrieval",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:task:polysemy-sense-retrieval",
+        "line": "negative-control",
+        "controlTaskId": "task:polysemy-sense-retrieval",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:openwebui-rag-grounded-qa",
+        "line": "negative-control",
+        "controlTaskId": "openwebui-rag-grounded-qa",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:openwebui-memories-embeddings",
+        "line": "negative-control",
+        "controlTaskId": "openwebui-memories-embeddings",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:anythingllm-rag-grounded-qa",
+        "line": "negative-control",
+        "controlTaskId": "anythingllm-rag-grounded-qa",
+        "kind": "hard-gate",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:control:declared-model-backed",
+        "line": "discriminating-control",
+        "controlTaskId": "control:declared-model-backed",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "semantic-model-backed",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "cosine",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-pcs004-synthetic-semantic-supply",
+              "capabilityId": "semantic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "admissible"
+        },
+        "disclosure": []
+      },
+      {
+        "recordId": "control:control:declared-substitute-not-on-plan",
+        "line": "discriminating-control",
+        "controlTaskId": "control:declared-substitute-not-on-plan",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "admissible"
+        },
+        "disclosure": []
+      },
+      {
+        "recordId": "control:control:declared-mixed-plan",
+        "line": "discriminating-control",
+        "controlTaskId": "control:declared-mixed-plan",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          },
+          {
+            "representationKind": "semantic-model-backed",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "cosine",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-pcs004-synthetic-semantic-supply",
+              "capabilityId": "semantic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-forbids-substitute"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "unmet-no-admissible-semantic-representation",
+            "declaredRequirement": "requires-semantic-retrieval-quality",
+            "unavailable": ["semantic-model-backed"],
+            "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+          }
+        ]
+      },
+      {
+        "recordId": "control:control:absent-substitute-permitted",
+        "line": "discriminating-control",
+        "controlTaskId": "control:absent-substitute-permitted",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "absent"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "admissible"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "met-by-deterministic-substitute",
+            "representation": {
+              "requirementId": "rag-embeddings",
+              "representationKind": "deterministic-substitute",
+              "claimId": "rag-embeddings",
+              "claimVersion": "1.0.0",
+              "publisher": "pcs-004:evaluation",
+              "basis": {
+                "executionId": "exec-ppr-025-openwebui-embeddings",
+                "capabilityId": "rag-embeddings",
+                "substituteId": "ppr-025-deterministic-embeddings"
+              }
+            },
+            "unavailable": ["semantic-model-backed"]
+          }
+        ]
+      },
+      {
+        "recordId": "control:control:undeclared-substitute-permitted",
+        "line": "discriminating-control",
+        "controlTaskId": "control:undeclared-substitute-permitted",
+        "kind": "discriminating",
+        "contractSpelling": null,
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "admissible"
+        },
+        "disclosure": [
+          {
+            "requirementId": "rag-embeddings",
+            "status": "met-by-deterministic-substitute",
+            "representation": {
+              "requirementId": "rag-embeddings",
+              "representationKind": "deterministic-substitute",
+              "claimId": "rag-embeddings",
+              "claimVersion": "1.0.0",
+              "publisher": "pcs-004:evaluation",
+              "basis": {
+                "executionId": "exec-ppr-025-openwebui-embeddings",
+                "capabilityId": "rag-embeddings",
+                "substituteId": "ppr-025-deterministic-embeddings"
+              }
+            },
+            "unavailable": ["semantic-model-backed"]
+          }
+        ]
+      },
+      {
+        "recordId": "control:control:malformed-contract-fail-closed",
+        "line": "discriminating-control",
+        "controlTaskId": "control:malformed-contract-fail-closed",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-good-vibes",
+          "acceptanceBasis": "an unknown requirement outside the closed vocabulary"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-malformed"
+        },
+        "disclosure": []
+      },
+      {
+        "recordId": "control:control:policy-verdict-preserved",
+        "line": "discriminating-control",
+        "controlTaskId": "control:policy-verdict-preserved",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "declared",
+          "requirement": "requires-semantic-retrieval-quality",
+          "acceptanceBasis": "the retrieval must rank the semantically faithful neighbor above the lexically closer distractor"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "policy-forbidden-route",
+          "unchanged": true
+        },
+        "disclosure": []
+      },
+      {
+        "recordId": "control:control:malformed-shape-absent-with-requirement",
+        "line": "discriminating-control",
+        "controlTaskId": "control:malformed-shape-absent-with-requirement",
+        "kind": "discriminating",
+        "contractSpelling": {
+          "kind": "absent",
+          "requirement": "requires-semantic-retrieval-quality"
+        },
+        "representations": [
+          {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "exec-ppr-025-openwebui-embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          }
+        ],
+        "gate": {
+          "verdict": "inadmissible",
+          "reason": "semantic-quality-contract-malformed"
+        },
+        "disclosure": []
+      }
+    ],
+    "replayRecords": [
+      {
+        "recordId": "replay:replay:openwebui.rag.embeddings",
+        "line": "replay-line",
+        "lineId": "replay:openwebui.rag.embeddings",
+        "edgeId": "openwebui.rag.embeddings",
+        "eraWorkOrder": "PPR-025",
+        "eraTaskId": "openwebui-rag-grounded-qa",
+        "eraQuoted": {
+          "recordId": "ppr-025-openwebui-live-proof",
+          "recordedAt": "2026-10-09T20:29:09.006Z",
+          "limitation": {
+            "area": "embeddings execution representation",
+            "statement": "the authorized supply exposes no embeddings endpoint (probed live: POST /embeddings → 404); the delegated embeddings edge is executed by the Zeck-side DETERMINISTIC lexical-hash strategy (real, deterministic, mechanically verified; strategyClass deterministic-embeddings, modelCalls 0) — a model-backed embeddings rail remains an operator-provider boundary",
+            "owner": "Lead"
+          },
+          "edgeDisposition": {
+            "edgeId": "openwebui.rag.embeddings",
+            "disposition": "delegated",
+            "evidenceBasis": "live",
+            "zeckExecutionIds": [
+              "00000000-0000-7000-8000-000000000028",
+              "00000000-0000-7000-8000-000000000054",
+              "00000000-0000-7000-8000-000000000067",
+              "00000000-0000-7000-8000-000000000080",
+              "00000000-0000-7000-8000-000000000106",
+              "00000000-0000-7000-8000-000000000119",
+              "00000000-0000-7000-8000-000000000132"
+            ]
+          }
+        },
+        "absentArm": {
+          "representation": {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "pcs004-replay-replay:openwebui.rag.embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          },
+          "retrieval": {
+            "ranked": [
+              {
+                "id": "replay-openwebui-era-target",
+                "similarity": 0.331808,
+                "rank": 1
+              },
+              {
+                "id": "replay-openwebui-distractor-festival",
+                "similarity": 0.227792,
+                "rank": 2
+              },
+              {
+                "id": "replay-openwebui-distractor-parking",
+                "similarity": 0.138067,
+                "rank": 3
+              }
+            ],
+            "top1Id": "replay-openwebui-era-target",
+            "expectedTop1Id": "replay-openwebui-era-target",
+            "resolved": true
+          },
+          "vectorWellFormed": true,
+          "substitutionFact": {
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "representations": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ],
+            "substitutions": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ]
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "met-by-deterministic-substitute",
+              "representation": {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              },
+              "unavailable": ["semantic-model-backed"]
+            }
+          ]
+        },
+        "gatedArm": {
+          "gate": {
+            "verdict": "inadmissible",
+            "reason": "semantic-quality-contract-forbids-substitute",
+            "unchanged": false
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "unmet-no-admissible-semantic-representation",
+              "declaredRequirement": "requires-semantic-retrieval-quality",
+              "unavailable": ["semantic-model-backed"],
+              "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+            }
+          ],
+          "vectorProducedForTaskSatisfaction": false
+        }
+      },
+      {
+        "recordId": "replay:replay:openwebui.rag.embeddings:memories",
+        "line": "replay-line",
+        "lineId": "replay:openwebui.rag.embeddings:memories",
+        "edgeId": "openwebui.rag.embeddings",
+        "eraWorkOrder": "PPR-025",
+        "eraTaskId": "openwebui-memories-embeddings",
+        "eraQuoted": {
+          "recordId": "ppr-025-openwebui-live-proof",
+          "recordedAt": "2026-10-09T20:29:09.006Z",
+          "limitation": {
+            "area": "embeddings execution representation",
+            "statement": "the authorized supply exposes no embeddings endpoint (probed live: POST /embeddings → 404); the delegated embeddings edge is executed by the Zeck-side DETERMINISTIC lexical-hash strategy (real, deterministic, mechanically verified; strategyClass deterministic-embeddings, modelCalls 0) — a model-backed embeddings rail remains an operator-provider boundary",
+            "owner": "Lead"
+          },
+          "edgeDisposition": {
+            "edgeId": "openwebui.rag.embeddings",
+            "disposition": "delegated",
+            "evidenceBasis": "live",
+            "zeckExecutionIds": [
+              "00000000-0000-7000-8000-000000000028",
+              "00000000-0000-7000-8000-000000000054",
+              "00000000-0000-7000-8000-000000000067",
+              "00000000-0000-7000-8000-000000000080",
+              "00000000-0000-7000-8000-000000000106",
+              "00000000-0000-7000-8000-000000000119",
+              "00000000-0000-7000-8000-000000000132"
+            ]
+          }
+        },
+        "absentArm": {
+          "representation": {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "pcs004-replay-replay:openwebui.rag.embeddings:memories",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          },
+          "retrieval": {
+            "ranked": [
+              {
+                "id": "replay-openwebui-memory-a",
+                "similarity": 0.668994,
+                "rank": 1
+              },
+              {
+                "id": "replay-openwebui-memory-b",
+                "similarity": 0.181818,
+                "rank": 2
+              }
+            ],
+            "top1Id": "replay-openwebui-memory-a",
+            "expectedTop1Id": "replay-openwebui-memory-a",
+            "resolved": true
+          },
+          "vectorWellFormed": true,
+          "substitutionFact": {
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "representations": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ],
+            "substitutions": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ]
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "met-by-deterministic-substitute",
+              "representation": {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              },
+              "unavailable": ["semantic-model-backed"]
+            }
+          ]
+        },
+        "gatedArm": {
+          "gate": {
+            "verdict": "inadmissible",
+            "reason": "semantic-quality-contract-forbids-substitute",
+            "unchanged": false
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "unmet-no-admissible-semantic-representation",
+              "declaredRequirement": "requires-semantic-retrieval-quality",
+              "unavailable": ["semantic-model-backed"],
+              "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+            }
+          ],
+          "vectorProducedForTaskSatisfaction": false
+        }
+      },
+      {
+        "recordId": "replay:replay:anythingllm.rag.embeddings",
+        "line": "replay-line",
+        "lineId": "replay:anythingllm.rag.embeddings",
+        "edgeId": "anythingllm.rag.embeddings",
+        "eraWorkOrder": "PPR-026",
+        "eraTaskId": "anythingllm-rag-grounded-qa",
+        "eraQuoted": {
+          "recordId": "ppr-026-anythingllm-live-proof",
+          "recordedAt": "2026-10-10T10:32:55.413Z",
+          "limitation": {
+            "area": "embeddings execution representation",
+            "statement": "the authorized supply exposes no embeddings endpoint (probed live: POST /embeddings → 404); the delegated embeddings edge is executed by the Zeck-side DETERMINISTIC lexical-hash strategy (real, deterministic, mechanically verified; strategyClass deterministic-embeddings, modelCalls 0) — a model-backed embeddings rail remains an operator-provider boundary",
+            "owner": "Lead"
+          },
+          "edgeDisposition": {
+            "edgeId": "anythingllm.rag.embeddings",
+            "disposition": "delegated",
+            "evidenceBasis": "live",
+            "zeckExecutionIds": [
+              "00000000-0000-7000-8000-000000000014",
+              "00000000-0000-7000-8000-000000000027",
+              "00000000-0000-7000-8000-000000000040"
+            ]
+          }
+        },
+        "absentArm": {
+          "representation": {
+            "representationKind": "deterministic-substitute",
+            "modality": "text",
+            "dimensionality": 512,
+            "normalization": "l2",
+            "similaritySemantics": "hash-proximity",
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "compatibilityConstraints": ["dimensionality-match", "normalization-match"],
+            "basis": {
+              "executionId": "pcs004-replay-replay:anythingllm.rag.embeddings",
+              "capabilityId": "rag-embeddings",
+              "substituteId": "ppr-025-deterministic-embeddings"
+            }
+          },
+          "retrieval": {
+            "ranked": [
+              {
+                "id": "replay-anythingllm-era-target",
+                "similarity": 0.406882,
+                "rank": 1
+              },
+              {
+                "id": "replay-anythingllm-distractor-park",
+                "similarity": 0.156599,
+                "rank": 2
+              },
+              {
+                "id": "replay-anythingllm-distractor-tours",
+                "similarity": 0.10778,
+                "rank": 3
+              }
+            ],
+            "top1Id": "replay-anythingllm-era-target",
+            "expectedTop1Id": "replay-anythingllm-era-target",
+            "resolved": true
+          },
+          "vectorWellFormed": true,
+          "substitutionFact": {
+            "qualityContract": {
+              "kind": "absent"
+            },
+            "representations": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ],
+            "substitutions": [
+              {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              }
+            ]
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "met-by-deterministic-substitute",
+              "representation": {
+                "requirementId": "rag-embeddings",
+                "representationKind": "deterministic-substitute",
+                "claimId": "rag-embeddings",
+                "claimVersion": "1.0.0",
+                "publisher": "pcs-004:evaluation",
+                "basis": {
+                  "executionId": "exec-ppr-025-openwebui-embeddings",
+                  "capabilityId": "rag-embeddings",
+                  "substituteId": "ppr-025-deterministic-embeddings"
+                }
+              },
+              "unavailable": ["semantic-model-backed"]
+            }
+          ]
+        },
+        "gatedArm": {
+          "gate": {
+            "verdict": "inadmissible",
+            "reason": "semantic-quality-contract-forbids-substitute",
+            "unchanged": false
+          },
+          "disclosure": [
+            {
+              "requirementId": "rag-embeddings",
+              "status": "unmet-no-admissible-semantic-representation",
+              "declaredRequirement": "requires-semantic-retrieval-quality",
+              "unavailable": ["semantic-model-backed"],
+              "inadmissibleReason": "semantic-quality-contract-forbids-substitute"
+            }
+          ],
+          "vectorProducedForTaskSatisfaction": false
+        }
+      }
+    ]
+  },
+  "reproducibility": {
+    "runDigest": "3e8956f82ad82cec8d26d9417d6a4ec7b9b576b394626a97421e57fc3df101be",
+    "reRunDigest": "3e8956f82ad82cec8d26d9417d6a4ec7b9b576b394626a97421e57fc3df101be",
+    "reRunIdentical": true
+  },
+  "runMetadata": {
+    "runRevision": "ef2e25f9fd6d64c5ec14156f570bd7ddd5f361ac",
+    "runStartedAt": "2026-10-13T11:28:05.884Z",
+    "corpusRevisionPinnedDigest": "f9c7698ea031a09a9b5ad985390e1ee9137d77f89f6e9ecbf4f49758ff9b2c3b"
+  }
+}
