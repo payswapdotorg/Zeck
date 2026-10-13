@@ -25,6 +25,33 @@ export type {
 } from "./capability";
 export { CAPABILITY_EVIDENCE_KINDS, CAPABILITY_KINDS } from "./capability";
 export { resolveProfile } from "./resolution";
+export type {
+  SemanticBoundarySkipReason,
+  SemanticCompatibilityConstraint,
+  SemanticFidelityBasis,
+  SemanticFidelityBoundaryCheck,
+  SemanticFidelityFacts,
+  SemanticFidelityMismatch,
+  SemanticModality,
+  SemanticNormalization,
+  SemanticQualityContract,
+  SemanticQualityRequirement,
+  SemanticRepresentationKind,
+  SemanticSimilaritySemantics,
+} from "./semantic-fidelity";
+export {
+  canonicalSemanticFidelityJson,
+  checkSemanticFidelityBoundary,
+  MAX_SEMANTIC_DIMENSIONALITY,
+  SEMANTIC_COMPATIBILITY_CONSTRAINTS,
+  SEMANTIC_MODALITIES,
+  SEMANTIC_NORMALIZATIONS,
+  SEMANTIC_QUALITY_REQUIREMENTS,
+  SEMANTIC_REPRESENTATION_KINDS,
+  SEMANTIC_SIMILARITY_SEMANTICS,
+  semanticFidelityIdentity,
+  validateSemanticFidelityFacts,
+} from "./semantic-fidelity";
 export * from "./substrate";
 export {
   compareVersions,

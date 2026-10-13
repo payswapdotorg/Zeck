@@ -75,6 +75,18 @@ export async function createCapabilityRegistry(
       claim: fact.claim,
       provenance: fact.provenance,
       evidence: fact.evidence,
+      // The OPTIONAL semantic-fidelity block rides the arbitrated record
+      // exactly when the accepted publish carried one (ACR-009 §2;
+      // PCS-002): ABSENT (undefined | null) constructs the record with
+      // NO such key — the byte-identical-today representation — and a
+      // present block was already validated fail-closed by
+      // `validatePublishedFact` (the fact never reaches arbitration
+      // otherwise). On convergence the ORIGINAL record (with its
+      // original block) is retained below — the version-immutability
+      // discipline, unchanged.
+      ...(fact.semanticFidelity === undefined || fact.semanticFidelity === null
+        ? {}
+        : { semanticFidelity: fact.semanticFidelity }),
       acceptedAtRevision: `rev-${revision}`,
     };
     await store.insert(record);

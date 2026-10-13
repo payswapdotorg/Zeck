@@ -12,6 +12,8 @@
  * algorithm, data, runtime and human capabilities.
  */
 
+import type { SemanticFidelityFacts } from "./semantic-fidelity";
+
 /** The capability kinds of `spec/architecture.md` §10 (frozen vocabulary). */
 export const CAPABILITY_KINDS = ["model", "tool", "algorithm", "data", "runtime", "human"] as const;
 export type CapabilityKind = (typeof CAPABILITY_KINDS)[number];
@@ -55,18 +57,51 @@ export interface CapabilityEvidence {
   readonly reference: string;
 }
 
-/** What an adapter publishes INTO the registry — a claim plus its provenance and evidence. */
+/**
+ * What an adapter publishes INTO the registry — a claim plus its provenance and evidence.
+ *
+ * The OPTIONAL semantic-fidelity fact block (ACR-009 §2; PCS-002): a
+ * closed, typed distinction between a `semantic-model-backed`
+ * representation and a `deterministic-substitute` one, with its explicit
+ * basis. ABSENT (`undefined` | `null`) = the byte-identical-today state
+ * (absence-equivalence, discrimination-tested against the pre-change
+ * baseline); PRESENT = validated fail-closed by `validatePublishedFact`
+ * and carried onto the arbitrated record (the no-silent-substitution
+ * law: a consumer of the record distinguishes the kinds mechanically,
+ * without reading prose). The block is a fact-level rider like
+ * provenance/evidence — it never widens the claim identity `(id, kind,
+ * version)` and never enters the claim attributes.
+ */
 export interface PublishedCapabilityFact {
   readonly claim: CapabilityDescriptor;
   readonly provenance: CapabilityProvenance;
   readonly evidence: CapabilityEvidence;
+  /**
+   * OPTIONAL (ACR-009 §2) — absent = today's exact behavior. Both
+   * `undefined` and `null` are the absence spelling at this INPUT
+   * boundary (the PCR-002 measured-input discipline: a JSON round-trip
+   * may spell absence null); the arbitrated record canonicalizes
+   * absence to key-omission.
+   */
+  readonly semanticFidelity?: SemanticFidelityFacts | null;
 }
 
-/** An arbitrated claim as held by the catalog (immutable once accepted). */
+/**
+ * An arbitrated claim as held by the catalog (immutable once accepted).
+ *
+ * The OPTIONAL semantic-fidelity block rides the record exactly when the
+ * accepted publish carried one (ACR-009 §2; PCS-002): the evidence surface
+ * distinguishes `deterministic-substitute` from `semantic-model-backed`
+ * mechanically. On convergence the ORIGINAL record is retained (its
+ * provenance, evidence and semantic fidelity — the version-immutability
+ * discipline: corrections are new versions, never in-place rewrites).
+ */
 export interface CapabilityClaimRecord {
   readonly claim: CapabilityDescriptor;
   readonly provenance: CapabilityProvenance;
   readonly evidence: CapabilityEvidence;
+  /** OPTIONAL (ACR-009 §2) — present iff the accepted publish carried one. */
+  readonly semanticFidelity?: SemanticFidelityFacts;
   /** Catalog revision at which the claim was accepted. */
   readonly acceptedAtRevision: string;
 }

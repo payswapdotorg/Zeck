@@ -15,6 +15,7 @@ import type {
   PublishedCapabilityFact,
 } from "./capability";
 import { CAPABILITY_KINDS } from "./capability";
+import { validateSemanticFidelityFacts } from "./semantic-fidelity";
 
 /** Neutral vocabulary identifiers: lowercase slug, no provider namespacing. */
 const ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -87,6 +88,15 @@ function validateDescriptor(claim: CapabilityDescriptor): string | null {
  * Validate a published fact IN FULL — descriptor shape, provenance and
  * evidence. Evidence is MANDATORY: a claim without a durable evidence
  * reference cannot enter the catalog (INT-002 acceptance criterion 4).
+ *
+ * The OPTIONAL semantic-fidelity block (ACR-009 §2; PCS-002): ABSENT
+ * (`undefined` | `null` — both spellings are absence, the PCR-002
+ * measured-evidence discipline) validates EXACTLY as before (the
+ * byte-identical-today verdict); PRESENT = the closed block is
+ * validated fail-closed in full — an unknown vocabulary member, an
+ * unbounded dimensionality, an incoherent quality contract or an
+ * unattributed basis rejects the whole fact with a reason naming the
+ * field and the offending value (never a default, never a widening).
  */
 export function validatePublishedFact(fact: PublishedCapabilityFact): FactValidation {
   if (fact === null || typeof fact !== "object") {
@@ -108,6 +118,12 @@ export function validatePublishedFact(fact: PublishedCapabilityFact): FactValida
   }
   if (typeof fact.evidence?.reference !== "string" || fact.evidence.reference.length === 0) {
     return { valid: false, reason: "evidence.reference is mandatory for every capability claim" };
+  }
+  if (fact.semanticFidelity !== undefined && fact.semanticFidelity !== null) {
+    const fidelity = validateSemanticFidelityFacts(fact.semanticFidelity);
+    if (!fidelity.valid) {
+      return fidelity;
+    }
   }
   return { valid: true };
 }
