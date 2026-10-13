@@ -215,8 +215,10 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
       "zeck-validation",
       "zeck-competitiveness-p1",
       "zeck-competitiveness-p2",
+      "zeck-competitiveness-p3",
     ]);
-    const [validation, p1, p2] = census as [
+    const [validation, p1, p2, p3] = census as [
+      { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
@@ -233,6 +235,11 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     // program's app census advances from none to the
     // semantic-fidelity-evaluation app.
     expect(p2.apps).toEqual(["semantic-fidelity-evaluation"]);
+    // The P3 program (ACR-010/DEL-2026-10-13-P3, registered 2026-10-13):
+    // work orders PCL-001..003, no apps yet (the PCL-003 evaluation app
+    // will register under its TRUE tag when delivered).
+    expect(p3.workOrders).toEqual(["PCL-001", "PCL-002", "PCL-003"]);
+    expect(p3.apps).toEqual([]);
     // Every app projects under exactly one program: 51 + 1 + 1 = the 53 app dirs.
     const total = validation.apps.length + p1.apps.length + p2.apps.length;
     expect(total).toBe(53);

@@ -228,7 +228,8 @@ const DEPENDENCIES: Readonly<Record<string, readonly string[]>> = (() => {
 // ---------------------------------------------------------------------------
 // The work-order tag vocabulary + the program-aware spec resolution (PCS-001)
 //
-// The console reads the competitiveness programs' own vocabularies (PCR/PCS)
+// The console reads the competitiveness programs' own vocabularies
+// (PCR/PCS/PCL — PCL added by the P3 registration, ACR-010/DEL-2026-10-13-P3)
 // exactly as it has always read the validation program's (VAL): ONE closed
 // tag family, the same three positional variants, and a program-aware spec
 // directory per prefix. spec/ stays the authority — the console never
@@ -236,14 +237,14 @@ const DEPENDENCIES: Readonly<Record<string, readonly string[]>> = (() => {
 // ---------------------------------------------------------------------------
 
 /** The closed work-order tag family (one source, no open-ended admission). */
-const WORK_ORDER_TAG_SOURCE = "(?:VAL|PCR|PCS)-\\d{3}";
+const WORK_ORDER_TAG_SOURCE = "(?:VAL|PCR|PCS|PCL)-\\d{3}";
 const TRAILING_WORK_ORDER_TAG = new RegExp(`\\(?(${WORK_ORDER_TAG_SOURCE})\\)?\\s*$`);
 const LEADING_PARENTHESIZED_WORK_ORDER_TAG = new RegExp(`^#\\s+\\((${WORK_ORDER_TAG_SOURCE})\\)`);
 const LEADING_BARE_WORK_ORDER_TAG = new RegExp(`^#\\s+(${WORK_ORDER_TAG_SOURCE})\\b`);
 
 /**
  * The work-order tag a README's first line carries, in the closed family
- * (VAL/PCR/PCS) and the same three positional variants the lab has always
+ * (VAL/PCR/PCS/PCL) and the same three positional variants the lab has always
  * read: trailing `(TAG)`, leading `(TAG)`, or bare `TAG` after the heading
  * marker. Null when the line carries no tag of the family.
  */
@@ -277,7 +278,7 @@ export class WorkOrderSpecResolutionError extends Error {
 
 /**
  * The program-aware spec-path mapping (closed): `VAL-*` resolves against
- * the validation program's spec directory, `PCR-*`/`PCS-*` against the
+ * the validation program's spec directory, `PCR-*`/`PCS-*`/`PCL-*` against the
  * competitiveness program's. Anything else is outside the closed tag
  * vocabulary and fails closed.
  */
@@ -285,11 +286,11 @@ export function specPathOfWorkOrder(workOrderId: string): string {
   if (/^VAL-\d{3}$/.test(workOrderId)) {
     return `spec/validation-work-orders/${workOrderId}.md`;
   }
-  if (/^(PCR|PCS)-\d{3}$/.test(workOrderId)) {
+  if (/^(PCR|PCS|PCL)-\d{3}$/.test(workOrderId)) {
     return `spec/competitiveness-work-orders/${workOrderId}.md`;
   }
   throw new Error(
-    `validation lab: "${workOrderId}" is outside the closed work-order tag vocabulary (VAL/PCR/PCS) — the app-to-work-order mapping drifted`,
+    `validation lab: "${workOrderId}" is outside the closed work-order tag vocabulary (VAL/PCR/PCS/PCL) — the app-to-work-order mapping drifted`,
   );
 }
 
@@ -345,7 +346,7 @@ function scanCompetitivenessWorkOrders(): readonly Omit<CompetitivenessWorkOrder
     .map((entry) => entry.name)
     .sort();
   for (const name of entries) {
-    const idMatch = /^((?:PCR|PCS)-\d{3})\.md$/.exec(name);
+    const idMatch = /^((?:PCR|PCS|PCL)-\d{3})\.md$/.exec(name);
     if (idMatch === null) {
       throw new Error(
         `validation lab: unexpected file "${name}" under spec/competitiveness-work-orders — the work-order directory drifted`,
@@ -759,8 +760,8 @@ function scanApps(): readonly ValidationApp[] {
     );
     const readmeTitle = firstLine
       .replace(/^#\s+/, "")
-      .replace(/^(?:VAL|PCR|PCS)-\d{3}\s*[—–:-]\s*/, "")
-      .replace(/\s*\((?:VAL|PCR|PCS)-\d{3}\)\s*$/, "")
+      .replace(/^(?:VAL|PCR|PCS|PCL)-\d{3}\s*[—–:-]\s*/, "")
+      .replace(/\s*\((?:VAL|PCR|PCS|PCL)-\d{3}\)\s*$/, "")
       .trim();
     out.push({
       dir,

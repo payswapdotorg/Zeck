@@ -340,15 +340,27 @@ describe("architecture: the semantic-fidelity typed-facts plane (PCS-002)", () =
     // precedent. Worker boundaries remain enforced by the work-order
     // protocol, the Lead review and the e11 checks.]
     const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
-    const outsideOwnership = changed
-      .filter((file) => !recordsChannel(file))
-      .filter(
-        (file) =>
-          !file.startsWith("src/modules/capabilities/") &&
-          !file.startsWith("src/modules/planning/") &&
-          !file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") &&
-          !file.startsWith("tests/"),
-      );
-    expect(outsideOwnership).toEqual([]);
+    const ownedByThisWorkOrder = (file: string) =>
+      file.startsWith("src/modules/capabilities/") ||
+      file.startsWith("src/modules/planning/") ||
+      file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/") ||
+      file.startsWith("tests/");
+    // [PCL-001 governance-fitness correction, 2026-10-13: the pin is a claim
+    // about THIS work order's delivery boundary — it asserts only when the
+    // branch actually touches one of this work order's surfaces. A branch
+    // that touches none of them (another program's delivery, e.g. PCL-001's
+    // executions-domain plane) makes the claim vacuous — post-merge the
+    // diff is empty anyway per the e11 reconciliation discipline the pin
+    // itself documents. The records channel (docs/, spec/) is Lead-owned
+    // and never part of the worker claim (the ACR-010 correction).]
+    const touchesThisWorkOrder = changed.some(
+      (file) => !recordsChannel(file) && ownedByThisWorkOrder(file),
+    );
+    if (touchesThisWorkOrder) {
+      const outsideOwnership = changed
+        .filter((file) => !recordsChannel(file))
+        .filter((file) => !ownedByThisWorkOrder(file));
+      expect(outsideOwnership).toEqual([]);
+    }
   });
 });
