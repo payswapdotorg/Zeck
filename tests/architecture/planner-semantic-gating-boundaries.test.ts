@@ -284,8 +284,16 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     // diff is empty anyway per the e11 reconciliation discipline the pin
     // itself documents. The records channel (docs/, spec/) is Lead-owned
     // and never part of the worker claim (the ACR-010 correction).]
+    // The TRIGGER is the work order's SUBSTANTIVE surfaces (the src planes
+    // and the evaluation app) — tests/ alone never triggers: the boundary
+    // tests themselves are shared governance-maintenance surface a Lead
+    // fitness branch may touch without being this work order's delivery.
+    const substantiveSurface = (file: string) =>
+      file.startsWith("src/modules/planning/") ||
+      file.startsWith("src/modules/capabilities/") ||
+      file.startsWith("benchmarks/validation/apps/semantic-fidelity-evaluation/");
     const touchesThisWorkOrder = changed.some(
-      (file) => !recordsChannel(file) && ownedByThisWorkOrder(file),
+      (file) => !recordsChannel(file) && substantiveSurface(file),
     );
     if (touchesThisWorkOrder) {
       const outsideOwnership = changed

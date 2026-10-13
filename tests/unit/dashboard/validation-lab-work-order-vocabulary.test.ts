@@ -169,6 +169,9 @@ describe("the program discriminator rides the projection", () => {
   test("the competitiveness work orders project from their spec directory, verbatim", () => {
     const orders = competitivenessWorkOrders();
     expect(orders.map((order) => order.id)).toEqual([
+      "PCL-001",
+      "PCL-002",
+      "PCL-003",
       "PCR-001",
       "PCR-002",
       "PCR-003",
@@ -179,7 +182,7 @@ describe("the program discriminator rides the projection", () => {
       "PCS-004",
     ]);
     for (const order of orders) {
-      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[12]$/);
+      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[123]$/);
       expect(order.specPath, order.id).toBe(`spec/competitiveness-work-orders/${order.id}.md`);
       expect(order.status.length, order.id).toBeGreaterThan(0);
       expect(order.title.length, order.id).toBeGreaterThan(0);
