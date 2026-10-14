@@ -212,6 +212,17 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     ]);
   });
 
+  test("latency-tail-evaluation carries PCL-003 and projects under it", () => {
+    const pcl3 = competitivenessWorkOrderOf("PCL-003");
+    expect(pcl3).not.toBeNull();
+    expect(pcl3?.program).toBe("zeck-competitiveness-p3");
+    expect(pcl3?.apps.map((app) => app.dir)).toEqual(["latency-tail-evaluation"]);
+    const app = pcl3?.apps[0];
+    expect(app?.workOrder).toBe("PCL-003");
+    expect(app?.readmeTitle).toBe("latency-tail-evaluation");
+    expect(app?.suitePath).toBe("tests/unit/validation/pcl-003-latency-tail-evaluation.test.ts");
+  });
+
   test("the per-program census is exact (work orders and apps)", () => {
     const census = workOrderCensusByProgram();
     expect(census.map((section) => section.program)).toEqual([
@@ -239,13 +250,14 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     // semantic-fidelity-evaluation app.
     expect(p2.apps).toEqual(["semantic-fidelity-evaluation"]);
     // The P3 program (ACR-010/DEL-2026-10-13-P3, registered 2026-10-13):
-    // work orders PCL-001..003, no apps yet (the PCL-003 evaluation app
-    // will register under its TRUE tag when delivered).
+    // work orders PCL-001..003; the PCL-003 evaluation app registered
+    // under its TRUE tag when delivered (the app census advances from
+    // none to the latency-tail-evaluation app).
     expect(p3.workOrders).toEqual(["PCL-001", "PCL-002", "PCL-003"]);
-    expect(p3.apps).toEqual([]);
-    // Every app projects under exactly one program: 51 + 1 + 1 = the 53 app dirs.
-    const total = validation.apps.length + p1.apps.length + p2.apps.length;
-    expect(total).toBe(53);
+    expect(p3.apps).toEqual(["latency-tail-evaluation"]);
+    // Every app projects under exactly one program: 51 + 1 + 1 + 1 = the 54 app dirs.
+    const total = validation.apps.length + p1.apps.length + p2.apps.length + p3.apps.length;
+    expect(total).toBe(54);
   });
 
   test("the validation catalog is byte-identical in behavior (the extension is additive)", () => {

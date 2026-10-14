@@ -1,0 +1,34 @@
+{
+  "declaration": "the PCL-003 evaluation's explicit outcome thresholds — DECLARED BEFORE THE RUN (the declared-before/verdict-after discipline; committed at the app-skeleton milestone, before any evaluation run produced a verdict). A threshold miss WITH honest attribution is a valid delivery; a silently lowered threshold is an automatic void.",
+  "workOrder": "PCL-003",
+  "program": "zeck-competitiveness-p3",
+  "basis": "ACR-010 §5 (the evaluation contract — the program's evidence standard): per-failure-class percentiles, cost truth, resolution honesty, the promotion gate (never median alone), the honest replay of the PPR-027 latency cells under the typed-facts configuration",
+  "t1Tail": {
+    "rule": "p95-and-p99-strictly-improved",
+    "points": ["p95", "p99"],
+    "pool": "successful-outcome end-to-end latency (the capstone's own latency-tail definition, quoted: \"Successful-outcome end-to-end task latency over N resolved task(s)\") — the resolution-honesty leg (t2) guards this pool against failure-hiding",
+    "statement": "the tail-tuned arm's successful-outcome latency p95 AND p99 (over every replayed execution of the complete 102-cell sweep, typed facts only, synthetic-latency basis) are STRICTLY below the baseline-today arm's; the per-failure-class/route decomposition is disclosed on every line (never aggregate-only)"
+  },
+  "t2Resolution": {
+    "rule": "resolution-rate-not-below-baseline",
+    "statement": "the tail-tuned arm's resolution rate is NOT below the baseline-today arm's (a tail improvement that costs resolution is a MISS, mechanically); verification outcomes per configuration disclosed"
+  },
+  "t3Cost": {
+    "rule": "total-cost-within-budget-delta",
+    "budgetDeltaFraction": 0.25,
+    "statement": "the tail-tuned arm's TOTAL cost including duplicate attempts (synthetic-price-schedule basis) does not exceed the baseline-today arm's by more than the declared +25% budget delta; verification cost carried as its own line with its explicit basis"
+  },
+  "t4Preservation": {
+    "rule": "timeout-and-terminal-preservation",
+    "statement": "the PCL-002 preservation gate passes at construction (fail-closed), ZERO terminal failures masked (every failed-terminal outcome records resolved=false), ZERO dispatch-budget violations, and the attempt census reconciles EXACTLY on every cell of both arms (attempts = original + retry + fallback + verification — dropped or reclassified failures are an automatic void)"
+  },
+  "t5Reproducibility": {
+    "rule": "byte-identical-re-run-digest",
+    "statement": "the complete evaluation re-run reproduces the evaluation digest byte-for-byte (wall-clock and run identities excluded from every digest projection)"
+  },
+  "honestyRules": [
+    "every number this evaluation emits carries its synthetic basis (synthetic-supply, synthetic-cost, synthetic-latency) — no live/credentialed provider runs, no SLA or production-latency claims (operator-era obligation, never backfilled)",
+    "the capstone's recorded results are quoted VERBATIM (their own wall-clock basis preserved, never relabeled, never reused as evaluation inputs)",
+    "the promotion gate's verdict is DERIVED from these declarations against the measured aggregates, never asserted; median improvement alone promotes nothing"
+  ]
+}

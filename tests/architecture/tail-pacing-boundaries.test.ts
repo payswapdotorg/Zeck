@@ -23,9 +23,14 @@
  *    progress preferences, the frozen terminal classes, the version)
  *    and every mirrored platform bound is pinned by value — widening
  *    is a reviewed change, never silent.
- *  - T5 THE CONFINEMENT: the tail-pacing vocabulary is confined to the
- *    executions module and the tests (the ACR-009/PCL-001 discipline —
- *    no other code surface references the plane).
+ *  - T5 THE CONFINEMENT: the tail-pacing vocabulary is confined to
+ *    the executions module, the tests and the ONE declared PCL-003
+ *    evaluation home (benchmarks/validation/apps/
+ *    latency-tail-evaluation — the app's mirror of the configuration
+ *    vocabularies/resolutions, pinned in-suite against the real
+ *    plane; the PCS-004 evaluation-home amendment pattern) — no other
+ *    code surface references the plane (the ACR-009/PCL-001
+ *    discipline).
  *  - T6 NO SECOND ENGINE: the plane declares no router, no planner, no
  *    executor, no verification surface, no retry loop, no cooldown
  *    timer, no poll loop — the adapter exports exactly the resolver
@@ -164,7 +169,7 @@ describe("architecture: the declarative tail-pacing configuration plane (PCL-002
     expect(MIN_PROBE_FRACTION).toBe(0.05);
   });
 
-  test("T5 the confinement: the tail-pacing vocabulary lives only in the executions module and the tests", () => {
+  test("T5 the confinement: the tail-pacing vocabulary lives only in the executions module, the tests and the PCL-003 evaluation home", () => {
     const vocabularyPattern = /tail[-_]?pacing|tailPacing/i;
     const offenders: string[] = [];
     const scan = (relPath: string): void => {
@@ -212,7 +217,27 @@ describe("architecture: the declarative tail-pacing configuration plane (PCL-002
     ]) {
       scan(surface);
     }
-    expect(offenders).toEqual([]);
+    // [PCL-003 evaluation amendment, documented in the PCL-003
+    // delivery — the amendment the PCL-003 work order itself is (the
+    // evaluation consumes the pacing plane): PCL-003 owns the
+    // evaluation — DELIVERED: the evaluation app (benchmarks/
+    // validation/apps/latency-tail-evaluation) is the DECLARED
+    // evaluation home for the tail-pacing vocabulary (the app-local
+    // mirror of the closed vocabularies/bounds and the resolution
+    // projections, every one pinned verdict-for-verdict in-suite
+    // against the REAL plane — and over the FULL evaluation by digest
+    // identity with the real resolver factory injected; the domain
+    // files are NOT importable from the application tree, the
+    // VAL-002 AC7 discipline, so the mirror-by-value pin is the
+    // established consumption pattern — the PCS-004 precedent).
+    // Every OTHER benchmarks/experiments surface stays forbidden (the
+    // exemption is exactly the one declared directory, never the
+    // tree).]
+    const pcl003EvaluationHome = offenders.filter((path) =>
+      path.startsWith("benchmarks/validation/apps/latency-tail-evaluation/"),
+    );
+    expect(pcl003EvaluationHome.length).toBeGreaterThan(0);
+    expect(offenders).toEqual([...pcl003EvaluationHome]);
     // Inside the executions module the vocabulary appears in exactly
     // the two declared PCL-002 artifacts.
     const homeOffenders = listFiles("src/modules/executions").filter((file) =>
