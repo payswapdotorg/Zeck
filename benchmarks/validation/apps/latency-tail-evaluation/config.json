@@ -1,0 +1,26 @@
+{
+  "applicationId": "run-time bound (the evaluation is a deterministic replay, not a served world)",
+  "baseUrl": "not applicable (deterministic synthetic replay — no live API)",
+  "tokenEnvVar": "ZECK_VALIDATION_TOKEN",
+  "applicationRevision": "run-time bound (the repository revision at run time)",
+  "corpusRevision": "pcl-003-latency-tail-evaluation-v1",
+  "integrationSurface": "latency-tail-evaluation:per-failure-class-percentiles-cost-truth-promotion-gate-capstone-cell-replay",
+  "pollIntervalMs": 250,
+  "completionTimeoutMs": 600000,
+  "evaluation": {
+    "evaluationId": "latency-tail-evaluation",
+    "workOrder": "PCL-003",
+    "replayedCells": "the PPR-027 capstone's complete sweep enumeration (102 cells, allSweepCells read-only)",
+    "arms": [
+      {
+        "armId": "baseline-today",
+        "label": "the capstone's recorded posture (ONE policy retry, failover, 5 ms wait, polled 10 ms) — no pacing configuration authored (synthetic-supply, synthetic-cost, synthetic-latency)"
+      },
+      {
+        "armId": "tail-tuned-v1",
+        "label": "the PCL-002 declarative tail-pacing configuration armed through the pacing seam (bounded jittered backoff, class-aware cooldowns, event-stream-else-polled progress, declared timeout contract) (synthetic-supply, synthetic-cost, synthetic-latency)"
+      }
+    ],
+    "thresholds": "experiments/pcl-003/declared-thresholds.json (declared before the run)"
+  }
+}

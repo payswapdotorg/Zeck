@@ -18,6 +18,7 @@
       "api/**",
       "tests/**",
       "experiments/**",
+      "!experiments/pcl-003/results",
       "server.ts",
       "vitest.config.ts",
       "package.json",

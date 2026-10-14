@@ -18,14 +18,16 @@
  *    locale-dependent ordering (the canonical order is code-unit).
  *  - A4 THE CLOSED VOCABULARIES: every vocabulary is pinned exactly —
  *    widening is a reviewed change, never silent.
- *  - A5 THE CONFINEMENT (as amended by the PCL-002 wiring — the
- *    amendment this test's own comments anticipated): no code surface
- *    OUTSIDE the executions module and the tests references the
- *    outcome-latency vocabulary; inside the module it appears in
- *    exactly the declared artifact set — the PCL-01 artifact plus the
- *    two PCL-002 declared surfaces (the declarative pacing
- *    configuration consuming the vocabularies read-only, and the
- *    pacing seam adapter). The evaluation is PCL-003's.
+ *  - A5 THE CONFINEMENT (as amended by the PCL-002 wiring, then by the
+ *    PCL-003 evaluation — the amendments this test's own comments
+ *    anticipated): no code surface OUTSIDE the executions module, the
+ *    tests and the ONE declared PCL-003 evaluation home
+ *    (benchmarks/validation/apps/latency-tail-evaluation — the app's
+ *    mirror of the vocabularies/shapes/canonical form, pinned
+ *    in-suite against the real plane) references the outcome-latency
+ *    vocabulary; inside the module it appears in exactly the declared
+ *    artifact set — the PCL-01 artifact plus the two PCL-002 declared
+ *    surfaces. The evaluation is PCL-003's (delivered).
  *  - A6 THE MODULE FILE CENSUS: the executions module's
  *    application/ports/adapters/internal layers are the pre-change
  *    file sets plus the ONE declared PCL-002 wiring seam
@@ -159,7 +161,7 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     expect(MAX_VERIFICATION_RESULT_REFS).toBe(100);
   });
 
-  test("A5 no wiring into runtime execution seams beyond the DECLARED PCL-002 surfaces: the vocabulary is confined to the executions module and the tests", () => {
+  test("A5 no wiring into runtime execution seams beyond the DECLARED PCL-002/PCL-003 surfaces: the vocabulary is confined to the executions module, the tests and the PCL-003 evaluation home", () => {
     const vocabularyPattern = /outcome[-_]?latency|outcomeLatency/i;
     const offenders: string[] = [];
     const scan = (relPath: string): void => {
@@ -215,10 +217,28 @@ describe("architecture: the outcome-latency typed-facts plane (PCL-001)", () => 
     ]) {
       scan(surface);
     }
-    // The OUTSIDE-executions confinement stays ABSOLUTE (the PCL-002
-    // wiring landed inside the executions module only — A7 proves it
-    // mechanically over the branch diff).
-    expect(offenders).toEqual([]);
+    // The OUTSIDE-executions confinement with the ONE declared
+    // evaluation home: the PCL-002 wiring landed inside the executions
+    // module only (A7 proves it mechanically over the branch diff).
+    // [PCL-003 evaluation amendment, documented in the PCL-003
+    // delivery — the amendment this test's own comments anticipated
+    // ("the evaluation is PCL-003's"): PCL-003 owns the evaluation —
+    // DELIVERED: the evaluation app (benchmarks/validation/apps/
+    // latency-tail-evaluation) is the DECLARED evaluation home for the
+    // PCL-01 vocabulary (the app-local mirror of the closed
+    // vocabularies, the typed fact shapes, the canonical form and the
+    // construction laws — every one pinned in-suite against the REAL
+    // plane; the domain files are NOT importable from the application
+    // tree, the VAL-002 AC7 discipline, so the mirror-by-value pin is
+    // the established consumption pattern — the PCS-004 precedent).
+    // Every OTHER benchmarks/experiments surface stays forbidden (the
+    // exemption is exactly the one declared directory, never the
+    // tree).]
+    const pcl003EvaluationHome = offenders.filter((path) =>
+      path.startsWith("benchmarks/validation/apps/latency-tail-evaluation/"),
+    );
+    expect(pcl003EvaluationHome.length).toBeGreaterThan(0);
+    expect(offenders).toEqual([...pcl003EvaluationHome]);
     // Inside the executions module the vocabulary appears in EXACTLY
     // the declared artifact set. [PCL-002 wiring amendment, documented
     // in the PCL-002 delivery: the riding/wiring this test anticipated
