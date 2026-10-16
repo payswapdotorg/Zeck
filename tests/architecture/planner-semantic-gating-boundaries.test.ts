@@ -78,9 +78,16 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     // The planning domain is the pre-change set plus EXACTLY the one
     // declared artifact (semantic-quality-gating.ts) — the module's own
     // convention (the PCS-002 A6 precedent).
+    // [PCD-001 plane amendment, documented in the PCD-001 delivery: the
+    // planning domain gains the decision-score typed-facts artifact —
+    // the P4 program's PREDICTION plane, whose declared home is this
+    // module's domain layer (ACR-011 §2; the PCL-002 amendment of the
+    // PCL-001 A6 census pin is the precedent). The gating itself is
+    // unchanged: no second planner, no new selection path.]
     expect(listFiles("src/modules/planning/domain")).toEqual([
       "src/modules/planning/domain/canonical.ts",
       "src/modules/planning/domain/composition-consultation.ts",
+      "src/modules/planning/domain/decision-score-facts.ts",
       "src/modules/planning/domain/decision.ts",
       "src/modules/planning/domain/deterministicization-consultation.ts",
       "src/modules/planning/domain/index.ts",
