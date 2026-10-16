@@ -169,6 +169,9 @@ describe("the program discriminator rides the projection", () => {
   test("the competitiveness work orders project from their spec directory, verbatim", () => {
     const orders = competitivenessWorkOrders();
     expect(orders.map((order) => order.id)).toEqual([
+      "PCD-001",
+      "PCD-002",
+      "PCD-003",
       "PCL-001",
       "PCL-002",
       "PCL-003",
@@ -182,7 +185,7 @@ describe("the program discriminator rides the projection", () => {
       "PCS-004",
     ]);
     for (const order of orders) {
-      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[123]$/);
+      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[1234]$/);
       expect(order.specPath, order.id).toBe(`spec/competitiveness-work-orders/${order.id}.md`);
       expect(order.status.length, order.id).toBeGreaterThan(0);
       expect(order.title.length, order.id).toBeGreaterThan(0);
@@ -190,8 +193,10 @@ describe("the program discriminator rides the projection", () => {
     }
     const p1 = orders.filter((order) => order.program === "zeck-competitiveness-p1");
     const p2 = orders.filter((order) => order.program === "zeck-competitiveness-p2");
+    const p4 = orders.filter((order) => order.program === "zeck-competitiveness-p4");
     expect(p1.map((order) => order.id)).toEqual(["PCR-001", "PCR-002", "PCR-003", "PCR-004"]);
     expect(p2.map((order) => order.id)).toEqual(["PCS-001", "PCS-002", "PCS-003", "PCS-004"]);
+    expect(p4.map((order) => order.id)).toEqual(["PCD-001", "PCD-002", "PCD-003"]);
     expect(competitivenessWorkOrderOf("PCR-999")).toBeNull();
   });
 });
@@ -230,8 +235,10 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
       "zeck-competitiveness-p1",
       "zeck-competitiveness-p2",
       "zeck-competitiveness-p3",
+      "zeck-competitiveness-p4",
     ]);
-    const [validation, p1, p2, p3] = census as [
+    const [validation, p1, p2, p3, p4] = census as [
+      { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
@@ -255,8 +262,14 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     // none to the latency-tail-evaluation app).
     expect(p3.workOrders).toEqual(["PCL-001", "PCL-002", "PCL-003"]);
     expect(p3.apps).toEqual(["latency-tail-evaluation"]);
-    // Every app projects under exactly one program: 51 + 1 + 1 + 1 = the 54 app dirs.
-    const total = validation.apps.length + p1.apps.length + p2.apps.length + p3.apps.length;
+    // The P4 program (ACR-011/DEL-2026-10-14-P4, registered 2026-10-14):
+    // work orders PCD-001..003, no apps yet (the app census advances when
+    // PCD-003's evaluation app registers under its TRUE tag).
+    expect(p4.workOrders).toEqual(["PCD-001", "PCD-002", "PCD-003"]);
+    expect(p4.apps).toEqual([]);
+    // Every app projects under exactly one program: 51 + 1 + 1 + 1 + 0 = the 54 app dirs.
+    const total =
+      validation.apps.length + p1.apps.length + p2.apps.length + p3.apps.length + p4.apps.length;
     expect(total).toBe(54);
   });
 

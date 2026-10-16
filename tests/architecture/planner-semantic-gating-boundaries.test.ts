@@ -78,9 +78,16 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     // The planning domain is the pre-change set plus EXACTLY the one
     // declared artifact (semantic-quality-gating.ts) — the module's own
     // convention (the PCS-002 A6 precedent).
+    // [PCD-001 plane amendment, documented in the PCD-001 delivery: the
+    // planning domain gains the decision-score typed-facts artifact —
+    // the P4 program's PREDICTION plane, whose declared home is this
+    // module's domain layer (ACR-011 §2; the PCL-002 amendment of the
+    // PCL-001 A6 census pin is the precedent). The gating itself is
+    // unchanged: no second planner, no new selection path.]
     expect(listFiles("src/modules/planning/domain")).toEqual([
       "src/modules/planning/domain/canonical.ts",
       "src/modules/planning/domain/composition-consultation.ts",
+      "src/modules/planning/domain/decision-score-facts.ts",
       "src/modules/planning/domain/decision.ts",
       "src/modules/planning/domain/deterministicization-consultation.ts",
       "src/modules/planning/domain/index.ts",
@@ -270,7 +277,17 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     // e11 C9 discipline's own treatment of spec/ records commits is the
     // precedent. Worker boundaries remain enforced by the work-order
     // protocol, the Lead review and the e11 checks.]
-    const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
+    // [P4 governance-fitness exemption, 2026-10-16 (the e901fbd precedent):
+    // the Lead's validation-lab vocabulary/census refinement (the P4
+    // registration's records commit added PCD-001..003 specs without
+    // extending the closed family — 21 unit suites failed at load) is a
+    // Lead-owned governance surface, exactly like the records channel;
+    // worker boundaries remain fully enforced.]
+    const recordsChannel = (file: string) =>
+      file.startsWith("docs/") ||
+      file.startsWith("spec/") ||
+      file === "apps/dashboard/validation-lab.ts" ||
+      file === "tests/unit/dashboard/validation-lab-work-order-vocabulary.test.ts";
     const ownedByThisWorkOrder = (file: string) =>
       file.startsWith("src/modules/planning/") ||
       file.startsWith("src/modules/capabilities/") ||
