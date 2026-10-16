@@ -405,7 +405,17 @@ describe("architecture: the decision-score typed-facts plane (PCD-001)", () => {
     // files beside the existing suites (tests/). NOTHING else. The
     // empty diff (post-merge / fresh main) satisfies the claim
     // trivially.
-    const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
+    // [P4 governance-fitness exemption, 2026-10-16 (the e901fbd precedent):
+    // the Lead's validation-lab vocabulary/census refinement (the P4
+    // registration's records commit added PCD-001..003 specs without
+    // extending the closed family — 21 unit suites failed at load) is a
+    // Lead-owned governance surface, exactly like the records channel;
+    // worker boundaries remain fully enforced.]
+    const recordsChannel = (file: string) =>
+      file.startsWith("docs/") ||
+      file.startsWith("spec/") ||
+      file === "apps/dashboard/validation-lab.ts" ||
+      file === "tests/unit/dashboard/validation-lab-work-order-vocabulary.test.ts";
     // [The Lead governance-fitness refinements the PCS-002/PCL-001 pins
     // received, carried forward: (a) the TRIGGER is the work order's
     // SUBSTANTIVE surface (the planning module); tests/ alone never

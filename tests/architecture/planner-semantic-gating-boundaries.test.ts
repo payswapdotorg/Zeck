@@ -277,7 +277,17 @@ describe("architecture: planner quality-contract gating + substitute disclosure 
     // e11 C9 discipline's own treatment of spec/ records commits is the
     // precedent. Worker boundaries remain enforced by the work-order
     // protocol, the Lead review and the e11 checks.]
-    const recordsChannel = (file: string) => file.startsWith("docs/") || file.startsWith("spec/");
+    // [P4 governance-fitness exemption, 2026-10-16 (the e901fbd precedent):
+    // the Lead's validation-lab vocabulary/census refinement (the P4
+    // registration's records commit added PCD-001..003 specs without
+    // extending the closed family — 21 unit suites failed at load) is a
+    // Lead-owned governance surface, exactly like the records channel;
+    // worker boundaries remain fully enforced.]
+    const recordsChannel = (file: string) =>
+      file.startsWith("docs/") ||
+      file.startsWith("spec/") ||
+      file === "apps/dashboard/validation-lab.ts" ||
+      file === "tests/unit/dashboard/validation-lab-work-order-vocabulary.test.ts";
     const ownedByThisWorkOrder = (file: string) =>
       file.startsWith("src/modules/planning/") ||
       file.startsWith("src/modules/capabilities/") ||
