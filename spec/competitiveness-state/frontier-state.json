@@ -1,28 +1,28 @@
 {
- "schemaVersion": 1,
- "program": "zeck-competitiveness-p4",
- "status": "pcd-002-eligible",
- "currentBase": "0073d000faf01c4d9bf0e9d1a1346c6390220ed3",
- "delivered": [
-  "PCD-001"
- ],
- "eligible": [
-  "PCD-002"
- ],
- "inFlight": [],
- "dependencyGated": {
-  "PCD-003": [
-   "PCD-002"
-  ]
- },
- "voidConditions": {},
- "maxConcurrentWorkers": 1,
- "rule": "eligible means an authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. The P4 program is authorized under the operator delegation DEL-2026-10-14-P4 (spec/governance/authority-delegations.json): the Tech Lead exercises the Architect's delegation-able approve-architecture-change and approve-work-order rights for this program only, per the operator standing directive of 2026-10-12 ('continuous resident watch from here on: monitor \u2192 harvest \u2192 review \u2192 approve/require-changes \u2192 dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap'). Non-delegable rights remain with the Architect principal @pectoraux. ACR-011 (PR #190) is the governing architecture evolution; the frozen invariants and the worker protocol are unchanged.",
- "context": "P4 makes decision scoring pluggable, not authoritative (the roadmap \u00a7P4): the Execution Compiler ranks admissible candidates deterministically today; the internal learning loop's read seam exists (LRN-002 LearnedPolicyConsultation \u2014 ordering-only, canary/promoted, non-authoritative class pinning) but the model lacks a typed contract for interchangeable scorers, a pluggable default-off seam, and a promotion gate requiring measured lift net of scorer cost/latency. ACR-011 types the advisory-score truth (prediction-only DecisionScoreFacts: candidate success, failure-class distribution over the ACR-010 taxonomy, verifier value, route suitability \u2014 closed vocabularies, declared confidence bounds with honest unknowns, explicit provenance, determinism + content addressing, absence equivalence, prediction/measurement plane separation), makes the scorer seam declaratively configured (absent \u21d2 inert resolver byte-identical-today; present-but-malformed \u21d2 typed ScorerConfigurationError; ordering-only influence after the hard admissibility filter), and gates promotion on the honest contract (calibration, top-k decision quality, worst-case regressions, policy-constraint preservation, scorer cost netted against lift; claims alone promote nothing; canary/shadow first). Program registered 2026-10-14: ACR-011 via PR #190 (merge head 9ac629b51); spec/architecture.md section 27; authority-delegations.json DEL-2026-10-14-P4; work orders PCD-001 (the typed decision-score plane \u2014 the pure plane), PCD-002 (the scorer seam + declarative configuration \u2014 the wiring, default-off/absence-equivalent), PCD-003 (the shadow/offline evaluation \u2014 calibration, top-k decision quality, worst-case regressions, policy-constraint preservation, the net-lift promotion gate), dependency chain PCD-001 \u2192 PCD-002 \u2192 PCD-003. Predecessor programs terminal: zeck-competitiveness-p1 (p1-terminal-state.json), zeck-competitiveness-p2 (p2-terminal-state.json), zeck-competitiveness-p3 (p3-terminal-state.json \u2014 PCL-001/002/003 delivered, promotion gate PROMOTED at PR #189).",
- "authorizedQueue": [
-  "PCD-001",
-  "PCD-002",
-  "PCD-003"
- ],
- "advancementRule": "The Tech Lead (holding DEL-2026-10-14-P4) dispatches from exact current main, harvests with triple-verified reports + byte-exact tarballs, runs the independent Lead battery, merges, and advances this frontier only after exact-merge/evidence finalization. PCD-002/003 unlock on their dependencies' delivery. The one-active-task platform regime serializes dispatch in practice. P5 (developer adoption) of the competitiveness roadmap remains a proposal requiring its own per-phase authorization record under the operator's standing directive."
+  "schemaVersion": 1,
+  "program": "zeck-competitiveness-p4",
+  "status": "pcd-002-eligible",
+  "currentBase": "0073d000faf01c4d9bf0e9d1a1346c6390220ed3",
+  "delivered": [
+    "PCD-001"
+  ],
+  "eligible": [
+    "PCD-002"
+  ],
+  "inFlight": [],
+  "dependencyGated": {
+    "PCD-003": [
+      "PCD-002"
+    ]
+  },
+  "voidConditions": {},
+  "maxConcurrentWorkers": 1,
+  "rule": "eligible means an authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. The P4 program is authorized under the operator delegation DEL-2026-10-14-P4 (spec/governance/authority-delegations.json): the Tech Lead exercises the Architect's delegation-able approve-architecture-change and approve-work-order rights for this program only, per the operator standing directive of 2026-10-12 ('continuous resident watch from here on: monitor → harvest → review → approve/require-changes → dispatch next, until the roadmap is complete. No early returns. Use the github repo as guide for roadmap'). Non-delegable rights remain with the Architect principal @pectoraux. ACR-011 (PR #190) is the governing architecture evolution; the frozen invariants and the worker protocol are unchanged.",
+  "context": "P4 makes decision scoring pluggable, not authoritative (the roadmap §P4): the Execution Compiler ranks admissible candidates deterministically today; the internal learning loop's read seam exists (LRN-002 LearnedPolicyConsultation — ordering-only, canary/promoted, non-authoritative class pinning) but the model lacks a typed contract for interchangeable scorers, a pluggable default-off seam, and a promotion gate requiring measured lift net of scorer cost/latency. ACR-011 types the advisory-score truth (prediction-only DecisionScoreFacts: candidate success, failure-class distribution over the ACR-010 taxonomy, verifier value, route suitability — closed vocabularies, declared confidence bounds with honest unknowns, explicit provenance, determinism + content addressing, absence equivalence, prediction/measurement plane separation), makes the scorer seam declaratively configured (absent ⇒ inert resolver byte-identical-today; present-but-malformed ⇒ typed ScorerConfigurationError; ordering-only influence after the hard admissibility filter), and gates promotion on the honest contract (calibration, top-k decision quality, worst-case regressions, policy-constraint preservation, scorer cost netted against lift; claims alone promote nothing; canary/shadow first). Program registered 2026-10-14: ACR-011 via PR #190 (merge head 9ac629b51); spec/architecture.md section 27; authority-delegations.json DEL-2026-10-14-P4; work orders PCD-001 (the typed decision-score plane — the pure plane), PCD-002 (the scorer seam + declarative configuration — the wiring, default-off/absence-equivalent), PCD-003 (the shadow/offline evaluation — calibration, top-k decision quality, worst-case regressions, policy-constraint preservation, the net-lift promotion gate), dependency chain PCD-001 → PCD-002 → PCD-003. Predecessor programs terminal: zeck-competitiveness-p1 (p1-terminal-state.json), zeck-competitiveness-p2 (p2-terminal-state.json), zeck-competitiveness-p3 (p3-terminal-state.json — PCL-001/002/003 delivered, promotion gate PROMOTED at PR #189).",
+  "authorizedQueue": [
+    "PCD-001",
+    "PCD-002",
+    "PCD-003"
+  ],
+  "advancementRule": "The Tech Lead (holding DEL-2026-10-14-P4) dispatches from exact current main, harvests with triple-verified reports + byte-exact tarballs, runs the independent Lead battery, merges, and advances this frontier only after exact-merge/evidence finalization. PCD-002/003 unlock on their dependencies' delivery. The one-active-task platform regime serializes dispatch in practice. P5 (developer adoption) is REGISTERED (DEL-2026-10-18-P5; spec/competitiveness-state/p5-program-state.json): dispatch gated on this program's terminal close-out; the registration changes no architecture (PDA-004/PDA-005 carry their own ACR unlock conditions)."
 }

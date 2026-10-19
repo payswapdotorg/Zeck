@@ -1,0 +1,35 @@
+{
+ "schemaVersion": 1,
+ "program": "zeck-competitiveness-p5",
+ "status": "registered",
+ "activationRule": "P5 dispatch begins at the zeck-competitiveness-p4 terminal close-out (p4-terminal-state.json written; the active frontier remains spec/competitiveness-state/frontier-state.json until then, per the single-active-frontier discipline every predecessor program followed). This registration banks the authorization (DEL-2026-10-18-P5) and the work-order contracts now; it advances nothing and changes no architecture.",
+ "currentBase": "pending activation (the P4 terminal records head)",
+ "delivered": [],
+ "eligible": [],
+ "inFlight": [],
+ "dependencyGated": {
+  "PDA-002": [],
+  "PDA-003": [],
+  "PDA-006": [
+   "PDA-001",
+   "PDA-002"
+  ]
+ },
+ "acrGated": {
+  "PDA-004": "requires its own ACR before dispatch (the local/private execution seam); no work begins before the ACR lands and merges",
+  "PDA-005": "requires its own ACR before dispatch (the why-not explanation surface); no work begins before the ACR lands and merges"
+ },
+ "voidConditions": {},
+ "maxConcurrentWorkers": 1,
+ "rule": "eligible means an authorized Work Order whose dependencies are complete and whose execution begins from the exact governed main head. The P5 program is authorized under the operator delegation DEL-2026-10-18-P5 (spec/governance/authority-delegations.json): the operator instruction of 2026-10-18 ('continue with the rest of the roadmap') exercising the separate per-phase authorization the P4 registration's boundary required, under the standing directive of 2026-10-12. The Tech Lead exercises the Architect's delegation-able approve-architecture-change and approve-work-order rights for this program only. Non-delegable rights remain with the Architect principal @pectoraux. No ACR is required for the additive phase (PDA-001..PDA-003); PDA-004/PDA-005 carry their own ACR unlock conditions; the frozen invariants and the worker protocol are unchanged.",
+ "context": "P5 makes Zeck-complete the lower-friction choice for developers (the roadmap §P5, docs/architecture-proposals/ZECK-COMPETITIVENESS-ROADMAP.md): the capstone's strongest result is the measured removal of application-owned provider routing, retry/fallback, credential management and evidence plumbing, with portability probes reporting zero application-file changes across nine integrations (compat/ at pinned revisions). The program's six investments map to work orders: PDA-001 (the migration compiler / integration preflight — scan an application's active material AI edges, inventory + adapter checklist, exact gap report before code changes; cli/ surface, calibrated against the nine-target matrix), PDA-002 (contract-first SDK examples + the support matrix — model, tools, embeddings, media, substrate actuation; executable template tests; sdk/ + examples/ surfaces), PDA-003 (the evidence-backed ROI report — per-success cost, reliability, tail latency, avoided infrastructure, portability vs direct and strong-optimized arms, every number from recorded results at exact revisions, synthetic/inferred/NOT RUN labeled; docs/ + experiments/pda-003/), PDA-004 (first-class local/private execution — ACR-gated), PDA-005 (predictable tenant control, observable why-not explanations — ACR-gated), PDA-006 (the real adoption experiment — counterbalanced direct-baseline and Zeck-exposure cohorts; migration time, operational burden, durable use, final preference; recruitment is operator-era, never backfilled; scenario-simulation percentages are never adoption evidence). Registration 2026-10-18: DEL-2026-10-18-P5; this state file; work orders PDA-001..PDA-006; the P4 frontier's advancement rule updated to record the registration. Predecessor programs: zeck-competitiveness-p1 (terminal), zeck-competitiveness-p2 (terminal), zeck-competitiveness-p3 (terminal), zeck-competitiveness-p4 (in flight: PCD-001 delivered at PR #191 + records c57db171; PCD-002 dispatched, PCD-003 queued on its dependency).",
+ "authorizedQueue": [
+  "PDA-001",
+  "PDA-002",
+  "PDA-003",
+  "PDA-004",
+  "PDA-005",
+  "PDA-006"
+ ],
+ "advancementRule": "On the P4 terminal close-out, the frontier rewrites to this program (the P3→P4 precedent: frontier-state.json becomes the P5 frontier, p4-terminal-state.json preserves the P4 record). PDA-001..PDA-003 become eligible in the one-active-task serialized regime; PDA-004/PDA-005 unlock ONLY on their own ACRs (recorded in acrGated above); PDA-006 unlocks on PDA-001 + PDA-002 delivery. The Tech Lead (holding DEL-2026-10-18-P5) dispatches from exact current main, harvests with triple-verified reports + byte-exact tarballs, runs the independent Lead battery, merges, and advances only after exact-merge/evidence finalization. The adoption experiment's cohort recruitment remains the operator's act; every adoption-evidence field renders NOT RUN (owner: operator) until real cohorts exist."
+}
