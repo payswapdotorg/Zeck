@@ -183,9 +183,15 @@ describe("the program discriminator rides the projection", () => {
       "PCS-002",
       "PCS-003",
       "PCS-004",
+      "PDA-001",
+      "PDA-002",
+      "PDA-003",
+      "PDA-004",
+      "PDA-005",
+      "PDA-006",
     ]);
     for (const order of orders) {
-      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[1234]$/);
+      expect(order.program, order.id).toMatch(/^zeck-competitiveness-p[12345]$/);
       expect(order.specPath, order.id).toBe(`spec/competitiveness-work-orders/${order.id}.md`);
       expect(order.status.length, order.id).toBeGreaterThan(0);
       expect(order.title.length, order.id).toBeGreaterThan(0);
@@ -194,9 +200,21 @@ describe("the program discriminator rides the projection", () => {
     const p1 = orders.filter((order) => order.program === "zeck-competitiveness-p1");
     const p2 = orders.filter((order) => order.program === "zeck-competitiveness-p2");
     const p4 = orders.filter((order) => order.program === "zeck-competitiveness-p4");
+    const p5 = orders.filter((order) => order.program === "zeck-competitiveness-p5");
     expect(p1.map((order) => order.id)).toEqual(["PCR-001", "PCR-002", "PCR-003", "PCR-004"]);
     expect(p2.map((order) => order.id)).toEqual(["PCS-001", "PCS-002", "PCS-003", "PCS-004"]);
     expect(p4.map((order) => order.id)).toEqual(["PCD-001", "PCD-002", "PCD-003"]);
+    // The P5 program (DEL-2026-10-18-P5, registered 2026-10-18): work orders
+    // PDA-001..006, registered with dispatch gated on the P4 terminal
+    // close-out — the specs carry Program: zeck-competitiveness-p5.
+    expect(p5.map((order) => order.id)).toEqual([
+      "PDA-001",
+      "PDA-002",
+      "PDA-003",
+      "PDA-004",
+      "PDA-005",
+      "PDA-006",
+    ]);
     expect(competitivenessWorkOrderOf("PCR-999")).toBeNull();
   });
 });
@@ -236,8 +254,10 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
       "zeck-competitiveness-p2",
       "zeck-competitiveness-p3",
       "zeck-competitiveness-p4",
+      "zeck-competitiveness-p5",
     ]);
-    const [validation, p1, p2, p3, p4] = census as [
+    const [validation, p1, p2, p3, p4, p5] = census as [
+      { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
       { program: string; workOrders: string[]; apps: string[] },
@@ -267,9 +287,27 @@ describe("THE ACCEPTANCE PROBE — the evaluation app projects under its TRUE wo
     // PCD-003's evaluation app registers under its TRUE tag).
     expect(p4.workOrders).toEqual(["PCD-001", "PCD-002", "PCD-003"]);
     expect(p4.apps).toEqual([]);
-    // Every app projects under exactly one program: 51 + 1 + 1 + 1 + 0 = the 54 app dirs.
+    // The P5 program (DEL-2026-10-18-P5, registered 2026-10-18): work
+    // orders PDA-001..006 registered with dispatch gated on the P4 terminal
+    // close-out; no apps yet (the app census advances when PDA deliveries
+    // register their evaluation apps under their TRUE tags).
+    expect(p5.workOrders).toEqual([
+      "PDA-001",
+      "PDA-002",
+      "PDA-003",
+      "PDA-004",
+      "PDA-005",
+      "PDA-006",
+    ]);
+    expect(p5.apps).toEqual([]);
+    // Every app projects under exactly one program: 51 + 1 + 1 + 1 + 0 + 0 = the 54 app dirs.
     const total =
-      validation.apps.length + p1.apps.length + p2.apps.length + p3.apps.length + p4.apps.length;
+      validation.apps.length +
+      p1.apps.length +
+      p2.apps.length +
+      p3.apps.length +
+      p4.apps.length +
+      p5.apps.length;
     expect(total).toBe(54);
   });
 
